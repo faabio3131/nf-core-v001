@@ -1,6 +1,6 @@
 # FM NFCORE V1 — Política comercial por utilização e benchmarking de mercado
 
-Data: 2026-10-20. Estado: **política FM APROVADA; preços, franquias numéricas e estratégia de excedentes ainda NÃO APROVADOS**.
+Data: 2026-10-20. Estado: **política FM APROVADA; preço do NFCore Essencial R$ 149,00/mês APROVADO; demais preços, franquias numéricas e estratégia de excedentes ainda NÃO APROVADOS**.
 
 ## 1. Decisão FM aprovada (2026-10-20)
 
@@ -55,7 +55,7 @@ Por proteção antiabuso e FinOps, limites técnicos por segundo, concorrência,
 
 Excedente: desenhar política **configurável FM** de alerta em 70/90/100%, upgrade, pacote extra pré-autorizado ou bloqueio seguro de nova emissão. Nada de cobrar excedente silenciosamente. Na falta de crédito não bloquear consulta de notas históricas, cancelamento/obrigações legais ou acesso à auditoria; estabelecer comportamento fiscal fail-closed e recuperação.
 
-Limites e preços definitivos, trial_days, CNPJ adicional, custo por documento, política por tipo NF-e/NFC-e/NFS-e, prazos e descontos **a decidir** após FinOps e aprovação da FM.
+Preço do plano NFCore Essencial: **R$ 149,00/mês — DECISÃO APROVADA DA FM**. Quantidades de CNPJ/notas incluídas (proposta anterior: 1 CNPJ e 500 documentos/mês), preços dos demais planos, excedentes, trial_days, CNPJ adicional, custo por documento, política por tipo NF-e/NFC-e/NFS-e, prazos e descontos ainda **pendentes de validação/aprovação específica**. A decisão do preço isoladamente **não publica** uma configuração de cobrança.
 
 ## 5. Matriz de aceitação para construção
 
@@ -70,4 +70,34 @@ Limites e preços definitivos, trial_days, CNPJ adicional, custo por documento, 
 
 ## 6. Próxima decisão humana
 
-Definir os tetos iniciais por faixa, os valores comerciais e a política de excedentes. Sem isso, criar planos de produção seria inventar condições comerciais. Construção de enforcement pode prosseguir com fixtures sintéticos e gates internos.
+Definir os tetos iniciais por faixa, os valores dos outros planos e a política de excedentes. O **valor de R$ 149,00/mês do Essencial já está aprovado**, mas sua franquia quantitativa ainda será validada com FinOps. Construção de enforcement pode prosseguir com fixtures sintéticos e gates internos. Nenhum preço deve ser publicado por esta documentação.
+
+## 7. Decisão de preço e infraestrutura (2026-10-20)
+
+### 7.1. DECISÃO APROVADA: preço de entrada
+
+- Produto: **FM NFCore V1**; plano comercial: **Essencial**.
+- Mensalidade aprovada pelo responsável da FM: **BRL 149,00 (R$ 149,00/mês)**, e **não** R$ 149,90 nem R$ 69,90.
+- Escopo desta aprovação: **valor da mensalidade**, não franquia final de CNPJs, notas, tokens de IA, excedentes, contratação anual ou publicação pública. A proposta anterior continha 1 CNPJ e 500 notas, mas essa combinação ainda depende de cálculo de margem e de aceitação comercial.
+- O preço deve ser persistido no catálogo FM versionado pela autoridade `CommercialPricingAdministrationService` somente após definir os demais campos contratuais e aprovar a publicação. Não alterar código de preços nem criar plano paralelo.
+- A venda e o trial real exigem os gates operacionais externos, além das configurações efetivamente publicadas no catálogo.
+
+### 7.2. DECISÃO DE DIREÇÃO: Contabo como destino de hospedagem de baixo custo
+
+- Provedor selecionado pela FM como **TARGET**, não CURRENT: **Contabo**, VPS de entrada com **8 GB RAM**.
+- Valor de orçamento informado pelo responsável: **R$ 43,00/mês**. **Cotação informada pelo cliente, ainda não confirmada na fatura/checkout**, depende da região, moeda, impostos e opcionais.
+- Oferta contemporânea de referência oficial: `Cloud VPS 4` (Core VPS) com 4 vCPU compartilhadas, 8 GB RAM, 100 GB SSD, porta 200 Mbit/s. Confirmar a SKU e os termos efetivos da compra: https://contabo.com/en/pricing/ e https://docs.contabo.com/docs/servers-hosting/vps/
+- Oportunidade de contribuição antes dos demais custos: **R$ 149,00 - R$ 43,00 = R$ 106,00**, se **um único cliente** custeasse a VPS inteira. Isso **NÃO é lucro**: faltam operação fiscal, provedores, certificados, backup, tributos, gateway, IA, suporte, egress, monitoramento e mão de obra. Se houver 5 clientes, o custo fixo de R$ 43,00 equivaleria a R$ 8,60/cliente, antes do aumento de capacidade.
+- CURRENT técnico: API, Worker, Portal e PostgreSQL estão implantados no projeto `FM NFCORE Staging` do Railway. A decisão Contabo **não comprova VPS provisionada**, nem autoriza DNS, cutover ou exclusão do Railway.
+- TARGET inicial a avaliar: hospedar a **mesma aplicação e os mesmos containers** (API, Worker, Portal, PostgreSQL) no VPS, com volumes persistentes, configuração de segredos protegida e isolamento externo de PostgreSQL; proxy TLS; backup **criptografado off-host** e restauração periódica. Não desenvolver segunda API/autenticação/persistência nem acoplar o produto à Contabo.
+- Um VPS único é ponto único de falha. As metas reais de CPU, RAM, IOPS, disco, concorrência, filas, retenção legal de XML/PDF, disponibilidade, RPO/RTO e degradação devem ser medidas por ensaios de carga e recuperação. A capacidade de 8 GB é uma **hipótese de sizing inicial, não certificação**.
+- Snapshots não substituem backup recuperável. O backup automático Contabo é adicional e possui retenção limitada; avaliar backup externo independente. Referência: https://docs.contabo.com/docs/servers-hosting/vps-auto-backup/
+- Não comprar, provisionar, migrar banco real, alterar domínio/TLS, publicar o trial ou efetuar cutover por esta atualização documental. Executar apenas mediante autorização operacional específica, com inventário de acessos e rollback aprovado.
+
+### 7.3. CURRENT -> TARGET e gates
+
+CURRENT: preço Essencial definido humanamente, ainda não publicado no pricing; Railway staging existente; custo VPS Contabo apenas cotado pelo usuário.
+
+TARGET: plano Essencial R$ 149,00/mês no catálogo administrado da FM; NFCore executando na estrutura Contabo validada, com rollback Railway, tenant isolation, idempotência, observabilidade e recovery intactos.
+
+Gates: proposta comercial detalhada -> aprovação de quotas/overage -> catálogo FM publicado -> avaliação de contrato Contabo -> sizing/carga/backup/restore -> provisioning governado -> deploy da mesma aplicação -> E2E staging -> DNS/TLS/cutover quando especificamente aprovado.
