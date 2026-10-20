@@ -104,6 +104,8 @@ Gates: proposta comercial detalhada -> aprovação de quotas/overage -> catálog
 
 ### 7.4. Checkpoint de implantação compartilhada — 20/10/2026
 
+**Blueprint operacional detalhado desta decisão:** [FM_TECNOLOGIA_CONTABO_MULTI_SAAS_BLUEPRINT_2026-10-20.md](FM_TECNOLOGIA_CONTABO_MULTI_SAAS_BLUEPRINT_2026-10-20.md). Este é o documento de continuidade para redes Docker segregadas, NPM existente, AtendeVendeIA/Evolution, Kordena e NFCore. Não substituir por Compose de demonstração sem antes auditar CURRENT.
+
 **DECISÃO APROVADA:** iniciar a hospedagem de **Kordena, AtendeVendeIA e NFCore** na **mesma VPS Contabo Cloud VPS 4, 8 GB de RAM**, região US-central. O usuário apresentou captura do painel indicando VPS **em execução**. Instância e IP são dados operacionais e **não serão versionados em arquivos públicos**.
 
 **ESTADO DE ACESSO CONFIRMADO:** testes TCP do computador autorizado: SSH porta 22 acessível, HTTP 80 e HTTPS 443 ainda fechadas. A chave SSH do host já consta em `known_hosts` local, mas autenticação SSH administrativa não interativa com as chaves disponíveis falhou (`Permission denied (publickey,password)`). Não foi realizada instalação, login administrativo, modificação da VPS nem transferência de segredos. Próximo pré-requisito: conferir SO pelo console VNC do painel e habilitar chave SSH pública do dispositivo autorizado, sem inserir senha root ou chave privada no GitHub/chat.
