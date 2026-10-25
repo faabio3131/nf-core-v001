@@ -129,6 +129,10 @@ def main() -> int:
     # dependency probe; no signing handler can be silently replaced by a stub.
     if _oneshot_requested():
         return run()
+    if os.environ.get("NFCORE_ENVIRONMENT") == "production":
+        from .production_gsm import production_worker_handler_factory
+
+        return run(handler_factory=production_worker_handler_factory())
     from .worker_staging_gsm_bootstrap import staging_gsm_handler_factory
 
     return run(handler_factory=staging_gsm_handler_factory())

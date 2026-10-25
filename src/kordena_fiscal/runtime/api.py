@@ -42,6 +42,7 @@ from kordena_fiscal.web.commercial_acquisition import (
 )
 from kordena_fiscal.web.commercial_trial import create_commercial_trial_router
 from kordena_fiscal.web.human_recovery import PasswordResetDelivery
+from kordena_fiscal.web.production_gsm_binding_admin import create_production_gsm_binding_router
 from kordena_fiscal.web.public_trial import PublicTrialAbuseGate, create_public_trial_router
 from kordena_fiscal.web.staging_gsm_binding_admin import create_staging_gsm_binding_router
 from kordena_fiscal.web.staging_webhook_approval import create_staging_webhook_egress_router
@@ -67,6 +68,7 @@ from .observability import (
     TraceContext,
 )
 from .otel_trace_sink import build_trace_sink
+from .production_gsm import production_api_verifier
 from .public_trial_abuse import PostgresPublicTrialAbuseGate
 from .secret_manager import SecretBindingAdministration
 from .security import configure_edge_security
@@ -210,6 +212,10 @@ def create_runtime_app(
         and runtime.database is not None
     ):
         staging_probe_security = staging_probe_verifier(runtime.database)
+    if resolved.environment.value == "production" and runtime.database is not None:
+        # Optional; if explicitly enabled, startup must verify the production
+        # service account, durable binding and real GSM read before readiness.
+        production_api_verifier(runtime.database)
     if resolved.environment.value == "staging" and runtime.database is not None:
         # Separate channel-specific GSM bindings, validated against the same
         # canonical external vault and existing nfcore-api identity.
@@ -617,6 +623,16 @@ def create_runtime_app(
         app.include_router(create_staging_webhook_egress_router(
             composition.human_identity,
             runtime.database,
+        ))
+
+    if (
+        resolved.environment.value == "production"
+        and composition is not None
+        and runtime.database is not None
+    ):
+        app.include_router(create_production_gsm_binding_router(
+            composition.human_identity,
+            SecretBindingAdministration(runtime.database),
         ))
 
     if staging_probe_security is not None:
