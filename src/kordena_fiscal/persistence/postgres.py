@@ -27,7 +27,7 @@ from psycopg.errors import UndefinedTable
 from psycopg_pool import ConnectionPool
 
 from kordena_fiscal.contingency import FiscalOutboxEnqueueResult, FiscalOutboxEntry
-from kordena_fiscal.control_plane.models import ControlPlaneAuditAction
+from kordena_fiscal.control_plane.models import ControlPlaneAuditAction, ControlPlaneAuditEvent
 from kordena_fiscal.domain import FiscalValidationError
 from kordena_fiscal.events import FiscalInboxEntry, FiscalInboxReceiveResult
 from kordena_fiscal.lifecycle import IdempotencyKey, IdempotencyReservation
@@ -881,6 +881,95 @@ class PostgresFiscalDatabase:
     def password_resets(self) -> PostgresPasswordResetRepository:
         return PostgresPasswordResetRepository(self)
 
+    @contextmanager
+    def first_platform_admin_bootstrap_guard(
+        self, *, account_id: str, email: str
+    ) -> Iterator[None]:
+        """Serialize the one-time bootstrap; never grant authority to existing accounts.
+
+        Lock is held across the canonical commercial provisioner and the final
+        privilege/audit transaction. Only this canonical persistence adapter uses SQL.
+        """
+        with self._pool.connection() as raw:
+            acquired = raw.execute("SELECT pg_try_advisory_lock(638051840337)").fetchone()
+            raw.commit()
+            if acquired is None or acquired[0] is not True:
+                raise PersistenceStateError("first platform admin bootstrap lock unavailable")
+            try:
+                # Fail closed if another account/admin occupies this database.
+                conflict = raw.execute(
+                    """
+                    SELECT 1 FROM fm_human_accounts
+                    WHERE platform_admin <> 0 OR account_id <> %s OR email <> %s
+                    LIMIT 1
+                    """,
+                    (account_id, email),
+                ).fetchone()
+                raw.commit()
+                if conflict is not None:
+                    raise PersistenceStateError("first platform admin bootstrap denied")
+                yield
+            finally:
+                raw.rollback()
+                raw.execute("SELECT pg_advisory_unlock(638051840337)")
+                raw.commit()
+
+    def promote_first_platform_admin(
+        self, *, account_id: str, email: str, tenant_id: str, now: datetime
+    ) -> None:
+        """Commit elevation and audit in one canonical PostgreSQL unit of work."""
+        if now.tzinfo is None or now.utcoffset() is None:
+            raise PersistenceStateError("bootstrap audit clock must be timezone aware")
+        with self() as uow:
+            raw = uow._raw_connection
+            if raw is None:
+                raise PersistenceStateError("bootstrap unit of work unavailable")
+            raw.execute("SELECT pg_advisory_xact_lock(638051840338)")
+            if (
+                raw.execute(
+                    "SELECT 1 FROM fm_human_accounts WHERE platform_admin <> 0 LIMIT 1"
+                ).fetchone()
+                is not None
+            ):
+                raise PersistenceStateError("platform administrator already exists")
+            row = raw.execute(
+                """
+                SELECT tenant_id, role, enabled, platform_admin
+                FROM fm_human_accounts WHERE account_id = %s AND email = %s FOR UPDATE
+                """,
+                (account_id, email),
+            ).fetchone()
+            if row is None or (
+                str(row[0]) != tenant_id
+                or str(row[1]) != PortalRole.OWNER.value
+                or int(row[2]) != 1
+                or int(row[3]) != 0
+            ):
+                raise PersistenceStateError("bootstrap owner identity unavailable")
+            updated = raw.execute(
+                """
+                UPDATE fm_human_accounts SET platform_admin = 1
+                WHERE account_id = %s AND email = %s AND tenant_id = %s
+                    AND platform_admin = 0
+                """,
+                (account_id, email, tenant_id),
+            )
+            if updated.rowcount != 1:
+                raise PersistenceStateError("bootstrap privilege update denied")
+            uow.control_plane.append_audit(
+                ControlPlaneAuditEvent(
+                    event_id=uuid4().hex,
+                    occurred_at=now,
+                    actor_id="production-bootstrap",
+                    action=ControlPlaneAuditAction.HUMAN_ACCOUNT_UPDATED,
+                    target_type="human_account",
+                    target_id=account_id,
+                    correlation_id="production-first-platform-admin",
+                    tenant_id=tenant_id,
+                )
+            )
+            uow.commit()
+
     def pricing_catalog(self) -> PostgresPricingCatalogRepository:
         return PostgresPricingCatalogRepository(self)
 
@@ -1010,14 +1099,9 @@ class PostgresHumanAdministrationStore:
                 """,
                 (normalized,),
             ).fetchall()
-        return tuple(
-            self._row_account(cast(tuple[object, ...], row))
-            for row in rows
-        )
+        return tuple(self._row_account(cast(tuple[object, ...], row)) for row in rows)
 
-    def command_target(
-        self, tenant_id: str, correlation_id: str
-    ) -> tuple[str, str] | None:
+    def command_target(self, tenant_id: str, correlation_id: str) -> tuple[str, str] | None:
         with self._database._pool.connection() as raw:
             row = raw.execute(
                 """
@@ -1184,8 +1268,10 @@ class PostgresHumanAdministrationStore:
                 if current.session_epoch != expected_session_epoch:
                     raise HumanAdministrationConflictError("human account version changed")
 
-                if current.role is PortalRole.OWNER and current.enabled and (
-                    account.role is not PortalRole.OWNER or not account.enabled
+                if (
+                    current.role is PortalRole.OWNER
+                    and current.enabled
+                    and (account.role is not PortalRole.OWNER or not account.enabled)
                 ):
                     owner_rows = raw.execute(
                         """

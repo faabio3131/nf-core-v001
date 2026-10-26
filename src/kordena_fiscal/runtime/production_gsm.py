@@ -63,6 +63,15 @@ _FIELDS = (
 
 
 @dataclass(frozen=True, slots=True)
+class ProductionWorkloadIdentity:
+    """Only the pinned production service account identity, no fake tenant scope."""
+
+    role: Literal["API", "WORKER"]
+    project: str
+    service_account: str
+
+
+@dataclass(frozen=True, slots=True)
 class ProductionGsmConfig:
     role: Literal["API", "WORKER"]
     project: str
@@ -194,7 +203,7 @@ def _time(source: Mapping[str, str], name: str) -> datetime:
 
 def production_credentials(
     source: Mapping[str, str],
-    cfg: ProductionGsmConfig,
+    cfg: ProductionGsmConfig | ProductionWorkloadIdentity,
 ) -> tuple[ServiceAccountCredentials, datetime]:
     """One locked-down, mounted SA identity; no ambient identity or JSON env."""
     prefix = f"NFCORE_{cfg.role}_GSM_"

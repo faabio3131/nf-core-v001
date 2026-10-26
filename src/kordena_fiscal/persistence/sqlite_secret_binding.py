@@ -29,6 +29,35 @@ class SqliteSecretBindingStore:
         except Exception:
             raise PersistenceStateError("external secret binding is invalid") from None
 
+    def list_active_signatures(
+        self, *, workload_id: str, runtime_environment: str
+    ) -> tuple[SecretBinding, ...]:
+        """Canonical read-only registry for the single production Worker.
+
+        The source is fm_secret_bindings, never a second tenant registry.
+        Reject malformed rows instead of silently skipping corrupted authority.
+        """
+        rows = self._connection.execute(
+            "SELECT reference_id, revision, metadata_json FROM fm_secret_bindings "
+            "ORDER BY reference_id"
+        ).fetchall()
+        found = []
+        for reference_id, revision, payload in rows:
+            try:
+                binding = SecretBinding.from_metadata(json.loads(payload))
+                if binding.reference_id != reference_id or binding.revision != revision:
+                    raise ValueError
+            except Exception:
+                raise PersistenceStateError("external secret binding registry invalid") from None
+            if (
+                binding.workload_id == workload_id
+                and binding.runtime_environment == runtime_environment
+                and binding.kind == "signature"
+                and binding.state == "active"
+            ):
+                found.append(binding)
+        return tuple(found)
+
     def put(self, binding: SecretBinding, *, expected_revision: int) -> None:
         if type(expected_revision) is not int or expected_revision < 0:
             raise PersistenceConflictError("invalid binding expected revision")

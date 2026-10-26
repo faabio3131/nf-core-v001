@@ -18,6 +18,7 @@ from kordena_fiscal.contingency import FiscalOutboxHandler
 from kordena_fiscal.persistence.postgres import PostgresFiscalDatabase
 
 from .config import RuntimeConfigurationError, RuntimeSettings
+from .production_multi_gsm import MultiTenantGsmWorkerComposition
 from .worker_composition import (
     ScopedWorkerHandlerComposition,
     WorkerWebhookDependencies,
@@ -26,10 +27,12 @@ from .worker_composition import (
 )
 from .worker_health import HEALTH_PATH, WorkerHealthPublisher
 
-WorkerHandlerFactory = Callable[
-    [PostgresFiscalDatabase, RuntimeSettings],
-    Mapping[str, FiscalOutboxHandler] | ScopedWorkerHandlerComposition,
-]
+WorkerHandlers = (
+    Mapping[str, FiscalOutboxHandler]
+    | ScopedWorkerHandlerComposition
+    | MultiTenantGsmWorkerComposition
+)
+WorkerHandlerFactory = Callable[[PostgresFiscalDatabase, RuntimeSettings], WorkerHandlers]
 
 
 def _oneshot_requested() -> bool:
@@ -98,6 +101,13 @@ def run(
                 if handler_factory is not None
                 else build_canonical_worker_handlers(uow_factory=database, webhook=webhook)
             )
+            # Opt-in multi-tenant mode owns one process and cycles over dynamic,
+            # individually authorized exact partitions using the existing Worker.
+            if isinstance(handler_composition, MultiTenantGsmWorkerComposition):
+                publisher.attach(handler_composition.health)
+                handler_composition.run_forever(stop)
+                return 0
+
             claim_selection = None
             if isinstance(handler_composition, ScopedWorkerHandlerComposition):
                 handlers = handler_composition.handlers
@@ -131,7 +141,10 @@ def main() -> int:
         return run()
     if os.environ.get("NFCORE_ENVIRONMENT") == "production":
         from .production_gsm import production_worker_handler_factory
+        from .production_multi_gsm import MULTI_MODE, production_multi_worker_handler_factory
 
+        if os.environ.get("NFCORE_WORKER_GSM_MODE") == MULTI_MODE:
+            return run(handler_factory=production_multi_worker_handler_factory())
         return run(handler_factory=production_worker_handler_factory())
     from .worker_staging_gsm_bootstrap import staging_gsm_handler_factory
 
