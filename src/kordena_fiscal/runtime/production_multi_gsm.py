@@ -17,7 +17,7 @@ from datetime import UTC, datetime
 from functools import partial
 from pathlib import Path
 from threading import Event
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 from google.cloud import secretmanager_v1
 
@@ -167,13 +167,13 @@ class ProductionGsmWorkloadClientCache:
         self._stamp = stamp
         if previous is not None:
             with suppress(Exception):
-                previous.transport.close()
+                cast(Callable[[], None], previous.transport.close)()
         return client, expiry
 
     def close(self) -> None:
         if self._client is not None:
             with suppress(Exception):
-                self._client.transport.close()
+                cast(Callable[[], None], self._client.transport.close)()
             self._client = None
             self._expiry = None
             self._stamp = None
