@@ -11,8 +11,8 @@ from __future__ import annotations
 import os
 import re
 import stat
-from contextlib import suppress
 from collections.abc import Callable, Mapping
+from contextlib import suppress
 from datetime import UTC, datetime
 from functools import partial
 from pathlib import Path
@@ -84,6 +84,10 @@ class ProductionGsmWorkloadClientCache:
         self._stamp: tuple[object, ...] | None = None
         self._client: secretmanager_v1.SecretManagerServiceClient | None = None
         self._expiry: datetime | None = None
+
+    @property
+    def project(self) -> str:
+        return self._project
 
     def _stamp_current(self) -> tuple[object, ...]:
         prefix = "NFCORE_WORKER_GSM_"
@@ -302,7 +306,7 @@ def _scoped_worker(
         }
     )
     cfg = production_config(ephemeral, "WORKER")
-    if cfg.project != client_cache._project:
+    if cfg.project != client_cache.project:
         raise RuntimeConfigurationError("production GSM signing project mismatch")
     client, expiry = client_cache.get()
     reader = DurableGsmReader(
