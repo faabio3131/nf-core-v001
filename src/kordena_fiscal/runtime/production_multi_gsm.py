@@ -127,7 +127,9 @@ class ProductionGsmWorkloadClientCache:
                 *(self._source.get(name, "") for name in identity_fields),
             )
         except (OSError, KeyError, TypeError, ValueError):
-            raise RuntimeConfigurationError("production GSM workload identity unavailable") from None
+            raise RuntimeConfigurationError(
+                "production GSM workload identity unavailable"
+            ) from None
 
     def get(self) -> tuple[secretmanager_v1.SecretManagerServiceClient, datetime]:
         """Fail closed on expiry, tampering or rotation; refresh only on identity change."""
