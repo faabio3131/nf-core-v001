@@ -10,8 +10,12 @@ from __future__ import annotations
 
 import os
 import re
+import stat
+from contextlib import suppress
 from collections.abc import Callable, Mapping
 from datetime import UTC, datetime
+from functools import partial
+from pathlib import Path
 from threading import Event
 from typing import TYPE_CHECKING
 
@@ -57,6 +61,117 @@ if TYPE_CHECKING:
     from kordena_fiscal.contingency.outbox import FiscalOutboxStatus
 
 MULTI_MODE = "multi-tenant-production-sa-v1"
+
+
+class ProductionGsmWorkloadClientCache:
+    """One Google transport and credential identity per Worker process.
+
+    Only the Google workload transport is cached. Durable binding metadata,
+    per-tenant allowed_resources, exact outbox claims and egress authorization
+    remain independent and are revalidated for every dispatch.
+    """
+
+    def __init__(
+        self,
+        source: Mapping[str, str],
+        *,
+        project: str,
+        clock: Callable[[], datetime] | None = None,
+    ) -> None:
+        self._source = source
+        self._project = project
+        self._clock = clock or (lambda: datetime.now(UTC))
+        self._stamp: tuple[object, ...] | None = None
+        self._client: secretmanager_v1.SecretManagerServiceClient | None = None
+        self._expiry: datetime | None = None
+
+    def _stamp_current(self) -> tuple[object, ...]:
+        prefix = "NFCORE_WORKER_GSM_"
+        try:
+            credential_path = Path(self._source[prefix + "CREDENTIAL_FILE"])
+            metadata = credential_path.lstat()
+            if (
+                not credential_path.is_absolute()
+                or not stat.S_ISREG(metadata.st_mode)
+                or metadata.st_mode & 0o077
+                or metadata.st_uid != os.getuid()
+                or not 128 <= metadata.st_size <= 65536
+            ):
+                raise ValueError
+            identity_fields = (
+                "NFCORE_ENVIRONMENT",
+                "NFCORE_GSM_PROJECT_ID",
+                "NFCORE_GSM_PROJECT_NUMBER",
+                "NFCORE_GSM_ALLOWED_PROJECTS",
+                "NFCORE_GSM_API_SERVICE_ACCOUNT",
+                "NFCORE_GSM_WORKER_SERVICE_ACCOUNT",
+                "GOOGLE_APPLICATION_CREDENTIALS",
+                prefix + "CREDENTIAL_JSON",
+                prefix + "KEY_ID",
+                prefix + "KEY_CREATED_AT",
+                prefix + "KEY_NOT_AFTER",
+            )
+            return (
+                str(credential_path),
+                metadata.st_dev,
+                metadata.st_ino,
+                metadata.st_mode,
+                metadata.st_uid,
+                metadata.st_size,
+                metadata.st_mtime_ns,
+                metadata.st_ctime_ns,
+                *(self._source.get(name, "") for name in identity_fields),
+            )
+        except (OSError, KeyError, TypeError, ValueError):
+            raise RuntimeConfigurationError("production GSM workload identity unavailable") from None
+
+    def get(self) -> tuple[secretmanager_v1.SecretManagerServiceClient, datetime]:
+        """Fail closed on expiry, tampering or rotation; refresh only on identity change."""
+        project, _ = platform_project(self._source)
+        if project != self._project:
+            raise RuntimeConfigurationError("production GSM workload identity changed")
+        stamp = self._stamp_current()
+        if self._client is not None and stamp == self._stamp and self._expiry is not None:
+            if self._clock() >= self._expiry:
+                raise RuntimeConfigurationError("production GSM workload identity expired")
+            return self._client, self._expiry
+
+        credentials, expiry = production_credentials(
+            self._source,
+            ProductionWorkloadIdentity(
+                role="WORKER",
+                project=self._project,
+                service_account=self._source["NFCORE_GSM_WORKER_SERVICE_ACCOUNT"],
+            ),
+        )
+        try:
+            client = secretmanager_v1.SecretManagerServiceClient(
+                credentials=credentials,
+                client_options={
+                    "api_endpoint": "secretmanager.googleapis.com",
+                    "universe_domain": "googleapis.com",
+                },
+            )
+        except Exception:
+            raise RuntimeConfigurationError("production GSM SDK identity unavailable") from None
+
+        previous = self._client
+        self._client = client
+        self._expiry = expiry
+        self._stamp = stamp
+        if previous is not None:
+            with suppress(Exception):
+                previous.transport.close()
+        return client, expiry
+
+    def close(self) -> None:
+        if self._client is not None:
+            with suppress(Exception):
+                self._client.transport.close()
+            self._client = None
+            self._expiry = None
+            self._stamp = None
+
 
 
 def platform_project(source: Mapping[str, str]) -> tuple[str, str]:
@@ -164,6 +279,7 @@ def _scoped_worker(
     binding: SecretBinding,
     destination_id: str,
     namespace: str,
+    client_cache: ProductionGsmWorkloadClientCache,
 ) -> ProductionWorkerComposition:
     """Build one canonical scoped cycle; no new worker implementation or key cache."""
     if binding.tenant_id is None or binding.unit_id is None:
@@ -186,14 +302,9 @@ def _scoped_worker(
         }
     )
     cfg = production_config(ephemeral, "WORKER")
-    credentials, expiry = production_credentials(source, cfg)
-    client = secretmanager_v1.SecretManagerServiceClient(
-        credentials=credentials,
-        client_options={
-            "api_endpoint": "secretmanager.googleapis.com",
-            "universe_domain": "googleapis.com",
-        },
-    )
+    if cfg.project != client_cache._project:
+        raise RuntimeConfigurationError("production GSM signing project mismatch")
+    client, expiry = client_cache.get()
     reader = DurableGsmReader(
         uow_factory=database,
         access=GoogleSdkSecretAccess(client, bootstrap_not_after=expiry),
@@ -240,14 +351,15 @@ class MultiTenantGsmWorkerComposition:
         source: Mapping[str, str],
         namespace: str,
         loader: Callable[..., tuple[tuple[SecretBinding, str], ...]] = production_worker_bindings,
-        scoped_factory: Callable[..., ProductionWorkerComposition] = _scoped_worker,
+        scoped_factory: Callable[..., ProductionWorkerComposition] | None = None,
     ) -> None:
         self._db = database
         self._source = source
         self._namespace = namespace
         self._loader = loader
-        self._scoped = scoped_factory
         self._project, _ = platform_project(source)
+        self._client_cache = ProductionGsmWorkloadClientCache(source, project=self._project)
+        self._scoped = scoped_factory or partial(_scoped_worker, client_cache=self._client_cache)
         self._observer = WorkerObservability(
             metrics=MetricsRegistry(),
             logger=StructuredLogger(service="nfcore-worker", environment="production"),
@@ -311,6 +423,7 @@ class MultiTenantGsmWorkerComposition:
                 stop.wait(1.0)
         finally:
             self._observer.worker_stopped()
+            self._client_cache.close()
 
 
 def production_multi_worker_handler_factory(
