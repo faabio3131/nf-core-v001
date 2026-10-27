@@ -990,6 +990,14 @@ class FiscalApplicationService:
         Timeout/crash leaves CANCEL_REQUESTED; it never authorizes another dispatch.
         Portal receipt replay is handled by its existing durable claim authority.
         """
+        if (
+            not isinstance(request, CancellationRequest)
+            or not isinstance(client, FiscalOperationsClient)
+            or not isinstance(archive_retention, RetentionPolicyMetadata)
+        ):
+            raise FiscalValidationError(
+                "cancellation requires a valid request, client and retention"
+            )
         cancellation = FiscalCancellationService(client, self._state_machine)
         with self._uow_factory() as uow:
             current = self._validate_cancellation_from_uow(uow, document_id, request)

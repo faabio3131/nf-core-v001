@@ -106,6 +106,19 @@ def test_timeout_blocks_new_dispatch_after_restart(database, tmp_path):
         assert uow.lifecycle.get("doc-test").state is FiscalDocumentState.CANCEL_REQUESTED
 
 
+@pytest.mark.parametrize("parameter", ["request", "client", "archive_retention"])
+def test_invalid_dependency_cannot_claim_cancellation(database, tmp_path, parameter):
+    app, request = authorized(database, tmp_path)
+    kwargs = {"document_id": "doc-test", "request": request,
+              "client": FiscalOperationsClient(FakeFiscalOperationsGateway()),
+              "archive_retention": RETENTION, "occurred_at": base.NOW}
+    kwargs[parameter] = object()
+    with pytest.raises(FiscalValidationError):
+        app.cancel_prepared_document(**kwargs)
+    with database() as uow:
+        assert uow.lifecycle.get("doc-test").state is FiscalDocumentState.AUTHORIZED
+
+
 def test_concurrent_cancellation_claim_dispatches_once(database, tmp_path):
     app, request = authorized(database, tmp_path)
     started, release = Event(), Event()
