@@ -6,7 +6,6 @@ supply signed XML, provider selection, certificate material or final outcomes.
 """
 
 from collections.abc import Callable, Mapping
-from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any
 
@@ -26,22 +25,11 @@ from kordena_fiscal.issuance.nfe_nfse import (
 from kordena_fiscal.operations import FiscalOperationsClient
 from kordena_fiscal.persistence.ports import PersistenceConflictError, PersistenceStateError
 
-from .fiscal_runtime import FiscalOperationHandler
+from .fiscal_runtime import FiscalOperationHandler, PreflightFiscalOperationHandler
 
 PreparedIssuanceResolver = Callable[
     [ExecutionScope, str], AuthorizationRequest | NfseAuthorizationRequest
 ]
-
-
-@dataclass(frozen=True, slots=True)
-class _PreparedOperationHandler:
-    execute: FiscalOperationHandler
-    preflight: Callable[[ExecutionScope, Mapping[str, Any], str | None], None]
-
-    def __call__(
-        self, scope: ExecutionScope, payload: Mapping[str, Any], key: str | None
-    ) -> Mapping[str, Any]:
-        return self.execute(scope, payload, key)
 
 
 def _document_reference(payload: Mapping[str, Any], key: str | None) -> str:
@@ -119,7 +107,7 @@ def build_provider_issuance_handler(
             "rejection_reason": outcome.attempt.rejection_reason,
         }
 
-    return _PreparedOperationHandler(issue, preflight)
+    return PreflightFiscalOperationHandler(issue, preflight)
 
 
 def build_provider_reconciliation_handler(
@@ -183,4 +171,4 @@ def build_provider_reconciliation_handler(
             "query_status": query_status,
         }
 
-    return _PreparedOperationHandler(reconcile, preflight)
+    return PreflightFiscalOperationHandler(reconcile, preflight)

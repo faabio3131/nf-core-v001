@@ -18,17 +18,17 @@ from kordena_fiscal.operations import (
 )
 from kordena_fiscal.xml import NfeAccessKey
 
-from .fiscal_runtime import FiscalOperationHandler
+from .fiscal_runtime import FiscalOperationHandler, PreflightFiscalOperationHandler
 
 
 def build_provider_cancel_handler(client: FiscalOperationsClient) -> FiscalOperationHandler:
     """Validate a scoped cancellation and delegate through the existing client."""
 
-    def cancel(
+    def resolve(
         scope: ExecutionScope,
         payload: Mapping[str, Any],
         idempotency_key: str | None,
-    ) -> Mapping[str, Any]:
+    ) -> CancellationRequest:
         del idempotency_key  # Request identity is deterministically derived by the domain.
         raw_key = payload.get("access_key")
         protocol = payload.get("authorization_protocol")
@@ -41,13 +41,20 @@ def build_provider_cancel_handler(client: FiscalOperationsClient) -> FiscalOpera
             raise FiscalValidationError(
                 "cancellation requires access_key, authorization_protocol and justification"
             )
-        request = CancellationRequest.build(
+        return CancellationRequest.build(
             scope=scope,
             access_key=NfeAccessKey(raw_key),
             authorization_protocol=protocol,
             justification=reason,
         )
-        result = client.cancel(request)
+
+    def preflight(scope: ExecutionScope, payload: Mapping[str, Any], key: str | None) -> None:
+        resolve(scope, payload, key)
+
+    def cancel(
+        scope: ExecutionScope, payload: Mapping[str, Any], idempotency_key: str | None
+    ) -> Mapping[str, Any]:
+        result = client.cancel(resolve(scope, payload, idempotency_key))
         return {
             "status": result.status.value,
             "request_id": result.request_id,
@@ -58,17 +65,17 @@ def build_provider_cancel_handler(client: FiscalOperationsClient) -> FiscalOpera
             "rejection_message": result.rejection_message,
         }
 
-    return cancel
+    return PreflightFiscalOperationHandler(cancel, preflight)
 
 
 def build_provider_inutilization_handler(client: FiscalOperationsClient) -> FiscalOperationHandler:
     """Validate the canonical number range before crossing the provider boundary."""
 
-    def inutilize(
+    def resolve(
         scope: ExecutionScope,
         payload: Mapping[str, Any],
         idempotency_key: str | None,
-    ) -> Mapping[str, Any]:
+    ) -> InutilizationRequest:
         del idempotency_key  # Domain request_id is stable for retries of the same intent.
         model = payload.get("model")
         series = payload.get("series")
@@ -87,15 +94,26 @@ def build_provider_inutilization_handler(client: FiscalOperationsClient) -> Fisc
         assert isinstance(series, int) and not isinstance(series, bool)
         assert isinstance(first, int) and not isinstance(first, bool)
         assert isinstance(last, int) and not isinstance(last, bool)
-        request = InutilizationRequest.build(
+        try:
+            invoice_model = ElectronicInvoiceModel(model)
+        except ValueError as exc:
+            raise FiscalValidationError("inutilization model is invalid") from exc
+        return InutilizationRequest.build(
             scope=scope,
-            model=ElectronicInvoiceModel(model),
+            model=invoice_model,
             series=series,
             first_number=first,
             last_number=last,
             justification=reason,
         )
-        result = client.inutilize(request)
+
+    def preflight(scope: ExecutionScope, payload: Mapping[str, Any], key: str | None) -> None:
+        resolve(scope, payload, key)
+
+    def inutilize(
+        scope: ExecutionScope, payload: Mapping[str, Any], idempotency_key: str | None
+    ) -> Mapping[str, Any]:
+        result = client.inutilize(resolve(scope, payload, idempotency_key))
         return {
             "status": result.status.value,
             "request_id": result.request_id,
@@ -109,4 +127,4 @@ def build_provider_inutilization_handler(client: FiscalOperationsClient) -> Fisc
             "rejection_message": result.rejection_message,
         }
 
-    return inutilize
+    return PreflightFiscalOperationHandler(inutilize, preflight)

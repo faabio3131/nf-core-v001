@@ -7,6 +7,7 @@ No provider, secret, production grant, or synthetic fiscal result is created her
 from __future__ import annotations
 
 from collections.abc import Callable, Mapping
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any
 from uuid import uuid4
@@ -45,6 +46,18 @@ FiscalOperationHandler = Callable[
     [ExecutionScope, Mapping[str, Any], str | None],
     Mapping[str, Any],
 ]
+
+
+@dataclass(frozen=True, slots=True)
+class PreflightFiscalOperationHandler:
+    execute: FiscalOperationHandler
+    preflight: Callable[[ExecutionScope, Mapping[str, Any], str | None], None]
+
+    def __call__(
+        self, scope: ExecutionScope, payload: Mapping[str, Any], key: str | None
+    ) -> Mapping[str, Any]:
+        return self.execute(scope, payload, key)
+
 
 _CAPABILITY_BY_OPERATION: dict[str, FiscalCapability] = {
     "queryArchiveReference": FiscalCapability.ARCHIVE_READ,
