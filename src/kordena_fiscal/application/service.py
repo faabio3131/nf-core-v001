@@ -34,6 +34,7 @@ from kordena_fiscal.issuance.nfe_nfse import (
     NfseAuthorizationResult,
     NfseCanonicalDocument,
     NfseGatewayClient,
+    NfseQueryClient,
 )
 from kordena_fiscal.issuance.nfse_archive import (
     NFSE_PREPARED_MEDIA_TYPE,
@@ -132,6 +133,17 @@ class DurablePreparedAuthorization:
     lifecycle: FiscalStateSnapshot
     request: NfseAuthorizationRequest
     replay: bool
+
+
+@dataclass(frozen=True, slots=True)
+class DurableNfseRecoveryOutcome:
+    """Durable outcome of a read-only NFS-e query; it never retransmits issuance."""
+
+    attempt: IssuanceAttempt
+    lifecycle: FiscalStateSnapshot
+    replay: bool
+    recovery_required: bool
+    query_result: NfseAuthorizationResult | None = None
 
 
 class FiscalApplicationService:
@@ -796,6 +808,131 @@ class FiscalApplicationService:
             uow.archive.append(evidence)
             uow.commit()
             return DurableRecoveryOutcome(
+                latest,
+                current,
+                False,
+                latest.status is IssuanceAttemptStatus.RESERVED,
+                result,
+            )
+
+    def reconcile_prepared_nfse_authorization(
+        self,
+        *,
+        scope: ExecutionScope,
+        document_id: str,
+        client: NfseQueryClient,
+        occurred_at: datetime,
+        retention: RetentionPolicyMetadata,
+    ) -> DurableNfseRecoveryOutcome:
+        """Recover uncertain NFS-e state through a validated read-only query."""
+        if not isinstance(client, NfseQueryClient):
+            raise FiscalValidationError("NFS-e recovery requires NfseQueryClient")
+        request = self.load_prepared_nfse_authorization(scope, document_id)
+        with self._uow_factory() as uow:
+            uow.lifecycle.assert_scope(document_id, scope)
+            attempts = uow.idempotency.attempts(request.idempotency_key)
+            if not attempts:
+                raise PersistenceStateError("durable NFS-e issuance is required")
+            attempt = attempts[-1]
+            current = uow.lifecycle.get(document_id)
+            if (
+                current is None
+                or attempt.document_id != document_id
+                or attempt.request_fingerprint != request.request_fingerprint
+            ):
+                raise PersistenceConflictError("prepared NFS-e changed before provider query")
+            if attempt.status is not IssuanceAttemptStatus.RESERVED:
+                return DurableNfseRecoveryOutcome(attempt, current, True, False)
+            if current.state is not FiscalDocumentState.TRANSMITTING:
+                raise PersistenceStateError("NFS-e recovery requires an uncertain transmission")
+
+        result = client.query(request)
+        evidence = FiscalArchiveEntry.build(
+            scope=scope,
+            document_reference=document_id,
+            kind=FiscalArchiveKind.PROVIDER_RESPONSE,
+            content=json.dumps(
+                {
+                    "operation": "nfse_authorization_recovery_query",
+                    "status": result.status.value,
+                    "invoice_reference": result.invoice_reference,
+                    "verification_code": result.verification_code,
+                    "rejection_code": result.rejection_code,
+                    "provider_request_id": result.provider_request_id,
+                    "provider_name": result.provider.provider_name,
+                    "adapter_version": result.provider.adapter_version,
+                    "observed_at": occurred_at.isoformat(),
+                    "idempotency_key": attempt.key.value,
+                    "generation": attempt.generation,
+                },
+                sort_keys=True,
+                separators=(",", ":"),
+            ).encode(),
+            media_type="application/vnd.nfcore.nfse-recovery.v1+json",
+            archived_at=occurred_at,
+            retention=retention,
+        )
+        with self._uow_factory() as uow:
+            uow.lifecycle.assert_scope(document_id, scope)
+            latest = uow.idempotency.attempts(attempt.key)[-1]
+            current = uow.lifecycle.get(document_id)
+            if (
+                current is None
+                or latest.document_id != document_id
+                or latest.generation != attempt.generation
+                or latest.request_fingerprint != attempt.request_fingerprint
+            ):
+                raise PersistenceConflictError("NFS-e issuance changed during provider query")
+            if latest.status is not IssuanceAttemptStatus.RESERVED:
+                terminal_reference = result.invoice_reference
+                if result.status is AuthorizationStatus.AUTHORIZED and (
+                    latest.status is not IssuanceAttemptStatus.AUTHORIZED
+                    or latest.result_reference != terminal_reference
+                ):
+                    raise PersistenceConflictError(
+                        "NFS-e provider query conflicts with terminal issuance"
+                    )
+                if result.status is AuthorizationStatus.REJECTED and (
+                    latest.status is not IssuanceAttemptStatus.REJECTED
+                    or latest.rejection_reason != result.rejection_code
+                ):
+                    raise PersistenceConflictError(
+                        "NFS-e provider query conflicts with terminal rejection"
+                    )
+                return DurableNfseRecoveryOutcome(latest, current, True, False, result)
+            if current.state is not FiscalDocumentState.TRANSMITTING:
+                raise PersistenceConflictError("NFS-e transmission changed during provider query")
+            if result.status is AuthorizationStatus.AUTHORIZED:
+                assert result.invoice_reference is not None
+                updated = self._state_machine.transition(
+                    current,
+                    FiscalDocumentState.AUTHORIZED,
+                    occurred_at=occurred_at,
+                    reason="NFS-e provider query confirmed authorization",
+                    correlation_id=scope.correlation_id,
+                )
+                latest = uow.idempotency.mark_authorized(
+                    attempt.key, attempt.generation, result.invoice_reference
+                )
+                uow.lifecycle.save(updated, expected_version=current.version)
+                current = updated
+            elif result.status is AuthorizationStatus.REJECTED:
+                assert result.rejection_code is not None
+                updated = self._state_machine.transition(
+                    current,
+                    FiscalDocumentState.REJECTED,
+                    occurred_at=occurred_at,
+                    reason=result.rejection_code,
+                    correlation_id=scope.correlation_id,
+                )
+                latest = uow.idempotency.mark_rejected(
+                    attempt.key, attempt.generation, result.rejection_code
+                )
+                uow.lifecycle.save(updated, expected_version=current.version)
+                current = updated
+            uow.archive.append(evidence)
+            uow.commit()
+            return DurableNfseRecoveryOutcome(
                 latest,
                 current,
                 False,

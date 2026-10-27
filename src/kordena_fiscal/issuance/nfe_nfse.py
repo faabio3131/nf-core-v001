@@ -423,9 +423,7 @@ class NfseAuthorizationResult:
             if self.invoice_reference is None:
                 raise FiscalValidationError("authorized NFS-e requires invoice_reference")
             if self.rejection_code is not None or self.rejection_message is not None:
-                raise FiscalValidationError(
-                    "authorized NFS-e cannot contain rejection metadata"
-                )
+                raise FiscalValidationError("authorized NFS-e cannot contain rejection metadata")
         elif self.status is AuthorizationStatus.REJECTED:
             if self.invoice_reference is not None or self.verification_code is not None:
                 raise FiscalValidationError("rejected NFS-e cannot contain invoice metadata")
@@ -444,6 +442,28 @@ class NfseGateway(Protocol):
     def authorize(self, request: NfseAuthorizationRequest) -> NfseAuthorizationResult: ...
 
 
+class NfseQueryGateway(Protocol):
+    """Read-only recovery boundary; implementations must never retransmit issuance."""
+
+    def query(self, request: NfseAuthorizationRequest) -> NfseAuthorizationResult: ...
+
+
+def _validated_nfse_result(
+    request: NfseAuthorizationRequest, result: object
+) -> NfseAuthorizationResult:
+    if not isinstance(result, NfseAuthorizationResult):
+        raise NfseGatewayContractError("gateway must return NfseAuthorizationResult")
+    if result.scope != request.document.scope:
+        raise NfseGatewayContractError("NFS-e gateway returned a different scope")
+    if result.document_id != request.document.document_id:
+        raise NfseGatewayContractError("NFS-e gateway returned a different document_id")
+    if result.idempotency_key != request.idempotency_key:
+        raise NfseGatewayContractError("NFS-e gateway returned a different idempotency key")
+    if result.request_fingerprint != request.request_fingerprint:
+        raise NfseGatewayContractError("NFS-e gateway returned a different fingerprint")
+    return result
+
+
 class NfseGatewayClient:
     """Fail-closed boundary around national, municipal or provider NFS-e adapters."""
 
@@ -453,15 +473,16 @@ class NfseGatewayClient:
     def authorize(self, request: NfseAuthorizationRequest) -> NfseAuthorizationResult:
         if not isinstance(request, NfseAuthorizationRequest):
             raise FiscalValidationError("request must be NfseAuthorizationRequest")
-        result = self._gateway.authorize(request)
-        if not isinstance(result, NfseAuthorizationResult):
-            raise NfseGatewayContractError("gateway must return NfseAuthorizationResult")
-        if result.scope != request.document.scope:
-            raise NfseGatewayContractError("NFS-e gateway returned a different scope")
-        if result.document_id != request.document.document_id:
-            raise NfseGatewayContractError("NFS-e gateway returned a different document_id")
-        if result.idempotency_key != request.idempotency_key:
-            raise NfseGatewayContractError("NFS-e gateway returned a different idempotency key")
-        if result.request_fingerprint != request.request_fingerprint:
-            raise NfseGatewayContractError("NFS-e gateway returned a different fingerprint")
-        return result
+        return _validated_nfse_result(request, self._gateway.authorize(request))
+
+
+class NfseQueryClient:
+    """Validated read-only NFS-e recovery client with no issuance fallback."""
+
+    def __init__(self, gateway: NfseQueryGateway) -> None:
+        self._gateway = gateway
+
+    def query(self, request: NfseAuthorizationRequest) -> NfseAuthorizationResult:
+        if not isinstance(request, NfseAuthorizationRequest):
+            raise FiscalValidationError("request must be NfseAuthorizationRequest")
+        return _validated_nfse_result(request, self._gateway.query(request))

@@ -11,7 +11,7 @@ from __future__ import annotations
 from kordena_fiscal.application.service import FiscalApplicationService
 from kordena_fiscal.archive import RetentionPolicyMetadata
 from kordena_fiscal.gateway import FiscalGatewayClient
-from kordena_fiscal.issuance import NfseGatewayClient
+from kordena_fiscal.issuance import NfseGatewayClient, NfseQueryClient
 from kordena_fiscal.operations import FiscalOperationsClient
 
 from .fiscal_runtime import FiscalOperationHandler
@@ -32,6 +32,7 @@ def build_provider_operation_handlers(
     application: FiscalApplicationService | None = None,
     prepared_xml_gateway: FiscalGatewayClient | None = None,
     prepared_nfse_gateway: NfseGatewayClient | None = None,
+    prepared_nfse_query_client: NfseQueryClient | None = None,
     archive_retention: RetentionPolicyMetadata | None = None,
 ) -> dict[str, FiscalOperationHandler]:
     """Compose the existing provider client into the canonical Portal/Bridge path."""
@@ -48,6 +49,7 @@ def build_provider_operation_handlers(
             application,
             prepared_xml_gateway,
             prepared_nfse_gateway,
+            prepared_nfse_query_client,
             archive_retention,
         )
     ):
@@ -77,5 +79,6 @@ def build_provider_operation_handlers(
             application,
             client=client,
             archive_retention=archive_retention,
+            nfse_client=prepared_nfse_query_client,
         )
     return handlers

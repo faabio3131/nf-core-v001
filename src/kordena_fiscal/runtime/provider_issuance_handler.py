@@ -10,11 +10,19 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any
 
-from kordena_fiscal.application.service import FiscalApplicationService
+from kordena_fiscal.application.service import (
+    DurableNfseRecoveryOutcome,
+    DurableRecoveryOutcome,
+    FiscalApplicationService,
+)
 from kordena_fiscal.archive import RetentionPolicyMetadata
 from kordena_fiscal.domain import ExecutionScope, FiscalValidationError
 from kordena_fiscal.gateway import AuthorizationRequest, FiscalGatewayClient
-from kordena_fiscal.issuance.nfe_nfse import NfseAuthorizationRequest, NfseGatewayClient
+from kordena_fiscal.issuance.nfe_nfse import (
+    NfseAuthorizationRequest,
+    NfseGatewayClient,
+    NfseQueryClient,
+)
 from kordena_fiscal.operations import FiscalOperationsClient
 from kordena_fiscal.persistence.ports import PersistenceConflictError, PersistenceStateError
 
@@ -114,13 +122,14 @@ def build_provider_reconciliation_handler(
     *,
     client: FiscalOperationsClient,
     archive_retention: RetentionPolicyMetadata,
+    nfse_client: NfseQueryClient | None = None,
 ) -> FiscalOperationHandler:
     """Resolve uncertainty through the configured provider; browser supplies no outcome."""
 
     def preflight(scope: ExecutionScope, payload: Mapping[str, Any], key: str | None) -> None:
         document_id = _document_reference(payload, key)
         try:
-            application.load_prepared_authorization(scope, document_id)
+            application.load_prepared_document_authorization(scope, document_id)
         except (PersistenceConflictError, PersistenceStateError) as exc:
             raise FiscalValidationError("prepared document is unavailable in this scope") from exc
 
@@ -130,20 +139,39 @@ def build_provider_reconciliation_handler(
         idempotency_key: str | None,
     ) -> Mapping[str, Any]:
         document_id = _document_reference(payload, idempotency_key)
-        outcome = application.reconcile_prepared_authorization(
-            scope=scope,
-            document_id=document_id,
-            client=client,
-            occurred_at=datetime.now(UTC),
-            retention=archive_retention,
-        )
+        prepared = application.load_prepared_document_authorization(scope, document_id)
+        outcome: DurableNfseRecoveryOutcome | DurableRecoveryOutcome
+        if isinstance(prepared, NfseAuthorizationRequest):
+            if not isinstance(nfse_client, NfseQueryClient):
+                raise FiscalValidationError("NFS-e recovery query is not configured")
+            outcome = application.reconcile_prepared_nfse_authorization(
+                scope=scope,
+                document_id=document_id,
+                client=nfse_client,
+                occurred_at=datetime.now(UTC),
+                retention=archive_retention,
+            )
+            query_status = (
+                outcome.query_result.status.value if outcome.query_result is not None else None
+            )
+        else:
+            outcome = application.reconcile_prepared_authorization(
+                scope=scope,
+                document_id=document_id,
+                client=client,
+                occurred_at=datetime.now(UTC),
+                retention=archive_retention,
+            )
+            query_status = (
+                outcome.query_result.status.value if outcome.query_result is not None else None
+            )
         return {
             "document_id": outcome.attempt.document_id,
             "status": outcome.lifecycle.state.value,
             "replay": outcome.replay,
             "recovery_required": outcome.recovery_required,
             "result_reference": outcome.attempt.result_reference,
-            "query_status": outcome.query_result.status.value if outcome.query_result else None,
+            "query_status": query_status,
         }
 
     return _PreparedOperationHandler(reconcile, preflight)

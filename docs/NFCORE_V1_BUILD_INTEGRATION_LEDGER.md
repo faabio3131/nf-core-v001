@@ -275,9 +275,16 @@ pelo tipo validado do pedido; configuração parcial permanece fail-closed. Retr
 de autorização pendente não reenvia o pedido. Nenhum município/provider foi
 selecionado e nenhuma emissão externa, credencial, migration ou deploy ocorreu.
 
+O mesmo incremento adiciona contrato `NfseQueryClient` estritamente read-only.
+Após timeout/pending, a reconciliação consulta o pedido arquivado, valida escopo,
+documento, idempotência e fingerprint e grava a evidência normalizada junto da
+transição terminal. AUTHORIZED e REJECTED finalizam lifecycle e tentativa na
+mesma UOW; PENDING permanece TRANSMITTING e nunca provoca reenvio. Resposta
+incompatível ou resultado terminal concorrente falham fechado.
+
 Testes dirigidos de NFS-e, emissão durável e wiring passaram com um SKIP PostgreSQL
 local esperado; Ruff PASS, Mypy PASS em 224 fontes e validadores plano/BUILD PASS.
 CI/Governança do HEAD remoto ainda obrigatórias. BLD-02 permanece IN_PROGRESS:
-reconciliação de resultado incerto NFS-e depende de contrato de consulta neutro
-ou decisão de adapter; cancelamento/inutilização/consulta continuam disponíveis
-somente quando `FiscalOperationsClient` real é explicitamente composto.
+um adapter municipal/nacional concreto continua dependendo de decisão humana e
+homologação futura; cancelamento/inutilização/consulta genéricos continuam
+disponíveis somente quando `FiscalOperationsClient` real é explicitamente composto.
