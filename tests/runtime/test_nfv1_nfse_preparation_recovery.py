@@ -16,12 +16,13 @@ from kordena_fiscal.domain import (
     FiscalAddress,
     FiscalEnvironment,
     FiscalProfile,
+    FiscalValidationError,
     Money,
     SourceReference,
     StateRegistration,
     TaxRegimeCode,
 )
-from kordena_fiscal.gateway import AuthorizationStatus, GatewayProviderMetadata
+from kordena_fiscal.gateway import AuthorizationStatus, FiscalGatewayClient, GatewayProviderMetadata
 from kordena_fiscal.issuance import (
     NfseAuthorizationRequest,
     NfseAuthorizationResult,
@@ -95,6 +96,33 @@ def test_nfse_codec_round_trip_revalidates_identity_and_scope() -> None:
     tampered["services"][0]["gross_amount"] = "999.00"
     with pytest.raises(Exception, match="invalid prepared NFS-e artifact"):
         decode_prepared_nfse(json.dumps(tampered).encode(), scope=request.document.scope)
+
+
+@pytest.mark.parametrize("operation", ["issueFiscalDocument", "reconcileFiscalOperation"])
+def test_unconfigured_nfse_family_is_rejected_by_read_only_preflight(tmp_path, operation):
+    database = SqliteFiscalDatabase(tmp_path / "family-preflight.sqlite")
+    database.initialize()
+    app = FiscalApplicationService(database)
+    document = nfse_document()
+    app.prepare_nfse_authorization(document, occurred_at=NOW, retention=RETENTION)
+
+    class NoDispatch:
+        def authorize(self, request):
+            raise AssertionError("preflight must never contact a provider")
+
+    handlers = build_provider_operation_handlers(
+        FiscalOperationsClient(FakeFiscalOperationsGateway()),
+        application=app,
+        prepared_xml_gateway=FiscalGatewayClient(NoDispatch()),
+        archive_retention=RETENTION,
+    )
+    with pytest.raises(FiscalValidationError, match="not configured"):
+        handlers[operation].preflight(
+            document.scope, {"document_id": document.document_id}, "http-preflight"
+        )
+    with database() as uow:
+        state = uow.lifecycle.get(document.document_id).state
+        assert state is FiscalDocumentState.READY_TO_TRANSMIT
 
 
 def test_nfse_preparation_is_atomic_replayable_and_recoverable_after_restart(tmp_path) -> None:

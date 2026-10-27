@@ -74,7 +74,20 @@ def build_provider_issuance_handler(
         )
         if request_scope.identity_partition_key != scope.identity_partition_key:
             raise FiscalValidationError("prepared issuance does not match execution scope")
+        select_gateway(request)
         return document_id, request
+
+    def select_gateway(
+        request: AuthorizationRequest | NfseAuthorizationRequest,
+    ) -> FiscalGatewayClient | NfseGatewayClient:
+        if isinstance(request, NfseAuthorizationRequest):
+            selected = nfse_gateway or gateway
+            if not isinstance(selected, NfseGatewayClient):
+                raise FiscalValidationError("NFS-e provider gateway is not configured")
+            return selected
+        if not isinstance(gateway, FiscalGatewayClient):
+            raise FiscalValidationError("XML provider gateway is not configured")
+        return gateway
 
     def preflight(scope: ExecutionScope, payload: Mapping[str, Any], key: str | None) -> None:
         # The trusted resolver is read-only; no preparation or provider dispatch here.
@@ -89,15 +102,7 @@ def build_provider_issuance_handler(
         idempotency_key: str | None,
     ) -> Mapping[str, Any]:
         document_id, request = resolve(scope, payload, idempotency_key)
-        selected_gateway: FiscalGatewayClient | NfseGatewayClient
-        if isinstance(request, NfseAuthorizationRequest):
-            selected_gateway = nfse_gateway or gateway
-            if not isinstance(selected_gateway, NfseGatewayClient):
-                raise FiscalValidationError("NFS-e provider gateway is not configured")
-        else:
-            selected_gateway = gateway
-            if not isinstance(selected_gateway, FiscalGatewayClient):
-                raise FiscalValidationError("XML provider gateway is not configured")
+        selected_gateway = select_gateway(request)
         # HTTP intent keys remain distinct from the canonical fiscal request key.
         outcome = application.authorize_prepared_document(
             document_id=document_id,
@@ -129,7 +134,11 @@ def build_provider_reconciliation_handler(
     def preflight(scope: ExecutionScope, payload: Mapping[str, Any], key: str | None) -> None:
         document_id = _document_reference(payload, key)
         try:
-            application.load_prepared_document_authorization(scope, document_id)
+            prepared = application.load_prepared_document_authorization(scope, document_id)
+            if isinstance(prepared, NfseAuthorizationRequest) and not isinstance(
+                nfse_client, NfseQueryClient
+            ):
+                raise FiscalValidationError("NFS-e recovery query is not configured")
         except (PersistenceConflictError, PersistenceStateError) as exc:
             raise FiscalValidationError("prepared document is unavailable in this scope") from exc
 
