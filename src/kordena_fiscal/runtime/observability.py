@@ -89,7 +89,10 @@ class MetricsRegistry:
             raise ValueError(f"high-cardinality/unsupported metric labels: {sorted(unknown)}")
         key = (name, tuple(sorted((k, str(v)) for k, v in labels.items())))
         with self._lock:
-            self._values[key] += float(value)
+            updated = self._values[key] + float(value)
+            if not math.isfinite(updated):
+                raise ValueError("metric accumulation must remain finite")
+            self._values[key] = updated
 
     def set_gauge(self, name: str, value: float, **labels: str) -> None:
         if not math.isfinite(value) or value < 0:
