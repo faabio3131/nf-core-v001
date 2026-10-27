@@ -200,3 +200,18 @@ Teste HTTP local executado com sucesso até lifecycle autorizado. Testes fronten
 18 PASS, lint/typecheck/build e Ruff/validadores PASS. Chromium local indisponível
 por download inválido; E2E completo obrigatório na CI, sem desabilitação de testes.
 BLD-02 continua IN_PROGRESS e integração exige gates das predecessoras e do HEAD.
+Correção adicional por falha reproduzida no HTTP: uma referência preparada
+inexistente retornava 200 no prepare, 500 no resume e 409 na repetição, deixando
+um intent sem execução real preso. Preflight read-only nos handlers canônicos
+agora valida permissão/escopo/referência antes de persistir o intent. Erro
+normalizado INVALID_PREPARED_DOCUMENT (400), sem revelar outro escopo; correção
+do campo pode prosseguir. UI descarta somente a tentativa de prepare rejeitada
+com 400; falha de rede ou intent já existente conserva a identidade original.
+
+Quatro regressões HTTP reais locais cobrem referência inexistente, outras
+unidades/tenants, permissão antes da leitura e correção até autorização durável.
+Suite dirigida HTTP/runtime: 45 PASS/15 SKIP PostgreSQL local; frontend 18 PASS,
+lint/typecheck/build e Ruff/Mypy globais PASS. E2E de reconciliação ampliado com
+referência inválida seguida da correção. HEAD anterior não certifica este delta;
+exige nova CI completa antes de merge. Pós-merge #248 confirmado: #1170/Gov #593
+SUCCESS no SHA `2f60be6d8ba6c9496e1cb1316c3cb047019acd42`. BLD-02 segue aberto.

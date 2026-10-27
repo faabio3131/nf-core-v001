@@ -6,6 +6,7 @@ supply signed XML, provider selection, certificate material or final outcomes.
 """
 
 from collections.abc import Callable, Mapping
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any
 
@@ -15,12 +16,35 @@ from kordena_fiscal.domain import ExecutionScope, FiscalValidationError
 from kordena_fiscal.gateway import AuthorizationRequest, FiscalGatewayClient
 from kordena_fiscal.issuance.nfe_nfse import NfseAuthorizationRequest, NfseGatewayClient
 from kordena_fiscal.operations import FiscalOperationsClient
+from kordena_fiscal.persistence.ports import PersistenceConflictError, PersistenceStateError
 
 from .fiscal_runtime import FiscalOperationHandler
 
 PreparedIssuanceResolver = Callable[
     [ExecutionScope, str], AuthorizationRequest | NfseAuthorizationRequest
 ]
+
+
+@dataclass(frozen=True, slots=True)
+class _PreparedOperationHandler:
+    execute: FiscalOperationHandler
+    preflight: Callable[[ExecutionScope, Mapping[str, Any], str | None], None]
+
+    def __call__(
+        self, scope: ExecutionScope, payload: Mapping[str, Any], key: str | None
+    ) -> Mapping[str, Any]:
+        return self.execute(scope, payload, key)
+
+
+def _document_reference(payload: Mapping[str, Any], key: str | None) -> str:
+    if set(payload) - {"document_id", "unit_id", "environment"}:
+        raise FiscalValidationError("operation accepts only a prepared document reference")
+    document_id = payload.get("document_id")
+    if not isinstance(document_id, str) or not document_id.strip():
+        raise FiscalValidationError("document_id is required")
+    if not isinstance(key, str) or not key.strip():
+        raise FiscalValidationError("HTTP idempotency key is required")
+    return document_id
 
 
 def build_provider_issuance_handler(
@@ -31,27 +55,32 @@ def build_provider_issuance_handler(
 ) -> FiscalOperationHandler:
     """Bind one explicitly configured document family; never enable a default provider."""
 
-    def issue(
-        scope: ExecutionScope,
-        payload: Mapping[str, Any],
-        idempotency_key: str | None,
-    ) -> Mapping[str, Any]:
-        if set(payload) - {"document_id", "unit_id", "environment"}:
-            raise FiscalValidationError("issuance accepts only a prepared document reference")
-        document_id = payload.get("document_id")
-        if not isinstance(document_id, str) or not document_id.strip():
-            raise FiscalValidationError("document_id is required")
+    def resolve(
+        scope: ExecutionScope, payload: Mapping[str, Any], key: str | None
+    ) -> tuple[str, AuthorizationRequest | NfseAuthorizationRequest]:
+        document_id = _document_reference(payload, key)
         request = resolve_prepared(scope, document_id)
         request_scope = (
             request.scope if isinstance(request, AuthorizationRequest) else request.document.scope
         )
         if request_scope.identity_partition_key != scope.identity_partition_key:
             raise FiscalValidationError("prepared issuance does not match execution scope")
-        # HTTP intent identity and canonical issuance identity are distinct.
-        # Portal already binds its UUID to the payload; the domain request key
-        # protects the same fiscal document even across different HTTP attempts.
-        if not isinstance(idempotency_key, str) or not idempotency_key.strip():
-            raise FiscalValidationError("HTTP idempotency key is required")
+        return document_id, request
+
+    def preflight(scope: ExecutionScope, payload: Mapping[str, Any], key: str | None) -> None:
+        # The trusted resolver is read-only; no preparation or provider dispatch here.
+        try:
+            resolve(scope, payload, key)
+        except (PersistenceConflictError, PersistenceStateError) as exc:
+            raise FiscalValidationError("prepared document is unavailable in this scope") from exc
+
+    def issue(
+        scope: ExecutionScope,
+        payload: Mapping[str, Any],
+        idempotency_key: str | None,
+    ) -> Mapping[str, Any]:
+        document_id, request = resolve(scope, payload, idempotency_key)
+        # HTTP intent keys remain distinct from the canonical fiscal request key.
         outcome = application.authorize_prepared_document(
             document_id=document_id,
             request=request,
@@ -67,7 +96,7 @@ def build_provider_issuance_handler(
             "rejection_reason": outcome.attempt.rejection_reason,
         }
 
-    return issue
+    return _PreparedOperationHandler(issue, preflight)
 
 
 def build_provider_reconciliation_handler(
@@ -78,18 +107,19 @@ def build_provider_reconciliation_handler(
 ) -> FiscalOperationHandler:
     """Resolve uncertainty through the configured provider; browser supplies no outcome."""
 
+    def preflight(scope: ExecutionScope, payload: Mapping[str, Any], key: str | None) -> None:
+        document_id = _document_reference(payload, key)
+        try:
+            application.load_prepared_authorization(scope, document_id)
+        except (PersistenceConflictError, PersistenceStateError) as exc:
+            raise FiscalValidationError("prepared document is unavailable in this scope") from exc
+
     def reconcile(
         scope: ExecutionScope,
         payload: Mapping[str, Any],
         idempotency_key: str | None,
     ) -> Mapping[str, Any]:
-        if set(payload) - {"document_id", "unit_id", "environment"}:
-            raise FiscalValidationError("reconciliation accepts only a prepared document reference")
-        document_id = payload.get("document_id")
-        if not isinstance(document_id, str) or not document_id.strip():
-            raise FiscalValidationError("document_id is required")
-        if not isinstance(idempotency_key, str) or not idempotency_key.strip():
-            raise FiscalValidationError("HTTP idempotency key is required")
+        document_id = _document_reference(payload, idempotency_key)
         outcome = application.reconcile_prepared_authorization(
             scope=scope,
             document_id=document_id,
@@ -106,4 +136,4 @@ def build_provider_reconciliation_handler(
             "query_status": outcome.query_result.status.value if outcome.query_result else None,
         }
 
-    return reconcile
+    return _PreparedOperationHandler(reconcile, preflight)

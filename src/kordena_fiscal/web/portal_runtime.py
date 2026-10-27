@@ -626,8 +626,23 @@ class DurableHumanPortalExecutor:
             raise _portal_error(
                 503, "FISCAL_RUNTIME_NOT_READY", "Fiscal operation is not configured"
             )
+        recovery = FiscalIntentRecovery(self._unit_of_work_factory)
+        # Validate authority before resolving a reference, and do not create an
+        # uncertain execution receipt for a deterministically invalid document.
+        recovery.permission(authority, operation_id)
+        if not idempotency_key or not idempotency_key.strip():
+            raise _portal_error(400, "MISSING_IDEMPOTENCY_KEY", "Idempotency key is required")
+        scope = recovery.scope(authority, payload)
+        preflight = getattr(self._operation_executor, "validate_prepared", None)
+        if callable(preflight):
+            preflight(
+                operation_id=operation_id,
+                scope=scope,
+                payload=payload,
+                idempotency_key=idempotency_key,
+            )
         try:
-            return FiscalIntentRecovery(self._unit_of_work_factory).prepare(
+            return recovery.prepare(
                 authority, operation_id, payload, idempotency_key
             )
         except PersistenceConflictError as exc:

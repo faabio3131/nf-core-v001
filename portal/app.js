@@ -325,6 +325,7 @@ async function api(path, options = {}) {
       FISCAL_RUNTIME_NOT_READY: "O executor fiscal está indisponível. Nenhuma autorização fiscal foi confirmada.",
       PORTAL_RUNTIME_NOT_READY: "Esta capacidade ainda não está disponível no runtime. Tente novamente após a configuração governada.",
       BROWSER_AUTHORITY_REJECTED: "Tenant e permissões são definidos pela sessão. Remova campos de autoridade do pedido.",
+      INVALID_PREPARED_DOCUMENT: "Referência inválida ou documento ainda não preparado neste escopo. Confira e corrija o campo.",
       MISSING_IDEMPOTENCY_KEY: "O pedido precisa de um identificador de tentativa para ser processado com segurança.",
     };
     const code = detail && typeof detail === "object" && typeof detail.code === "string" ? detail.code : "";
@@ -1286,8 +1287,17 @@ async function sendFiscalMutation(operation, payload) {
       if ((list.rows || []).some((/** @type {Record<string,unknown>} */ row) => row.operation === operation && row.state !== "recorded")) {
         throw new Error("Há um pedido original pendente. Selecione Retomar pedido original e reenvie o mesmo conteúdo.");
       }
-      const receipt = await api(`/v1/portal/fiscal-intents/prepare/${encodeURIComponent(operation)}`, {method:"POST", headers, body:JSON.stringify(payload)});
-      pendingFiscalRequest.intent_id = String(receipt.intent_id);
+      try {
+        const receipt = await api(`/v1/portal/fiscal-intents/prepare/${encodeURIComponent(operation)}`, {method:"POST", headers, body:JSON.stringify(payload)});
+        pendingFiscalRequest.intent_id = String(receipt.intent_id);
+      } catch (error) {
+        // A definitive validation rejection precedes intent persistence. Network
+        // uncertainty and failures after an intent exists still preserve its key.
+        if (error instanceof Error && "status" in error && error.status === 400) {
+          pendingFiscalRequest = null;
+        }
+        throw error;
+      }
     }
   }
   const result = await api(`/v1/portal/fiscal-intents/${encodeURIComponent(pendingFiscalRequest.intent_id)}/resume`, {method:"POST", headers, body:JSON.stringify(payload)});

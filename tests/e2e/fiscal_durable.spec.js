@@ -69,6 +69,10 @@ test("prepared document reconciliation uses durable authority and preserves conf
   await page.getByRole("button", {name: "Executar operação governada"}).click();
   await expect(page.locator("#operation-id")).toHaveValue("reconcileFiscalOperation");
   await expect(page.locator("#operation-payload")).not.toBeVisible();
+  await page.locator("#operation-document-id").fill("missing-prepared-document");
+  await page.getByRole("button", {name: "Executar", exact: true}).click();
+  await expect(page.locator("#operation-error")).toContainText("Referência inválida");
+  await expect(page.locator("#operation-dialog")).toBeVisible();
   await page.locator("#operation-document-id").fill("PREPARED-RECOVERY-a");
   await page.getByRole("button", {name: "Executar", exact: true}).click();
   await expect(page.locator("#prepared-document-result")).toContainText("O recibo do pedido não confirma autorização fiscal");
