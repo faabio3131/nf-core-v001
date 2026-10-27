@@ -46,3 +46,12 @@ CI da candidata: **2563 PASS / 3 SKIP / zero FAIL** em Python, **36 PASS** Playw
 ## Próximo bloco
 
 Primeiro bloco aberto após o fechamento interno do BLD-02: **NFV1-BLD-03**. Backend público e GovernedTrialService já existem; não reconstruir. Delta identificado: página de cadastro no NFCore e jornada browser segura. Auditar PR #237 antes de reaproveitar o teste PostgreSQL. Catálogo, trial_days, binding administrativo, origens e publicação reais continuam governados; construir parametrizável sem inventar oferta nem expor segredo S2S.
+
+
+## Bloqueio de publicação automática identificado no fechamento
+
+Após integrar #258, a inspeção read-only confirmou publicação automática do Portal de staging: Railway deployment `bfd5978e-30c1-4a25-8049-42ca9f3c020e`, status `SUCCESS`, commit `aa04c8b2b63384880e3d6a98f41771b2f0415c8f`, criado em 2026-10-27T15:40:07Z. Projeto `b84b290d-f3b4-46a1-9023-0b761cb96b0d` (FM NFCORE Staging), ambiente `c9878b9b-62b2-4a97-b8ba-743c8a3e99ec`, serviço `1e459bbb-9903-4ece-bc9d-2c50e271cd1e` (nfcore-portal). A fonte segue `faabio3131/nf-core-v001:main`, com `checkSuites=false`. O efeito foi identificado depois dos merges; não afirmar ausência de deploy nesta execução. Não houve comando manual de deploy nem prova de jornada fiscal externa.
+
+O AGENTS.md exige “Não fazer deploy por consequência do merge” e autorização específica para deploy/infraestrutura. Portanto, novos merges ficam retidos até resolver esse vínculo; a PR #259 preserva o fechamento interno no repositório. Proposta para decisão humana: fixar somente o Portal desse ambiente no commit já publicado `aa04c8b2b63384880e3d6a98f41771b2f0415c8f`, mantendo futuras publicações explícitas. A aplicação da mudança pode reconstruir/publicar o mesmo commit; não foi executada. Nenhuma configuração Railway foi alterada.
+
+A primeira CI da #259 (`40535706729`) falhou em três testes de governança que pressupunham exatamente BLD-02 aberto. Os casos negativos agora usam ledger sintético fixo, preservando rejeição de salto, múltiplos blocos ativos e falta de evidência; um teste separado continua validando o ledger real. O validador de governança não foi enfraquecido. A nova revisão exige CI própria antes de Ready.

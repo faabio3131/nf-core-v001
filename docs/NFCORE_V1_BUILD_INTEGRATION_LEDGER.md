@@ -343,3 +343,5 @@ final da matriz BLD-02, antes de promover estado ou iniciar BLD-03.
 ### BLD-02 — aceite interno confirmado (27/10/2026)
 
 Este registro prevalece sobre os checkpoints anteriores em andamento: PR #258 consolidou #256/#257, merge aa04c8b2b63384880e3d6a98f41771b2f0415c8f, CI/Governança pré e pós-merge SUCCESS. Matriz completa em docs/checkpoints/NFV1_BLD02_INTERNAL_CLOSEOUT_2026-10-27.md. Ambas as revisões intermediárias foram encerradas como substituídas, com histórico preservado. BLD-02 DONE interno; primeiro bloco aberto BLD-03. As 59 tarefas globais não foram alteradas. Nenhum deploy, credencial ou operação fiscal oficial foi solicitado.
+
+- **Bloqueio de integração do fechamento:** a Railway confirmou auto-deploy do Portal após #258. Novos merges aguardam resolução autorizada do vínculo main→deploy, conforme AGENTS.md. Detalhes e proposta no checkpoint de fechamento; nenhuma infraestrutura alterada.
