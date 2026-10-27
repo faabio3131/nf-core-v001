@@ -51,13 +51,8 @@ def test_no_missing_or_reordered_build_block() -> None:
 def test_cannot_skip_missing_work_with_ci_or_fake_evidence() -> None:
     plan, ledger = scenario()
     assert not assess(plan, ledger)
-    changed = ledger.replace(
-        "### NFV1-BLD-03 — Trial first-party no NFCore e site estático\n"
-        "- **Estado:** PENDING",
-        "### NFV1-BLD-03 — Trial first-party no NFCore e site estático\n"
-        "- **Estado:** DONE",
-        1,
-    )
+    changed = ledger.replace("- **Estado:** PENDING", "- **Estado:** DONE", 1)
+    assert changed != ledger
     assert any("pular tarefa anterior" in x for x in assess(plan, changed))
     assert any("requer PR, CI e SHA" in x for x in assess(plan, changed))
 
