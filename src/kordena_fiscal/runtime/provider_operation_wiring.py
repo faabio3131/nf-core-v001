@@ -11,6 +11,7 @@ from __future__ import annotations
 from kordena_fiscal.application.service import FiscalApplicationService
 from kordena_fiscal.archive import RetentionPolicyMetadata
 from kordena_fiscal.gateway import FiscalGatewayClient
+from kordena_fiscal.issuance import NfseGatewayClient
 from kordena_fiscal.operations import FiscalOperationsClient
 
 from .fiscal_runtime import FiscalOperationHandler
@@ -30,6 +31,7 @@ def build_provider_operation_handlers(
     *,
     application: FiscalApplicationService | None = None,
     prepared_xml_gateway: FiscalGatewayClient | None = None,
+    prepared_nfse_gateway: NfseGatewayClient | None = None,
     archive_retention: RetentionPolicyMetadata | None = None,
 ) -> dict[str, FiscalOperationHandler]:
     """Compose the existing provider client into the canonical Portal/Bridge path."""
@@ -40,17 +42,36 @@ def build_provider_operation_handlers(
         "cancelFiscalDocument": build_provider_cancel_handler(client),
         "inutilizeFiscalRange": build_provider_inutilization_handler(client),
     }
-    if any(value is not None for value in (application, prepared_xml_gateway, archive_retention)):
+    if any(
+        value is not None
+        for value in (
+            application,
+            prepared_xml_gateway,
+            prepared_nfse_gateway,
+            archive_retention,
+        )
+    ):
         if (
             not isinstance(application, FiscalApplicationService)
-            or not isinstance(prepared_xml_gateway, FiscalGatewayClient)
             or not isinstance(archive_retention, RetentionPolicyMetadata)
+            or not isinstance(
+                prepared_xml_gateway or prepared_nfse_gateway,
+                (FiscalGatewayClient, NfseGatewayClient),
+            )
         ):
-            raise TypeError("prepared XML operations require application, gateway and retention")
+            raise TypeError("prepared operations require application, gateway and retention")
+        primary_gateway: FiscalGatewayClient | NfseGatewayClient
+        if prepared_xml_gateway is not None:
+            primary_gateway = prepared_xml_gateway
+        elif prepared_nfse_gateway is not None:
+            primary_gateway = prepared_nfse_gateway
+        else:  # The validated guard above makes this unreachable.
+            raise TypeError("one prepared provider gateway is required")
         handlers["issueFiscalDocument"] = build_provider_issuance_handler(
             application,
-            resolve_prepared=application.load_prepared_authorization,
-            gateway=prepared_xml_gateway,
+            resolve_prepared=application.load_prepared_document_authorization,
+            gateway=primary_gateway,
+            nfse_gateway=prepared_nfse_gateway,
         )
         handlers["reconcileFiscalOperation"] = build_provider_reconciliation_handler(
             application,

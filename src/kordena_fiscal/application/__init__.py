@@ -26,6 +26,7 @@ from .commercial_fulfillment import (
 from .outbox_worker import DurableFiscalOutboxWorker
 from .service import (
     DurableIssuanceReservation,
+    DurablePreparedAuthorization,
     FiscalApplicationService,
     IssuanceResumeDisposition,
 )
@@ -63,6 +64,7 @@ __all__ = [
     "IssuedCommercialClaim",
     "DurableFiscalOutboxWorker",
     "DurableIssuanceReservation",
+    "DurablePreparedAuthorization",
     "FM_WEBHOOK_ATTEMPT_HEADER",
     "FM_WEBHOOK_CAUSATION_HEADER",
     "FM_WEBHOOK_CORRELATION_HEADER",

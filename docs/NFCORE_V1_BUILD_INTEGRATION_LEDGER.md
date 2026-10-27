@@ -257,3 +257,27 @@ lint/typecheck/build e Ruff/Mypy globais PASS. E2E de reconciliação ampliado c
 referência inválida seguida da correção. HEAD anterior não certifica este delta;
 exige nova CI completa antes de merge. Pós-merge #248 confirmado: #1170/Gov #593
 SUCCESS no SHA `2f60be6d8ba6c9496e1cb1316c3cb047019acd42`. BLD-02 segue aberto.
+
+### BLD-02 — preparação e recuperação durável NFS-e (27/10/2026)
+
+Base `9d33e531b1885b42c817720d1786616cebd1b722`, com PR #249 integrada e
+CI pós-merge #1179/Gov #602 SUCCESS. Incremento em construção na branch
+`feat/nfv1-bld02-nfse-preparation-20261027`: pedido canônico NFS-e passa a ser
+reservado, validado, arquivado e levado a READY_TO_TRANSMIT na mesma UOW, antes
+de qualquer I/O externo. O artefato usa codec JSON estrito, conteúdo endereçado,
+recalcula idempotência/fingerprint ao recuperar e não inclui segredo, resposta
+de provedor nem falsa autorização.
+
+`FiscalApplicationService` recupera exatamente um pedido preparado após reinício,
+preserva namespace/tenant/unidade/ambiente e rejeita escopo divergente. A factory
+canônica aceita gateway NFS-e explicitamente configurado e seleciona o transporte
+pelo tipo validado do pedido; configuração parcial permanece fail-closed. Retry
+de autorização pendente não reenvia o pedido. Nenhum município/provider foi
+selecionado e nenhuma emissão externa, credencial, migration ou deploy ocorreu.
+
+Testes dirigidos de NFS-e, emissão durável e wiring passaram com um SKIP PostgreSQL
+local esperado; Ruff PASS, Mypy PASS em 224 fontes e validadores plano/BUILD PASS.
+CI/Governança do HEAD remoto ainda obrigatórias. BLD-02 permanece IN_PROGRESS:
+reconciliação de resultado incerto NFS-e depende de contrato de consulta neutro
+ou decisão de adapter; cancelamento/inutilização/consulta continuam disponíveis
+somente quando `FiscalOperationsClient` real é explicitamente composto.

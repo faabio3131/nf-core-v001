@@ -32,7 +32,13 @@ from kordena_fiscal.gateway import (
 from kordena_fiscal.issuance.nfe_nfse import (
     NfseAuthorizationRequest,
     NfseAuthorizationResult,
+    NfseCanonicalDocument,
     NfseGatewayClient,
+)
+from kordena_fiscal.issuance.nfse_archive import (
+    NFSE_PREPARED_MEDIA_TYPE,
+    decode_prepared_nfse,
+    encode_prepared_nfse,
 )
 from kordena_fiscal.lifecycle import (
     FiscalDocumentState,
@@ -56,6 +62,7 @@ from kordena_fiscal.operations import (
     FiscalQueryStatus,
 )
 from kordena_fiscal.persistence.ports import (
+    FiscalUnitOfWork,
     FiscalUnitOfWorkFactory,
     PersistenceConflictError,
     PersistenceStateError,
@@ -115,6 +122,16 @@ class DurableRecoveryOutcome:
     replay: bool
     recovery_required: bool
     query_result: FiscalQueryResult | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class DurablePreparedAuthorization:
+    """One provider-neutral request durably prepared before external I/O."""
+
+    attempt: IssuanceAttempt
+    lifecycle: FiscalStateSnapshot
+    request: NfseAuthorizationRequest
+    replay: bool
 
 
 class FiscalApplicationService:
@@ -448,20 +465,106 @@ class FiscalApplicationService:
             uow.commit()
             return persisted
 
+    def prepare_nfse_authorization(
+        self,
+        document: NfseCanonicalDocument,
+        *,
+        occurred_at: datetime,
+        retention: RetentionPolicyMetadata,
+    ) -> DurablePreparedAuthorization:
+        """Atomically reserve, validate and archive one provider-neutral NFS-e request."""
+        if not isinstance(document, NfseCanonicalDocument):
+            raise FiscalValidationError("document must be NfseCanonicalDocument")
+        if not isinstance(retention, RetentionPolicyMetadata):
+            raise FiscalValidationError("retention must be RetentionPolicyMetadata")
+        request = NfseAuthorizationRequest.build(document)
+        entry = FiscalArchiveEntry.build(
+            scope=document.scope,
+            document_reference=document.document_id,
+            kind=FiscalArchiveKind.OTHER,
+            content=encode_prepared_nfse(request),
+            media_type=NFSE_PREPARED_MEDIA_TYPE,
+            archived_at=occurred_at,
+            retention=retention,
+        )
+        with self._uow_factory() as uow:
+            reservation = uow.idempotency.reserve(
+                request.idempotency_key,
+                request.request_fingerprint,
+                document.document_id,
+            )
+            attempt = reservation.attempt
+            current = uow.lifecycle.get(document.document_id)
+            if reservation.replay:
+                if current is None:
+                    raise PersistenceStateError("NFS-e replay has no durable lifecycle")
+                uow.lifecycle.assert_scope(document.document_id, document.scope)
+                prepared = self._load_prepared_from_uow(uow, document.scope, document.document_id)
+                if not isinstance(prepared, NfseAuthorizationRequest):
+                    raise PersistenceStateError("durable request is not NFS-e")
+                uow.commit()
+                return DurablePreparedAuthorization(attempt, current, prepared, True)
+            if current is not None:
+                raise PersistenceConflictError("document_id already belongs to an issuance")
+            current = FiscalStateSnapshot.initial(document.document_id, document.issued_at)
+            uow.lifecycle.add(current, scope=document.scope)
+            for target, reason in (
+                (FiscalDocumentState.VALIDATING, "NFS-e canonical validation started"),
+                (FiscalDocumentState.READY_TO_SIGN, "NFS-e provider-neutral request validated"),
+                (FiscalDocumentState.SIGNING, "NFS-e provider preparation started"),
+                (FiscalDocumentState.READY_TO_TRANSMIT, "NFS-e canonical request archived"),
+            ):
+                updated = self._state_machine.transition(
+                    current,
+                    target,
+                    occurred_at=occurred_at,
+                    reason=reason,
+                    correlation_id=document.scope.correlation_id,
+                )
+                uow.lifecycle.save(updated, expected_version=current.version)
+                current = updated
+            uow.archive.append(entry)
+            uow.commit()
+            return DurablePreparedAuthorization(attempt, current, request, False)
+
     def load_prepared_authorization(
         self, scope: ExecutionScope, document_id: str
     ) -> AuthorizationRequest:
         """Resolve a current prepared XML request from the scoped durable archive."""
         with self._uow_factory() as uow:
-            uow.lifecycle.assert_scope(document_id, scope)
-            matches: list[AuthorizationRequest] = []
-            for entry in uow.archive.list_for_document(scope, document_id):
-                if (
-                    entry.kind is not FiscalArchiveKind.OTHER
-                    or entry.media_type != "application/vnd.nfcore.prepared-xml.v1+json"
-                ):
-                    continue
-                try:
+            request = self._load_prepared_from_uow(uow, scope, document_id)
+            if not isinstance(request, AuthorizationRequest):
+                raise PersistenceStateError("prepared request is not NF-e/NFC-e XML")
+            return request
+
+    def load_prepared_nfse_authorization(
+        self, scope: ExecutionScope, document_id: str
+    ) -> NfseAuthorizationRequest:
+        """Recover one validated NFS-e request after process restart."""
+        with self._uow_factory() as uow:
+            request = self._load_prepared_from_uow(uow, scope, document_id)
+            if not isinstance(request, NfseAuthorizationRequest):
+                raise PersistenceStateError("prepared request is not NFS-e")
+            return request
+
+    def load_prepared_document_authorization(
+        self, scope: ExecutionScope, document_id: str
+    ) -> AuthorizationRequest | NfseAuthorizationRequest:
+        """Resolve exactly one prepared request without guessing its fiscal family."""
+        with self._uow_factory() as uow:
+            return self._load_prepared_from_uow(uow, scope, document_id)
+
+    @staticmethod
+    def _load_prepared_from_uow(
+        uow: FiscalUnitOfWork, scope: ExecutionScope, document_id: str
+    ) -> AuthorizationRequest | NfseAuthorizationRequest:
+        uow.lifecycle.assert_scope(document_id, scope)
+        matches: list[AuthorizationRequest | NfseAuthorizationRequest] = []
+        for entry in uow.archive.list_for_document(scope, document_id):
+            if entry.kind is not FiscalArchiveKind.OTHER:
+                continue
+            try:
+                if entry.media_type == "application/vnd.nfcore.prepared-xml.v1+json":
                     data = json.loads(entry.content)
                     if (
                         not isinstance(data, dict)
@@ -470,25 +573,29 @@ class FiscalApplicationService:
                         or not all(isinstance(value, str) for value in data.values())
                     ):
                         raise ValueError("invalid prepared request shape")
-                    request = AuthorizationRequest(
+                    request: AuthorizationRequest | NfseAuthorizationRequest = AuthorizationRequest(
                         scope=scope,
                         access_key=NfeAccessKey(data["access_key"]),
                         idempotency_key=IdempotencyKey(data["idempotency_key"]),
                         request_fingerprint=data["request_fingerprint"],
                         signed_xml=base64.b64decode(data["signed_xml"], validate=True),
                     )
-                except (ValueError, TypeError, FiscalValidationError) as exc:
-                    raise PersistenceStateError("invalid archived prepared request") from exc
-                attempts = uow.idempotency.attempts(request.idempotency_key)
-                if (
-                    attempts
-                    and attempts[-1].document_id == document_id
-                    and attempts[-1].request_fingerprint == request.request_fingerprint
-                ):
-                    matches.append(request)
-            if len(matches) != 1:
-                raise PersistenceStateError("one current prepared request is required")
-            return matches[0]
+                elif entry.media_type == NFSE_PREPARED_MEDIA_TYPE:
+                    request = decode_prepared_nfse(entry.content, scope=scope)
+                else:
+                    continue
+            except (ValueError, TypeError, FiscalValidationError) as exc:
+                raise PersistenceStateError("invalid archived prepared request") from exc
+            attempts = uow.idempotency.attempts(request.idempotency_key)
+            if (
+                attempts
+                and attempts[-1].document_id == document_id
+                and attempts[-1].request_fingerprint == request.request_fingerprint
+            ):
+                matches.append(request)
+        if len(matches) != 1:
+            raise PersistenceStateError("one current prepared request is required")
+        return matches[0]
 
     def authorize_prepared_document(
         self,

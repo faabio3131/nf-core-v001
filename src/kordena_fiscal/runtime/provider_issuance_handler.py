@@ -52,6 +52,7 @@ def build_provider_issuance_handler(
     *,
     resolve_prepared: PreparedIssuanceResolver,
     gateway: FiscalGatewayClient | NfseGatewayClient,
+    nfse_gateway: NfseGatewayClient | None = None,
 ) -> FiscalOperationHandler:
     """Bind one explicitly configured document family; never enable a default provider."""
 
@@ -80,11 +81,20 @@ def build_provider_issuance_handler(
         idempotency_key: str | None,
     ) -> Mapping[str, Any]:
         document_id, request = resolve(scope, payload, idempotency_key)
+        selected_gateway: FiscalGatewayClient | NfseGatewayClient
+        if isinstance(request, NfseAuthorizationRequest):
+            selected_gateway = nfse_gateway or gateway
+            if not isinstance(selected_gateway, NfseGatewayClient):
+                raise FiscalValidationError("NFS-e provider gateway is not configured")
+        else:
+            selected_gateway = gateway
+            if not isinstance(selected_gateway, FiscalGatewayClient):
+                raise FiscalValidationError("XML provider gateway is not configured")
         # HTTP intent keys remain distinct from the canonical fiscal request key.
         outcome = application.authorize_prepared_document(
             document_id=document_id,
             request=request,
-            gateway=gateway,
+            gateway=selected_gateway,
             occurred_at=datetime.now(UTC),
         )
         return {
