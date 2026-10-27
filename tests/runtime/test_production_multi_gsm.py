@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 from contextlib import contextmanager
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
+from pathlib import Path
 from threading import Event
 from types import SimpleNamespace
 from unittest.mock import Mock
@@ -12,10 +13,12 @@ import pytest
 
 from kordena_fiscal.contingency import FiscalOutboxStatus
 from kordena_fiscal.domain import FiscalEnvironment
+from kordena_fiscal.runtime import production_multi_gsm as multi_gsm
 from kordena_fiscal.runtime.config import RuntimeConfigurationError, RuntimeEnvironment
 from kordena_fiscal.runtime.production_multi_gsm import (
     MULTI_MODE,
     MultiTenantGsmWorkerComposition,
+    ProductionGsmWorkloadClientCache,
     platform_project,
     production_multi_worker_handler_factory,
     production_worker_bindings,
@@ -291,3 +294,76 @@ def test_revoked_binding_denied_before_provider_access() -> None:
             version=1,
         )
     access.access.assert_not_called()
+
+
+def _cache_source(path: Path) -> dict[str, str]:
+    source = env()
+    source["NFCORE_WORKER_GSM_CREDENTIAL_FILE"] = str(path)
+    source["NFCORE_WORKER_GSM_KEY_ID"] = "fake-rotatable-key-id"
+    return source
+
+
+def test_google_transport_and_credentials_reused_between_tenants(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Tenants share a workload transport, not any binding or tenant key cache."""
+    credential_file = tmp_path / "worker-credentials.json"
+    credential_file.write_bytes(b"x" * 256)
+    credential_file.chmod(0o600)
+    source = _cache_source(credential_file)
+    credentials = Mock()
+    expires = datetime.now(UTC) + timedelta(hours=1)
+    identity_loader = Mock(return_value=(credentials, expires))
+    first_client, rotated_client = Mock(), Mock()
+    client_factory = Mock(side_effect=(first_client, rotated_client))
+    monkeypatch.setattr(multi_gsm, "production_credentials", identity_loader)
+    monkeypatch.setattr(multi_gsm.secretmanager_v1, "SecretManagerServiceClient", client_factory)
+
+    cache = ProductionGsmWorkloadClientCache(source, project="fm-core-live")
+    a, expiry_a = cache.get()
+    b, expiry_b = cache.get()
+    assert a is b is first_client
+    assert expiry_a == expiry_b == expires
+    assert identity_loader.call_count == 1
+    assert client_factory.call_count == 1
+
+    credential_file.write_bytes(b"y" * 257)
+    c, expiry_c = cache.get()
+    assert c is rotated_client
+    assert expiry_c == expires
+    assert identity_loader.call_count == 2
+    assert client_factory.call_count == 2
+    first_client.transport.close.assert_called_once()
+    cache.close()
+    rotated_client.transport.close.assert_called_once()
+
+
+def test_google_transport_cache_fails_closed_on_expiry_and_tampered_file(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    credential_file = tmp_path / "worker-credentials.json"
+    credential_file.write_bytes(b"x" * 256)
+    credential_file.chmod(0o600)
+    current_time = [datetime.now(UTC)]
+    deadline = current_time[0] + timedelta(minutes=5)
+    identity_loader = Mock(return_value=(Mock(), deadline))
+    client_factory = Mock(return_value=Mock())
+    monkeypatch.setattr(multi_gsm, "production_credentials", identity_loader)
+    monkeypatch.setattr(multi_gsm.secretmanager_v1, "SecretManagerServiceClient", client_factory)
+    cache = ProductionGsmWorkloadClientCache(
+        _cache_source(credential_file),
+        project="fm-core-live",
+        clock=lambda: current_time[0],
+    )
+    assert cache.get()[1] == deadline
+    current_time[0] = deadline
+    with pytest.raises(RuntimeConfigurationError, match="identity expired"):
+        cache.get()
+    assert identity_loader.call_count == 1
+    assert client_factory.call_count == 1
+
+    credential_file.chmod(0o644)
+    with pytest.raises(RuntimeConfigurationError, match="identity unavailable"):
+        cache.get()
+    assert client_factory.call_count == 1
+    cache.close()
