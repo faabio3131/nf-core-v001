@@ -1,5 +1,39 @@
 import { expect, test } from "@playwright/test";
 
+for (const queryStatus of ["authorized", "pending", "not_found"]) {
+  test(`fiscal query displays ${queryStatus} without inferring a receipt`, async ({ page, context }) => {
+    const accessKey = "35251012345678000190550010000000011000000010";
+    await page.route("**/v1/portal/bootstrap", route => route.fulfill({json: {
+      tenant_id: "tenant-e2e", unit_ids: ["unit-a"], role: "owner",
+      permissions: ["portal.read", "document.query"], supported_documents: ["nfe"],
+      projection: {configured_fiscal_operations: ["queryFiscalDocument"],
+        authorized_units: [{unit_id: "unit-a", display_name: "Synthetic unit", environments: ["homologation"]}]},
+    }}));
+    await page.route("**/v1/portal/surfaces/**", route => route.fulfill({json: {rows: []}}));
+    await page.route("**/v1/portal/operations/queryFiscalDocument", route => {
+      expect(route.request().postDataJSON()).toEqual({access_key: accessKey, unit_id: "unit-a", environment: "homologation"});
+      expect(route.request().headers()["idempotency-key"]).toBeUndefined();
+      return route.fulfill({json: {status: queryStatus, access_key: accessKey,
+        protocol_reference: queryStatus === "authorized" ? "<b>synthetic-protocol</b>" : null}});
+    });
+    await context.addCookies([
+      {name: "nfcore_session", value: "opaque-session", domain: "127.0.0.1", path: "/"},
+      {name: "nfcore_csrf", value: "csrf-e2e", domain: "127.0.0.1", path: "/"},
+    ]);
+    await page.goto("/");
+    await page.getByRole("button", {name: "Documentos", exact: true}).click();
+    await page.getByRole("button", {name: "Executar operação governada"}).click();
+    await page.locator("#operation-id").selectOption("queryFiscalDocument");
+    await page.locator("#operation-access-key").fill(accessKey);
+    await page.getByRole("button", {name: "Executar", exact: true}).click();
+    const result = page.locator("#fiscal-operation-result");
+    await expect(result).toContainText(`Resultado da consulta: ${queryStatus}.`);
+    await expect(result).toContainText(accessKey);
+    await expect(result).toContainText(queryStatus === "authorized" ? "<b>synthetic-protocol</b>" : "Nenhum protocolo informado");
+    await expect(result.locator("b")).toHaveCount(0);
+  });
+}
+
 test("authenticated portal loads governed tenant context and real surface", async ({ page, context }) => {
   await page.route("**/v1/portal/bootstrap", async (route) => {
     await route.fulfill({

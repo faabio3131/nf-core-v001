@@ -310,3 +310,32 @@ cancelamento, inutilização, wiring e NFS-e 20 PASS; Node syntax, Ruff global,
 Mypy em 226 fontes e diff check PASS. Lint/typecheck/build/E2E frontend completos
 dependem da instalação Node feita pela CI; nenhuma ausência local será tratada
 como aprovação. O HEAD remoto atualizado ainda precisa de CI e Governança verdes.
+
+### BLD-02 — continuidade integrada e retorno fiscal visível (27/10/2026)
+
+PR #253 integrada: HEAD `d4aa0bb88c9545d8303942bb799b11a39a9516b9`, CI #1183
+(`40518036563`) e Gov #606 (`40518036451`) SUCCESS. Merge
+`e338ef40345d84a535d9e8bc8b31037f5ff59412`, CI #1184 (`40520535686`) e Gov #607
+(`40520535562`) SUCCESS. NFS-e preparada/recuperável e formulários fiscais
+tipados estão integrados; 32 E2E passaram na CI. Homologação externa não inferida.
+
+PR #254 integrada: HEAD `e7156bd8df81072cacfd5188e07d56917ff3f1e0`, CI #1185
+(`40521826969`) e Gov #608 (`40521826836`) SUCCESS. Merge
+`4b258afe19af8b532c3a8afc8543bfb1568d11dd`. O preflight agora rejeita NFS-e
+sem gateway/cliente de consulta antes de persistir o intent; regressões provam
+que não há dispatch nem mudança do lifecycle. Governança pós-merge
+`40524003091` SUCCESS; CI `40524003195` em andamento nesta escrita.
+
+Delta seguinte identificado no Portal: consulta recebia resposta canônica, mas
+a descartava ao fechar o diálogo. O resultado passa a exibir status, chave e
+protocolo opcional como texto, sem interpretar HTML ou inferir autorização a
+partir de um recibo. Mutações exibem confirmação de registro interno, distinta
+de confirmação fiscal. Resposta atrasada não altera a navegação mais recente.
+
+Lint/typecheck/build e 18 testes frontend PASS; validadores plano/BUILD PASS.
+Três regressões browser cobrem consulta autorizada, pendente e não encontrada,
+ausência de protocolo e texto não interpretado como markup. Execução browser
+local bloqueada por download inválido do Chromium; exige E2E remoto SUCCESS.
+BLD-02 permanece IN_PROGRESS. Não houve deploy solicitado, migration, provider
+selecionado ou operação fiscal real. Próximo passo: CI deste delta e revisão
+final da matriz BLD-02, antes de promover estado ou iniciar BLD-03.

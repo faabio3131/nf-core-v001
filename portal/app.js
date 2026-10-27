@@ -1764,18 +1764,32 @@ operationForm.addEventListener("submit", async (event) => {
       pendingFiscalRequest ||= {fingerprint, key: crypto.randomUUID()};
       headers["Idempotency-Key"] = pendingFiscalRequest.key;
     }
-    if (mutation) await sendFiscalMutation(selected, payload);
-    else await api(`/v1/portal/operations/${encodeURIComponent(selected)}`, {
+    const submittedView = currentView;
+    const submittedGeneration = surfaceGeneration;
+    const result = mutation ? await sendFiscalMutation(selected, payload)
+      : await api(`/v1/portal/operations/${encodeURIComponent(selected)}`, {
       method: "POST", headers, body: JSON.stringify(payload),
     });
     operationDialog.close();
-    await renderSurface(currentView);
-    if (prepared) {
-      const status = document.createElement("p");
-      status.id = "prepared-document-result"; status.setAttribute("role", "status");
+    if (submittedGeneration !== surfaceGeneration) return;
+    const rendering = renderSurface(submittedView);
+    const resultGeneration = surfaceGeneration;
+    await rendering;
+    if (resultGeneration !== surfaceGeneration) return;
+    const status = document.createElement("p");
+    status.id = prepared ? "prepared-document-result" : "fiscal-operation-result";
+    status.setAttribute("role", "status");
+    status.setAttribute("aria-live", "polite");
+    if (mutation) {
       status.textContent = "Resposta registrada. O recibo do pedido não confirma autorização fiscal. Confira o estado do documento em Emissões.";
-      workspace.prepend(status);
+      if (typeof result.reference_id === "string") status.textContent += ` Referência: ${result.reference_id}.`;
+    } else {
+      status.textContent = `Resultado da consulta: ${typeof result.status === "string" ? result.status : "não informado"}.`;
+      if (typeof result.access_key === "string") status.textContent += ` Chave: ${result.access_key}.`;
+      if (typeof result.protocol_reference === "string") status.textContent += ` Protocolo: ${result.protocol_reference}.`;
+      else status.textContent += " Nenhum protocolo informado na resposta.";
     }
+    workspace.prepend(status);
   } catch (error) {
     operationError.textContent = error instanceof Error ? error.message : "Operação rejeitada";
   } finally {
