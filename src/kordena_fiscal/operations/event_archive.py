@@ -7,9 +7,43 @@ from datetime import datetime
 from kordena_fiscal.archive import FiscalArchiveEntry, FiscalArchiveKind, RetentionPolicyMetadata
 from kordena_fiscal.domain import FiscalValidationError
 
-from .events import CancellationResult, InutilizationResult
+from .events import CancellationResult, FiscalEventStatus, InutilizationResult
 
 EVENT_RESULT_MEDIA_TYPE = "application/vnd.nfcore.fiscal-event-result+json"
+
+
+def event_result_projection(entry: FiscalArchiveEntry) -> dict[str, object] | None:
+    """Expose only normalized outcome metadata through existing authorized surfaces."""
+    if (
+        entry.kind is not FiscalArchiveKind.FISCAL_EVENT
+        or entry.media_type != EVENT_RESULT_MEDIA_TYPE
+    ):
+        return None
+    try:
+        data = json.loads(entry.content)
+        if (
+            not isinstance(data, dict) or data.get("version") != 1
+            or data.get("operation") not in {"cancelFiscalDocument", "inutilizeFiscalRange"}
+            or data.get("status") not in {status.value for status in FiscalEventStatus}
+        ):
+            raise ValueError("invalid event evidence")
+        projection: dict[str, object] = {
+            "operation": data["operation"], "status": data["status"],
+        }
+        for name in ("event_protocol_reference", "rejection_code"):
+            value = data.get(name)
+            if value is not None and (not isinstance(value, str) or len(value) > 512):
+                raise ValueError("invalid event metadata")
+            if value is not None:
+                projection[name] = value
+        if data["operation"] == "inutilizeFiscalRange":
+            for name in ("model", "series", "first_number", "last_number"):
+                if type(data.get(name)) is not int:
+                    raise ValueError("invalid event range")
+                projection[name] = data[name]
+        return projection
+    except (ValueError, TypeError) as exc:
+        raise FiscalValidationError("invalid normalized event evidence") from exc
 
 
 def event_archive_reference(operation: str, correlation_id: str) -> str:

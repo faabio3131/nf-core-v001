@@ -95,6 +95,21 @@ def test_response_loss_after_event_archive_recovers_reference_without_redispatch
             status is FiscalEventStatus.ACCEPTED
         )
         assert "justification" not in evidence and "rejection_message" not in evidence
+    surface = http.get(
+        "/v1/portal/surfaces/inutilizations?unit_id=unit-a&environment=homologation"
+    )
+    assert surface.status_code == 200, surface.text
+    projected = next(row for row in surface.json()["rows"]
+                     if row.get("entry_id") == receipt["reference_id"])
+    assert projected["record_type"] == "fiscal_event" and projected["status"] == status.value
+    assert not ({"content", "request_id", "provider_request_id", "rejection_message",
+                 "payload", "justification", "original_key"} & projected.keys())
+    target = "errors" if status is FiscalEventStatus.REJECTED else "reconciliation"
+    filtered = http.get(
+        f"/v1/portal/surfaces/{target}?unit_id=unit-a&environment=homologation"
+    ).json()["rows"]
+    expected = status in {FiscalEventStatus.REJECTED, FiscalEventStatus.PENDING}
+    assert any(row.get("entry_id") == receipt["reference_id"] for row in filtered) is expected
     # Rebuilding the app over the same database still returns the durable reference.
     restarted, _, _, restarted_calls = base.harness(database, handler=handler)
     replay = base.resume(base.login(restarted), intent)

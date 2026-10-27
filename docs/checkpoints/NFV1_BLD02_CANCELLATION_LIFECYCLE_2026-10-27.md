@@ -42,6 +42,15 @@ Chromium depende da CI. Sem deploy, migration, provider/credencial real ou produ
 
 ## Próximo gate
 
-Integrar em ordem #256 → #257 → este incremento, somente com CI/Governança
-pré/pós-merge SUCCESS. Reconciliar o aceite BLD-02 por capacidade, distinguindo
+Auditoria final encontrou uma lacuna de projeção: Inutilização mostrava somente
+outbox, omitindo a evidência de execução direta. As superfícies canônicas agora
+incluem metadados normalizados do arquivo: Inutilização mostra seus eventos,
+Erros filtra rejected e Reconciliação filtra pending. Não expõem conteúdo bruto,
+justificativa, chave interna ou mensagem livre do provider; T07 segue metadata-only.
+Regressões HTTP verificam status/filtro e ausência dos campos protegidos.
+
+Integrar pela PR #258, que consolida integralmente #256/#257 e este incremento,
+somente com CI/Governança pré/pós-merge SUCCESS. As revisões intermediárias serão
+encerradas como substituídas após confirmação; esta decisão substitui a sequência
+de merges individuais nos checkpoints anteriores. Reconciliar o aceite BLD-02 por capacidade, distinguindo
 construção interna de publicação/homologação; depois iniciar BLD-03 conforme ledger.

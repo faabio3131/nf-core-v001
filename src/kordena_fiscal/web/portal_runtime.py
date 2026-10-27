@@ -427,8 +427,28 @@ class DurableHumanPortalExecutor:
             return self._capability_rows(authority, scope)[offset : offset + limit]
         rows: list[Mapping[str, Any]] = []
         with self._unit_of_work_factory() as uow:
+            if surface_id in {"inutilizations", "errors", "reconciliation"}:
+                from kordena_fiscal.operations.event_archive import event_result_projection
+
+                for entry in uow.archive.list_for_scope(scope, limit=limit, offset=offset):
+                    outcome = event_result_projection(entry)
+                    if outcome is None:
+                        continue
+                    if (
+                        surface_id == "inutilizations"
+                        and outcome["operation"] != "inutilizeFiscalRange"
+                    ):
+                        continue
+                    if surface_id == "errors" and outcome["status"] != "rejected":
+                        continue
+                    if surface_id == "reconciliation" and outcome["status"] != "pending":
+                        continue
+                    rows.append({
+                        **base, **outcome, "record_type": "fiscal_event",
+                        "entry_id": entry.entry_id, "archived_at": entry.archived_at.isoformat(),
+                    })
             if surface_id == "inutilizations":
-                return tuple(
+                rows.extend(
                     {
                         **base,
                         "record_type": "outbox",
@@ -447,6 +467,7 @@ class DurableHumanPortalExecutor:
                         operations=frozenset({"inutilize", "inutilizefiscalrange"}),
                     )
                 )
+                return tuple(rows)
             if surface_id in {"documents", "issuances", "errors"}:
                 for snapshot in uow.lifecycle.list_for_scope(
                     scope,
