@@ -142,7 +142,23 @@
       <label>Unidade<input id="operation-unit" name="unit_id" required></label>
       <label id="operation-document-field" hidden>Referência do documento preparado<input id="operation-document-id" maxlength="256" autocomplete="off" disabled></label>
       <p id="operation-document-help" hidden>A referência identifica um documento já preparado no sistema. A reconciliação consulta o resultado sem reenviar a emissão.</p>
-      <label id="operation-payload-field">Payload JSON<textarea id="operation-payload" rows="8" spellcheck="false">{}</textarea></label>
+      <fieldset id="operation-access-key-field" hidden disabled>
+        <legend>Documento fiscal</legend>
+        <label>Chave de acesso (44 dígitos)<input id="operation-access-key" inputmode="numeric" pattern="[0-9]{44}" minlength="44" maxlength="44" autocomplete="off"></label>
+      </fieldset>
+      <fieldset id="operation-cancel-field" hidden disabled>
+        <legend>Cancelamento</legend>
+        <label>Protocolo de autorização<input id="operation-authorization-protocol" maxlength="512" autocomplete="off"></label>
+        <label>Justificativa (15 a 255 caracteres)<textarea id="operation-cancel-justification" rows="4" minlength="15" maxlength="255"></textarea></label>
+      </fieldset>
+      <fieldset id="operation-inutilization-field" hidden disabled>
+        <legend>Faixa a inutilizar</legend>
+        <label>Modelo<select id="operation-inutilization-model"><option value="55">NF-e (55)</option><option value="65">NFC-e (65)</option></select></label>
+        <label>Série<input id="operation-inutilization-series" type="number" min="0" max="999" step="1"></label>
+        <label>Número inicial<input id="operation-inutilization-first" type="number" min="1" step="1"></label>
+        <label>Número final<input id="operation-inutilization-last" type="number" min="1" step="1"></label>
+        <label>Justificativa (15 a 255 caracteres)<textarea id="operation-inutilization-justification" rows="4" minlength="15" maxlength="255"></textarea></label>
+      </fieldset>
       <p id="operation-error" class="form-error" role="alert"></p>
       <div class="dialog-actions">
         <button type="button" class="ghost" id="operation-cancel">Cancelar</button>

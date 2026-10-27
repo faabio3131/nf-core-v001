@@ -72,11 +72,20 @@ const operationDialog = /** @type {HTMLDialogElement} */ (document.getElementByI
 const operationForm = /** @type {HTMLFormElement} */ (document.getElementById("operation-form"));
 const operationId = /** @type {HTMLSelectElement} */ (document.getElementById("operation-id"));
 const operationUnit = /** @type {HTMLInputElement} */ (document.getElementById("operation-unit"));
-const operationPayload = /** @type {HTMLTextAreaElement} */ (document.getElementById("operation-payload"));
 const operationDocument = /** @type {HTMLInputElement} */ (document.getElementById("operation-document-id"));
 const operationDocumentField = /** @type {HTMLElement} */ (document.getElementById("operation-document-field"));
 const operationDocumentHelp = /** @type {HTMLElement} */ (document.getElementById("operation-document-help"));
-const operationPayloadField = /** @type {HTMLElement} */ (document.getElementById("operation-payload-field"));
+const operationAccessKeyField = /** @type {HTMLFieldSetElement} */ (document.getElementById("operation-access-key-field"));
+const operationAccessKey = /** @type {HTMLInputElement} */ (document.getElementById("operation-access-key"));
+const operationCancelField = /** @type {HTMLFieldSetElement} */ (document.getElementById("operation-cancel-field"));
+const operationAuthorizationProtocol = /** @type {HTMLInputElement} */ (document.getElementById("operation-authorization-protocol"));
+const operationCancelJustification = /** @type {HTMLTextAreaElement} */ (document.getElementById("operation-cancel-justification"));
+const operationInutilizationField = /** @type {HTMLFieldSetElement} */ (document.getElementById("operation-inutilization-field"));
+const operationInutilizationModel = /** @type {HTMLSelectElement} */ (document.getElementById("operation-inutilization-model"));
+const operationInutilizationSeries = /** @type {HTMLInputElement} */ (document.getElementById("operation-inutilization-series"));
+const operationInutilizationFirst = /** @type {HTMLInputElement} */ (document.getElementById("operation-inutilization-first"));
+const operationInutilizationLast = /** @type {HTMLInputElement} */ (document.getElementById("operation-inutilization-last"));
+const operationInutilizationJustification = /** @type {HTMLTextAreaElement} */ (document.getElementById("operation-inutilization-justification"));
 
 function usesPreparedReference() {
   return ["issueFiscalDocument", "reconcileFiscalOperation"].includes(operationId.value);
@@ -84,12 +93,50 @@ function usesPreparedReference() {
 
 function configureOperationForm() {
   const prepared = usesPreparedReference();
+  const accessKey = ["queryFiscalDocument", "cancelFiscalDocument"].includes(operationId.value);
+  const cancellation = operationId.value === "cancelFiscalDocument";
+  const inutilization = operationId.value === "inutilizeFiscalRange";
   operationDocumentField.hidden = !prepared;
   operationDocumentHelp.hidden = !prepared;
   operationDocument.disabled = !prepared;
   operationDocument.required = prepared;
-  operationPayloadField.hidden = prepared;
-  operationPayload.disabled = prepared;
+  operationAccessKeyField.hidden = !accessKey;
+  operationAccessKeyField.disabled = !accessKey;
+  operationAccessKey.required = accessKey;
+  operationCancelField.hidden = !cancellation;
+  operationCancelField.disabled = !cancellation;
+  operationAuthorizationProtocol.required = cancellation;
+  operationCancelJustification.required = cancellation;
+  operationInutilizationField.hidden = !inutilization;
+  operationInutilizationField.disabled = !inutilization;
+  for (const input of [operationInutilizationSeries, operationInutilizationFirst,
+    operationInutilizationLast, operationInutilizationJustification]) input.required = inutilization;
+}
+
+/** @returns {Record<string, string|number>} */
+function operationPayloadForSelection() {
+  if (usesPreparedReference()) return {document_id: operationDocument.value.trim()};
+  if (operationId.value === "queryFiscalDocument") return {access_key: operationAccessKey.value.trim()};
+  if (operationId.value === "cancelFiscalDocument") return {
+    access_key: operationAccessKey.value.trim(),
+    authorization_protocol: operationAuthorizationProtocol.value.trim(),
+    justification: operationCancelJustification.value.trim(),
+  };
+  if (operationId.value === "inutilizeFiscalRange") {
+    const payload = {
+      model: Number(operationInutilizationModel.value),
+      series: Number(operationInutilizationSeries.value),
+      first_number: Number(operationInutilizationFirst.value),
+      last_number: Number(operationInutilizationLast.value),
+      justification: operationInutilizationJustification.value.trim(),
+    };
+    if (![payload.series, payload.first_number, payload.last_number].every(Number.isSafeInteger)
+      || payload.last_number < payload.first_number) {
+      throw new Error("Informe números inteiros válidos e uma faixa crescente.");
+    }
+    return payload;
+  }
+  throw new Error("Operação fiscal não reconhecida.");
 }
 
 const operationError = /** @type {HTMLElement} */ (document.getElementById("operation-error"));
@@ -1704,7 +1751,7 @@ operationForm.addEventListener("submit", async (event) => {
     if (prepared && !operationDocument.value.trim()) {
       throw new Error("Informe a referência do documento preparado.");
     }
-    const parsed = prepared ? {document_id: operationDocument.value.trim()} : JSON.parse(operationPayload.value);
+    const parsed = operationPayloadForSelection();
     const payload = { ...parsed, unit_id: unitId, environment: selectedFiscalEnvironment };
     const fingerprint = `${selected}:${JSON.stringify(payload)}`;
     const mutation = selected !== "queryFiscalDocument";

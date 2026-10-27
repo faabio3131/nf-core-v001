@@ -288,3 +288,25 @@ CI/Governança do HEAD remoto ainda obrigatórias. BLD-02 permanece IN_PROGRESS:
 um adapter municipal/nacional concreto continua dependendo de decisão humana e
 homologação futura; cancelamento/inutilização/consulta genéricos continuam
 disponíveis somente quando `FiscalOperationsClient` real é explicitamente composto.
+
+### BLD-02 — fechamento Web das operações fiscais internas (27/10/2026)
+
+O diálogo governado do Portal deixou de exigir edição de payload JSON para as
+operações fiscais do launch scope. Consulta e cancelamento agora coletam chave de
+acesso em formato fiscal; cancelamento também exige protocolo de autorização e
+justificativa. Inutilização recebe modelo, série, faixa e justificativa tipados,
+além do formulário dedicado já existente. Emissão e reconciliação continuam
+aceitando somente a referência de um documento preparado pelo backend.
+
+O navegador segue sem autoridade de tenant, papel ou resultado fiscal: unidade e
+ambiente vêm do escopo autorizado, mutações preservam CSRF, intent durável e chave
+de idempotência, e o backend continua validando todos os contratos. A interface
+não habilita operação sem permissão e executor compostos, nem interpreta recibo
+HTTP/fila como protocolo oficial. Não houve provider, credencial, deploy ou
+ativação de produção.
+
+Provas locais deste delta: contrato frontend 18 PASS; handlers de consulta,
+cancelamento, inutilização, wiring e NFS-e 20 PASS; Node syntax, Ruff global,
+Mypy em 226 fontes e diff check PASS. Lint/typecheck/build/E2E frontend completos
+dependem da instalação Node feita pela CI; nenhuma ausência local será tratada
+como aprovação. O HEAD remoto atualizado ainda precisa de CI e Governança verdes.

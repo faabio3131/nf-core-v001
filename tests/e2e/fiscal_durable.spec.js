@@ -68,7 +68,7 @@ test("prepared document reconciliation uses durable authority and preserves conf
   await page.getByRole("button", {name: "Reconciliação", exact: true}).click();
   await page.getByRole("button", {name: "Executar operação governada"}).click();
   await expect(page.locator("#operation-id")).toHaveValue("reconcileFiscalOperation");
-  await expect(page.locator("#operation-payload")).not.toBeVisible();
+  await expect(page.locator("#operation-access-key-field")).not.toBeVisible();
   await page.locator("#operation-document-id").fill("missing-prepared-document");
   await page.getByRole("button", {name: "Executar", exact: true}).click();
   await expect(page.locator("#operation-error")).toContainText("Referência inválida");
