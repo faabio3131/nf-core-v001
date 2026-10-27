@@ -7,21 +7,27 @@ is created here. Official execution remains fail-closed by default.
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from typing import Any
 
 from kordena_fiscal.domain import ElectronicInvoiceModel, ExecutionScope, FiscalValidationError
 from kordena_fiscal.operations import (
     CancellationRequest,
+    CancellationResult,
     FiscalOperationsClient,
     InutilizationRequest,
+    InutilizationResult,
 )
 from kordena_fiscal.xml import NfeAccessKey
 
 from .fiscal_runtime import FiscalOperationHandler, PreflightFiscalOperationHandler
 
+EventResultRecorder = Callable[[CancellationResult | InutilizationResult], str]
 
-def build_provider_cancel_handler(client: FiscalOperationsClient) -> FiscalOperationHandler:
+
+def build_provider_cancel_handler(
+    client: FiscalOperationsClient, *, record_result: EventResultRecorder | None = None
+) -> FiscalOperationHandler:
     """Validate a scoped cancellation and delegate through the existing client."""
 
     def resolve(
@@ -56,6 +62,7 @@ def build_provider_cancel_handler(client: FiscalOperationsClient) -> FiscalOpera
     ) -> Mapping[str, Any]:
         result = client.cancel(resolve(scope, payload, idempotency_key))
         return {
+            **({"entry_id": record_result(result)} if record_result is not None else {}),
             "status": result.status.value,
             "request_id": result.request_id,
             "access_key": result.access_key.value,
@@ -68,7 +75,9 @@ def build_provider_cancel_handler(client: FiscalOperationsClient) -> FiscalOpera
     return PreflightFiscalOperationHandler(cancel, preflight)
 
 
-def build_provider_inutilization_handler(client: FiscalOperationsClient) -> FiscalOperationHandler:
+def build_provider_inutilization_handler(
+    client: FiscalOperationsClient, *, record_result: EventResultRecorder | None = None
+) -> FiscalOperationHandler:
     """Validate the canonical number range before crossing the provider boundary."""
 
     def resolve(
@@ -115,6 +124,7 @@ def build_provider_inutilization_handler(client: FiscalOperationsClient) -> Fisc
     ) -> Mapping[str, Any]:
         result = client.inutilize(resolve(scope, payload, idempotency_key))
         return {
+            **({"entry_id": record_result(result)} if record_result is not None else {}),
             "status": result.status.value,
             "request_id": result.request_id,
             "model": result.model.value,
