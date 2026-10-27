@@ -3,8 +3,8 @@
 **Estado:** EM_EXECUCAO (trilha subordinada ao cronograma mestre de 59 IDs).  
 **Decisão:** autorização explícita do proprietário em 18/10/2026 para construir/corrigir autonomamente e **mergear PRs BUILD-ONLY 100% verdes**, preservando decisões humanas para credenciais, custos, preço, segurança nova, deploy, produção e atos irreversíveis.  
 **Cronograma de escopo:** `docs/NFCORE_V1_BUILD_INTEGRATION_EXECUTION_2026-10-18.md` — anexo, **não substitui** `docs/NFCORE_V1_EXECUTION_LEDGER.md`.  
-**Próximo bloco executável:** `NFV1-BLD-02`.  
-**Última reconciliação:** main `caf9c8278c469d1b87aa15b49c73f824d2eda430`; PRs #228, #229, #230 integradas. CI pós-merge #1068/Gov #489, #1070/Gov #491 e #1072/Gov #493 SUCCESS nos respectivos HEADs. BLD-01 fechamento BUILD interno; BLD-02 iniciada sem prometer transporte oficial ou deploy.
+**Próximo bloco executável:** `NFV1-BLD-03`.  
+**Última reconciliação:** main `aa04c8b2b63384880e3d6a98f41771b2f0415c8f`; PRs #253/#254/#255/#258 integradas com CI e Governança pré/pós-merge SUCCESS. BLD-02 DONE no escopo BUILD interno; prova completa em `docs/checkpoints/NFV1_BLD02_INTERNAL_CLOSEOUT_2026-10-27.md`. Próximo BLD-03; publicação e homologação continuam em gates separados.
 
 ## Semântica de estado e prova
 
@@ -37,17 +37,17 @@ Cada `Evidência` abaixo é levantamento de baseline, **não certificação do b
 - **Pendência / decisão humana:** nenhuma nova para concluir este bloco de BUILD interno; deploy, testes reais no browser/staging e homologação ficam em seus gates próprios.
 
 ### NFV1-BLD-02 — Paridade fiscal Web e executores internos
-- **Estado:** IN_PROGRESS
+- **Estado:** DONE
 - **Depende de:** BLD-00 e BLD-01
-- **CURRENT:** queryArchiveReference é handler interno existente; outros handlers fiscais dependem de composição determinística e transportes corretos; PR #189 auditar sem copiar.
-- **Target e aceite:** seção `NFV1-BLD-02` do anexo de execução.
-- **Evidência final:** PENDENTE (registrar PR + HEAD + merge SHA + CI/Gov PR e main + prova funcional apropriada).
-- **Pendência / decisão humana:** se surgir, registrar o bloqueio exato com decisão necessária, sem gerar novo serviço, preço ou credencial.
+- **CURRENT:** Construção interna integrada: consultas/arquivo, preparação NF-e/NFC-e/NFS-e, emissão e recuperação duráveis, cancelamento vinculado ao documento, inutilização/evidência, projeções de erros/pendências e configurações governadas. Portal usa autoridades existentes e bloqueia dependências ausentes. Publicação Web e homologação externa não certificadas.
+- **Target e aceite:** seção NFV1-BLD-02 do anexo; ações internas com estado real ou bloqueio explícito. DONE é exclusivamente BUILD interno, não produção fiscal nem conclusão global das 59 tarefas.
+- **Evidência final:** PR #253/#254/#255/#258; HEAD final 84e3345f284d653756ae046233a0137fde51cd50, merge aa04c8b2b63384880e3d6a98f41771b2f0415c8f; CI SUCCESS (40530810061), Governança SUCCESS (40530809955), CI pós-merge SUCCESS (40533251021), Governança pós-merge SUCCESS (40533250901). 2563 Python PASS/3 SKIP, 36 E2E PASS e 18 frontend PASS na candidata. Matriz por capacidade e demais SHAs em docs/checkpoints/NFV1_BLD02_INTERNAL_CLOSEOUT_2026-10-27.md; #256/#257 substituídas pela integração consolidada.
+- **Pendência / decisão humana:** Provider/jurisdição, credenciais/certificados, transporte oficial e homologação permanecem externos/BLD-05. Publicação autorizada e demonstração do staging pertencem a BLD-08. Timeout/evento pendente exige evidência confiável, nunca reenvio ou protocolo inventado. Contrato legado sem document_id não recebe a certificação de lifecycle da jornada Web.
 
 ### NFV1-BLD-03 — Trial first-party no NFCore e site estático
 - **Estado:** PENDING
 - **Depende de:** BLD-00 e interfaces de identidade BLD-01; código interno pode avançar se sessão admin/config comercial bloquearem operações
-- **CURRENT:** GovernedTrialService, binding admin Web e segredo comercial GSM já construídos/criados. Registro admin não provado; /runtime/profile commercial_trial_configured=false; site fm-site-novo ainda não tem cadastro de trial.
+- **CURRENT:** GovernedTrialService, ingresso público protegido, catálogo e antiabuso PostgreSQL já existem no código auditado. Página de cadastro na aplicação NFCore é o próximo delta Web; binding admin, configuração comercial/origens e Web publicada não estão certificados. Auditar PR #237 antes de reaproveitar testes; não reconstruir serviços nem inventar plano/preço/duração.
 - **Target e aceite:** seção `NFV1-BLD-03` do anexo de execução.
 - **Evidência final:** PENDENTE (registrar PR + HEAD + merge SHA + CI/Gov PR e main + prova funcional apropriada).
 - **Pendência / decisão humana:** se surgir, registrar o bloqueio exato com decisão necessária, sem gerar novo serviço, preço ou credencial.
@@ -339,3 +339,7 @@ local bloqueada por download inválido do Chromium; exige E2E remoto SUCCESS.
 BLD-02 permanece IN_PROGRESS. Não houve deploy solicitado, migration, provider
 selecionado ou operação fiscal real. Próximo passo: CI deste delta e revisão
 final da matriz BLD-02, antes de promover estado ou iniciar BLD-03.
+
+### BLD-02 — aceite interno confirmado (27/10/2026)
+
+Este registro prevalece sobre os checkpoints anteriores em andamento: PR #258 consolidou #256/#257, merge aa04c8b2b63384880e3d6a98f41771b2f0415c8f, CI/Governança pré e pós-merge SUCCESS. Matriz completa em docs/checkpoints/NFV1_BLD02_INTERNAL_CLOSEOUT_2026-10-27.md. Ambas as revisões intermediárias foram encerradas como substituídas, com histórico preservado. BLD-02 DONE interno; primeiro bloco aberto BLD-03. As 59 tarefas globais não foram alteradas. Nenhum deploy, credencial ou operação fiscal oficial foi solicitado.
