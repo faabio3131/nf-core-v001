@@ -101,7 +101,6 @@ test("an in-flight submit is locked and a read cannot erase a pending mutation k
   await page.getByRole("button", {name: "Executar", exact: true}).click();
   await expect(page.locator("#operation-dialog")).not.toBeVisible();
   await page.getByRole("button", {name: "Executar operação governada"}).click();
-  await page.locator("#operation-access-key").fill("35191111111111111111550010000000011000000010");
   await page.getByRole("button", {name: "Executar", exact: true}).click();
   await expect(page.locator("#operation-dialog")).not.toBeVisible();
   expect(keys).toHaveLength(2); expect(keys[0]).toBeTruthy(); expect(keys[0]).toBe(keys[1]);
