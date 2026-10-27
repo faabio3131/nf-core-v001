@@ -56,12 +56,16 @@ from kordena_fiscal.numbering import (
     FiscalSequencePolicy,
 )
 from kordena_fiscal.operations import (
+    CancellationRequest,
+    CancellationResult,
+    FiscalCancellationService,
     FiscalOperationsClient,
     FiscalOperationSnapshot,
     FiscalQueryRequest,
     FiscalQueryResult,
     FiscalQueryStatus,
 )
+from kordena_fiscal.operations.event_archive import build_event_result_evidence
 from kordena_fiscal.persistence.ports import (
     FiscalUnitOfWork,
     FiscalUnitOfWorkFactory,
@@ -144,6 +148,13 @@ class DurableNfseRecoveryOutcome:
     replay: bool
     recovery_required: bool
     query_result: NfseAuthorizationResult | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class DurableCancellationOutcome:
+    result: CancellationResult
+    lifecycle: FiscalStateSnapshot
+    archive_reference: str
 
 
 class FiscalApplicationService:
@@ -939,6 +950,74 @@ class FiscalApplicationService:
                 latest.status is IssuanceAttemptStatus.RESERVED,
                 result,
             )
+
+    @staticmethod
+    def _validate_cancellation_from_uow(
+        uow: FiscalUnitOfWork, document_id: str, request: CancellationRequest
+    ) -> FiscalStateSnapshot:
+        prepared = FiscalApplicationService._load_prepared_from_uow(
+            uow, request.scope, document_id
+        )
+        if (
+            not isinstance(prepared, AuthorizationRequest)
+            or prepared.access_key != request.access_key
+        ):
+            raise FiscalValidationError("cancellation key does not match the prepared document")
+        attempts = uow.idempotency.attempts(prepared.idempotency_key)
+        if (
+            not attempts or attempts[-1].status is not IssuanceAttemptStatus.AUTHORIZED
+            or attempts[-1].result_reference != request.authorization_protocol
+        ):
+            raise FiscalValidationError("cancellation protocol does not match authorization")
+        lifecycle = uow.lifecycle.get(document_id)
+        if lifecycle is None or lifecycle.state is not FiscalDocumentState.AUTHORIZED:
+            raise FiscalValidationError("document is not available for a new cancellation")
+        return lifecycle
+
+    def validate_prepared_cancellation(
+        self, document_id: str, request: CancellationRequest
+    ) -> None:
+        with self._uow_factory() as uow:
+            self._validate_cancellation_from_uow(uow, document_id, request)
+
+    def cancel_prepared_document(
+        self, *, document_id: str, request: CancellationRequest,
+        client: FiscalOperationsClient, archive_retention: RetentionPolicyMetadata,
+        occurred_at: datetime,
+    ) -> DurableCancellationOutcome:
+        """Persist a claim before I/O, then atomically save evidence and lifecycle.
+
+        Timeout/crash leaves CANCEL_REQUESTED; it never authorizes another dispatch.
+        Portal receipt replay is handled by its existing durable claim authority.
+        """
+        cancellation = FiscalCancellationService(client, self._state_machine)
+        with self._uow_factory() as uow:
+            current = self._validate_cancellation_from_uow(uow, document_id, request)
+            requested = cancellation.prepare(
+                lifecycle=current, occurred_at=occurred_at,
+                correlation_id=request.scope.correlation_id,
+            )
+            uow.lifecycle.save(requested, expected_version=current.version)
+            uow.commit()
+
+        result = client.cancel(request)
+        evidence = build_event_result_evidence(
+            result, archived_at=occurred_at, retention=archive_retention
+        )
+        with self._uow_factory() as uow:
+            uow.lifecycle.assert_scope(document_id, request.scope)
+            latest = uow.lifecycle.get(document_id)
+            if latest != requested:
+                raise PersistenceConflictError("cancellation lifecycle changed during provider I/O")
+            outcome = cancellation.complete(
+                requested=requested, result=result, occurred_at=occurred_at,
+                correlation_id=request.scope.correlation_id,
+            )
+            archived = uow.archive.append(evidence)
+            if outcome.lifecycle != requested:
+                uow.lifecycle.save(outcome.lifecycle, expected_version=requested.version)
+            uow.commit()
+        return DurableCancellationOutcome(result, outcome.lifecycle, archived.entry_id)
 
     def reserve_number(
         self,

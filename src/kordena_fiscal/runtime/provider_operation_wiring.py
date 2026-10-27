@@ -79,7 +79,8 @@ def build_provider_operation_handlers(
             )).entry_id
 
         handlers["cancelFiscalDocument"] = build_provider_cancel_handler(
-            client, record_result=record_event
+            client, record_result=record_event, application=application,
+            archive_retention=archive_retention,
         )
         handlers["inutilizeFiscalRange"] = build_provider_inutilization_handler(
             client, record_result=record_event

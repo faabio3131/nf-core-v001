@@ -8,8 +8,11 @@ is created here. Official execution remains fail-closed by default.
 from __future__ import annotations
 
 from collections.abc import Callable, Mapping
+from datetime import UTC, datetime
 from typing import Any
 
+from kordena_fiscal.application.service import FiscalApplicationService
+from kordena_fiscal.archive import RetentionPolicyMetadata
 from kordena_fiscal.domain import ElectronicInvoiceModel, ExecutionScope, FiscalValidationError
 from kordena_fiscal.operations import (
     CancellationRequest,
@@ -18,6 +21,7 @@ from kordena_fiscal.operations import (
     InutilizationRequest,
     InutilizationResult,
 )
+from kordena_fiscal.persistence.ports import PersistenceConflictError, PersistenceStateError
 from kordena_fiscal.xml import NfeAccessKey
 
 from .fiscal_runtime import FiscalOperationHandler, PreflightFiscalOperationHandler
@@ -26,7 +30,9 @@ EventResultRecorder = Callable[[CancellationResult | InutilizationResult], str]
 
 
 def build_provider_cancel_handler(
-    client: FiscalOperationsClient, *, record_result: EventResultRecorder | None = None
+    client: FiscalOperationsClient, *, record_result: EventResultRecorder | None = None,
+    application: FiscalApplicationService | None = None,
+    archive_retention: RetentionPolicyMetadata | None = None,
 ) -> FiscalOperationHandler:
     """Validate a scoped cancellation and delegate through the existing client."""
 
@@ -55,14 +61,39 @@ def build_provider_cancel_handler(
         )
 
     def preflight(scope: ExecutionScope, payload: Mapping[str, Any], key: str | None) -> None:
-        resolve(scope, payload, key)
+        request = resolve(scope, payload, key)
+        document_id = payload.get("document_id")
+        if document_id is not None:
+            if (not isinstance(document_id, str) or not document_id.strip()
+                or application is None or archive_retention is None):
+                raise FiscalValidationError("durable cancellation is not configured")
+            try:
+                application.validate_prepared_cancellation(document_id, request)
+            except (PersistenceConflictError, PersistenceStateError) as exc:
+                raise FiscalValidationError("cancellation document is unavailable") from exc
 
     def cancel(
         scope: ExecutionScope, payload: Mapping[str, Any], idempotency_key: str | None
     ) -> Mapping[str, Any]:
-        result = client.cancel(resolve(scope, payload, idempotency_key))
+        request = resolve(scope, payload, idempotency_key)
+        document_id = payload.get("document_id")
+        archive_reference: str | None = None
+        if document_id is not None:
+            preflight(scope, payload, idempotency_key)
+            assert isinstance(document_id, str)
+            assert application is not None and archive_retention is not None
+            outcome = application.cancel_prepared_document(
+                document_id=document_id, request=request, client=client,
+                archive_retention=archive_retention, occurred_at=datetime.now(UTC),
+            )
+            result = outcome.result
+            archive_reference = outcome.archive_reference
+        else:
+            result = client.cancel(request)
+            if record_result is not None:
+                archive_reference = record_result(result)
         return {
-            **({"entry_id": record_result(result)} if record_result is not None else {}),
+            **({"entry_id": archive_reference} if archive_reference is not None else {}),
             "status": result.status.value,
             "request_id": result.request_id,
             "access_key": result.access_key.value,

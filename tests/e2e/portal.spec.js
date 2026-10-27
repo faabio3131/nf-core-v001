@@ -42,7 +42,8 @@ test("authenticated portal loads governed tenant context and real surface", asyn
   await expect(page.locator(".grid-list .row .badge").filter({hasText: "AUTHORIZED"})).toBeVisible();
 });
 
-test("governed mutation sends csrf and idempotency proof", async ({ page, context }) => {
+for (const fiscalMutation of ["issueFiscalDocument", "cancelFiscalDocument"]) {
+test(`${fiscalMutation} sends document reference, csrf and idempotency proof`, async ({ page, context }) => {
   await page.route("**/v1/portal/bootstrap", async (route) => {
     await route.fulfill({
       status: 200,
@@ -53,9 +54,9 @@ test("governed mutation sends csrf and idempotency proof", async ({ page, contex
         tenant_id: "tenant-e2e",
         unit_ids: ["unit-a"],
         role: "owner",
-        permissions: ["portal.read", "document.query", "document.issue"],
+        permissions: ["portal.read", "document.query", "document.issue", "document.cancel"],
         supported_documents: ["nfe", "nfce", "nfse"],
-        projection: { production_state: "BLOCKED_EXTERNAL", configured_fiscal_operations: ["issueFiscalDocument"],
+        projection: { production_state: "BLOCKED_EXTERNAL", configured_fiscal_operations: [fiscalMutation],
           authorized_units: [{unit_id: "unit-a", display_name: "Synthetic unit A", environments: ["homologation"]}] },
       }),
     });
@@ -67,9 +68,10 @@ test("governed mutation sends csrf and idempotency proof", async ({ page, contex
   let seenCsrf = "";
   let seenIdempotency = "";
   await page.route("**/v1/portal/fiscal-intents?**", (route) => route.fulfill({json:{rows:[]}}));
-  await page.route("**/v1/portal/fiscal-intents/prepare/issueFiscalDocument", (route) => {
+  await page.route(`**/v1/portal/fiscal-intents/prepare/${fiscalMutation}`, (route) => {
     expect(route.request().headers()["x-csrf-token"]).toBe("csrf-e2e");
     expect(route.request().headers()["idempotency-key"].length).toBeGreaterThan(10);
+    expect(route.request().postDataJSON().document_id).toBe("DOC-E2E-PREPARED");
     return route.fulfill({json:{intent_id:"synthetic-ui-proof-intent",state:"prepared"}});
   });
   await page.route("**/v1/portal/fiscal-intents/*/resume", async (route) => {
@@ -88,11 +90,17 @@ test("governed mutation sends csrf and idempotency proof", async ({ page, contex
   await page.getByRole("button", { name: "Executar operação governada" }).click();
   await page.locator("#operation-unit").fill("unit-a");
   await page.locator("#operation-document-id").fill("DOC-E2E-PREPARED");
+  if (fiscalMutation === "cancelFiscalDocument") {
+    await page.locator("#operation-access-key").fill("35251012345678000190550010000000011000000010");
+    await page.locator("#operation-authorization-protocol").fill("SYNTHETIC-AUTH");
+    await page.locator("#operation-cancel-justification").fill("Justificativa sintetica de cancelamento");
+  }
   await page.getByRole("button", { name: "Executar", exact: true }).click();
 
   await expect.poll(() => seenCsrf).toBe("csrf-e2e");
   expect(seenIdempotency.length).toBeGreaterThan(10);
 });
+}
 
 test("activation fragment completes password setup without keeping token in URL", async ({ page }) => {
   let submittedToken = "";

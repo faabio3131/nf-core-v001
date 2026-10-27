@@ -96,10 +96,10 @@ function configureOperationForm() {
   const accessKey = ["queryFiscalDocument", "cancelFiscalDocument"].includes(operationId.value);
   const cancellation = operationId.value === "cancelFiscalDocument";
   const inutilization = operationId.value === "inutilizeFiscalRange";
-  operationDocumentField.hidden = !prepared;
-  operationDocumentHelp.hidden = !prepared;
-  operationDocument.disabled = !prepared;
-  operationDocument.required = prepared;
+  operationDocumentField.hidden = !(prepared || cancellation);
+  operationDocumentHelp.hidden = !(prepared || cancellation);
+  operationDocument.disabled = !(prepared || cancellation);
+  operationDocument.required = prepared || cancellation;
   operationAccessKeyField.hidden = !accessKey;
   operationAccessKeyField.disabled = !accessKey;
   operationAccessKey.required = accessKey;
@@ -118,6 +118,7 @@ function operationPayloadForSelection() {
   if (usesPreparedReference()) return {document_id: operationDocument.value.trim()};
   if (operationId.value === "queryFiscalDocument") return {access_key: operationAccessKey.value.trim()};
   if (operationId.value === "cancelFiscalDocument") return {
+    document_id: operationDocument.value.trim(),
     access_key: operationAccessKey.value.trim(),
     authorization_protocol: operationAuthorizationProtocol.value.trim(),
     justification: operationCancelJustification.value.trim(),
