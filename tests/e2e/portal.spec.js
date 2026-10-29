@@ -371,7 +371,7 @@ test("mobile overview keeps premium header compact", async ({ page, context }) =
 
 for (const [view, label, operation, fields] of [
   ["certificates", "Certificados", "configureCertificates", {reference_id: "ref:synthetic-browser", kind: "certificate"}],
-  ["providers", "Providers", "configureProviders", {binding_id: "synthetic-binding", document_kind: "nfe", state_code: "SP", operation: "authorize", provider_id: "synthetic"}],
+  ["providers", "Provedores", "configureProviders", {binding_id: "synthetic-binding", document_kind: "nfe", state_code: "SP", operation: "authorize", provider_id: "synthetic"}],
   ["webhooks", "Webhooks", "configureWebhooks", {destination_id: "synthetic-events", url: "https://consumer.example.test/fiscal/webhooks"}],
   ["integrations", "Integrações", "configureIntegrations", {module_id: "synthetic-module"}],
   ["settings", "Configurações", "configureSettings", {policy_id: "synthetic-policy", provider_id: "synthetic", connect_timeout_seconds: "2", read_timeout_seconds: "3", max_attempts: "2", base_delay_seconds: "1", max_delay_seconds: "5", jitter_ratio: "0.1", circuit_failure_threshold: "3", circuit_recovery_seconds: "10", circuit_success_threshold: "1"}],

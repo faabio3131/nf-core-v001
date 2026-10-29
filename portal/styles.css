@@ -919,3 +919,15 @@ html[data-theme="light"] .product-footer { color: #5b6f87; border-top-color: #d5
 @media (max-width: 720px) {
   .top-actions { grid-template-columns: minmax(0, 1fr) auto auto; }
 }
+
+/* Legibilidade: textos secundários e selos maiores, rótulos de filtro com contraste. */
+.state { font-size: 13px; }
+.badge { font-size: 12px; min-height: 28px; padding: 5px 11px; }
+.row strong { font-size: 14px; }
+.status-item span { font-size: 13px; }
+.status-item strong { font-size: 13px; }
+.metric span, .metric small { font-size: 12px; }
+.pillar p { font-size: 13px; }
+.panel label { font-size: 13px; font-weight: 650; }
+html[data-theme="light"] .shell .panel label { color: #1d3350; }
+html:not([data-theme="light"]) .shell .panel label { color: #c4d4e4; }
