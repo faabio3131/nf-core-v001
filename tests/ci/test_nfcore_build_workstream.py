@@ -21,13 +21,24 @@ def inputs() -> tuple[str, str]:
     )
 
 
-def test_initial_build_ledger_is_valid_without_claiming_completion() -> None:
+def scenario() -> tuple[str, str]:
+    """Synthetic ledger for negative cases, independent of live delivery progress."""
+    plan, _ = inputs()
+    entries = ["# Synthetic ledger — não substitui o cronograma mestre", "EM_EXECUCAO"]
+    for index, heading in enumerate(re.findall(r"^### NFV1-BLD-.*$", plan, re.M)):
+        state = "DONE" if index < 2 else "IN_PROGRESS" if index == 2 else "PENDING"
+        proof = "PR #1; CI SUCCESS; " + "a" * 40 if index < 2 else "PENDENTE"
+        entries.append(
+            f"{heading}\n- **Estado:** {state}\n- **Depende de:** anterior\n"
+            f"- **CURRENT:** cenário sintético\n- **Evidência final:** {proof}\n"
+        )
+    return plan, "\n\n".join(entries)
+
+
+def test_current_build_ledger_is_structurally_valid() -> None:
     plan, ledger = inputs()
     assert not assess(plan, ledger)
-    # Current workstream must have one active block and the other eight accounted for.
-    assert ledger.count("- **Estado:** PENDING") == 6
-    assert ledger.count("- **Estado:** IN_PROGRESS") == 1
-    assert ledger.count("- **Estado:** DONE") == 2
+    assert len(re.findall(r"^### NFV1-BLD-", ledger, re.M)) == 9
     assert "CONSTRUCTION_AND_WEB_INTEGRATION_COMPLETE" in plan
 
 
@@ -38,20 +49,17 @@ def test_no_missing_or_reordered_build_block() -> None:
 
 
 def test_cannot_skip_missing_work_with_ci_or_fake_evidence() -> None:
-    plan, ledger = inputs()
-    changed = ledger.replace(
-        "### NFV1-BLD-03 — Trial first-party no NFCore e site estático\n"
-        "- **Estado:** PENDING",
-        "### NFV1-BLD-02 — Paridade fiscal Web e executores internos\n"
-        "- **Estado:** DONE",
-        1,
-    )
+    plan, ledger = scenario()
+    assert not assess(plan, ledger)
+    changed = ledger.replace("- **Estado:** PENDING", "- **Estado:** DONE", 1)
+    assert changed != ledger
     assert any("pular tarefa anterior" in x for x in assess(plan, changed))
     assert any("requer PR, CI e SHA" in x for x in assess(plan, changed))
 
 
 def test_rejects_duplicate_concurrent_work_or_missing_proof() -> None:
-    plan, ledger = inputs()
+    plan, ledger = scenario()
+    assert not assess(plan, ledger)
     active = ledger.replace("- **Estado:** PENDING", "- **Estado:** IN_PROGRESS", 1)
     assert any("mais de um bloco" in x for x in assess(plan, active))
     missing = re.sub(

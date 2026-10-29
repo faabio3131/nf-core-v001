@@ -72,7 +72,74 @@ const operationDialog = /** @type {HTMLDialogElement} */ (document.getElementByI
 const operationForm = /** @type {HTMLFormElement} */ (document.getElementById("operation-form"));
 const operationId = /** @type {HTMLSelectElement} */ (document.getElementById("operation-id"));
 const operationUnit = /** @type {HTMLInputElement} */ (document.getElementById("operation-unit"));
-const operationPayload = /** @type {HTMLTextAreaElement} */ (document.getElementById("operation-payload"));
+const operationDocument = /** @type {HTMLInputElement} */ (document.getElementById("operation-document-id"));
+const operationDocumentField = /** @type {HTMLElement} */ (document.getElementById("operation-document-field"));
+const operationDocumentHelp = /** @type {HTMLElement} */ (document.getElementById("operation-document-help"));
+const operationAccessKeyField = /** @type {HTMLFieldSetElement} */ (document.getElementById("operation-access-key-field"));
+const operationAccessKey = /** @type {HTMLInputElement} */ (document.getElementById("operation-access-key"));
+const operationCancelField = /** @type {HTMLFieldSetElement} */ (document.getElementById("operation-cancel-field"));
+const operationAuthorizationProtocol = /** @type {HTMLInputElement} */ (document.getElementById("operation-authorization-protocol"));
+const operationCancelJustification = /** @type {HTMLTextAreaElement} */ (document.getElementById("operation-cancel-justification"));
+const operationInutilizationField = /** @type {HTMLFieldSetElement} */ (document.getElementById("operation-inutilization-field"));
+const operationInutilizationModel = /** @type {HTMLSelectElement} */ (document.getElementById("operation-inutilization-model"));
+const operationInutilizationSeries = /** @type {HTMLInputElement} */ (document.getElementById("operation-inutilization-series"));
+const operationInutilizationFirst = /** @type {HTMLInputElement} */ (document.getElementById("operation-inutilization-first"));
+const operationInutilizationLast = /** @type {HTMLInputElement} */ (document.getElementById("operation-inutilization-last"));
+const operationInutilizationJustification = /** @type {HTMLTextAreaElement} */ (document.getElementById("operation-inutilization-justification"));
+
+function usesPreparedReference() {
+  return ["issueFiscalDocument", "reconcileFiscalOperation"].includes(operationId.value);
+}
+
+function configureOperationForm() {
+  const prepared = usesPreparedReference();
+  const accessKey = ["queryFiscalDocument", "cancelFiscalDocument"].includes(operationId.value);
+  const cancellation = operationId.value === "cancelFiscalDocument";
+  const inutilization = operationId.value === "inutilizeFiscalRange";
+  operationDocumentField.hidden = !(prepared || cancellation);
+  operationDocumentHelp.hidden = !(prepared || cancellation);
+  operationDocument.disabled = !(prepared || cancellation);
+  operationDocument.required = prepared || cancellation;
+  operationAccessKeyField.hidden = !accessKey;
+  operationAccessKeyField.disabled = !accessKey;
+  operationAccessKey.required = accessKey;
+  operationCancelField.hidden = !cancellation;
+  operationCancelField.disabled = !cancellation;
+  operationAuthorizationProtocol.required = cancellation;
+  operationCancelJustification.required = cancellation;
+  operationInutilizationField.hidden = !inutilization;
+  operationInutilizationField.disabled = !inutilization;
+  for (const input of [operationInutilizationSeries, operationInutilizationFirst,
+    operationInutilizationLast, operationInutilizationJustification]) input.required = inutilization;
+}
+
+/** @returns {Record<string, string|number>} */
+function operationPayloadForSelection() {
+  if (usesPreparedReference()) return {document_id: operationDocument.value.trim()};
+  if (operationId.value === "queryFiscalDocument") return {access_key: operationAccessKey.value.trim()};
+  if (operationId.value === "cancelFiscalDocument") return {
+    document_id: operationDocument.value.trim(),
+    access_key: operationAccessKey.value.trim(),
+    authorization_protocol: operationAuthorizationProtocol.value.trim(),
+    justification: operationCancelJustification.value.trim(),
+  };
+  if (operationId.value === "inutilizeFiscalRange") {
+    const payload = {
+      model: Number(operationInutilizationModel.value),
+      series: Number(operationInutilizationSeries.value),
+      first_number: Number(operationInutilizationFirst.value),
+      last_number: Number(operationInutilizationLast.value),
+      justification: operationInutilizationJustification.value.trim(),
+    };
+    if (![payload.series, payload.first_number, payload.last_number].every(Number.isSafeInteger)
+      || payload.last_number < payload.first_number) {
+      throw new Error("Informe números inteiros válidos e uma faixa crescente.");
+    }
+    return payload;
+  }
+  throw new Error("Operação fiscal não reconhecida.");
+}
+
 const operationError = /** @type {HTMLElement} */ (document.getElementById("operation-error"));
 const operationCancel = /** @type {HTMLButtonElement} */ (document.getElementById("operation-cancel"));
 
@@ -174,12 +241,14 @@ function appendFiscalActions(article) {
     article.append(blocked);
     return;
   }
-  operationId.value = allowed[0].value;
+  const preferred = currentView === "reconciliation" ? "reconcileFiscalOperation" : "issueFiscalDocument";
+  operationId.value = allowed.some((option) => option.value === preferred) ? preferred : allowed[0].value;
   const action = document.createElement("button");
   action.className = "primary"; action.type = "button";
   action.textContent = "Executar operação governada";
   action.addEventListener("click", () => {
     operationUnit.value = selectedFiscalUnit;
+    configureOperationForm();
     operationDialog.showModal();
   });
   article.append(action);
@@ -304,6 +373,7 @@ async function api(path, options = {}) {
       FISCAL_RUNTIME_NOT_READY: "O executor fiscal está indisponível. Nenhuma autorização fiscal foi confirmada.",
       PORTAL_RUNTIME_NOT_READY: "Esta capacidade ainda não está disponível no runtime. Tente novamente após a configuração governada.",
       BROWSER_AUTHORITY_REJECTED: "Tenant e permissões são definidos pela sessão. Remova campos de autoridade do pedido.",
+      INVALID_PREPARED_DOCUMENT: "Referência inválida ou documento ainda não preparado neste escopo. Confira e corrija o campo.",
       MISSING_IDEMPOTENCY_KEY: "O pedido precisa de um identificador de tentativa para ser processado com segurança.",
     };
     const code = detail && typeof detail === "object" && typeof detail.code === "string" ? detail.code : "";
@@ -1265,8 +1335,17 @@ async function sendFiscalMutation(operation, payload) {
       if ((list.rows || []).some((/** @type {Record<string,unknown>} */ row) => row.operation === operation && row.state !== "recorded")) {
         throw new Error("Há um pedido original pendente. Selecione Retomar pedido original e reenvie o mesmo conteúdo.");
       }
-      const receipt = await api(`/v1/portal/fiscal-intents/prepare/${encodeURIComponent(operation)}`, {method:"POST", headers, body:JSON.stringify(payload)});
-      pendingFiscalRequest.intent_id = String(receipt.intent_id);
+      try {
+        const receipt = await api(`/v1/portal/fiscal-intents/prepare/${encodeURIComponent(operation)}`, {method:"POST", headers, body:JSON.stringify(payload)});
+        pendingFiscalRequest.intent_id = String(receipt.intent_id);
+      } catch (error) {
+        // A definitive validation rejection precedes intent persistence. Network
+        // uncertainty and failures after an intent exists still preserve its key.
+        if (error instanceof Error && "status" in error && error.status === 400) {
+          pendingFiscalRequest = null;
+        }
+        throw error;
+      }
     }
   }
   const result = await api(`/v1/portal/fiscal-intents/${encodeURIComponent(pendingFiscalRequest.intent_id)}/resume`, {method:"POST", headers, body:JSON.stringify(payload)});
@@ -1546,6 +1625,18 @@ function buildNavigation() {
   }
 }
 
+/** @param {unknown} value */
+function productionStateLabel(value) {
+  const labels = {
+    HUMAN_APPROVAL_REQUIRED: "Aguardando aprovação humana",
+    BLOCKED_EXTERNAL: "Bloqueado por dependência externa",
+    READY: "Pronto",
+    APPROVED: "Aprovado",
+  };
+  const key = text(value);
+  return /** @type {Record<string,string>} */ (labels)[key] || key;
+}
+
 /** @param {BootstrapState} state */
 function applyBootstrap(state) {
   bootstrapState = state;
@@ -1553,10 +1644,10 @@ function applyBootstrap(state) {
   authorityContext.textContent = `${state.tenant_id} · ${state.role}`;
   runtimeState.textContent = "API autenticada conectada";
   const productionState = state.projection.production_state || state.projection.readiness || safetyStates.approval;
-  criticalTitle.textContent = text(productionState);
+  criticalTitle.textContent = productionStateLabel(productionState);
   criticalCopy.textContent = /^(READY|APPROVED)$/i.test(text(productionState))
-    ? "Readiness retornado pelo backend; operações continuam sujeitas a RBAC e gates fiscais."
-    : `${safetyStates.blocked}: Produção permanece bloqueada até que o backend comprove os gates aplicáveis (${safetyStates.external} / ${safetyStates.approval}).`;
+    ? "Estado confirmado pelo sistema; as operações continuam sujeitas às permissões do seu perfil e às regras fiscais."
+    : "Produção permanece bloqueada: a emissão real só é liberada depois que o sistema comprovar as condições necessárias e houver aprovação humana.";
   buildNavigation();
   appShell.classList.remove("is-operational-view");
   renderOverview();
@@ -1658,6 +1749,7 @@ logoutAction.addEventListener("click", async () => {
   }
 });
 
+operationId.addEventListener("change", configureOperationForm);
 operationCancel.addEventListener("click", () => operationDialog.close());
 operationForm.addEventListener("submit", async (event) => {
   event.preventDefault();
@@ -1668,7 +1760,11 @@ operationForm.addEventListener("submit", async (event) => {
   try {
     const selected = operationId.value;
     const unitId = operationUnit.value.trim();
-    const parsed = JSON.parse(operationPayload.value);
+    const prepared = usesPreparedReference();
+    if (prepared && !operationDocument.value.trim()) {
+      throw new Error("Informe a referência do documento preparado.");
+    }
+    const parsed = operationPayloadForSelection();
     const payload = { ...parsed, unit_id: unitId, environment: selectedFiscalEnvironment };
     const fingerprint = `${selected}:${JSON.stringify(payload)}`;
     const mutation = selected !== "queryFiscalDocument";
@@ -1681,12 +1777,32 @@ operationForm.addEventListener("submit", async (event) => {
       pendingFiscalRequest ||= {fingerprint, key: crypto.randomUUID()};
       headers["Idempotency-Key"] = pendingFiscalRequest.key;
     }
-    if (mutation) await sendFiscalMutation(selected, payload);
-    else await api(`/v1/portal/operations/${encodeURIComponent(selected)}`, {
+    const submittedView = currentView;
+    const submittedGeneration = surfaceGeneration;
+    const result = mutation ? await sendFiscalMutation(selected, payload)
+      : await api(`/v1/portal/operations/${encodeURIComponent(selected)}`, {
       method: "POST", headers, body: JSON.stringify(payload),
     });
     operationDialog.close();
-    await renderSurface(currentView);
+    if (submittedGeneration !== surfaceGeneration) return;
+    const rendering = renderSurface(submittedView);
+    const resultGeneration = surfaceGeneration;
+    await rendering;
+    if (resultGeneration !== surfaceGeneration) return;
+    const status = document.createElement("p");
+    status.id = prepared ? "prepared-document-result" : "fiscal-operation-result";
+    status.setAttribute("role", "status");
+    status.setAttribute("aria-live", "polite");
+    if (mutation) {
+      status.textContent = "Resposta registrada. O recibo do pedido não confirma autorização fiscal. Confira o estado do documento em Emissões.";
+      if (typeof result.reference_id === "string") status.textContent += ` Referência: ${result.reference_id}.`;
+    } else {
+      status.textContent = `Resultado da consulta: ${typeof result.status === "string" ? result.status : "não informado"}.`;
+      if (typeof result.access_key === "string") status.textContent += ` Chave: ${result.access_key}.`;
+      if (typeof result.protocol_reference === "string") status.textContent += ` Protocolo: ${result.protocol_reference}.`;
+      else status.textContent += " Nenhum protocolo informado na resposta.";
+    }
+    workspace.prepend(status);
   } catch (error) {
     operationError.textContent = error instanceof Error ? error.message : "Operação rejeitada";
   } finally {

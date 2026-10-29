@@ -1,3 +1,4 @@
+from dataclasses import replace
 from datetime import UTC, date, datetime
 from decimal import Decimal
 
@@ -321,3 +322,34 @@ def test_nfse_result_state_invariants_prevent_false_success() -> None:
         rejection_message="Rejeicao sintetica",
     )
     assert rejected.status is AuthorizationStatus.REJECTED
+
+
+
+def test_nfse_namespace_is_part_of_issuance_identity_and_fingerprint():
+    base = _nfse_document()
+    first_scope = replace(base.scope, host_namespace="host-a")
+    second_scope = replace(base.scope, host_namespace="host-b")
+    first = replace(base, scope=first_scope, issuer=replace(base.issuer, scope=first_scope))
+    second = replace(base, scope=second_scope, issuer=replace(base.issuer, scope=second_scope))
+    assert build_nfse_issuance_key(first) != build_nfse_issuance_key(second)
+    assert build_nfse_request_fingerprint(first) != build_nfse_request_fingerprint(second)
+    retry_scope = replace(first_scope, correlation_id="another-request")
+    retry = replace(first, scope=retry_scope, issuer=replace(first.issuer, scope=retry_scope))
+    assert build_nfse_issuance_key(first) == build_nfse_issuance_key(retry)
+    assert build_nfse_request_fingerprint(first) == build_nfse_request_fingerprint(retry)
+
+
+def test_nfse_issuer_cannot_cross_host_namespace():
+    base = _nfse_document()
+    with pytest.raises(FiscalValidationError, match="same scope"):
+        replace(base, scope=replace(base.scope, host_namespace="other-host"))
+
+
+def test_nfse_legacy_unscoped_identity_is_preserved():
+    document = _nfse_document()
+    assert build_nfse_issuance_key(document).value == (
+        "deb58d1b308b781a9fcf972445d223b71176bc4f1b79ec2268832a81276a2760"
+    )
+    assert build_nfse_request_fingerprint(document) == (
+        "8f425055c0bcffaac72cf713696774c4a556e452769819d4d84c8b9c4bcdf76b"
+    )

@@ -7,28 +7,40 @@ is created here. Official execution remains fail-closed by default.
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
+from datetime import UTC, datetime
 from typing import Any
 
+from kordena_fiscal.application.service import FiscalApplicationService
+from kordena_fiscal.archive import RetentionPolicyMetadata
 from kordena_fiscal.domain import ElectronicInvoiceModel, ExecutionScope, FiscalValidationError
 from kordena_fiscal.operations import (
     CancellationRequest,
+    CancellationResult,
     FiscalOperationsClient,
     InutilizationRequest,
+    InutilizationResult,
 )
+from kordena_fiscal.persistence.ports import PersistenceConflictError, PersistenceStateError
 from kordena_fiscal.xml import NfeAccessKey
 
-from .fiscal_runtime import FiscalOperationHandler
+from .fiscal_runtime import FiscalOperationHandler, PreflightFiscalOperationHandler
+
+EventResultRecorder = Callable[[CancellationResult | InutilizationResult], str]
 
 
-def build_provider_cancel_handler(client: FiscalOperationsClient) -> FiscalOperationHandler:
+def build_provider_cancel_handler(
+    client: FiscalOperationsClient, *, record_result: EventResultRecorder | None = None,
+    application: FiscalApplicationService | None = None,
+    archive_retention: RetentionPolicyMetadata | None = None,
+) -> FiscalOperationHandler:
     """Validate a scoped cancellation and delegate through the existing client."""
 
-    def cancel(
+    def resolve(
         scope: ExecutionScope,
         payload: Mapping[str, Any],
         idempotency_key: str | None,
-    ) -> Mapping[str, Any]:
+    ) -> CancellationRequest:
         del idempotency_key  # Request identity is deterministically derived by the domain.
         raw_key = payload.get("access_key")
         protocol = payload.get("authorization_protocol")
@@ -41,14 +53,47 @@ def build_provider_cancel_handler(client: FiscalOperationsClient) -> FiscalOpera
             raise FiscalValidationError(
                 "cancellation requires access_key, authorization_protocol and justification"
             )
-        request = CancellationRequest.build(
+        return CancellationRequest.build(
             scope=scope,
             access_key=NfeAccessKey(raw_key),
             authorization_protocol=protocol,
             justification=reason,
         )
-        result = client.cancel(request)
+
+    def preflight(scope: ExecutionScope, payload: Mapping[str, Any], key: str | None) -> None:
+        request = resolve(scope, payload, key)
+        document_id = payload.get("document_id")
+        if document_id is not None:
+            if (not isinstance(document_id, str) or not document_id.strip()
+                or application is None or archive_retention is None):
+                raise FiscalValidationError("durable cancellation is not configured")
+            try:
+                application.validate_prepared_cancellation(document_id, request)
+            except (PersistenceConflictError, PersistenceStateError) as exc:
+                raise FiscalValidationError("cancellation document is unavailable") from exc
+
+    def cancel(
+        scope: ExecutionScope, payload: Mapping[str, Any], idempotency_key: str | None
+    ) -> Mapping[str, Any]:
+        request = resolve(scope, payload, idempotency_key)
+        document_id = payload.get("document_id")
+        archive_reference: str | None = None
+        if document_id is not None:
+            preflight(scope, payload, idempotency_key)
+            assert isinstance(document_id, str)
+            assert application is not None and archive_retention is not None
+            outcome = application.cancel_prepared_document(
+                document_id=document_id, request=request, client=client,
+                archive_retention=archive_retention, occurred_at=datetime.now(UTC),
+            )
+            result = outcome.result
+            archive_reference = outcome.archive_reference
+        else:
+            result = client.cancel(request)
+            if record_result is not None:
+                archive_reference = record_result(result)
         return {
+            **({"entry_id": archive_reference} if archive_reference is not None else {}),
             "status": result.status.value,
             "request_id": result.request_id,
             "access_key": result.access_key.value,
@@ -58,17 +103,19 @@ def build_provider_cancel_handler(client: FiscalOperationsClient) -> FiscalOpera
             "rejection_message": result.rejection_message,
         }
 
-    return cancel
+    return PreflightFiscalOperationHandler(cancel, preflight)
 
 
-def build_provider_inutilization_handler(client: FiscalOperationsClient) -> FiscalOperationHandler:
+def build_provider_inutilization_handler(
+    client: FiscalOperationsClient, *, record_result: EventResultRecorder | None = None
+) -> FiscalOperationHandler:
     """Validate the canonical number range before crossing the provider boundary."""
 
-    def inutilize(
+    def resolve(
         scope: ExecutionScope,
         payload: Mapping[str, Any],
         idempotency_key: str | None,
-    ) -> Mapping[str, Any]:
+    ) -> InutilizationRequest:
         del idempotency_key  # Domain request_id is stable for retries of the same intent.
         model = payload.get("model")
         series = payload.get("series")
@@ -87,16 +134,28 @@ def build_provider_inutilization_handler(client: FiscalOperationsClient) -> Fisc
         assert isinstance(series, int) and not isinstance(series, bool)
         assert isinstance(first, int) and not isinstance(first, bool)
         assert isinstance(last, int) and not isinstance(last, bool)
-        request = InutilizationRequest.build(
+        try:
+            invoice_model = ElectronicInvoiceModel(model)
+        except ValueError as exc:
+            raise FiscalValidationError("inutilization model is invalid") from exc
+        return InutilizationRequest.build(
             scope=scope,
-            model=ElectronicInvoiceModel(model),
+            model=invoice_model,
             series=series,
             first_number=first,
             last_number=last,
             justification=reason,
         )
-        result = client.inutilize(request)
+
+    def preflight(scope: ExecutionScope, payload: Mapping[str, Any], key: str | None) -> None:
+        resolve(scope, payload, key)
+
+    def inutilize(
+        scope: ExecutionScope, payload: Mapping[str, Any], idempotency_key: str | None
+    ) -> Mapping[str, Any]:
+        result = client.inutilize(resolve(scope, payload, idempotency_key))
         return {
+            **({"entry_id": record_result(result)} if record_result is not None else {}),
             "status": result.status.value,
             "request_id": result.request_id,
             "model": result.model.value,
@@ -109,4 +168,4 @@ def build_provider_inutilization_handler(client: FiscalOperationsClient) -> Fisc
             "rejection_message": result.rejection_message,
         }
 
-    return inutilize
+    return PreflightFiscalOperationHandler(inutilize, preflight)

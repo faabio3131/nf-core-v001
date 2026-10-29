@@ -1,12 +1,13 @@
 <!doctype html>
-<html lang="pt-BR">
+<html lang="pt-BR" data-theme="light">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="FM NFCORE V1.0 — infraestrutura fiscal governada para SaaS, ERPs e plataformas digitais.">
-  <meta name="theme-color" content="#08121f">
-  <title>FM CORE V1.0 — Control Center</title>
+  <meta name="theme-color" content="#f3f6fb">
+  <title>NFCore — Gestão fiscal</title>
   <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
+  <script src="theme.js"></script>
   <link rel="stylesheet" href="styles.css">
   <link rel="stylesheet" href="runtime.css">
 </head>
@@ -15,10 +16,10 @@
 
   <section id="login-view" class="login-view" aria-labelledby="login-title" hidden>
     <div class="login-card">
-      <img class="brand-mark brand-mark--approved" src="assets/nfcore-emblem-approved.png" alt="" aria-hidden="true">
-      <p class="eyebrow">FM CORE · Infrastructure Mission Control</p>
-      <h1 id="login-title">Acessar Control Center</h1>
-      <p>Entre com sua conta. Tenant, permissões e unidades são definidos exclusivamente pela sessão autenticada.</p>
+      <img class="login-logo" src="assets/nfcore-logo-core-only.png" alt="NFCore — gestão fiscal">
+      <p class="eyebrow">Infraestrutura fiscal. Sob controle.</p>
+      <h1 id="login-title">Entrar no NFCore</h1>
+      <p>Acesse com a sua conta. A empresa, as permissões e as unidades disponíveis são definidas pelo seu login.</p>
       <form id="login-form">
         <label>E-mail<input id="login-email" name="email" type="email" autocomplete="username" required></label>
         <label for="login-password">Senha</label>
@@ -66,8 +67,8 @@
       <div class="brand-lockup">
         <img class="brand-mark brand-mark--approved" src="assets/nfcore-emblem-approved.png" alt="" aria-hidden="true">
         <div class="brand-copy">
-          <strong><span class="brand-nfcore">CORE</span></strong>
-          <small>Fiscal Infrastructure</small>
+          <strong><span class="brand-nfcore">NFCore</span></strong>
+          <small>Gestão fiscal</small>
         </div>
         <span class="version-pill">V1.0</span>
       </div>
@@ -75,54 +76,34 @@
       <div class="sidebar-foot">
         <div class="platform-health" id="runtime-health">
           <span class="health-dot" aria-hidden="true"></span>
-          <div><strong>Runtime governado</strong><small id="runtime-state">Verificando...</small></div>
+          <div><strong>Ambiente protegido</strong><small id="runtime-state">Verificando...</small></div>
         </div>
-        <p>FM Tecnologia</p>
+        <p>FM Tecnologia IA</p>
       </div>
     </aside>
 
     <main id="main" tabindex="-1">
       <header class="topbar">
         <div>
-          <p class="eyebrow">FM CORE · Infrastructure Mission Control</p>
+          <p class="eyebrow">NFCore · Gestão fiscal</p>
           <h1 id="view-title">Visão geral</h1>
         </div>
         <div class="top-actions">
           <span class="environment-control" id="authority-context">Sessão autenticada</span>
+          <button class="ghost" type="button" id="theme-toggle">Tema escuro</button>
           <button class="ghost" type="button" id="logout-action">Sair</button>
         </div>
       </header>
 
-      <section class="product-banner" aria-labelledby="brand-promise">
-        <div class="banner-copy">
-          <div class="banner-brand-approved">
-            <img class="product-banner-logo-approved" src="assets/nfcore-logo-core-only.png" alt="NF no cubo e CORE — Infrastructure Mission Control">
-            <span class="banner-kicker">FM CORE · Commercial Launch Edition · V1.0</span>
-          </div>
-          <h2 id="brand-promise" aria-label="Infraestrutura fiscal. Sob controle.">Infraestrutura fiscal. <span>Sob controle.</span></h2>
-          <p>Emissão governada de NF-e, NFC-e e NFS-e para SaaS, ERPs e plataformas digitais, com isolamento, idempotência, reconciliação e auditabilidade desde a origem.</p>
-        </div>
-        <div class="banner-assurance" aria-label="Princípios da plataforma">
-          <span>API versionada</span><span>Autoridade da sessão</span><span>Evidence-based readiness</span>
-        </div>
-      </section>
-
-      <section class="mission-strip" aria-label="Pilares FM NFCORE">
-        <span><strong>EMIT</strong> Emissão governada</span>
-        <span><strong>CONTROL</strong> Autoridade explícita</span>
-        <span><strong>TRACE</strong> Rastreabilidade end-to-end</span>
-        <span><strong>SCALE</strong> Integração segura</span>
-      </section>
-
       <section id="critical-state" class="assurance-strip" role="status" aria-live="polite">
         <span class="assurance-icon" aria-hidden="true">!</span>
-        <div><strong id="critical-state-title">Carregando readiness...</strong> <span id="critical-state-copy">A interface nunca promove produção por conta própria.</span></div>
+        <div><strong id="critical-state-title">Verificando o estado de produção…</strong> <span id="critical-state-copy">A interface nunca promove produção por conta própria.</span></div>
       </section>
 
       <section class="workspace" id="workspace" aria-live="polite"></section>
 
       <footer class="product-footer">
-        <span>FM CORE V1.0 · FM Tecnologia</span>
+        <span>NFCore V1.0 · FM Tecnologia IA</span>
         <span>Dados operacionais carregados da API autenticada; O navegador nunca é autoridade.</span>
       </footer>
     </main>
@@ -140,7 +121,25 @@
         <option value="reconcileFiscalOperation">Reconciliar</option>
       </select></label>
       <label>Unidade<input id="operation-unit" name="unit_id" required></label>
-      <label>Payload JSON<textarea id="operation-payload" rows="8" spellcheck="false">{}</textarea></label>
+      <label id="operation-document-field" hidden>Referência do documento preparado<input id="operation-document-id" maxlength="256" autocomplete="off" disabled></label>
+      <p id="operation-document-help" hidden>A referência identifica um documento já preparado no sistema. A reconciliação consulta o resultado sem reenviar a emissão.</p>
+      <fieldset id="operation-access-key-field" hidden disabled>
+        <legend>Documento fiscal</legend>
+        <label>Chave de acesso (44 dígitos)<input id="operation-access-key" inputmode="numeric" pattern="[0-9]{44}" minlength="44" maxlength="44" autocomplete="off"></label>
+      </fieldset>
+      <fieldset id="operation-cancel-field" hidden disabled>
+        <legend>Cancelamento</legend>
+        <label>Protocolo de autorização<input id="operation-authorization-protocol" maxlength="512" autocomplete="off"></label>
+        <label>Justificativa (15 a 255 caracteres)<textarea id="operation-cancel-justification" rows="4" minlength="15" maxlength="255"></textarea></label>
+      </fieldset>
+      <fieldset id="operation-inutilization-field" hidden disabled>
+        <legend>Faixa a inutilizar</legend>
+        <label>Modelo<select id="operation-inutilization-model"><option value="55">NF-e (55)</option><option value="65">NFC-e (65)</option></select></label>
+        <label>Série<input id="operation-inutilization-series" type="number" min="0" max="999" step="1"></label>
+        <label>Número inicial<input id="operation-inutilization-first" type="number" min="1" step="1"></label>
+        <label>Número final<input id="operation-inutilization-last" type="number" min="1" step="1"></label>
+        <label>Justificativa (15 a 255 caracteres)<textarea id="operation-inutilization-justification" rows="4" minlength="15" maxlength="255"></textarea></label>
+      </fieldset>
       <p id="operation-error" class="form-error" role="alert"></p>
       <div class="dialog-actions">
         <button type="button" class="ghost" id="operation-cancel">Cancelar</button>

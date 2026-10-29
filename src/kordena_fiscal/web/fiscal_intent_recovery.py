@@ -15,9 +15,11 @@ from uuid import uuid4
 
 from fastapi import HTTPException
 
+from kordena_fiscal.archive import FiscalArchiveKind
 from kordena_fiscal.control_plane.models import ControlPlaneAuditAction, ControlPlaneAuditEvent
 from kordena_fiscal.domain import ExecutionScope, FiscalEnvironment
 from kordena_fiscal.lifecycle import IdempotencyKey
+from kordena_fiscal.operations.event_archive import EVENT_RESULT_MEDIA_TYPE, event_archive_reference
 from kordena_fiscal.persistence.ports import FiscalUnitOfWork, FiscalUnitOfWorkFactory
 from kordena_fiscal.security.human_identity import AuthenticatedHuman, PortalPermission
 
@@ -318,6 +320,18 @@ class FiscalIntentRecovery:
                     document_id = None
             if document_id is not None:
                 return self.finish(auth, scope, row, document_id)
+        if not matches and row["operation"] in {"cancelFiscalDocument", "inutilizeFiscalRange"}:
+            reference = event_archive_reference(str(row["operation"]), str(row["original_key"]))
+            with self.factory() as uow:
+                evidence = [
+                    entry for entry in uow.archive.list_for_document(scope, reference)
+                    if entry.kind is FiscalArchiveKind.FISCAL_EVENT
+                    and entry.media_type == EVENT_RESULT_MEDIA_TYPE
+                    and entry.scope.correlation_id == row["original_key"]
+                    and entry.scope.identity_partition_key == scope.identity_partition_key
+                ]
+            if len(evidence) == 1:
+                return self.finish(auth, scope, row, evidence[0].entry_id)
         if len(matches) != 1:
             self.blocked(auth, scope, str(row["intent_id"]), "FISCAL_RECONCILIATION_REQUIRED")
         return self.finish(auth, scope, row, matches[0].entry_id)

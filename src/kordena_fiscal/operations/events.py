@@ -385,20 +385,41 @@ class FiscalCancellationService:
         occurred_at: datetime,
         correlation_id: str,
     ) -> CancellationOutcome:
+        requested = self.prepare(
+            lifecycle=lifecycle, occurred_at=occurred_at, correlation_id=correlation_id
+        )
+        result = self._client.cancel(request)
+        return self.complete(
+            requested=requested, result=result, occurred_at=occurred_at,
+            correlation_id=correlation_id,
+        )
+
+    def prepare(
+        self, *, lifecycle: FiscalStateSnapshot, occurred_at: datetime, correlation_id: str
+    ) -> FiscalStateSnapshot:
         if not isinstance(lifecycle, FiscalStateSnapshot):
             raise FiscalValidationError("lifecycle must be FiscalStateSnapshot")
         if lifecycle.state is not FiscalDocumentState.AUTHORIZED:
             raise FiscalValidationError("only an AUTHORIZED document can be cancelled")
         _aware(occurred_at, "occurred_at")
         correlation_id = _required(correlation_id, "correlation_id", 256)
-        requested = self._state_machine.transition(
+        return self._state_machine.transition(
             lifecycle,
             FiscalDocumentState.CANCEL_REQUESTED,
             occurred_at=occurred_at,
             reason="fiscal cancellation requested",
             correlation_id=correlation_id,
         )
-        result = self._client.cancel(request)
+    def complete(
+        self, *, requested: FiscalStateSnapshot, result: CancellationResult,
+        occurred_at: datetime, correlation_id: str,
+    ) -> CancellationOutcome:
+        if requested.state is not FiscalDocumentState.CANCEL_REQUESTED:
+            raise FiscalValidationError("cancellation must have a requested lifecycle")
+        if not isinstance(result, CancellationResult):
+            raise FiscalValidationError("validated cancellation result is required")
+        _aware(occurred_at, "occurred_at")
+        correlation_id = _required(correlation_id, "correlation_id", 256)
         if result.status is FiscalEventStatus.ACCEPTED:
             final = self._state_machine.transition(
                 requested,

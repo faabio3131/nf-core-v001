@@ -107,7 +107,7 @@ class XmlValidationResult:
 
 @dataclass(frozen=True, slots=True)
 class NfceXmlPayload:
-    """NFC-e XML bytes tied to one validated access key before transport/signature stages."""
+    """Shared model-55/65 XML identity check; legacy public name remains compatible."""
 
     access_key: NfeAccessKey
     xml: bytes

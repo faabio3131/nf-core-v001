@@ -32,3 +32,10 @@ def test_invalid_query_fails_before_provider_execution() -> None:
     with pytest.raises(FiscalValidationError):
         handlers["queryFiscalDocument"](None, {"access_key": "invalid"}, None)  # type: ignore[arg-type]
     assert gateway.query_calls == ()
+
+
+@pytest.mark.parametrize("parameter", ["application", "prepared_xml_gateway", "archive_retention"])
+def test_partial_preparation_configuration_cannot_silently_enable_operations(parameter):
+    client = FiscalOperationsClient(FakeFiscalOperationsGateway())
+    with pytest.raises(TypeError, match="application, gateway and retention"):
+        build_provider_operation_handlers(client, **{parameter: object()})

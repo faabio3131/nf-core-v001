@@ -7,6 +7,7 @@ No provider, secret, production grant, or synthetic fiscal result is created her
 from __future__ import annotations
 
 from collections.abc import Callable, Mapping
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any
 from uuid import uuid4
@@ -45,6 +46,18 @@ FiscalOperationHandler = Callable[
     [ExecutionScope, Mapping[str, Any], str | None],
     Mapping[str, Any],
 ]
+
+
+@dataclass(frozen=True, slots=True)
+class PreflightFiscalOperationHandler:
+    execute: FiscalOperationHandler
+    preflight: Callable[[ExecutionScope, Mapping[str, Any], str | None], None]
+
+    def __call__(
+        self, scope: ExecutionScope, payload: Mapping[str, Any], key: str | None
+    ) -> Mapping[str, Any]:
+        return self.execute(scope, payload, key)
+
 
 _CAPABILITY_BY_OPERATION: dict[str, FiscalCapability] = {
     "queryArchiveReference": FiscalCapability.ARCHIVE_READ,
@@ -111,6 +124,22 @@ class CanonicalFiscalOperationPath:
             environment=environment,
             correlation_id=correlation_id,
         )
+
+    def validate_prepared(
+        self,
+        *,
+        operation_id: str,
+        scope: ExecutionScope,
+        payload: Mapping[str, Any],
+        idempotency_key: str | None,
+    ) -> None:
+        """Read-only opt-in validation before a Portal intent is persisted."""
+        handler = self._handlers.get(operation_id)
+        if handler is None:
+            raise FiscalRuntimeUnavailableError("canonical fiscal operation is not configured")
+        preflight = getattr(handler, "preflight", None)
+        if callable(preflight):
+            preflight(scope, payload, idempotency_key)
 
     def execute(
         self,
@@ -291,6 +320,31 @@ class CanonicalPortalOperationExecutor:
     @property
     def configured_operations(self) -> tuple[str, ...]:
         return self._path.configured_operations
+
+    def validate_prepared(
+        self,
+        *,
+        operation_id: str,
+        scope: ExecutionScope,
+        payload: Mapping[str, Any],
+        idempotency_key: str | None,
+    ) -> None:
+        """Scope and permission were checked by the canonical Portal intent authority."""
+        try:
+            self._path.validate_prepared(
+                operation_id=operation_id,
+                scope=scope,
+                payload=payload,
+                idempotency_key=idempotency_key,
+            )
+        except FiscalValidationError as exc:
+            raise HTTPException(
+                status_code=400,
+                detail={
+                    "code": "INVALID_PREPARED_DOCUMENT",
+                    "message": "Prepared document reference is invalid or unavailable",
+                },
+            ) from exc
 
     def execute(
         self,

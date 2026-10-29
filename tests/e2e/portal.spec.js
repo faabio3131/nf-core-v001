@@ -1,5 +1,39 @@
 import { expect, test } from "@playwright/test";
 
+for (const queryStatus of ["authorized", "pending", "not_found"]) {
+  test(`fiscal query displays ${queryStatus} without inferring a receipt`, async ({ page, context }) => {
+    const accessKey = "35251012345678000190550010000000011000000010";
+    await page.route("**/v1/portal/bootstrap", route => route.fulfill({json: {
+      tenant_id: "tenant-e2e", unit_ids: ["unit-a"], role: "owner",
+      permissions: ["portal.read", "document.query"], supported_documents: ["nfe"],
+      projection: {configured_fiscal_operations: ["queryFiscalDocument"],
+        authorized_units: [{unit_id: "unit-a", display_name: "Synthetic unit", environments: ["homologation"]}]},
+    }}));
+    await page.route("**/v1/portal/surfaces/**", route => route.fulfill({json: {rows: []}}));
+    await page.route("**/v1/portal/operations/queryFiscalDocument", route => {
+      expect(route.request().postDataJSON()).toEqual({access_key: accessKey, unit_id: "unit-a", environment: "homologation"});
+      expect(route.request().headers()["idempotency-key"]).toBeUndefined();
+      return route.fulfill({json: {status: queryStatus, access_key: accessKey,
+        protocol_reference: queryStatus === "authorized" ? "<b>synthetic-protocol</b>" : null}});
+    });
+    await context.addCookies([
+      {name: "nfcore_session", value: "opaque-session", domain: "127.0.0.1", path: "/"},
+      {name: "nfcore_csrf", value: "csrf-e2e", domain: "127.0.0.1", path: "/"},
+    ]);
+    await page.goto("/");
+    await page.getByRole("button", {name: "Documentos", exact: true}).click();
+    await page.getByRole("button", {name: "Executar operação governada"}).click();
+    await page.locator("#operation-id").selectOption("queryFiscalDocument");
+    await page.locator("#operation-access-key").fill(accessKey);
+    await page.getByRole("button", {name: "Executar", exact: true}).click();
+    const result = page.locator("#fiscal-operation-result");
+    await expect(result).toContainText(`Resultado da consulta: ${queryStatus}.`);
+    await expect(result).toContainText(accessKey);
+    await expect(result).toContainText(queryStatus === "authorized" ? "<b>synthetic-protocol</b>" : "Nenhum protocolo informado");
+    await expect(result.locator("b")).toHaveCount(0);
+  });
+}
+
 test("authenticated portal loads governed tenant context and real surface", async ({ page, context }) => {
   await page.route("**/v1/portal/bootstrap", async (route) => {
     await route.fulfill({
@@ -36,13 +70,14 @@ test("authenticated portal loads governed tenant context and real surface", asyn
 
   await page.goto("/");
   await expect(page.getByText("tenant-e2e · owner")).toBeVisible();
-  await expect(page.locator("#critical-state-title")).toHaveText("BLOCKED_EXTERNAL");
+  await expect(page.locator("#critical-state-title")).toHaveText("Bloqueado por dependência externa");
   await page.getByRole("button", { name: "Documentos" }).click();
   await expect(page.locator(".grid-list .row strong").filter({hasText: "DOC-E2E-1"})).toBeVisible();
   await expect(page.locator(".grid-list .row .badge").filter({hasText: "AUTHORIZED"})).toBeVisible();
 });
 
-test("governed mutation sends csrf and idempotency proof", async ({ page, context }) => {
+for (const fiscalMutation of ["issueFiscalDocument", "cancelFiscalDocument"]) {
+test(`${fiscalMutation} sends document reference, csrf and idempotency proof`, async ({ page, context }) => {
   await page.route("**/v1/portal/bootstrap", async (route) => {
     await route.fulfill({
       status: 200,
@@ -53,9 +88,9 @@ test("governed mutation sends csrf and idempotency proof", async ({ page, contex
         tenant_id: "tenant-e2e",
         unit_ids: ["unit-a"],
         role: "owner",
-        permissions: ["portal.read", "document.query", "document.issue"],
+        permissions: ["portal.read", "document.query", "document.issue", "document.cancel"],
         supported_documents: ["nfe", "nfce", "nfse"],
-        projection: { production_state: "BLOCKED_EXTERNAL", configured_fiscal_operations: ["issueFiscalDocument"],
+        projection: { production_state: "BLOCKED_EXTERNAL", configured_fiscal_operations: [fiscalMutation],
           authorized_units: [{unit_id: "unit-a", display_name: "Synthetic unit A", environments: ["homologation"]}] },
       }),
     });
@@ -67,9 +102,10 @@ test("governed mutation sends csrf and idempotency proof", async ({ page, contex
   let seenCsrf = "";
   let seenIdempotency = "";
   await page.route("**/v1/portal/fiscal-intents?**", (route) => route.fulfill({json:{rows:[]}}));
-  await page.route("**/v1/portal/fiscal-intents/prepare/issueFiscalDocument", (route) => {
+  await page.route(`**/v1/portal/fiscal-intents/prepare/${fiscalMutation}`, (route) => {
     expect(route.request().headers()["x-csrf-token"]).toBe("csrf-e2e");
     expect(route.request().headers()["idempotency-key"].length).toBeGreaterThan(10);
+    expect(route.request().postDataJSON().document_id).toBe("DOC-E2E-PREPARED");
     return route.fulfill({json:{intent_id:"synthetic-ui-proof-intent",state:"prepared"}});
   });
   await page.route("**/v1/portal/fiscal-intents/*/resume", async (route) => {
@@ -87,12 +123,18 @@ test("governed mutation sends csrf and idempotency proof", async ({ page, contex
   await page.getByRole("button", { name: "Emissões" }).click();
   await page.getByRole("button", { name: "Executar operação governada" }).click();
   await page.locator("#operation-unit").fill("unit-a");
-  await page.locator("#operation-payload").fill('{"document":{"model":"55"}}');
+  await page.locator("#operation-document-id").fill("DOC-E2E-PREPARED");
+  if (fiscalMutation === "cancelFiscalDocument") {
+    await page.locator("#operation-access-key").fill("35251012345678000190550010000000011000000010");
+    await page.locator("#operation-authorization-protocol").fill("SYNTHETIC-AUTH");
+    await page.locator("#operation-cancel-justification").fill("Justificativa sintetica de cancelamento");
+  }
   await page.getByRole("button", { name: "Executar", exact: true }).click();
 
   await expect.poll(() => seenCsrf).toBe("csrf-e2e");
   expect(seenIdempotency.length).toBeGreaterThan(10);
 });
+}
 
 test("activation fragment completes password setup without keeping token in URL", async ({ page }) => {
   let submittedToken = "";
@@ -245,7 +287,7 @@ test("mobile overview does not overflow the viewport", async ({ page, context })
 
   const geometry = await page.evaluate(() => {
     const doc = document.documentElement;
-    const banner = document.querySelector(".product-banner");
+    const banner = document.querySelector("#critical-state");
     const main = document.querySelector("main");
     const nav = document.querySelector("nav");
     if (!(banner instanceof HTMLElement) || !(main instanceof HTMLElement) || !(nav instanceof HTMLElement)) {
@@ -308,7 +350,7 @@ test("mobile overview keeps premium header compact", async ({ page, context }) =
   const geometry = await page.evaluate(() => {
     const sidebar = document.querySelector(".sidebar");
     const topbar = document.querySelector(".topbar");
-    const banner = document.querySelector(".product-banner");
+    const banner = document.querySelector("#critical-state");
     if (!(sidebar instanceof HTMLElement) || !(topbar instanceof HTMLElement) || !(banner instanceof HTMLElement)) {
       throw new Error("Expected premium mobile layout elements");
     }
@@ -470,21 +512,16 @@ for (const width of [320, 390, 1280]) {
     }));
 
     await page.goto("/");
-    const banner = page.locator(".product-banner");
-    const pillars = page.locator(".mission-strip");
     const readiness = page.locator("#critical-state");
-    await expect(banner).toBeVisible();
-    await expect(pillars).toBeVisible();
-    await expect(readiness).toContainText("HUMAN_APPROVAL_REQUIRED");
+    await expect(page.locator(".product-banner")).toHaveCount(0);
+    await expect(readiness).toContainText("Aguardando aprovação humana");
 
     // A user leaving a scrolled overview must see tools immediately.
     await page.evaluate(() => window.scrollTo({ top: 600, behavior: "instant" }));
     for (const name of ["Documentos", "Emissões", "Onboarding", "Unidades", "Suporte"]) {
       await page.getByRole("button", { name, exact: true }).click();
-      await expect(banner).toBeHidden();
-      await expect(pillars).toBeHidden();
       await expect(readiness).toBeVisible();
-      await expect(readiness).toContainText("HUMAN_APPROVAL_REQUIRED");
+      await expect(readiness).toContainText("Aguardando aprovação humana");
       await expect(page.locator("#workspace .panel").first()).toBeVisible();
       const workspaceTop = await page.locator("#workspace").evaluate((element) => element.getBoundingClientRect().top);
       expect(workspaceTop).toBeGreaterThanOrEqual(0);
@@ -493,8 +530,6 @@ for (const width of [320, 390, 1280]) {
     }
 
     await page.getByRole("button", { name: "Visão geral", exact: true }).click();
-    await expect(banner).toBeVisible();
-    await expect(pillars).toBeVisible();
     await expect(readiness).toBeVisible();
     await expect(page.locator("#app-shell")).not.toHaveClass(/is-operational-view/);
   });

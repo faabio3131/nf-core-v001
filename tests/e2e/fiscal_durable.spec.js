@@ -43,7 +43,7 @@ test("retry after post-commit failure reuses intent and shows one durable reserv
   await login(page);
   await page.getByRole("button", {name: "Emissões", exact: true}).click();
   await page.getByRole("button", {name: "Executar operação governada"}).click();
-  await page.locator("#operation-payload").fill('{"document_kind":"nfe","synthetic_test":true}');
+  await page.locator("#operation-document-id").fill("synthetic-prepared-reference");
   const keys = [];
   page.on("request", (request) => {
     if (request.url().includes("/fiscal-intents/") && request.url().endsWith("/resume")) keys.push(request.headers()["idempotency-key"]);
@@ -60,4 +60,28 @@ test("retry after post-commit failure reuses intent and shows one durable reserv
   const body = await response.json();
   expect(body.rows.filter((row) => row.document_id?.startsWith("HTTP-RESERVATION-"))).toHaveLength(1);
   // This proves a reservation and replay, never SEFAZ/provider issuance or production.
+});
+
+
+test("prepared document reconciliation uses durable authority and preserves confirmed result", async ({page}) => {
+  await login(page);
+  await page.getByRole("button", {name: "Reconciliação", exact: true}).click();
+  await page.getByRole("button", {name: "Executar operação governada"}).click();
+  await expect(page.locator("#operation-id")).toHaveValue("reconcileFiscalOperation");
+  await expect(page.locator("#operation-access-key-field")).not.toBeVisible();
+  await page.locator("#operation-document-id").fill("missing-prepared-document");
+  await page.getByRole("button", {name: "Executar", exact: true}).click();
+  await expect(page.locator("#operation-error")).toContainText("Referência inválida");
+  await expect(page.locator("#operation-dialog")).toBeVisible();
+  await page.locator("#operation-document-id").fill("PREPARED-RECOVERY-a");
+  await page.getByRole("button", {name: "Executar", exact: true}).click();
+  await expect(page.locator("#prepared-document-result")).toContainText("O recibo do pedido não confirma autorização fiscal");
+  await page.reload();
+  await page.getByRole("button", {name: "Emissões", exact: true}).click();
+  const response = await page.request.get(`${origin}/v1/portal/surfaces/issuances?unit_id=unit-a`);
+  const body = await response.json();
+  const row = body.rows.find((item) => item.document_id === "PREPARED-RECOVERY-a");
+  expect(row).toBeTruthy();
+  expect(row.state || row.status).toBe("authorized");
+  // Only the provider boundary is synthetic; HTTP, auth, intent and database are real local paths.
 });

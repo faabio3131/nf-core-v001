@@ -40,6 +40,11 @@ test("portal keeps accessible login and governed operation surfaces", () => {
   assert.match(html, /autocomplete="current-password"/);
   assert.match(html, /aria-labelledby="operation-dialog-title"/);
   assert.match(html, /role="alert"/);
+  assert.doesNotMatch(html, /Payload JSON/);
+  assert.match(html, /id="operation-access-key"/);
+  assert.match(html, /id="operation-authorization-protocol"/);
+  assert.match(html, /id="operation-inutilization-field"/);
+  assert.match(script, /operationPayloadForSelection/);
 });
 
 

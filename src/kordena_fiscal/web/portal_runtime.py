@@ -427,8 +427,28 @@ class DurableHumanPortalExecutor:
             return self._capability_rows(authority, scope)[offset : offset + limit]
         rows: list[Mapping[str, Any]] = []
         with self._unit_of_work_factory() as uow:
+            if surface_id in {"inutilizations", "errors", "reconciliation"}:
+                from kordena_fiscal.operations.event_archive import event_result_projection
+
+                for entry in uow.archive.list_for_scope(scope, limit=limit, offset=offset):
+                    outcome = event_result_projection(entry)
+                    if outcome is None:
+                        continue
+                    if (
+                        surface_id == "inutilizations"
+                        and outcome["operation"] != "inutilizeFiscalRange"
+                    ):
+                        continue
+                    if surface_id == "errors" and outcome["status"] != "rejected":
+                        continue
+                    if surface_id == "reconciliation" and outcome["status"] != "pending":
+                        continue
+                    rows.append({
+                        **base, **outcome, "record_type": "fiscal_event",
+                        "entry_id": entry.entry_id, "archived_at": entry.archived_at.isoformat(),
+                    })
             if surface_id == "inutilizations":
-                return tuple(
+                rows.extend(
                     {
                         **base,
                         "record_type": "outbox",
@@ -447,6 +467,7 @@ class DurableHumanPortalExecutor:
                         operations=frozenset({"inutilize", "inutilizefiscalrange"}),
                     )
                 )
+                return tuple(rows)
             if surface_id in {"documents", "issuances", "errors"}:
                 for snapshot in uow.lifecycle.list_for_scope(
                     scope,
@@ -626,8 +647,23 @@ class DurableHumanPortalExecutor:
             raise _portal_error(
                 503, "FISCAL_RUNTIME_NOT_READY", "Fiscal operation is not configured"
             )
+        recovery = FiscalIntentRecovery(self._unit_of_work_factory)
+        # Validate authority before resolving a reference, and do not create an
+        # uncertain execution receipt for a deterministically invalid document.
+        recovery.permission(authority, operation_id)
+        if not idempotency_key or not idempotency_key.strip():
+            raise _portal_error(400, "MISSING_IDEMPOTENCY_KEY", "Idempotency key is required")
+        scope = recovery.scope(authority, payload)
+        preflight = getattr(self._operation_executor, "validate_prepared", None)
+        if callable(preflight):
+            preflight(
+                operation_id=operation_id,
+                scope=scope,
+                payload=payload,
+                idempotency_key=idempotency_key,
+            )
         try:
-            return FiscalIntentRecovery(self._unit_of_work_factory).prepare(
+            return recovery.prepare(
                 authority, operation_id, payload, idempotency_key
             )
         except PersistenceConflictError as exc:

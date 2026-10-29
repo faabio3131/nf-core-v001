@@ -13,7 +13,7 @@ for (const width of [320, 390, 1280]) {
   test(`durable portal preserves scoped support and keyboard details at ${width}px`, async ({page}) => {
     await page.setViewportSize({width, height: 900});
     await login(page);
-    await expect(page.locator(".product-banner-logo-approved")).toBeVisible();
+    await expect(page.locator(".sidebar .brand-mark")).toBeVisible();
     await page.getByRole("button", {name: "Suporte", exact: true}).click();
     await expect(page.locator("#workspace")).toContainText("Atendimento, SLA, incidentes e saúde operacional externa ainda não estão certificados");
     await expect(page.locator("#fiscal-unit-filter option")).toHaveCount(2);
@@ -91,12 +91,13 @@ test("an in-flight submit is locked and a read cannot erase a pending mutation k
   await page.goto(origin);
   await page.getByRole("button", {name: "Emissões", exact: true}).click();
   await page.getByRole("button", {name: "Executar operação governada"}).click();
-  await page.locator("#operation-payload").fill('{"synthetic_intent":"same-content"}');
+  await page.locator("#operation-document-id").fill("synthetic-prepared-document");
   await page.locator("#operation-form").evaluate((form) => {form.requestSubmit(); form.requestSubmit();});
   await expect(page.locator('#operation-form button[type="submit"]')).toBeDisabled();
   await expect(page.locator("#operation-error")).toContainText("Synthetic outcome unknown");
   expect(keys).toHaveLength(1);
   await page.locator("#operation-id").selectOption("queryFiscalDocument");
+  await page.locator("#operation-access-key").fill("35191111111111111111550010000000011000000010");
   await page.getByRole("button", {name: "Executar", exact: true}).click();
   await expect(page.locator("#operation-dialog")).not.toBeVisible();
   await page.getByRole("button", {name: "Executar operação governada"}).click();

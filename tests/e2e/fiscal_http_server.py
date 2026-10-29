@@ -58,6 +58,14 @@ inutilization_fixture = importlib.util.module_from_spec(inutilization_spec)
 inutilization_spec.loader.exec_module(inutilization_fixture)
 
 
+recovery_spec = importlib.util.spec_from_file_location(
+    "prepared_recovery_fixture", ROOT / "tests/support/prepared_recovery_fixture.py"
+)
+assert recovery_spec and recovery_spec.loader
+recovery_fixture = importlib.util.module_from_spec(recovery_spec)
+recovery_spec.loader.exec_module(recovery_fixture)
+
+
 def build_app(database):
     fixture.seed(database)
     configuration_fixture.seed(database)
@@ -92,6 +100,9 @@ def build_app(database):
         service,
         handlers={
             "issueFiscalDocument": reserve_internal,
+            "reconcileFiscalOperation": recovery_fixture.seed_and_handler(
+                service, fixture.scope(), fixture.NOW
+            ),
             "inutilizeFiscalRange": inutilization_fixture.internal_handler(
                 database, response_loss=True
             ),
