@@ -14,13 +14,16 @@ def test_v1_commercial_identity_is_applied() -> None:
 
     assert "FM NFCORE V1.0" in html
     assert "Infraestrutura fiscal. Sob controle." in html
-    assert "FM CORE · Commercial Launch Edition · V1.0" in html
+    assert "Gestão fiscal" in html
+    assert 'data-theme="light"' in html
+    assert 'id="theme-toggle"' in html
+    assert 'class="product-banner' not in html
     assert "--brand-primary: #2563ff" in css
     assert "--brand-cyan: #00e5ff" in css
-    assert html.count('src="assets/nfcore-emblem-approved.png"') >= 2
+    assert html.count('src="assets/nfcore-emblem-approved.png"') >= 1
     assert 'src="assets/nfcore-logo-core-only.png"' in html
-    assert 'class="product-banner-logo-approved"' in html
-    assert 'alt="NF no cubo e CORE — Infrastructure Mission Control"' in html
+    assert 'class="login-logo"' in html
+    assert 'alt="NFCore — gestão fiscal"' in html
     assert 'src="assets/fm-nfcore-mark.svg"' not in html
     assert 'href="assets/favicon.svg"' in html
 
@@ -96,7 +99,7 @@ def test_portal_build_fingerprints_css_and_js_assets() -> None:
     build_script = (ROOT / "scripts" / "build-portal.mjs").read_text(encoding="utf-8")
 
     assert 'createHash("sha256")' in build_script
-    assert '["styles.css", "runtime.css", "app.js"]' in build_script
+    assert '["styles.css", "runtime.css", "app.js", "theme.js"]' in build_script
     assert '?v=${digest}' in build_script
 
 

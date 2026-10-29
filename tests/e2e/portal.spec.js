@@ -70,7 +70,7 @@ test("authenticated portal loads governed tenant context and real surface", asyn
 
   await page.goto("/");
   await expect(page.getByText("tenant-e2e · owner")).toBeVisible();
-  await expect(page.locator("#critical-state-title")).toHaveText("BLOCKED_EXTERNAL");
+  await expect(page.locator("#critical-state-title")).toHaveText("Bloqueado por dependência externa");
   await page.getByRole("button", { name: "Documentos" }).click();
   await expect(page.locator(".grid-list .row strong").filter({hasText: "DOC-E2E-1"})).toBeVisible();
   await expect(page.locator(".grid-list .row .badge").filter({hasText: "AUTHORIZED"})).toBeVisible();
@@ -287,7 +287,7 @@ test("mobile overview does not overflow the viewport", async ({ page, context })
 
   const geometry = await page.evaluate(() => {
     const doc = document.documentElement;
-    const banner = document.querySelector(".product-banner");
+    const banner = document.querySelector("#critical-state");
     const main = document.querySelector("main");
     const nav = document.querySelector("nav");
     if (!(banner instanceof HTMLElement) || !(main instanceof HTMLElement) || !(nav instanceof HTMLElement)) {
@@ -350,7 +350,7 @@ test("mobile overview keeps premium header compact", async ({ page, context }) =
   const geometry = await page.evaluate(() => {
     const sidebar = document.querySelector(".sidebar");
     const topbar = document.querySelector(".topbar");
-    const banner = document.querySelector(".product-banner");
+    const banner = document.querySelector("#critical-state");
     if (!(sidebar instanceof HTMLElement) || !(topbar instanceof HTMLElement) || !(banner instanceof HTMLElement)) {
       throw new Error("Expected premium mobile layout elements");
     }
@@ -512,21 +512,16 @@ for (const width of [320, 390, 1280]) {
     }));
 
     await page.goto("/");
-    const banner = page.locator(".product-banner");
-    const pillars = page.locator(".mission-strip");
     const readiness = page.locator("#critical-state");
-    await expect(banner).toBeVisible();
-    await expect(pillars).toBeVisible();
-    await expect(readiness).toContainText("HUMAN_APPROVAL_REQUIRED");
+    await expect(page.locator(".product-banner")).toHaveCount(0);
+    await expect(readiness).toContainText("Aguardando aprovação humana");
 
     // A user leaving a scrolled overview must see tools immediately.
     await page.evaluate(() => window.scrollTo({ top: 600, behavior: "instant" }));
     for (const name of ["Documentos", "Emissões", "Onboarding", "Unidades", "Suporte"]) {
       await page.getByRole("button", { name, exact: true }).click();
-      await expect(banner).toBeHidden();
-      await expect(pillars).toBeHidden();
       await expect(readiness).toBeVisible();
-      await expect(readiness).toContainText("HUMAN_APPROVAL_REQUIRED");
+      await expect(readiness).toContainText("Aguardando aprovação humana");
       await expect(page.locator("#workspace .panel").first()).toBeVisible();
       const workspaceTop = await page.locator("#workspace").evaluate((element) => element.getBoundingClientRect().top);
       expect(workspaceTop).toBeGreaterThanOrEqual(0);
@@ -535,8 +530,6 @@ for (const width of [320, 390, 1280]) {
     }
 
     await page.getByRole("button", { name: "Visão geral", exact: true }).click();
-    await expect(banner).toBeVisible();
-    await expect(pillars).toBeVisible();
     await expect(readiness).toBeVisible();
     await expect(page.locator("#app-shell")).not.toHaveClass(/is-operational-view/);
   });

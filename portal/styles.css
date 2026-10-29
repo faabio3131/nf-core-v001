@@ -847,3 +847,75 @@ dialog::backdrop { background: rgba(2,7,13,.75); backdrop-filter: blur(7px); }
   font-size: 18px;
   letter-spacing: -.035em;
 }
+
+/* ---------------------------------------------------------------
+   Logo da tela de entrada e botão de tema
+   --------------------------------------------------------------- */
+.login-logo { display: block; width: min(240px, 70%); height: auto; margin: 0 0 18px; border-radius: 10px; }
+#theme-toggle { white-space: nowrap; }
+
+/* ---------------------------------------------------------------
+   Tema claro (padrão do painel). A tela de entrada permanece escura.
+   O tema escuro continua disponível pelo botão "Tema escuro".
+   --------------------------------------------------------------- */
+html[data-theme="light"] body:has(#app-shell:not([hidden])) { background: #f3f6fb; }
+html[data-theme="light"] body:has(#app-shell:not([hidden]))::before { display: none; }
+html[data-theme="light"] .shell,
+html[data-theme="light"] dialog {
+  color-scheme: light;
+  color: #0f1f33;
+  --ink-950: #f3f6fb; --ink-900: #ffffff; --ink-850: #f8fafd;
+  --surface-800: #ffffff; --surface-750: #eef3fa; --surface-700: #e3ebf5;
+  --line: #c9d6e6; --line-soft: rgba(30, 70, 130, .16);
+  --text: #0f1f33; --text-soft: #1d3350; --muted: #5b6f87; --muted-strong: #3d536d;
+  --brand-primary: #1d4ed8; --brand-bright: #2563eb; --brand-cyan: #0e7490; --brand-cyan-soft: #0891b2;
+  --shadow-focus: 0 0 0 4px rgba(37, 99, 235, .18);
+}
+html[data-theme="light"] .shell { background: #f3f6fb; }
+html[data-theme="light"] .sidebar {
+  background: #0b1c32; backdrop-filter: none;
+  --text: #f8fafc; --text-soft: #e8f1ff; --muted: #8fa8c2; --muted-strong: #b6c9dc;
+  --line-soft: rgba(75, 131, 185, .24);
+}
+html[data-theme="light"] .sidebar .nav-button { color: #dbe7f3; }
+html[data-theme="light"] .sidebar .nav-button[aria-current] { color: #ffffff; }
+html[data-theme="light"] .shell .panel,
+html[data-theme="light"] .shell .metric,
+html[data-theme="light"] .shell .grid-list {
+  background: #ffffff; border: 1px solid #d5e0ee; box-shadow: 0 6px 24px rgba(15, 40, 80, .06);
+}
+html[data-theme="light"] .shell .panel h2,
+html[data-theme="light"] .shell .panel h3,
+html[data-theme="light"] .shell .metric strong,
+html[data-theme="light"] .shell h1 { color: #0f1f33; }
+html[data-theme="light"] .shell .metric span,
+html[data-theme="light"] .shell .metric small,
+html[data-theme="light"] .shell .panel p { color: #5b6f87; }
+html[data-theme="light"] .shell .row { background: #f6f9fd; border: 1px solid #dbe5f1; }
+html[data-theme="light"] .shell .row:hover { background: #eef4fc; border-color: #9db8e0; }
+html[data-theme="light"] .shell .row strong { color: #0f1f33; }
+html[data-theme="light"] .shell .row span { color: #44586f; }
+html[data-theme="light"] .shell .row summary,
+html[data-theme="light"] .shell .row details { color: #1d3350; }
+html[data-theme="light"] .shell .eyebrow { color: #2563eb; }
+html[data-theme="light"] .shell .assurance-strip { background: #fff8e6; border: 1px solid #f1d58a; color: #6b4a00; }
+html[data-theme="light"] .shell .assurance-strip strong,
+html[data-theme="light"] .shell .assurance-strip span { color: #6b4a00; }
+html[data-theme="light"] .shell button.ghost,
+html[data-theme="light"] .shell .environment-control { background: #ffffff; color: #1d3350; border: 1px solid #c9d6e6; }
+html[data-theme="light"] .shell .empty-state,
+html[data-theme="light"] .shell .loading-state { background: #f6f9fd; color: #5b6f87; border: 1px dashed #c9d6e6; }
+html[data-theme="light"] .shell .badge,
+html[data-theme="light"] .shell .status-pill { background: #e8f0fb; color: #1d3350; border: 1px solid #c9d6e6; }
+html[data-theme="light"] .shell input,
+html[data-theme="light"] .shell select,
+html[data-theme="light"] .shell textarea,
+html[data-theme="light"] dialog input,
+html[data-theme="light"] dialog select,
+html[data-theme="light"] dialog textarea { background: #ffffff; color: #0f1f33; border: 1px solid #c9d6e6; }
+html[data-theme="light"] dialog { background: #ffffff; border: 1px solid #d5e0ee; }
+html[data-theme="light"] .product-footer { color: #5b6f87; border-top-color: #d5e0ee; }
+
+@media (max-width: 720px) {
+  .top-actions { grid-template-columns: minmax(0, 1fr) auto auto; }
+}

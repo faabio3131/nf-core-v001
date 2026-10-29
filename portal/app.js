@@ -1625,6 +1625,18 @@ function buildNavigation() {
   }
 }
 
+/** @param {unknown} value */
+function productionStateLabel(value) {
+  const labels = {
+    HUMAN_APPROVAL_REQUIRED: "Aguardando aprovação humana",
+    BLOCKED_EXTERNAL: "Bloqueado por dependência externa",
+    READY: "Pronto",
+    APPROVED: "Aprovado",
+  };
+  const key = text(value);
+  return /** @type {Record<string,string>} */ (labels)[key] || key;
+}
+
 /** @param {BootstrapState} state */
 function applyBootstrap(state) {
   bootstrapState = state;
@@ -1632,10 +1644,10 @@ function applyBootstrap(state) {
   authorityContext.textContent = `${state.tenant_id} · ${state.role}`;
   runtimeState.textContent = "API autenticada conectada";
   const productionState = state.projection.production_state || state.projection.readiness || safetyStates.approval;
-  criticalTitle.textContent = text(productionState);
+  criticalTitle.textContent = productionStateLabel(productionState);
   criticalCopy.textContent = /^(READY|APPROVED)$/i.test(text(productionState))
-    ? "Readiness retornado pelo backend; operações continuam sujeitas a RBAC e gates fiscais."
-    : `${safetyStates.blocked}: Produção permanece bloqueada até que o backend comprove os gates aplicáveis (${safetyStates.external} / ${safetyStates.approval}).`;
+    ? "Estado confirmado pelo sistema; as operações continuam sujeitas às permissões do seu perfil e às regras fiscais."
+    : "Produção permanece bloqueada: a emissão real só é liberada depois que o sistema comprovar as condições necessárias e houver aprovação humana.";
   buildNavigation();
   appShell.classList.remove("is-operational-view");
   renderOverview();

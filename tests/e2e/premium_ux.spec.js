@@ -13,7 +13,7 @@ for (const width of [320, 390, 1280]) {
   test(`durable portal preserves scoped support and keyboard details at ${width}px`, async ({page}) => {
     await page.setViewportSize({width, height: 900});
     await login(page);
-    await expect(page.locator(".product-banner-logo-approved")).toBeVisible();
+    await expect(page.locator(".sidebar .brand-mark")).toBeVisible();
     await page.getByRole("button", {name: "Suporte", exact: true}).click();
     await expect(page.locator("#workspace")).toContainText("Atendimento, SLA, incidentes e saúde operacional externa ainda não estão certificados");
     await expect(page.locator("#fiscal-unit-filter option")).toHaveCount(2);

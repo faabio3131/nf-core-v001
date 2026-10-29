@@ -13,7 +13,7 @@ await rm(target, { recursive: true, force: true });
 await mkdir(target, { recursive: true });
 await cp(source, target, { recursive: true });
 
-const cacheBustedAssets = ["styles.css", "runtime.css", "app.js"];
+const cacheBustedAssets = ["styles.css", "runtime.css", "app.js", "theme.js"];
 let index = await readFile(resolve(target, "index.html"), "utf8");
 for (const asset of cacheBustedAssets) {
   const contents = await readFile(resolve(target, asset));
