@@ -48,9 +48,9 @@ def test_brand_kit_preserves_fiscal_safety_language() -> None:
 def test_portal_uses_provider_neutral_commercial_channel_language() -> None:
     app = (PORTAL / "app.js").read_text(encoding="utf-8")
 
-    assert "Canais de Venda / Checkout" in app
-    assert "Canais de venda governados por adapters" in app
-    assert "Adapter ativo: Cakto." in app
+    assert "Canais de venda e pagamento" in app
+    assert "Canais de venda governados por adaptadores" in app
+    assert "Adaptador ativo: Cakto." in app
     assert '["checkout-admin", "Checkout Cakto"]' not in app
 
 

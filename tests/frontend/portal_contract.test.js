@@ -101,8 +101,8 @@ test("commercial release governance is explicit, human-controlled and separated 
   assert.match(script, /\/v1\/admin\/commercial-release/);
   assert.match(script, /commercial_approved/);
   assert.match(script, /human_decision_reference/);
-  assert.match(script, /COMMERCIAL_APPROVED nunca é inferido/);
-  assert.match(script, /Checkout e produção fiscal permanecem autoridades separadas/);
+  assert.match(script, /A aprovação comercial nunca é inferida/);
+  assert.match(script, /Pagamento e produção fiscal permanecem autoridades separadas/);
 });
 
 
@@ -128,17 +128,17 @@ test("tenant user administration is session-authorized and cannot grant platform
   assert.match(script, /user-administration-form/);
   assert.match(script, /target_role/);
   assert.match(script, /target_unit_ids/);
-  assert.match(script, /platform_admin não pode ser concedido aqui/);
+  assert.match(script, /administrador da plataforma não pode ser concedido aqui/);
   assert.match(script, /sessões anteriores revogadas/);
   assert.doesNotMatch(script, /platform_admin\s*:\s*true/);
 });
 
 test("billing plans and usage remain read-only canonical projections", () => {
   assert.match(script, /usage.*Uso/);
-  assert.match(script, /billing.*Billing/);
+  assert.match(script, /billing.*Cobrança/);
   assert.match(script, /plans.*Planos/);
   assert.match(script, /autoridades comerciais canônicas do NFCore/);
-  assert.match(script, /Gateways externos permanecem adapters/);
+  assert.match(script, /Gateways externos permanecem adaptadores/);
   assert.doesNotMatch(script, /updateSubscription|setBillingStatus|recordUsage/);
 });
 
