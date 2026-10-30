@@ -10,7 +10,7 @@ test("customer configuration views expose governed forms while keeping metadata 
   await expect(page.locator("#authority-context")).toContainText("tenant-a");
   for (const [label, identifier] of [
     ["Certificados", "ref:synthetic-a-certificate"],
-    ["Providers", "binding-a"],
+    ["Provedores", "binding-a"],
     ["Webhooks", "events-a"],
     ["Integrações", "module-a"],
     ["Configurações", "policy-a"],

@@ -12,7 +12,7 @@ async function login(page, account = "operator") {
 
 test("five fiscal views show durable authorized state and explicit capability blocking", async ({page}) => {
   await login(page);
-  for (const [label, expected] of [["Documentos", "DOC-a"], ["Emissões", "DOC-a"], ["Erros", "DOC-a"], ["Reconciliação", "DOC-a"]]) {
+  for (const [label, expected] of [["Documentos", "DOC-a"], ["Emissões", "DOC-a"], ["Erros", "DOC-a"], ["Conciliação", "DOC-a"]]) {
     await page.getByRole("button", {name: label, exact: true}).click();
     await expect(page.locator("#workspace")).toContainText(expected);
     await expect(page.locator("#workspace")).not.toContainText("DOC-b");
@@ -20,7 +20,7 @@ test("five fiscal views show durable authorized state and explicit capability bl
     await expect(page.locator("#workspace")).not.toContainText("PROTECTED_SYNTHETIC_RAW_CONTENT");
     await expect(page.locator("#workspace")).not.toContainText("LEGACY-UNSCOPED");
   }
-  await page.getByRole("button", {name: "Capabilities", exact: true}).click();
+  await page.getByRole("button", {name: "Capacidades", exact: true}).click();
   await expect(page.locator("#workspace")).toContainText("CAPABILITY_AUTHORITY_NOT_CONFIGURED");
   await expect(page.locator("#workspace")).not.toContainText("HOMOLOGATION_READY");
 });
@@ -65,7 +65,7 @@ test("retry after post-commit failure reuses intent and shows one durable reserv
 
 test("prepared document reconciliation uses durable authority and preserves confirmed result", async ({page}) => {
   await login(page);
-  await page.getByRole("button", {name: "Reconciliação", exact: true}).click();
+  await page.getByRole("button", {name: "Conciliação", exact: true}).click();
   await page.getByRole("button", {name: "Executar operação governada"}).click();
   await expect(page.locator("#operation-id")).toHaveValue("reconcileFiscalOperation");
   await expect(page.locator("#operation-access-key-field")).not.toBeVisible();

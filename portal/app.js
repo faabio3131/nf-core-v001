@@ -4,8 +4,8 @@
 /** @typedef {{method?:string, headers?:Record<string,string>, body?:string}} ApiOptions */
 
 const navigation = [
-  { label: "Operação", items: [["overview", "Visão geral"], ["documents", "Documentos"], ["issuances", "Emissões"], ["inutilizations", "Inutilização"], ["errors", "Erros"], ["reconciliation", "Reconciliação"]] },
-  { label: "Configuração", items: [["onboarding", "Onboarding"], ["companies", "Empresas"], ["units", "Unidades"], ["environments", "Ambientes"], ["capabilities", "Capabilities"], ["certificates", "Certificados"], ["providers", "Providers"], ["users", "Usuários"]] },
+  { label: "Operação", items: [["overview", "Visão geral"], ["documents", "Documentos"], ["issuances", "Emissões"], ["inutilizations", "Inutilização"], ["errors", "Erros"], ["reconciliation", "Conciliação"]] },
+  { label: "Configuração", items: [["onboarding", "Onboarding"], ["companies", "Empresas"], ["units", "Unidades"], ["environments", "Ambientes"], ["capabilities", "Capacidades"], ["certificates", "Certificados"], ["providers", "Provedores"], ["users", "Usuários"]] },
   { label: "Plataforma", items: [["webhooks", "Webhooks"], ["webhook-egress", "Aprovação de egress"], ["integrations", "Integrações"], ["usage", "Uso"], ["billing", "Billing"], ["plans", "Planos"], ["pricing-admin", "Catálogo comercial"], ["commercial-release", "Liberação comercial"], ["checkout-admin", "Canais de Venda / Checkout"], ["audit", "Auditoria"], ["support", "Suporte"], ["settings", "Configurações"]] },
 ];
 
@@ -488,6 +488,13 @@ function fieldLabel(key) {
   return labels[/** @type {keyof typeof labels} */ (key)] || key.replaceAll("_", " ");
 }
 
+/** @param {unknown} value */
+function friendlyValue(value) {
+  if (value === true) return "Sim";
+  if (value === false) return "Não";
+  return text(value);
+}
+
 /** @param {Record<string, unknown>} row */
 function rowElement(row) {
   const wrapper = document.createElement("div");
@@ -504,7 +511,9 @@ function rowElement(row) {
   context.textContent = text(secondary[1]);
   const badge = document.createElement("span");
   badge.className = `badge ${tone(state[1])}`;
-  badge.textContent = text(state[1]);
+  badge.textContent = friendlyValue(state[1]);
+  context.textContent = friendlyValue(secondary[1]);
+  if (context.textContent === badge.textContent) context.textContent = "";
   wrapper.append(strong, context, badge);
   return wrapper;
 }
@@ -1372,7 +1381,7 @@ async function appendFiscalRecovery(article) {
     for (const row of response.rows || []) {
       const item = document.createElement("div"); item.dataset.intentId = String(row.intent_id); item.dataset.intentState = String(row.state);
       /** @type {Record<string,string>} */
-      const operationNames = {issueFiscalDocument:"Emissão", cancelFiscalDocument:"Cancelamento", inutilizeFiscalRange:"Inutilização", reconcileFiscalOperation:"Reconciliação"};
+      const operationNames = {issueFiscalDocument:"Emissão", cancelFiscalDocument:"Cancelamento", inutilizeFiscalRange:"Inutilização", reconcileFiscalOperation:"Conciliação"};
       /** @type {Record<string,string>} */
       const stateNames = {prepared:"Preparado para retomada", executing:"Resultado a verificar", recorded:"Resposta registrada"};
       const label = document.createElement("p"); label.textContent = `${operationNames[String(row.operation)] || "Pedido fiscal"} · ${stateNames[String(row.state)] || "Estado a verificar"} · ${new Date(String(row.created_at)).toLocaleString("pt-BR")}`; item.append(label);
