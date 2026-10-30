@@ -469,7 +469,7 @@ test("tenant admin user management exposes only approved delegated roles and ser
   await expect(page.locator("#user-administration-form")).toBeVisible();
 
   const roleOptions = await page.locator("#user-target-role option").allTextContents();
-  expect(roleOptions).toEqual(["OPERATOR", "AUDITOR", "BILLING"]);
+  expect(roleOptions).toEqual(["Operador", "Auditor", "Cobrança"]);
 
   await page.locator("#user-administration-form input[type=email]").fill("billing@example.com");
   await page.locator("#user-target-role").selectOption("billing");
