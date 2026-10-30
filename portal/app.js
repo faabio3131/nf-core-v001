@@ -5,8 +5,8 @@
 
 const navigation = [
   { label: "Operação", items: [["overview", "Visão geral"], ["documents", "Documentos"], ["issuances", "Emissões"], ["inutilizations", "Inutilização"], ["errors", "Erros"], ["reconciliation", "Conciliação"]] },
-  { label: "Configuração", items: [["onboarding", "Onboarding"], ["companies", "Empresas"], ["units", "Unidades"], ["environments", "Ambientes"], ["capabilities", "Capacidades"], ["certificates", "Certificados"], ["providers", "Provedores"], ["users", "Usuários"]] },
-  { label: "Plataforma", items: [["webhooks", "Webhooks"], ["webhook-egress", "Aprovação de egress"], ["integrations", "Integrações"], ["usage", "Uso"], ["billing", "Billing"], ["plans", "Planos"], ["pricing-admin", "Catálogo comercial"], ["commercial-release", "Liberação comercial"], ["checkout-admin", "Canais de Venda / Checkout"], ["audit", "Auditoria"], ["support", "Suporte"], ["settings", "Configurações"]] },
+  { label: "Configuração", items: [["onboarding", "Configuração inicial"], ["companies", "Empresas"], ["units", "Unidades"], ["environments", "Ambientes"], ["capabilities", "Capacidades"], ["certificates", "Certificados"], ["providers", "Provedores"], ["users", "Usuários"]] },
+  { label: "Plataforma", items: [["webhooks", "Webhooks"], ["webhook-egress", "Aprovação de saída"], ["integrations", "Integrações"], ["usage", "Uso"], ["billing", "Cobrança"], ["plans", "Planos"], ["pricing-admin", "Catálogo comercial"], ["commercial-release", "Liberação comercial"], ["checkout-admin", "Canais de venda e pagamento"], ["audit", "Auditoria"], ["support", "Suporte"], ["settings", "Configurações"]] },
 ];
 
 const supportedDocumentLabels = ["NF-e", "NFC-e", "NFS-e"];
@@ -31,16 +31,16 @@ const descriptions = {
   capabilities: "Capacidades e prontidão fiscal baseadas em evidência.",
   certificates: "Referências de certificado; material secreto nunca é exibido.",
   providers: "Vínculos de provedores por documento, operação e jurisdição.",
-  users: "Usuários, papéis e permissões do tenant.",
+  users: "Usuários, papéis e permissões da organização.",
   webhooks: "Destinos e estado de entrega governada.",
   "webhook-egress": "Aprovação e revogação de destinos pela autoridade da plataforma.",
-  integrations: "Integrações do tenant via contratos versionados.",
+  integrations: "Integrações da organização via contratos versionados.",
   usage: "Uso medido sem interferir na autoridade fiscal.",
   billing: "Cobrança separada da autoridade fiscal.",
   plans: "Plano e direitos comerciais configurados.",
   "pricing-admin": "Catálogo comercial versionado, durável e restrito à administração da plataforma.",
   "commercial-release": "Decisão humana versionada que governa a disponibilidade comercial pública do NFCore.",
-  "checkout-admin": "Canais de venda governados por adapters. O provider configurado traduz checkout e eventos sem virar autoridade comercial do NFCore.",
+  "checkout-admin": "Canais de venda governados por adaptadores. O provedor configurado traduz o pagamento e os eventos sem virar autoridade comercial do NFCore.",
   audit: "Auditoria administrativa e operacional.",
   support: "Configuração autorizada e limites do suporte operacional.",
   settings: "Políticas e configurações autorizadas.",
@@ -214,7 +214,7 @@ function appendFiscalFilters(article, viewId) {
   envLabel.append(envSelect); article.append(envLabel);
   const notice = document.createElement("p");
   notice.textContent = configurationViews.has(viewId)
-    ? "Configuração persistida por unidade e ambiente. Até 100 registros por tipo nesta página. Bindings de integração seguem o escopo do modelo existente."
+    ? "Configuração persistida por unidade e ambiente. Até 100 registros por tipo nesta página. Vínculos de integração seguem o escopo do modelo existente."
     : "Estado registrado no backend. Readiness declarado não autoriza operação. Registros legados sem escopo comprovado não são exibidos. Até 100 registros por tipo nesta página.";
   article.append(notice);
 }
@@ -372,7 +372,7 @@ async function api(path, options = {}) {
       ENVIRONMENT_NOT_ENABLED: "O ambiente selecionado não está habilitado para esta unidade.",
       FISCAL_RUNTIME_NOT_READY: "O executor fiscal está indisponível. Nenhuma autorização fiscal foi confirmada.",
       PORTAL_RUNTIME_NOT_READY: "Esta capacidade ainda não está disponível no runtime. Tente novamente após a configuração governada.",
-      BROWSER_AUTHORITY_REJECTED: "Tenant e permissões são definidos pela sessão. Remova campos de autoridade do pedido.",
+      BROWSER_AUTHORITY_REJECTED: "Organização e permissões são definidas pela sessão. Remova campos de autoridade do pedido.",
       INVALID_PREPARED_DOCUMENT: "Referência inválida ou documento ainda não preparado neste escopo. Confira e corrija o campo.",
       MISSING_IDEMPOTENCY_KEY: "O pedido precisa de um identificador de tentativa para ser processado com segurança.",
     };
@@ -488,11 +488,42 @@ function fieldLabel(key) {
   return labels[/** @type {keyof typeof labels} */ (key)] || key.replaceAll("_", " ");
 }
 
-/** @param {unknown} value */
-function friendlyValue(value) {
+/** @type {Record<string,string>} */
+const termLabels = {
+  unavailable: "Indisponível", internal_only: "Somente uso interno", waitlist: "Lista de espera",
+  ready_for_checkout_configuration: "Pronto para configurar pagamento", ready_for_commercial_review: "Pronto para revisão comercial",
+  commercial_approved: "Aprovado comercialmente", excluded_unconfirmed: "Excluídos (não confirmados)", all: "Todas",
+  queryarchivereference: "Consultar referência arquivada", unit_setup_required: "Falta cadastrar a unidade",
+  governed_configuration: "Configuração governada", configurecertificates: "Configurar certificados",
+  configureproviders: "Configurar provedores", configurewebhooks: "Configurar webhooks",
+  configureintegrations: "Configurar integrações", configuresettings: "Configurar ajustes",
+  issuefiscaldocument: "Emitir documento", cancelfiscaldocument: "Cancelar documento",
+  inutilizefiscalrange: "Inutilizar faixa", reconcilefiscaloperation: "Conciliar", queryfiscaldocument: "Consultar documento",
+  versioned: "Versionado", audited: "Auditado", session_authority: "Autoridade da sessão", scoped: "Com escopo",
+  homologation: "Homologação", production: "Produção", capability: "capacidade",
+  owner: "Proprietário", admin: "Administrador", manager: "Gerente", operator: "Operador", viewer: "Leitor",
+  auditor: "Auditor", support: "Suporte", billing: "Cobrança", fiscal_operator: "Operador fiscal", platform_admin: "Administrador da plataforma",
+  human_approval_required: "Aguardando aprovação humana", blocked_external: "Bloqueado por dependência externa",
+  ready: "Pronto", approved: "Aprovado", pending: "Pendente", failed: "Falhou", active: "Ativo", disabled: "Desabilitado",
+  registered: "Registrado", registrado: "Registrado", configured: "Configurado", not_configured: "Não configurado",
+  enabled: "Habilitado", true: "Sim", false: "Não",
+};
+
+/** @param {unknown} value @returns {string} */
+function shown(value) {
   if (value === true) return "Sim";
   if (value === false) return "Não";
+  if (Array.isArray(value)) return value.map(shown).join(", ");
+  if (typeof value === "string" && value) {
+    const found = termLabels[value.toLowerCase()];
+    if (found) return found;
+  }
   return text(value);
+}
+
+/** @param {unknown} value */
+function friendlyValue(value) {
+  return shown(value);
 }
 
 /** @param {Record<string, unknown>} row */
@@ -505,7 +536,7 @@ function rowElement(row) {
   const state = entries.find(([key]) => /state|status|readiness|health/i.test(key)) || entries[2] || ["status", ""];
 
   const strong = document.createElement("strong");
-  strong.textContent = text(primary[1]);
+  strong.textContent = friendlyValue(primary[1]);
   const context = document.createElement("span");
   context.className = "state";
   context.textContent = text(secondary[1]);
@@ -535,7 +566,7 @@ function appendRecordDetails(wrapper, row) {
   const values = document.createElement("dl");
   for (const [key, value] of Object.entries(row)) {
     const term = document.createElement("dt"); term.textContent = fieldLabel(key);
-    const description = document.createElement("dd"); description.textContent = text(value);
+    const description = document.createElement("dd"); description.textContent = shown(value);
     values.append(term, description);
   }
   details.append(summary, values); wrapper.append(details);
@@ -772,10 +803,10 @@ async function renderPricingAdmin() {
             method: "POST", headers: {"X-CSRF-Token": csrfToken()},
           });
           result.textContent = response.status === "bound"
-            ? "Binding comercial registrado. O segredo continua protegido no Google Secret Manager."
-            : "Não foi possível confirmar o binding.";
+            ? "Vínculo comercial registrado. O segredo continua protegido no Google Secret Manager."
+            : "Não foi possível confirmar o vínculo.";
         } catch (error) {
-          result.textContent = error instanceof Error ? error.message : "Binding negado pela autoridade da plataforma.";
+          result.textContent = error instanceof Error ? error.message : "Vínculo negado pela autoridade da plataforma.";
         } finally {
           bind.disabled = false;
         }
@@ -843,7 +874,7 @@ async function renderCommercialRelease() {
     ]) {
       const option = document.createElement("option");
       option.value = value;
-      option.textContent = value;
+      option.textContent = shown(value);
       if ((current?.status || "unavailable") === value) option.selected = true;
       statusSelect.append(option);
     }
@@ -868,7 +899,7 @@ async function renderCommercialRelease() {
 
     const warning = document.createElement("p");
     warning.className = "empty-state";
-    warning.textContent = "COMMERCIAL_APPROVED nunca é inferido por pricing, CI, Cakto ou readiness fiscal. Checkout e produção fiscal permanecem autoridades separadas.";
+    warning.textContent = "A aprovação comercial nunca é inferida por preços, CI, Cakto ou prontidão fiscal. Pagamento e produção fiscal permanecem autoridades separadas.";
 
     const publish = document.createElement("button");
     publish.className = "primary";
@@ -933,7 +964,7 @@ async function renderCheckoutAdmin() {
     if (!bindings.length) {
       const empty = document.createElement("div");
       empty.className = "empty-state";
-      empty.textContent = "Nenhum adapter de checkout configurado. Compra permanece fail-closed.";
+      empty.textContent = "Nenhum adaptador de pagamento configurado. A compra permanece bloqueada por segurança.";
       summary.append(empty);
     } else {
       for (const binding of bindings) {
@@ -982,16 +1013,16 @@ async function renderCheckoutAdmin() {
     const enabledInput = document.createElement("input");
     enabledInput.type = "checkbox";
     enabledInput.checked = true;
-    enabledLabel.append(enabledInput, document.createTextNode(" Binding habilitado"));
+    enabledLabel.append(enabledInput, document.createTextNode(" Vínculo habilitado"));
 
     const warning = document.createElement("p");
     warning.className = "empty-state";
-    warning.textContent = "Adapter ativo: Cakto. O preço deve referenciar esta oferta como cakto://PRODUCT_ID/OFFER_ID. IDs não são credenciais. Client secret, token e webhook secret nunca pertencem a este formulário.";
+    warning.textContent = "Adaptador ativo: Cakto. O preço deve referenciar esta oferta como cakto://PRODUCT_ID/OFFER_ID. IDs não são credenciais. Client secret, token e webhook secret nunca pertencem a este formulário.";
 
     const submit = document.createElement("button");
     submit.className = "primary";
     submit.type = "submit";
-    submit.textContent = "Salvar binding";
+    submit.textContent = "Salvar vínculo";
 
     form.append(
       productLabel,
@@ -1025,7 +1056,7 @@ async function renderCheckoutAdmin() {
         });
         await renderCheckoutAdmin();
       } catch (error) {
-        statusLine.textContent = error instanceof Error ? error.message : "Não foi possível salvar o binding Cakto";
+        statusLine.textContent = error instanceof Error ? error.message : "Não foi possível salvar o vínculo Cakto";
       } finally {
         submit.disabled = false;
       }
@@ -1040,8 +1071,8 @@ async function renderCheckoutAdmin() {
 /** @param {string} viewId */
 /** @type {Record<string, {operation:string, permission:string, fields:[string,string,string][]}>} */
 const customerForms = {
-  certificates: {operation: "configureCertificates", permission: "certificate.manage", fields: [["reference_id", "Referência governada (sem material secreto)", "text"], ["kind", "Tipo: certificate, csc ou credentials", "text"], ["provider_id", "Provider (opcional para certificado)", "optional"]]},
-  providers: {operation: "configureProviders", permission: "integration.manage", fields: [["binding_id", "ID do binding", "text"], ["document_kind", "Documento: nfe, nfce ou nfse", "text"], ["state_code", "UF", "text"], ["municipality_ibge_code", "Município IBGE (NFS-e)", "optional"], ["operation", "Operação: authorize, query, cancel, inutilize ou status", "text"], ["provider_id", "Provider", "text"], ["enabled", "Binding habilitado", "checkbox"]]},
+  certificates: {operation: "configureCertificates", permission: "certificate.manage", fields: [["reference_id", "Referência governada (sem material secreto)", "text"], ["kind", "Tipo: certificate, csc ou credentials", "text"], ["provider_id", "Provedor (opcional para certificado)", "optional"]]},
+  providers: {operation: "configureProviders", permission: "integration.manage", fields: [["binding_id", "ID do vínculo", "text"], ["document_kind", "Documento: nfe, nfce ou nfse", "text"], ["state_code", "UF", "text"], ["municipality_ibge_code", "Município IBGE (NFS-e)", "optional"], ["operation", "Operação: authorize, query, cancel, inutilize ou status", "text"], ["provider_id", "Provider", "text"], ["enabled", "Vínculo habilitado", "checkbox"]]},
   webhooks: {operation: "configureWebhooks", permission: "integration.manage", fields: [["destination_id", "ID do destino", "text"], ["url", "HTTPS público com path explícito, sem query ou credenciais", "url"], ["enabled", "Solicitar entrega após aprovação da plataforma", "checkbox"]]},
   integrations: {operation: "configureIntegrations", permission: "integration.manage", fields: [["module_id", "ID do módulo", "text"], ["enabled", "Módulo habilitado", "checkbox"]]},
   settings: {operation: "configureSettings", permission: "configuration.write", fields: [["policy_id", "ID da política", "text"], ["provider_id", "Provider", "text"], ["connect_timeout_seconds", "Timeout de conexão (segundos)", "number"], ["read_timeout_seconds", "Timeout de leitura (segundos)", "number"], ["max_attempts", "Máximo de tentativas", "number"], ["base_delay_seconds", "Espera inicial (segundos)", "number"], ["max_delay_seconds", "Espera máxima (segundos)", "number"], ["jitter_ratio", "Jitter (0 a 1)", "number"], ["circuit_failure_threshold", "Falhas para abrir circuito", "number"], ["circuit_recovery_seconds", "Recuperação do circuito (segundos)", "number"], ["circuit_success_threshold", "Sucessos para fechar circuito", "number"]]},
@@ -1123,7 +1154,7 @@ function appendCustomerConfiguration(article, viewId, rows) {
 function appendEgressReview(article) {
   if (!bootstrapState?.platform_admin) return;
   const form = document.createElement("form"); form.id = "egress-review-form";
-  const tenant = configurationInput(form, "egress-tenant", "Tenant solicitado", "text");
+  const tenant = configurationInput(form, "egress-tenant", "Organização solicitada", "text");
   const unit = configurationInput(form, "egress-unit", "Unidade solicitada", "text");
   const environment = configurationInput(form, "egress-environment", "Ambiente: homologation ou production", "text");
   const destination = configurationInput(form, "egress-destination", "ID do destino solicitado", "text");
@@ -1137,7 +1168,7 @@ function appendEgressReview(article) {
   let reviewed = null;
   /** @type {{fingerprint:string,key:string,intent_id?:string}|null} */
   let attempt = null;
-  for (const [decision, label] of [["approved", "Aprovar egress"], ["revoked", "Revogar egress"]]) {
+  for (const [decision, label] of [["approved", "Aprovar saída"], ["revoked", "Revogar saída"]]) {
     const button = document.createElement("button"); button.type = "button"; button.textContent = label;
     button.addEventListener("click", async () => {
       if (!reviewed || (decision === "approved" && !decisionForm.reportValidity())) return;
@@ -1147,7 +1178,7 @@ function appendEgressReview(article) {
       button.disabled = true;
       try {
         const result = await api(`${reviewed.path}/${decision}`, {method: "POST", headers: {"X-CSRF-Token": csrfToken(), "Idempotency-Key": attempt.key}, body: JSON.stringify(payload)});
-        status.textContent = `Decisão ${result.approval_status} registrada · versão ${result.version}. Entrega não confirmada.`;
+        status.textContent = `Decisão ${({approved:"aprovada",revoked:"revogada"})[String(result.approval_status)] || result.approval_status} registrada · versão ${result.version}. Entrega não confirmada.`;
         reviewed.version = Number(result.version); attempt = null;
       } catch (error) { status.textContent = error instanceof Error ? error.message : "Decisão negada"; }
       finally { button.disabled = false; }
@@ -1190,7 +1221,7 @@ function appendUserAdministration(article, rows) {
   form.className = "panel-form";
 
   const intro = document.createElement("p");
-  intro.textContent = "Administração baseada na autoridade da sessão. O tenant nunca vem do navegador, platform_admin não pode ser concedido aqui e alterações revogam sessões ativas.";
+  intro.textContent = "Administração baseada na autoridade da sessão. A organização nunca vem do navegador, o administrador da plataforma não pode ser concedido aqui e alterações revogam sessões ativas.";
 
   const existingLabel = document.createElement("label");
   existingLabel.textContent = "Usuário";
@@ -1223,7 +1254,7 @@ function appendUserAdministration(article, rows) {
   for (const roleName of roles) {
     const option = document.createElement("option");
     option.value = roleName;
-    option.textContent = roleName.toUpperCase();
+    option.textContent = shown(roleName.toLowerCase() === roleName ? roleName : roleName.toLowerCase());
     role.append(option);
   }
   roleLabel.append(role);
@@ -1562,7 +1593,7 @@ async function renderSurface(viewId) {
     if (["billing", "plans", "usage"].includes(viewId)) {
       const notice = document.createElement("p");
       notice.className = "empty-state";
-      notice.textContent = "Estado lido das autoridades comerciais canônicas do NFCore. Gateways externos permanecem adapters e não definem assinatura, plano, entitlement ou uso.";
+      notice.textContent = "Estado lido das autoridades comerciais canônicas do NFCore. Gateways externos permanecem adaptadores e não definem assinatura, plano, entitlement ou uso.";
       article.append(notice);
     }
     if (configurationViews.has(viewId)) {

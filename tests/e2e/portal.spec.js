@@ -420,13 +420,13 @@ test("platform egress review uses existing session and approved target version",
     expect(route.request().headers()["idempotency-key"].length).toBeGreaterThan(10);
     return route.fulfill({json: {version: 2, approval_status: "approved"}});
   });
-  await page.goto("/"); await page.getByRole("button", {name: "Aprovação de egress"}).click();
+  await page.goto("/"); await page.getByRole("button", {name: "Aprovação de saída"}).click();
   for (const [field, value] of Object.entries({tenant: "tenant-a", unit: "unit-a", environment: "homologation", destination: "synthetic-events"})) await page.locator(`#configuration-egress-${field}`).fill(value);
   await page.getByRole("button", {name: "Consultar solicitação"}).click();
   await expect(page.locator("#egress-decision-form")).toBeVisible();
   await page.locator("#configuration-egress-expiry").fill("2026-10-07T12:00:00Z");
-  await page.getByRole("button", {name: "Aprovar egress"}).click();
-  await expect(page.locator("#egress-review-form [role=status]")).toContainText("Decisão approved registrada · versão 2");
+  await page.getByRole("button", {name: "Aprovar saída"}).click();
+  await expect(page.locator("#egress-review-form [role=status]")).toContainText("Decisão aprovada registrada · versão 2");
 });
 
 
@@ -518,7 +518,7 @@ for (const width of [320, 390, 1280]) {
 
     // A user leaving a scrolled overview must see tools immediately.
     await page.evaluate(() => window.scrollTo({ top: 600, behavior: "instant" }));
-    for (const name of ["Documentos", "Emissões", "Onboarding", "Unidades", "Suporte"]) {
+    for (const name of ["Documentos", "Emissões", "Configuração inicial", "Unidades", "Suporte"]) {
       await page.getByRole("button", { name, exact: true }).click();
       await expect(readiness).toBeVisible();
       await expect(readiness).toContainText("Aguardando aprovação humana");
