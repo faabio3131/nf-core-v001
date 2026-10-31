@@ -38,7 +38,7 @@ def scenario() -> tuple[str, str]:
 def test_current_build_ledger_is_structurally_valid() -> None:
     plan, ledger = inputs()
     assert not assess(plan, ledger)
-    assert len(re.findall(r"^### NFV1-BLD-", ledger, re.M)) == 9
+    assert len(re.findall(r"^### NFV1-BLD-", ledger, re.M)) == 10
     assert "CONSTRUCTION_AND_WEB_INTEGRATION_COMPLETE" in plan
 
 
@@ -46,6 +46,8 @@ def test_no_missing_or_reordered_build_block() -> None:
     plan, ledger = inputs()
     assert assess(plan, ledger.replace("### NFV1-BLD-03", "### NFV1-BLD-13", 1))
     assert assess(plan.replace("### NFV1-BLD-06", "### NFV1-BLD-03", 1), ledger)
+    assert assess(plan.replace("### NFV1-BLD-09", "### NFV1-BLD-10", 1), ledger)
+    assert assess(plan, ledger.replace("### NFV1-BLD-09", "### NFV1-BLD-10", 1))
 
 
 def test_cannot_skip_missing_work_with_ci_or_fake_evidence() -> None:
@@ -69,3 +71,22 @@ def test_rejects_duplicate_concurrent_work_or_missing_proof() -> None:
         count=1,
     )
     assert any("Evidência final ausente" in x for x in assess(plan, missing))
+
+
+def test_bld09_preserves_status_dependency_and_current_gates() -> None:
+    plan, ledger = inputs()
+    assert not assess(plan, ledger)
+    assert any("estado inválido" in error and "BLD-09" in error
+               for error in assess(plan, ledger.replace(
+                   "### NFV1-BLD-09 — Core Cognitivo Vertical NFCore V1 (decisão 31/10/2026)\n- **Estado:** PENDING",
+                   "### NFV1-BLD-09 — Core Cognitivo Vertical NFCore V1 (decisão 31/10/2026)\n- **Estado:** PENDING_IMPLEMENTATION", 1)))
+    assert any("predecessores e CURRENT obrigatórios" in error and "BLD-09" in error
+               for error in assess(plan, ledger.replace(
+                   "- **Depende de:** BLD-01/02 (sessão, RBAC, tenant/unidade e leitura fiscal canônica), contrato S2S central FM/Command e Vault/Secret Reference aprovados; não depende do piloto de 02/11.\n", "", 1)))
+    assert any("predecessores e CURRENT obrigatórios" in error and "BLD-09" in error
+               for error in assess(plan, ledger.replace(
+                   "- **CURRENT:** `main=207fbf2ffbeae90759202975b443e7111d26e76f`;",
+                   "- **Contexto:** `main=207fbf2ffbeae90759202975b443e7111d26e76f`;", 1)))
+    assert any("IDs BLD-00..09" in error for error in assess(plan.replace(
+        "### NFV1-BLD-09 — Core Cognitivo Vertical NFCore V1",
+        "#### NFV1-BLD-09 — Core Cognitivo Vertical NFCore V1", 1), ledger))
