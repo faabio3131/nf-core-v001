@@ -1,5 +1,7 @@
 # AGENTS.md — FM Fiscal Core V2
 
+> **PONTO DE RETOMADA ANTI-RETRABALHO (31/10/2026):** consultar primeiro `docs/checkpoints/NFV1_CROSS_REPO_ANTI_REWORK_2026-10-31.md`, `docs/NFCORE_V1_BUILD_INTEGRATION_LEDGER.md`, PRs atuais e CI/Governança no SHA da `main`. A seção abaixo contém snapshots históricos Railway; não tomar qualquer SHA, estado de PR ou implantação registrada em datas passadas como CURRENT. O repositório atual `nf-core-v001` é o mesmo repository ID do nome anterior `kordena-fiscal-engine-v2`. `production` é branch de promoção distinta, não equivale ao container implantado na Contabo; alterações de produção exigem aprovação específica.
+
 ## Autoridade
 
 Este repositório implementa a evolução independente e multiproduto do motor fiscal brasileiro da FM Tecnologia.

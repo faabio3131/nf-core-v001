@@ -3,8 +3,9 @@
 **Estado:** EM_EXECUCAO (trilha subordinada ao cronograma mestre de 59 IDs).  
 **Decisão:** autorização explícita do proprietário em 18/10/2026 para construir/corrigir autonomamente e **mergear PRs BUILD-ONLY 100% verdes**, preservando decisões humanas para credenciais, custos, preço, segurança nova, deploy, produção e atos irreversíveis.  
 **Cronograma de escopo:** `docs/NFCORE_V1_BUILD_INTEGRATION_EXECUTION_2026-10-18.md` — anexo, **não substitui** `docs/NFCORE_V1_EXECUTION_LEDGER.md`.  
-**Próximo bloco executável:** `NFV1-BLD-03`.  
-**Última reconciliação:** main `aa04c8b2b63384880e3d6a98f41771b2f0415c8f`; PRs #253/#254/#255/#258 integradas com CI e Governança pré/pós-merge SUCCESS. BLD-02 DONE no escopo BUILD interno; prova completa em `docs/checkpoints/NFV1_BLD02_INTERNAL_CLOSEOUT_2026-10-27.md`. Próximo BLD-03; publicação e homologação continuam em gates separados.
+**Próximo delta de construção elegível (reconciliado em 31/10/2026):** `NFV1-BLD-03` — verificar CI/Gov pós-merge da PR #279 já integrada; PR #237 fechada sem merge porque seu teste PostgreSQL foi substituído por versão segura na main. **Não recriar formulário trial** integrado pela PR #260. Em paralelo, BLD-04 PR #281 já está aberta; site BLD-07 PR #12 está aberta no repo `fm-site-novo`.  
+**CURRENT auditado em 31/10/2026:** `main=d68c62d9c7e90581ad5efd387927f83c40a59ba2`, CI #41167507102 e Governança #41167507147 SUCCESS. PR #260 BLD-03 MERGED neste SHA (ingresso/cadastro Web), PR #278 RTC-09 MERGED previamente em `a01414853cdad9cc4ade8886b8a53074a57a2568` com CI #41166087218 e Governança #41166087207 pós-merge SUCCESS. BLD-03 segue `IN_PROGRESS` até certificar gates pós-merge da #279 e completar o aceite interno; **a PR #279 foi integrada em `9564406e2c2af6cee99266301309f045dbbd878a`, com Governança pós-merge SUCCESS e CI pós-merge #41198490385 e Governança #41198490371 SUCCESS**. PR #237 CLOSED/SUPERSEDED (não mergear). Não declarar DONE integral nem ativar trial público por reflexo. BLD-00/01/02 seguem DONE internos. `production` está divergente e **não foi promovida**. Prova detalhada e anti-retrabalho: `docs/checkpoints/NFV1_CROSS_REPO_ANTI_REWORK_2026-10-31.md`.  
+**Snapshot histórico substituído:** em 27/10 a main era `aa04c8b2b63384880e3d6a98f41771b2f0415c8f` e o próximo era iniciar BLD-03; tal instrução não deve disparar reconstrução após o merge #260.
 
 ## Semântica de estado e prova
 
@@ -45,20 +46,20 @@ Cada `Evidência` abaixo é levantamento de baseline, **não certificação do b
 - **Pendência / decisão humana:** Provider/jurisdição, credenciais/certificados, transporte oficial e homologação permanecem externos/BLD-05. Publicação autorizada e demonstração do staging pertencem a BLD-08. Timeout/evento pendente exige evidência confiável, nunca reenvio ou protocolo inventado. Contrato legado sem document_id não recebe a certificação de lifecycle da jornada Web.
 
 ### NFV1-BLD-03 — Trial first-party no NFCore e site estático
-- **Estado:** PENDING
+- **Estado:** IN_PROGRESS
 - **Depende de:** BLD-00 e interfaces de identidade BLD-01; código interno pode avançar se sessão admin/config comercial bloquearem operações
-- **CURRENT:** GovernedTrialService, ingresso público protegido, catálogo e antiabuso PostgreSQL já existem no código auditado. Página de cadastro na aplicação NFCore é o próximo delta Web; binding admin, configuração comercial/origens e Web publicada não estão certificados. Auditar PR #237 antes de reaproveitar testes; não reconstruir serviços nem inventar plano/preço/duração.
+- **CURRENT:** 31/10/2026 — `portal/trial.*`, ingresso Web, catálogo/antiabuso e serviços canônicos estão integrados via #234/#235/#260; `main=d68c62d9`, CI/Gov pós-merge SUCCESS. **Não recriar UI/API/trial service.** PR #279 foi MERGED em `9564406e2c2af6cee99266301309f045dbbd878a` para exigir decisão canônica de liberação comercial; CI pós-merge #41198490385 e Governança #41198490371 SUCCESS; não inferir publicação em Contabo. PR #237 foi FECHADA sem merge: teste de concorrência já reaproveitado com schema isolado na main, evitando `DROP SCHEMA public CASCADE` do teste antigo. Oferta real, preço/duração, admin binding e Web publicada seguem sem comprovação de prontidão.
 - **Target e aceite:** seção `NFV1-BLD-03` do anexo de execução.
-- **Evidência final:** PENDENTE (registrar PR + HEAD + merge SHA + CI/Gov PR e main + prova funcional apropriada).
+- **Evidência final:** PENDENTE (fechamento BLD-03 ainda exige revisão/CI/merge apropriado da #279 e demais gates). Evidência parcial: PR #260 MERGED, `main=d68c62d9c7e90581ad5efd387927f83c40a59ba2`, CI #41167507102/Gov #41167507147 SUCCESS. Ver checkpoint cruzado de 31/10.
 - **Pendência / decisão humana:** se surgir, registrar o bloqueio exato com decisão necessária, sem gerar novo serviço, preço ou credencial.
 
 ### NFV1-BLD-04 — Comercial interno e integração Command
 - **Estado:** PENDING
 - **Depende de:** BLD-03 contratos, ou interfaces canônicas já verificadas; não ativar pagamentos
-- **CURRENT:** Pricing/release e aquisição/fulfillment internos existentes; catálogo/release/checkout de runtime sem readiness. Backend multi-tenant é autoridade; simular somente entrada de provedor em testes.
+- **CURRENT:** Pricing/release e aquisição/fulfillment internos existem; #281 (testes HTTP autenticados do FM Command) MERGED em `5d894ffcf34c8a9ee6d66876ee35c2c9273ee32a` após CI pré-merge #41168608800 e Governança #41168608803 SUCCESS. CI pós-merge #41199329018 e Governança #41199328979 aguardam conclusão no momento desta anotação. Este incremento não encerra BLD-04: catálogo/release/checkout runtime sem readiness e E2E comercial integral ainda exigem evidência. Backend multi-tenant é autoridade; simular somente entrada de provedor em testes.
 - **Target e aceite:** seção `NFV1-BLD-04` do anexo de execução.
-- **Evidência final:** PENDENTE (registrar PR + HEAD + merge SHA + CI/Gov PR e main + prova funcional apropriada).
-- **Pendência / decisão humana:** se surgir, registrar o bloqueio exato com decisão necessária, sem gerar novo serviço, preço ou credencial.
+- **Evidência final:** PENDENTE para fechamento integral de BLD-04. Evidência parcial: #281 merge `5d894ffcf34c8a9ee6d66876ee35c2c9273ee32a`, CI da PR #41168608800 e Gov #41168608803 SUCCESS; pós-merge em andamento. Não confundir testes de contrato com a cadeia inteira.
+- **Pendência / decisão humana:** revisar gaps reais de checkout, billing/Command e E2E interno sem preço/pagamento real; credenciais, publicações e ativação seguem decisão humana.
 
 ### NFV1-BLD-05 — Fiscal adapter/contratos para homologação futura
 - **Estado:** PENDING
@@ -345,3 +346,24 @@ final da matriz BLD-02, antes de promover estado ou iniciar BLD-03.
 Este registro prevalece sobre os checkpoints anteriores em andamento: PR #258 consolidou #256/#257, merge aa04c8b2b63384880e3d6a98f41771b2f0415c8f, CI/Governança pré e pós-merge SUCCESS. Matriz completa em docs/checkpoints/NFV1_BLD02_INTERNAL_CLOSEOUT_2026-10-27.md. Ambas as revisões intermediárias foram encerradas como substituídas, com histórico preservado. BLD-02 DONE interno; primeiro bloco aberto BLD-03. As 59 tarefas globais não foram alteradas. Nenhum deploy, credencial ou operação fiscal oficial foi solicitado.
 
 - **Bloqueio de integração do fechamento:** a Railway confirmou auto-deploy do Portal após #258. Novos merges aguardam resolução autorizada do vínculo main→deploy, conforme AGENTS.md. Detalhes e proposta no checkpoint de fechamento; nenhuma infraestrutura alterada.
+
+
+### BLD-03 — correção do gate PostgreSQL da PR #260 (28/10/2026)
+
+Main `e751ffb368828ea3387b0f49eeab5e467e2ce4ba`: CI #1198/Gov #621 SUCCESS.
+PR #249 já integrada com a correção de preflight; não republicar ou reauditar.
+Na PR #260, CI #1202 (`40609828877`) teve 2570 PASS/3 SKIP e uma falha:
+o teste isolado de concorrência convertia a URI em conninfo textual, rejeitado
+pelo contrato de PostgresFiscalDatabase antes de testar qualquer admissão.
+A correção preserva a URI e codifica search_path na query como os testes
+duráveis existentes; mantém host local, schema único, concorrência 3/12,
+hash do IP e negação por tabela ausente. Cleanup agora cobre falha no
+construtor. Contrato de produção e assertivas não foram relaxados.
+
+Nova CI completa no HEAD corrigido é obrigatória; sem aprovação por SKIP local.
+BLD-03 permanece IN_PROGRESS. Merge retido pelo vínculo main→auto-deploy
+do Portal documentado no fechamento BLD-02; não houve alteração Railway,
+deploy solicitado, credencial, preço, trial_days ou migration persistente.
+
+A mesma montagem de DSN foi corrigida no harness PostgreSQL do E2E de trial,
+que só executa após Pytest na CI; preserva a mesma prova browser e schema único.

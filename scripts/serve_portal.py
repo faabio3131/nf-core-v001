@@ -10,7 +10,7 @@ import os
 from functools import partial
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from urllib.parse import urlsplit
+from urllib.parse import unquote, urlsplit
 
 _PORTAL_CSP = "; ".join(
     (
@@ -37,6 +37,7 @@ _MAX_PROXY_RESPONSE_BYTES = 2 * 1024 * 1024
 _PROXY_TIMEOUT_SECONDS = 15
 _PROXY_REQUEST_HEADERS = (
     "Accept",
+    "Origin",
     "Content-Type",
     "Cookie",
     "Idempotency-Key",
@@ -153,6 +154,13 @@ class SecurePortalHandler(SimpleHTTPRequestHandler):
         target = parsed_request.path
         if parsed_request.query:
             target = f"{target}?{parsed_request.query}"
+
+        # Public trial explicitly rejects authenticated callers; never strip an
+        # Authorization header into an apparently anonymous request upstream.
+        public_path = unquote(parsed_request.path).rstrip("/")
+        if public_path == "/v1/public/trials" and self.headers.get("Authorization"):
+            self._json_error(403, "anonymous request required")
+            return
 
         headers: dict[str, str] = {}
         for name in _PROXY_REQUEST_HEADERS:

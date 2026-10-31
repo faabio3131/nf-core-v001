@@ -25,5 +25,11 @@ export default defineConfig({
     ignoreHTTPSErrors: true,
     reuseExistingServer: false,
     timeout: 20_000,
+  }, {
+    command: "NFCORE_E2E_TRIAL=1 NFCORE_E2E_PORT=4176 python tests/e2e/fiscal_http_server.py",
+    url: "https://127.0.0.1:4176/__test/health",
+    ignoreHTTPSErrors: true,
+    reuseExistingServer: false,
+    timeout: 30_000,
   }],
 });

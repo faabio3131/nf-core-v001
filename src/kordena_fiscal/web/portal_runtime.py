@@ -101,6 +101,7 @@ class DurableHumanPortalExecutor:
             "errors",
             "reconciliation",
             "capabilities",
+            "tax-reform",
             "onboarding",
             "companies",
             "units",
@@ -229,6 +230,7 @@ class DurableHumanPortalExecutor:
             "errors",
             "reconciliation",
             "capabilities",
+            "tax-reform",
             "certificates",
             "providers",
             "webhooks",
@@ -425,6 +427,39 @@ class DurableHumanPortalExecutor:
         base = {"unit_id": scope.unit_id, "environment": scope.environment.value}
         if surface_id == "capabilities":
             return self._capability_rows(authority, scope)[offset : offset + limit]
+        if surface_id == "tax-reform":
+            # The only issuer authority is the existing versioned Control Plane
+            # profile. The federal IRPJ regime is NOT inferred from NF-e CRT.
+            with self._unit_of_work_factory() as uow:
+                issuer = uow.control_plane.resolve_profile(
+                    host_namespace=scope.host_namespace or "fm-nfcore",
+                    tenant_id=scope.tenant_id,
+                    unit_id=scope.unit_id,
+                    environment=scope.environment,
+                    instant=datetime.now(UTC),
+                )
+            if issuer is None:
+                return ({**base, "record_type": "rtc_issuer",
+                         "status": "fiscal_profile_not_configured",
+                         "federal_regime_status": "declaration_not_configured",
+                         "calculation_status": "not_certified"},)[offset : offset + limit]
+            return ({
+                **base,
+                "record_type": "rtc_issuer",
+                "status": "profile_effective",
+                "profile_id": issuer.profile_id,
+                "profile_version": issuer.version,
+                "legal_name": issuer.legal_name,
+                "crt": int(issuer.tax_regime),
+                "primary_cnae": issuer.primary_cnae.value,
+                "state_code": issuer.address.jurisdiction.state_code,
+                "municipality_ibge_code": issuer.address.jurisdiction.municipality_ibge_code,
+                "effective_from": issuer.effective_from.isoformat(),
+                "effective_to": (issuer.effective_to.isoformat()
+                                 if issuer.effective_to is not None else None),
+                "federal_regime_status": "declaration_not_configured",
+                "calculation_status": "not_certified",
+            },)[offset : offset + limit]
         rows: list[Mapping[str, Any]] = []
         with self._unit_of_work_factory() as uow:
             if surface_id in {"inutilizations", "errors", "reconciliation"}:
@@ -730,6 +765,10 @@ class DurableHumanPortalExecutor:
                 payload=payload,
                 idempotency_key=idempotency_key,
             )
+        if operation_id == "registerFiscalProfile":
+            return self._register_fiscal_profile(
+                authority=authority, payload=payload, idempotency_key=idempotency_key
+            )
         if operation_id in {"createUser", "updateUser"}:
             return self._user_command(
                 operation_id=operation_id,
@@ -767,6 +806,135 @@ class DurableHumanPortalExecutor:
             payload=payload,
             idempotency_key=idempotency_key,
         )
+
+    def _register_fiscal_profile(
+        self,
+        *,
+        authority: AuthenticatedHuman,
+        payload: Mapping[str, Any],
+        idempotency_key: str | None,
+    ) -> Mapping[str, Any]:
+        """Register an initial issuer snapshot using the existing Control Plane.
+
+        Tenant, host, profile identity, version, actor and effective timestamp
+        are server owned. A retried key never creates a second issuer profile.
+        """
+        from kordena_fiscal.domain import (
+            BrazilianJurisdiction,
+            CnaeCode,
+            Cnpj,
+            FiscalAddress,
+            FiscalProfile,
+            StateRegistration,
+            TaxRegimeCode,
+        )
+
+        required = {
+            "unit_id", "environment", "cnpj", "legal_name", "crt", "primary_cnae",
+            "state_registration", "state_registration_exempt", "street", "number",
+            "district", "municipality_name", "state_code", "municipality_ibge_code",
+            "postal_code",
+        }
+        try:
+            if set(payload) != required:
+                raise ValueError("invalid issuer profile command fields")
+            key = (idempotency_key or "").strip()
+            if not key or len(key) > 256:
+                raise ValueError("idempotency key required")
+            text_keys = required - {"crt", "state_registration_exempt"}
+            if any(not isinstance(payload[item], str) for item in text_keys):
+                raise ValueError("issuer profile string fields required")
+            if type(payload["crt"]) is not int:
+                raise ValueError("CRT must be integer")
+            if type(payload["state_registration_exempt"]) is not bool:
+                raise ValueError("state registration exemption must be boolean")
+            if payload["state_registration_exempt"] and payload["state_registration"].strip():
+                raise ValueError("exempt issuer cannot declare state registration number")
+            unit_id = payload["unit_id"].strip()
+            environment = FiscalEnvironment(payload["environment"])
+            authority.assert_permission(PortalPermission.CONFIGURATION_WRITE, unit_id=unit_id)
+            fingerprint = hashlib.sha256(
+                (authority.tenant_id + ":" + unit_id + ":" + environment.value + ":" + key)
+                .encode("utf-8")
+            ).hexdigest()
+            profile = FiscalProfile(
+                profile_id="portal-" + fingerprint[:32],
+                version=1,
+                scope=ExecutionScope(
+                    host_namespace="fm-nfcore",
+                    tenant_id=authority.tenant_id,
+                    unit_id=unit_id,
+                    environment=environment,
+                    correlation_id="profile-" + fingerprint[:20],
+                ),
+                cnpj=Cnpj(payload["cnpj"]),
+                legal_name=payload["legal_name"],
+                tax_regime=TaxRegimeCode(payload["crt"]),
+                state_registration=StateRegistration(
+                    state_code=payload["state_code"],
+                    number=(None if payload["state_registration_exempt"]
+                            else payload["state_registration"]),
+                    exempt=payload["state_registration_exempt"],
+                ),
+                primary_cnae=CnaeCode(payload["primary_cnae"]),
+                address=FiscalAddress(
+                    street=payload["street"],
+                    number=payload["number"],
+                    district=payload["district"],
+                    municipality_name=payload["municipality_name"],
+                    jurisdiction=BrazilianJurisdiction(
+                        state_code=payload["state_code"],
+                        municipality_ibge_code=payload["municipality_ibge_code"],
+                    ),
+                    postal_code=payload["postal_code"],
+                ),
+                effective_from=datetime.now(UTC),
+            )
+            actor = AdminPrincipal(
+                actor_id=authority.account.account_id,
+                permissions=frozenset({ControlPlanePermission.PROFILE_WRITE}),
+                tenant_ids=frozenset({authority.tenant_id}),
+            )
+            try:
+                DurableControlPlaneService(self._unit_of_work_factory).add_fiscal_profile(
+                    actor=actor, profile=profile
+                )
+            except ControlPlaneConflictError as exc:
+                # Retry may only replay the exact same server-scoped issuer facts.
+                with self._unit_of_work_factory() as uow:
+                    existing = uow.control_plane.get_profile(profile.profile_id, 1)
+                if existing is None or (
+                    existing.cnpj != profile.cnpj
+                    or existing.legal_name != profile.legal_name
+                    or existing.tax_regime != profile.tax_regime
+                    or existing.state_registration != profile.state_registration
+                    or existing.primary_cnae != profile.primary_cnae
+                    or existing.address != profile.address
+                    or existing.scope.tenant_id != authority.tenant_id
+                    or existing.scope.unit_id != unit_id
+                    or existing.scope.environment != environment
+                ):
+                    raise _portal_error(
+                        409, "FISCAL_PROFILE_CONFLICT", "Reload issuer configuration"
+                    ) from exc
+                return {
+                    "status": "profile_registered", "profile_id": existing.profile_id,
+                    "version": existing.version, "replay": True,
+                }
+            return {
+                "status": "profile_registered", "profile_id": profile.profile_id,
+                "version": profile.version, "replay": False,
+            }
+        except HumanAuthorizationError as exc:
+            raise _portal_error(403, "FISCAL_PROFILE_FORBIDDEN", "Profile scope denied") from exc
+        except ControlPlaneNotFoundError as exc:
+            raise _portal_error(
+                404, "FISCAL_PROFILE_UNIT_NOT_FOUND", "Unit not configured"
+            ) from exc
+        except ControlPlaneAuthorizationError as exc:
+            raise _portal_error(403, "FISCAL_PROFILE_FORBIDDEN", "Profile scope denied") from exc
+        except (FiscalValidationError, ValueError, TypeError, AttributeError) as exc:
+            raise _portal_error(400, "INVALID_FISCAL_PROFILE", "Invalid issuer profile") from exc
 
     @staticmethod
     def _user_result(result: HumanAdministrationResult) -> Mapping[str, Any]:

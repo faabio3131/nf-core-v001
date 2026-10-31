@@ -90,6 +90,7 @@ def test_portal_api_proxy_preserves_auth_boundary_and_cookies(
 
         def do_POST(self) -> None:  # noqa: N802
             observed["path"] = self.path
+            observed["origin"] = self.headers.get("Origin", "")
             observed["csrf"] = self.headers.get("X-CSRF-Token", "")
             observed["cookie"] = self.headers.get("Cookie", "")
             length = int(self.headers.get("Content-Length", "0"))
@@ -126,6 +127,7 @@ def test_portal_api_proxy_preserves_auth_boundary_and_cookies(
             headers={
                 "Content-Type": "application/json",
                 "Cookie": "existing=value",
+                "Origin": "https://portal.example.test",
                 "X-CSRF-Token": "csrf-proof",
             },
         )
@@ -140,6 +142,7 @@ def test_portal_api_proxy_preserves_auth_boundary_and_cookies(
         assert observed == {
             "path": "/v1/auth/login?source=portal",
             "csrf": "csrf-proof",
+            "origin": "https://portal.example.test",
             "cookie": "existing=value",
             "body": '{"email":"owner@example.test","password":"secret"}',
         }
@@ -211,4 +214,29 @@ def test_portal_static_assets_require_revalidation(tmp_path: Path) -> None:
     finally:
         server.shutdown()
         server.server_close()
+        thread.join(timeout=2)
+
+
+@pytest.mark.parametrize("path", (
+    "/v1/public/trials", "/v1/public/%74rials", "/v1/%70ublic/trials/",
+))
+def test_public_trial_proxy_does_not_downgrade_authorization(tmp_path, monkeypatch, path):
+    # Upstream address is valid but must never be contacted for this request.
+    monkeypatch.setenv("NFCORE_PORTAL_API_UPSTREAM", "http://127.0.0.1:1")
+    portal, thread = _start_server(
+        partial(_secure_portal_handler(), directory=str(tmp_path))
+    )
+    try:
+        host, port = portal.server_address
+        request = Request(
+            f"http://{host}:{port}{path}", method="POST", data=b"{}",
+            headers={"Authorization": "Bearer synthetic-rejected", "Origin": "https://portal.test"},
+        )
+        with pytest.raises(HTTPError) as error:
+            urlopen(request, timeout=2)  # noqa: S310
+        assert error.value.code == 403
+        assert json.loads(error.value.read()) == {"detail": "anonymous request required"}
+    finally:
+        portal.shutdown()
+        portal.server_close()
         thread.join(timeout=2)

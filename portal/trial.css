@@ -1,0 +1,8 @@
+/* Reuse the canonical Portal identity and authentication layout. */
+.login-card { max-width: 540px; width: 100%; }
+#trial-fields { border: 0; padding: 0; margin: 0; display: grid; gap: 16px; min-width: 0; }
+#trial-fields label { display: grid; gap: 8px; }
+#trial-fields input, #trial-fields select { width: 100%; min-width: 0; }
+#trial-status, #trial-result, #trial-offer { overflow-wrap: anywhere; }
+#trial-result:empty { display: none; }
+#trial-fields:disabled { opacity: .65; }

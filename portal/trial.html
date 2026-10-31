@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="referrer" content="no-referrer">
+  <title>Começar um teste · NFCore</title>
+  <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="runtime.css">
+  <link rel="stylesheet" href="trial.css">
+  <script type="module" src="trial.js"></script>
+</head>
+<body>
+  <main class="login-view" aria-labelledby="trial-title">
+    <div class="login-card">
+      <img class="brand-mark brand-mark--approved" src="assets/nfcore-emblem-approved.png" alt="">
+      <p class="eyebrow">FM Tecnologia · NFCore</p>
+      <h1 id="trial-title">Comece seu teste</h1>
+      <p>Escolha uma oferta disponível e receba por e-mail as instruções para ativar sua conta.</p>
+      <p id="trial-status" role="status" aria-live="polite">Consultando ofertas disponíveis…</p>
+      <button id="trial-reload" class="ghost" type="button" hidden>Consultar ofertas novamente</button>
+      <form id="trial-form" hidden>
+        <fieldset id="trial-fields">
+          <label>Oferta de teste<select id="trial-plan" required></select></label>
+          <p id="trial-offer" class="form-hint"></p>
+          <label>Nome da empresa<input id="trial-name" name="organization" autocomplete="organization" maxlength="256" required></label>
+          <label>E-mail para ativação<input id="trial-email" name="email" type="email" autocomplete="email" maxlength="320" required></label>
+          <button class="primary" type="submit">Solicitar teste</button>
+        </fieldset>
+      </form>
+      <p id="trial-result" role="status" aria-live="polite"></p>
+      <p><a href="index.html">Já tenho uma conta / recuperar acesso</a></p>
+      <noscript>Ative o JavaScript para consultar as ofertas e solicitar um teste.</noscript>
+    </div>
+  </main>
+</body>
+</html>

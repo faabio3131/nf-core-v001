@@ -85,3 +85,21 @@ test("prepared document reconciliation uses durable authority and preserves conf
   expect(row.state || row.status).toBe("authorized");
   // Only the provider boundary is synthetic; HTTP, auth, intent and database are real local paths.
 });
+
+
+test("RTC-09 page reads canonical tenant scope and reports missing regime without inventing taxes", async ({page}) => {
+  // Real local HTTPS, human session, portal router and durable SQLite. No page.route mocks.
+  await login(page, "owner");
+  await page.getByRole("button", {name: "Reforma Tributária", exact: true}).click();
+  await expect(page.locator("#workspace")).toContainText("Perfil fiscal vigente não configurado");
+  await expect(page.locator("#workspace")).toContainText("O CRT não define sozinho o regime de IRPJ/CSLL");
+  await expect(page.locator("#workspace")).toContainText("nenhuma emissão ou cálculo fiscal é executado nesta tela");
+  await expect(page.locator("#rtc-profile-registration")).toBeVisible();
+  await page.locator("#fiscal-unit-filter").selectOption("unit-b");
+  await expect(page.locator("#workspace")).toContainText("Perfil fiscal vigente não configurado");
+  await expect(page.locator("#workspace")).not.toContainText("RTC Test Company");
+  const rejected = await page.request.get(
+    `${origin}/v1/portal/surfaces/tax-reform?unit_id=outside-tenant&environment=homologation`,
+  );
+  expect(rejected.status()).toBe(409);
+});

@@ -249,3 +249,165 @@ def test_browser_cannot_mass_assign_tenant_during_self_service_onboarding(
 
     assert response.status_code == 400
     assert response.json()["detail"]["code"] == "BROWSER_AUTHORITY_REJECTED"
+
+
+def test_rtc_portal_reads_only_canonical_issuer_profile_in_authorized_scope(
+    tmp_path: Path,
+) -> None:
+    from kordena_fiscal.domain import (
+        BrazilianJurisdiction,
+        CnaeCode,
+        Cnpj,
+        ExecutionScope,
+        FiscalAddress,
+        FiscalEnvironment,
+        FiscalProfile,
+        StateRegistration,
+        TaxRegimeCode,
+    )
+
+    web, database = _onboarding_client(tmp_path)
+    csrf = web.cookies.get(CSRF_COOKIE)
+    assert csrf
+    response = web.post(
+        "/v1/portal/operations/onboardUnit",
+        headers={CSRF_HEADER: csrf, "Idempotency-Key": "rtc-onboard-matriz"},
+        json={"unit_id": "matriz", "display_name": "Matriz"},
+    )
+    assert response.status_code == 200
+    available = web.get("/v1/portal/bootstrap").json()["projection"]["available_surfaces"]
+    assert "tax-reform" in available
+
+    endpoint = "/v1/portal/surfaces/tax-reform?unit_id=matriz&environment=homologation"
+    missing = web.get(endpoint)
+    assert missing.status_code == 200
+    assert missing.json()["rows"][0]["status"] == "fiscal_profile_not_configured"
+    assert missing.json()["rows"][0]["calculation_status"] == "not_certified"
+    assert web.get(endpoint.replace("matriz", "outra")).status_code == 409
+
+    profile = FiscalProfile(
+        profile_id="rtc-issuer-matriz",
+        scope=ExecutionScope(
+            host_namespace="fm-nfcore", tenant_id=TENANT_ID,
+            unit_id="matriz", environment=FiscalEnvironment.HOMOLOGATION,
+            correlation_id="rtc-synthetic-test",
+        ),
+        cnpj=Cnpj("11222333000181"),
+        legal_name="RTC Test Company",
+        tax_regime=TaxRegimeCode.NORMAL,
+        state_registration=StateRegistration(state_code="SP", number="110042490114"),
+        primary_cnae=CnaeCode("6202300"),
+        address=FiscalAddress(
+            street="Praca da Se", number="100", district="Se",
+            municipality_name="Sao Paulo",
+            jurisdiction=BrazilianJurisdiction(
+                state_code="SP", municipality_ibge_code="3550308",
+            ),
+            postal_code="01001000",
+        ),
+        effective_from=datetime(2026, 1, 1, tzinfo=UTC),
+    )
+    with database.unit_of_work() as uow:
+        uow.control_plane.add_profile(profile)
+        uow.commit()
+    visible = web.get(endpoint)
+    assert visible.status_code == 200
+    issuer = visible.json()["rows"][0]
+    assert issuer["status"] == "profile_effective"
+    assert issuer["crt"] == 3
+    assert issuer["primary_cnae"] == "6202300"
+    assert issuer["legal_name"] == "RTC Test Company"
+    assert issuer["federal_regime_status"] == "declaration_not_configured"
+    assert issuer["calculation_status"] == "not_certified"
+    assert "federal_income_tax_regime" not in issuer
+    assert "cnpj" not in issuer
+    assert "tenant_id" not in issuer
+
+
+def test_owner_registers_initial_fiscal_profile_idempotently_via_canonical_portal(
+    tmp_path: Path,
+) -> None:
+    from kordena_fiscal.domain import FiscalEnvironment
+
+    web, database = _onboarding_client(tmp_path)
+    csrf = web.cookies.get(CSRF_COOKIE)
+    assert csrf
+    onboard = web.post(
+        "/v1/portal/operations/onboardUnit",
+        headers={CSRF_HEADER: csrf, "Idempotency-Key": "rtc-profile-unit-onboard"},
+        json={"unit_id": "matriz", "display_name": "Matriz"},
+    )
+    assert onboard.status_code == 200
+
+    payload = {
+        "unit_id": "matriz",
+        "environment": "homologation",
+        "cnpj": "11222333000181",
+        "legal_name": "Synthetic Pilot Accounting Issuer Ltda",
+        "crt": 3,
+        "primary_cnae": "6202300",
+        "state_registration": "110042490114",
+        "state_registration_exempt": False,
+        "street": "Praca da Se",
+        "number": "100",
+        "district": "Se",
+        "municipality_name": "Sao Paulo",
+        "state_code": "SP",
+        "municipality_ibge_code": "3550308",
+        "postal_code": "01001000",
+    }
+    endpoint = "/v1/portal/operations/registerFiscalProfile"
+    no_csrf = web.post(endpoint, json=payload, headers={"Idempotency-Key": "rtc-pilot"})
+    assert no_csrf.status_code == 403
+    no_key = web.post(endpoint, json=payload, headers={CSRF_HEADER: csrf})
+    assert no_key.status_code == 400
+    spoofed = web.post(
+        endpoint,
+        json={**payload, "tenant_id": "wrong-tenant"},
+        headers={CSRF_HEADER: csrf, "Idempotency-Key": "rtc-pilot"},
+    )
+    assert spoofed.status_code == 400
+
+    headers = {CSRF_HEADER: csrf, "Idempotency-Key": "rtc-pilot"}
+    first = web.post(endpoint, json=payload, headers=headers)
+    assert first.status_code == 200, first.text
+    assert first.json()["status"] == "profile_registered"
+    assert first.json()["version"] == 1
+    assert first.json()["replay"] is False
+    replay = web.post(endpoint, json=payload, headers=headers)
+    assert replay.status_code == 200, replay.text
+    assert replay.json()["profile_id"] == first.json()["profile_id"]
+    assert replay.json()["replay"] is True
+
+    changed = web.post(
+        endpoint,
+        json={**payload, "legal_name": "Changed issuer with reused key"},
+        headers=headers,
+    )
+    assert changed.status_code == 409
+    invalid = web.post(
+        endpoint,
+        json={**payload, "cnpj": "00000000000000"},
+        headers={CSRF_HEADER: csrf, "Idempotency-Key": "rtc-invalid-cnpj"},
+    )
+    assert invalid.status_code == 400
+
+    with database.unit_of_work() as uow:
+        issuer = uow.control_plane.resolve_profile(
+            host_namespace="fm-nfcore", tenant_id=TENANT_ID,
+            unit_id="matriz", environment=FiscalEnvironment.HOMOLOGATION,
+            instant=datetime.now(UTC),
+        )
+        audit = uow.control_plane.list_audit(TENANT_ID)
+    assert issuer is not None
+    assert issuer.legal_name == payload["legal_name"]
+    assert int(issuer.tax_regime) == 3
+    assert sum(event.action.value == "fiscal_profile.added" for event in audit) == 1
+
+    visible = web.get(
+        "/v1/portal/surfaces/tax-reform?unit_id=matriz&environment=homologation"
+    )
+    assert visible.status_code == 200
+    assert visible.json()["rows"][0]["profile_id"] == first.json()["profile_id"]
+    assert "cnpj" not in visible.json()["rows"][0]
+    assert "tenant_id" not in visible.json()["rows"][0]

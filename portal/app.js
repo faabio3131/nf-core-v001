@@ -4,7 +4,7 @@
 /** @typedef {{method?:string, headers?:Record<string,string>, body?:string}} ApiOptions */
 
 const navigation = [
-  { label: "Operação", items: [["overview", "Visão geral"], ["documents", "Documentos"], ["issuances", "Emissões"], ["inutilizations", "Inutilização"], ["errors", "Erros"], ["reconciliation", "Conciliação"]] },
+  { label: "Operação", items: [["overview", "Visão geral"], ["documents", "Documentos"], ["issuances", "Emissões"], ["inutilizations", "Inutilização"], ["errors", "Erros"], ["reconciliation", "Conciliação"], ["tax-reform", "Reforma Tributária"]] },
   { label: "Configuração", items: [["onboarding", "Configuração inicial"], ["companies", "Empresas"], ["units", "Unidades"], ["environments", "Ambientes"], ["capabilities", "Capacidades"], ["certificates", "Certificados"], ["providers", "Provedores"], ["users", "Usuários"]] },
   { label: "Plataforma", items: [["webhooks", "Webhooks"], ["webhook-egress", "Aprovação de saída"], ["integrations", "Integrações"], ["usage", "Uso"], ["billing", "Cobrança"], ["plans", "Planos"], ["pricing-admin", "Catálogo comercial"], ["commercial-release", "Liberação comercial"], ["checkout-admin", "Canais de venda e pagamento"], ["audit", "Auditoria"], ["support", "Suporte"], ["settings", "Configurações"]] },
 ];
@@ -24,6 +24,7 @@ const descriptions = {
   inutilizations: "Solicitação governada de inutilização de faixa e acompanhamento do processamento interno.",
   errors: "Falhas operacionais sem exposição de segredo.",
   reconciliation: "Convergência segura entre estado interno e provedor.",
+  "tax-reform": "Enquadramento do emitente e estado de adequação à Reforma Tributária, lidos da fonte fiscal canônica.",
   onboarding: "Configuração inicial por organização e unidade.",
   companies: "Empresas visíveis no escopo autorizado da sessão.",
   units: "Unidades permitidas para o usuário autenticado.",
@@ -150,7 +151,7 @@ if (!loginView || !appShell || !loginForm || !nav || !workspace || !title || !op
 /** @type {BootstrapState|null} */
 let bootstrapState = null;
 let currentView = "overview";
-const fiscalViews = new Set(["documents", "issuances", "inutilizations", "errors", "reconciliation", "capabilities"]);
+const fiscalViews = new Set(["documents", "issuances", "inutilizations", "errors", "reconciliation", "capabilities", "tax-reform"]);
 const configurationViews = new Set(["certificates", "providers", "webhooks", "integrations", "settings"]);
 const scopedViews = new Set([...fiscalViews, ...configurationViews, "support"]);
 let selectedFiscalUnit = "";
@@ -1508,6 +1509,170 @@ function appendInutilizationForm(article) {
   article.append(form);
 }
 
+/** Initial profile enrollment through the canonical Control Plane command.
+ * @param {HTMLElement} section
+ */
+function appendRtcProfileRegistration(section) {
+  if (!bootstrapState?.permissions.includes("configuration.write") || !selectedFiscalUnit) return;
+  const form = document.createElement("form");
+  form.className = "panel-form rtc-profile-form";
+  form.id = "rtc-profile-registration";
+  const heading = document.createElement("h3");
+  heading.textContent = "Cadastrar perfil fiscal inicial";
+  const note = document.createElement("p");
+  note.className = "form-hint";
+  note.textContent = "O cadastro cria um snapshot fiscal imutável e auditado para a unidade selecionada. Não habilita emissão, assinatura ou cálculos IBS/CBS.";
+  form.append(heading, note);
+  /** @type {Record<string,HTMLInputElement>} */
+  const fields = {};
+  for (const [name, labelText, pattern] of [
+    ["cnpj", "CNPJ do emitente (14 dígitos)", "[0-9]{14}"],
+    ["legal_name", "Razão social", ""],
+    ["primary_cnae", "CNAE principal (7 dígitos)", "[0-9]{7}"],
+    ["state_registration", "Inscrição estadual (se aplicável)", ""],
+    ["street", "Logradouro", ""],
+    ["number", "Número", ""],
+    ["district", "Bairro", ""],
+    ["municipality_name", "Município", ""],
+    ["state_code", "UF (2 letras)", "[A-Za-z]{2}"],
+    ["municipality_ibge_code", "Código IBGE municipal (7 dígitos)", "[0-9]{7}"],
+    ["postal_code", "CEP (8 dígitos)", "[0-9]{8}"],
+  ]) {
+    const label = document.createElement("label");
+    label.textContent = labelText;
+    const input = document.createElement("input");
+    input.name = name;
+    input.autocomplete = "off";
+    input.required = name !== "state_registration";
+    if (pattern) input.pattern = pattern;
+    label.append(input);
+    fields[name] = input;
+    form.append(label);
+  }
+  const crtLabel = document.createElement("label");
+  crtLabel.textContent = "CRT da NF-e/NFC-e (não confundir com regime federal IRPJ)";
+  const crt = document.createElement("select");
+  for (const [code, label] of [["1", "Simples Nacional"], ["2", "Simples com sublimite"],
+    ["3", "Regime normal CRT"], ["4", "MEI"]]) {
+    const option = document.createElement("option");
+    option.value = code; option.textContent = label; crt.append(option);
+  }
+  crtLabel.append(crt);
+  const exemptLabel = document.createElement("label");
+  const exempt = document.createElement("input");
+  exempt.type = "checkbox";
+  exemptLabel.append(exempt, document.createTextNode(" Isento de inscrição estadual"));
+  exempt.addEventListener("change", () => {
+    fields.state_registration.disabled = exempt.checked;
+    fields.state_registration.required = !exempt.checked;
+    if (exempt.checked) fields.state_registration.value = "";
+  });
+  fields.state_registration.required = true;
+  const submit = document.createElement("button");
+  submit.type = "submit"; submit.className = "primary";
+  submit.textContent = "Registrar perfil fiscal";
+  const statusLine = document.createElement("p");
+  statusLine.setAttribute("role", "status");
+  statusLine.className = "form-error";
+  form.append(crtLabel, exemptLabel, submit, statusLine);
+  /** @type {{fingerprint:string,key:string}|null} */
+  let attempt = null;
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    if (!form.reportValidity()) return;
+    const payload = {
+      unit_id: selectedFiscalUnit,
+      environment: selectedFiscalEnvironment,
+      cnpj: fields.cnpj.value.trim(),
+      legal_name: fields.legal_name.value.trim(),
+      crt: Number(crt.value),
+      primary_cnae: fields.primary_cnae.value.trim(),
+      state_registration: fields.state_registration.value.trim(),
+      state_registration_exempt: exempt.checked,
+      street: fields.street.value.trim(),
+      number: fields.number.value.trim(),
+      district: fields.district.value.trim(),
+      municipality_name: fields.municipality_name.value.trim(),
+      state_code: fields.state_code.value.trim().toUpperCase(),
+      municipality_ibge_code: fields.municipality_ibge_code.value.trim(),
+      postal_code: fields.postal_code.value.trim(),
+    };
+    const fingerprint = JSON.stringify(payload);
+    if (!attempt || attempt.fingerprint !== fingerprint) {
+      attempt = {fingerprint, key: crypto.randomUUID()};
+    }
+    submit.disabled = true;
+    statusLine.textContent = "Registrando perfil fiscal na autoridade canônica...";
+    try {
+      await api("/v1/portal/operations/registerFiscalProfile", {
+        method: "POST",
+        headers: {"X-CSRF-Token": csrfToken(), "Idempotency-Key": attempt.key},
+        body: JSON.stringify(payload),
+      });
+      attempt = null;
+      await renderSurface("tax-reform");
+    } catch (error) {
+      statusLine.textContent = error instanceof Error
+        ? error.message : "O cadastro foi rejeitado. Verifique dados e permissões.";
+      submit.disabled = false;
+    }
+  });
+  section.append(form);
+}
+
+/** RTC projection: display server-owned issuer data and explicit blockers.
+ * @param {HTMLElement} article
+ * @param {Array<Record<string, string|number|null>>} rows
+ */
+function appendRtcIssuerSummary(article, rows) {
+  const section = document.createElement("section");
+  section.className = "rtc-overview";
+  section.setAttribute("aria-label", "Enquadramento e prontidão tributária");
+  const issuer = rows.find((row) => row.record_type === "rtc_issuer");
+  if (!issuer) {
+    const error = document.createElement("p");
+    error.className = "form-error";
+    error.textContent = "A autoridade fiscal não retornou o enquadramento do emitente.";
+    section.append(error);
+    article.append(section);
+    return;
+  }
+  const status = document.createElement("p");
+  status.className = "rtc-status";
+  status.setAttribute("role", "status");
+  const configured = issuer.status === "profile_effective";
+  status.textContent = configured
+    ? "Perfil fiscal vigente encontrado na unidade e no ambiente selecionados."
+    : "Perfil fiscal vigente não configurado. A classificação e os cálculos não estão liberados.";
+  section.append(status);
+  if (!configured) appendRtcProfileRegistration(section);
+  if (configured) {
+    const grid = document.createElement("div");
+    grid.className = "grid-list";
+    /** @type {Record<string,string>} */
+    const crtLabels = {"1":"Simples Nacional", "2":"Simples — excesso de sublimite",
+      "3":"Regime normal (CRT)", "4":"MEI"};
+    grid.append(
+      rowElement({item: "Estabelecimento", value: issuer.legal_name}),
+      rowElement({item: "Código CRT (NF-e/NFC-e)", value: crtLabels[String(issuer.crt)] || "Não reconhecido"}),
+      rowElement({item: "CNAE principal", value: issuer.primary_cnae}),
+      rowElement({item: "UF / Município IBGE", value: `${issuer.state_code || "—"} / ${issuer.municipality_ibge_code || "—"}`}),
+      rowElement({item: "Versão do perfil", value: issuer.profile_version}),
+      rowElement({item: "Vigência inicial", value: issuer.effective_from}),
+      rowElement({item: "Vigência final", value: issuer.effective_to || "Sem término definido"}),
+    );
+    section.append(grid);
+  }
+  const pending = document.createElement("p");
+  pending.className = "empty-state";
+  pending.textContent = "Regime federal (Lucro Real / Presumido / Simples): sem declaração validada e persistida. O CRT não define sozinho o regime de IRPJ/CSLL.";
+  const calc = document.createElement("p");
+  calc.className = "empty-state";
+  calc.textContent = "IBS, CBS, IS e classificação CST/cClassTrib: cálculo e tabelas oficiais ainda não certificados para operação. O cadastro inicial exige permissão administrativa; nenhuma emissão ou cálculo fiscal é executado nesta tela.";
+  section.append(pending, calc);
+  article.append(section);
+}
+
 /** @param {string} viewId */
 async function renderSurface(viewId) {
   const generation = ++surfaceGeneration;
@@ -1584,7 +1749,11 @@ async function renderSurface(viewId) {
       }
     }
     loading.remove();
-    article.append(grid);
+    if (viewId === "tax-reform") {
+      appendRtcIssuerSummary(article, rows);
+    } else {
+      article.append(grid);
+    }
     if (viewId === "support") {
       const notice = document.createElement("p"); notice.className = "empty-state";
       notice.textContent = "Esta página mostra configuração do escopo autorizado. Atendimento, SLA, incidentes e saúde operacional externa ainda não estão certificados. Não envie senha, token, certificado ou conteúdo fiscal em solicitações de suporte.";

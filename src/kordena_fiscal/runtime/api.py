@@ -726,6 +726,12 @@ def create_runtime_app(
             raise RuntimeConfigurationError(
                 "public trial requires an externally shared anti-abuse gate"
             )
+        def trial_release_authorized() -> bool:
+            # The same governed decision used by /v1/commercial/offer controls
+            # public trial intake, not a published price or browser assertion.
+            decision = composition.commercial_release_administration.current
+            return decision is not None and decision.commercially_approved
+
         app.include_router(
             create_public_trial_router(
                 composition.commercial_trial,
@@ -733,6 +739,7 @@ def create_runtime_app(
                 allowed_origins=public_trial_allowed_origins,
                 rate_limiter=public_trial_rate_limiter,
                 delivery=password_reset_delivery,
+                commercially_authorized=trial_release_authorized,
             )
         )
 

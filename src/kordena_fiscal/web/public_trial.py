@@ -8,6 +8,7 @@ external shared anti-abuse gate; never automatically enabled in runtime.
 from __future__ import annotations
 
 import json
+from collections.abc import Callable
 from datetime import UTC, datetime
 from typing import Protocol
 from urllib.parse import urlsplit
@@ -33,6 +34,7 @@ def create_public_trial_router(
     allowed_origins: tuple[str, ...],
     rate_limiter: PublicTrialAbuseGate,
     delivery: PasswordResetDelivery,
+    commercially_authorized: Callable[[], bool] | None = None,
 ) -> APIRouter:
     """Produce first-party trial ingress without modifying the signed S2S route."""
     if not allowed_origins or any(
@@ -50,6 +52,18 @@ def create_public_trial_router(
 
     router = APIRouter(tags=["public-commercial-trial"])
 
+    def release_allowed() -> bool:
+        # The production composition binds the existing human-approved release.
+        # A failed/absent release reader is never interpreted as approval.
+        if commercially_authorized is None:
+            return False
+        try:
+            return commercially_authorized() is True
+        except Exception:
+            return False
+
+    # Same-origin browser POST supplies Origin without weakening the allowlist.
+    @router.post("/v1/public/trial-plans")
     @router.get("/v1/public/trial-plans")
     async def published_trial_plans(request: Request) -> JSONResponse:
         origin = request.headers.get("origin", "")
@@ -60,6 +74,12 @@ def create_public_trial_router(
             "Access-Control-Allow-Origin": origin,
             "Vary": "Origin",
         }
+        if not release_allowed():
+            return JSONResponse(
+                status_code=503,
+                content={"detail": "trial offers not released"},
+                headers=headers,
+            )
         catalog = pricing.current
         if catalog is None:
             return JSONResponse(
@@ -128,6 +148,12 @@ def create_public_trial_router(
             )
         headers["Access-Control-Allow-Origin"] = origin
         headers["Vary"] = "Origin"
+        if not release_allowed():
+            return JSONResponse(
+                status_code=503,
+                content={"detail": "trial not released"},
+                headers=headers,
+            )
         if (
             request.headers.get("content-type", "").split(";")[0].strip().lower()
             != "application/json"

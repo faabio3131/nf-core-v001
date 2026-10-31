@@ -931,3 +931,21 @@ html[data-theme="light"] .product-footer { color: #5b6f87; border-top-color: #d5
 .panel label { font-size: 13px; font-weight: 650; }
 html[data-theme="light"] .shell .panel label { color: #1d3350; }
 html:not([data-theme="light"]) .shell .panel label { color: #c4d4e4; }
+
+/* RTC-09: scoped issuer evidence, on the existing premium Portal design system. */
+.rtc-overview { display: grid; gap: 14px; min-width: 0; }
+.rtc-overview .grid-list { background: transparent; border: 0; box-shadow: none; padding: 0; }
+.rtc-status {
+  border: 1px solid color-mix(in srgb, var(--brand-cyan) 35%, transparent);
+  border-radius: var(--radius-lg);
+  background: color-mix(in srgb, var(--brand-cyan) 9%, transparent);
+  color: var(--text);
+  padding: 14px 16px;
+  font-weight: 650;
+  line-height: 1.55;
+}
+.rtc-overview .empty-state { margin: 0; line-height: 1.65; }
+html[data-theme="light"] .rtc-status { color: #153453; }
+@media (max-width: 760px) {
+  .rtc-status { padding: 12px; }
+}

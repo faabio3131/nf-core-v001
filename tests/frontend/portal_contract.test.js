@@ -181,3 +181,28 @@ test("fiscal actions require current authorized unit and environment", () => {
   assert.match(script, /unit\.unit_id === selectedFiscalUnit && unit\.environments\.includes\(selectedFiscalEnvironment\)/);
   assert.match(script, /option\.disabled = !authorizedScope \|\| !configured\.includes\(option\.value\)/);
 });
+
+
+test("RTC screen uses the existing authenticated scoped portal and does not invent tax results", () => {
+  assert.match(script, /\["tax-reform", "Reforma Tributária"\]/);
+  assert.match(script, /appendRtcIssuerSummary\(article, rows\)/);
+  assert.match(script, /issuer\.status === "profile_effective"/);
+  assert.match(script, /Lucro Real \/ Presumido \/ Simples/);
+  assert.match(script, /O CRT não define sozinho o regime de IRPJ\/CSLL/);
+  assert.match(script, /nenhuma emissão ou cálculo fiscal é executado nesta tela/);
+  assert.doesNotMatch(script, /\/v1\/rtc\/calculate/);
+});
+
+
+test("RTC issuer profile enrollment uses governed portal operation and no browser tenant authority", () => {
+  assert.match(script, /registerFiscalProfile/);
+  assert.match(script, /rtc-profile-registration/);
+  assert.match(script, /configuration\.write/);
+  assert.match(script, /Idempotency-Key/);
+  assert.match(script, /X-CSRF-Token/);
+  assert.match(script, /state_registration_exempt/);
+  assert.match(script, /unit_id: selectedFiscalUnit/);
+  assert.match(script, /environment: selectedFiscalEnvironment/);
+  assert.doesNotMatch(script, /tenant_id:\s*.*payload/);
+  assert.doesNotMatch(script, /localStorage/);
+});

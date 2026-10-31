@@ -1,0 +1,66 @@
+{
+  "schema_version": 1,
+  "baseline_id": "nfcore-rtc-regulatory-baseline-2026-10-30",
+  "version": 2,
+  "captured_at": "2026-10-30T22:29:11Z",
+  "status": "REFERENCE_ONLY_NOT_PRODUCTION_APPROVED",
+  "source_policy": "official_published_sources_only",
+  "artifacts": [
+    {
+      "artifact_id": "NT-2025.002",
+      "kind": "technical_note",
+      "version": "1.52",
+      "published_on": "2026-10-01",
+      "source_reference": "https://www.nfe.fazenda.gov.br/portal/listaConteudo.aspx?tipoConteudo=04BIflQt1aY%3D"
+    },
+    {
+      "artifact_id": "LC-214-2025",
+      "kind": "other",
+      "version": "214/2025",
+      "published_on": "2025-01-16",
+      "source_reference": "https://www.gov.br/receitafederal/pt-br/acesso-a-informacao/acoes-e-programas/reforma-tributaria-do-consumo/legislacao/"
+    },
+    {
+      "artifact_id": "LC-227-2026",
+      "kind": "other",
+      "version": "227/2026",
+      "published_on": "2026-01-13",
+      "source_reference": "https://www.gov.br/receitafederal/pt-br/acesso-a-informacao/acoes-e-programas/reforma-tributaria-do-consumo/legislacao/"
+    },
+    {
+      "artifact_id": "RTC-DOCUMENT-SCHEDULE",
+      "kind": "other",
+      "version": "2026-10-28",
+      "published_on": "2026-10-28",
+      "source_reference": "https://www.gov.br/receitafederal/pt-br/acesso-a-informacao/acoes-e-programas/reforma-tributaria-do-consumo/orientacoes-da-reforma-tributaria/cronograma"
+    },
+    {
+      "artifact_id": "IT-2025.002",
+      "kind": "technical_report",
+      "version": "1.70",
+      "published_on": "2026-10-01",
+      "source_reference": "https://www.nfe.fazenda.gov.br/portal/listaConteudo.aspx?tipoConteudo=hXzemuyNHW4%3D"
+    },
+    {
+      "artifact_id": "IBSCBS-CCLASSTRIB",
+      "kind": "classification_table",
+      "version": "IT-2025.002-v1.70",
+      "published_on": "2026-10-01",
+      "source_reference": "https://www.nfe.fazenda.gov.br/portal/listaConteudo.aspx?tipoConteudo=%2FNJarYc9nus%3D"
+    },
+    {
+      "artifact_id": "IBSCBS-CCREDPRES",
+      "kind": "other",
+      "version": "IT-2025.002-v1.70",
+      "published_on": "2026-10-01",
+      "source_reference": "https://www.nfe.fazenda.gov.br/portal/listaConteudo.aspx?tipoConteudo=%2FNJarYc9nus%3D"
+    }
+  ],
+  "excluded_until_verified": [
+    "full official XML XSD bundle checksums",
+    "downloaded official cClassTrib/CST and credit tables with verified checksums",
+    "NFSe national technical schemas/versions",
+    "provider homologation",
+    "production rates and fiscal formulas"
+  ]
+}

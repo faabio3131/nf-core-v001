@@ -67,6 +67,12 @@ recovery_spec.loader.exec_module(recovery_fixture)
 
 
 def build_app(database):
+    if os.environ.get("NFCORE_E2E_TRIAL") == "1":
+        from trial_http_fixture import build_trial_app
+
+        app = build_trial_app()
+        app.mount("/", StaticFiles(directory=ROOT / "portal", html=True), name="trial-portal")
+        return app
     fixture.seed(database)
     configuration_fixture.seed(database)
     service = FiscalApplicationService(database)

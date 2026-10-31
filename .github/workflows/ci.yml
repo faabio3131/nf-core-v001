@@ -5,6 +5,7 @@ on:
   pull_request:
     branches:
       - main
+      - production
   push:
     branches:
       - main
@@ -242,22 +243,26 @@ jobs:
             -v "$PWD:/workspace" -w /workspace \
             -e DATABASE_URL="$NFCORE_TEST_POSTGRES_DSN" postgres:16-alpine \
             sh scripts/postgres_backup.sh .tmp-backup/nfcore.dump
+          # Restore into a fresh isolated database, not the source DB.
+          # E2E tests can leave disposable named schemas in the source DB;
+          # recreating those inside the same DB caused CREATE SCHEMA collisions.
           docker run --rm --network host \
             -e PGPASSWORD=nfcore_test_password postgres:16-alpine \
-            psql -h 127.0.0.1 -U nfcore -d nfcore_test -v ON_ERROR_STOP=1 \
-            -c "DROP SCHEMA public CASCADE; CREATE SCHEMA public;"
+            psql -h 127.0.0.1 -U nfcore -d postgres -v ON_ERROR_STOP=1 \
+            -c "CREATE DATABASE nfcore_restore_test;"
+          RESTORE_DATABASE_URL="${NFCORE_TEST_POSTGRES_DSN%/nfcore_test}/nfcore_restore_test"
           docker run --rm --network host \
             -v "$PWD:/workspace" -w /workspace \
-            -e DATABASE_URL="$NFCORE_TEST_POSTGRES_DSN" postgres:16-alpine \
+            -e DATABASE_URL="$RESTORE_DATABASE_URL" postgres:16-alpine \
             sh scripts/postgres_restore.sh .tmp-backup/nfcore.dump
-          test "$(docker run --rm --network host -e PGPASSWORD=nfcore_test_password postgres:16-alpine psql -h 127.0.0.1 -U nfcore -d nfcore_test -Atqc "SELECT value FROM wp08_restore_sentinel WHERE id=1")" = "restore-ok"
-          test "$(docker run --rm --network host -e PGPASSWORD=nfcore_test_password postgres:16-alpine psql -h 127.0.0.1 -U nfcore -d nfcore_test -Atqc "SELECT COUNT(*) FROM fm_schema_migrations")" -gt 0
+          test "$(docker run --rm --network host -e PGPASSWORD=nfcore_test_password postgres:16-alpine psql -h 127.0.0.1 -U nfcore -d nfcore_restore_test -Atqc "SELECT value FROM wp08_restore_sentinel WHERE id=1")" = "restore-ok"
+          test "$(docker run --rm --network host -e PGPASSWORD=nfcore_test_password postgres:16-alpine psql -h 127.0.0.1 -U nfcore -d nfcore_restore_test -Atqc "SELECT COUNT(*) FROM fm_schema_migrations")" -gt 0
 
       - name: Application readiness against restored database
         env:
           NFCORE_ENVIRONMENT: staging
           NFCORE_PERSISTENCE_BACKEND: postgres
-          DATABASE_URL: postgresql://nfcore:nfcore_test_password@127.0.0.1:5432/nfcore_test
+          DATABASE_URL: postgresql://nfcore:nfcore_test_password@127.0.0.1:5432/nfcore_restore_test
           NFCORE_SECRET_BACKEND: external
           NFCORE_REQUIRE_HTTPS: "true"
         run: |
