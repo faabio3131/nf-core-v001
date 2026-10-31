@@ -50,8 +50,8 @@
 | ID | WP canônico | Ação/aceite | Dependências | Estado em 31/10 | Evidência / próximo gate |
 |---|---|---|---|---|---|
 | NFC-EXEC-13 | BLD-00/01/02 | **Preservar** inventário, identidade/Portal e operações fiscais internas já certificados | nenhuma | DONE_CERTIFIED_INTERNAL | #226–#230; #253/#254/#255/#258; sem reconstrução |
-| NFC-EXEC-14 | BLD-03 | Fechar teste Web cadastro trial→persistência→identidade→release e bloquear oferta se preço/duração/admin não aprovados | BLD-01 | IN_PROGRESS | #260/#279 merged; #237 SUPERSEDED; jornada e oferta pública ainda não aceitas |
-| NFC-EXEC-15 | BLD-04 | Certificar HTTP Command assinado→inbox→dedupe→assinatura/provisioning→claim/activation/Worker, PostgreSQL descartável e falhas/replay | contratos BLD-03 | IN_PROGRESS | #281 merged + patch de segurança; aproveitar testes existentes, não recriá-los |
+| NFC-EXEC-14 | BLD-03 | Fechar teste Web cadastro trial→persistência→identidade→release e bloquear oferta se preço/duração/admin não aprovados | BLD-01 | IN_PROGRESS | #260/#279 merged; #237 SUPERSEDED; PR #292 na branch `fix/nfv1-bld03-public-trial-duplicate-json-20261031` rejeita JSON duplicado, valida Idempotency-Key conforme o serviço canônico (mínimo 16 caracteres), limita o body a 4 KiB durante streaming e bloqueia publicação de catálogo quando a leitura canônica falha (testes sem efeitos ou ofertas fictícias). Jornada completa e oferta pública ainda não aceitas; CI/merge pendentes |
+| NFC-EXEC-15 | BLD-04 | Certificar HTTP Command assinado→inbox→dedupe→assinatura/provisioning→claim/activation/Worker, PostgreSQL descartável e falhas/replay | contratos BLD-03 | IN_PROGRESS | #281 integrado; CL11 já cobria ativação mas usava DROP SCHEMA public CASCADE. Branch `fix/nfv1-bld04-cl11-isolated-postgres-20261031` preserva casos existentes em schema PG descartável/local e evita destruição do public. CI e merge pendentes; BLD-04 completo ainda NÃO certificado |
 | NFC-EXEC-16 | BLD-05 | Concluir gaps neutros de adapter fiscal e readiness por família, contrato real de integração sem fake em runtime | BLD-02 | PENDING | transmissão/homologação oficial permanece EXTERNAL |
 | NFC-EXEC-17 | BLD-06 | E2E Web→API→PostgreSQL→Worker (outbox, retry, recuperação e isolamento) sem duplicar filas/serviços | BLD-04/05 contratos pertinentes | PENDING | provar ciclo por evento/tenant e health, sem afirmar operação externa sem teste |
 | NFC-EXEC-18 | BLD-07 | Reconciliar site `fm-site-novo` PR #12, CORS/API Contabo, status da oferta e CTA; certificar e integrar apenas com autorização do outro repo | BLD-03/04 contratos | PENDING | site #12 Draft; não publicar trial sem liberação comercial |
@@ -61,7 +61,7 @@
 
 | ID | Frente | Ação/aceite | Dependência | Estado |
 |---|---|---|---|---|
-| NFC-EXEC-20 | Contabo, PR #284 | Auditar driver/cron e revisão atualmente implantada, backup/restauração, health/ready, rollback, Docker API/Portal/Worker, segredos e deploy sem migration implícita; corrigir com PR e CI | main verde + acesso operacional seguro | IN_PROGRESS (PR #284 OPEN, sem deploy comprovado) |
+| NFC-EXEC-20 | Contabo, PR #284 | Auditar driver/cron e revisão atualmente implantada, backup/restauração, health/ready, rollback, Docker API/Portal/Worker, segredos e deploy sem migration implícita; corrigir com PR e CI | main verde + acesso operacional seguro | IN_PROGRESS: #284 MERGED em `1e1115cc2f3dee63d169edfca71a0644a7d540c6`, Gov e deploy-config pós-merge SUCCESS; CI completa pós-merge #41247712430 aguardava conclusão. PR #291 propõe gate de schema somente leitura/code-only; sem instalação/deploy/worker certificado |
 | NFC-EXEC-21 | Promoção controlada | Reconciliar branch `production` vs `main`; conferir gates, migrations pendentes, backup e rollback; staging primeiro se disponível; promover somente revisão aprovada | 20 + gates e autorizações específicas | BLOCKED_HUMAN_ACTION para ações de schema/produção além da autorização de deploy |
 | NFC-EXEC-22 | Fiscal externo | Homologação SEFAZ/NFS-e por célula e evidência; certificado/CSC/UF/município/provedor, habilitação real | RTC-11 + recursos externos | BLOCKED_EXTERNAL |
 | NFC-EXEC-23 | Comercial externo | Definir oferta trial/preço/duração, prestador de cobrança, conta/segredos e transações reais, aprovar publicação | BUILD-03/04 internos | BLOCKED_HUMAN_ACTION |
@@ -101,9 +101,9 @@ Novo estado (somente com evidência):
 
 **Regra de manutenção:** atualize a linha na **mesma entrega** que satisfaz seu critério de aceite ou na PR imediatamente vinculada; não deixe o progresso só no chat. Se falhar CI, tarefa permanece `IN_PROGRESS`. Se não houver trabalho ativo entre conversas, este plano continua sendo um snapshot versionado, não um monitor automático.
 
-### Checkpoint incremental 31/10/2026 — RTC-04 / PR #289
+### Checkpoint da implantação segura — 31/10/2026
 
-- Baseline de branch: main `e5493bd0a7a2013e6eb361a478d2621b36cddac7` (merge de cronograma #288). Entrega em `feat/nfcore-rtc04-evidenced-decimal-preview-20261031`.
-- Microentrega: cálculo **apenas prévio/sintético** de uma componente Decimal, exigindo RATE_TABLE pinado por SHA, CST/cClassTrib via catálogo verificado, arredondamento fornecido pelo artefato; **sem alíquota oficial**, sem API/Worker/XML, sem persistência, migrações, deploy ou emissão.
-- Arquivos: `src/kordena_fiscal/compliance/rtc_calculation_preview.py`, `tests/compliance/test_rtc_calculation_preview.py`.
-- PR #289 Draft. CI, Governança e revisão de escopo ainda devem passar no SHA final antes de qualquer merge RTC. O próximo incremento precisa determinar fórmulas, vigências, bases e golden cases a partir das fontes oficiais, sem assumir que uma prévia é motor fiscal certificado.
+- PR #284 (configuração Contabo, incluindo hardening da PR #290) MERGED em `main=1e1115cc2f3dee63d169edfca71a0644a7d540c6`. Governança e workflow de teste do deploy pós-merge: SUCCESS. CI completa #41247712430 ainda em execução no último levantamento da PR #291.
+- PR #291, branch `fix/nfcore-contabo-codeonly-schema-gate-20261031`: amplia `migration_guard.py` com `--assert-current-production` exclusivamente SELECT-only; deploy automático passa a executar apenas quando versões fiscal e Cakto estão integralmente atuais, sem `--apply` ou aprovação embutida de migration; falha fechada com schema pendente/ilegível. Testes de build e compose-up falhos preservam rollback seguro de código.
+- Esta atualização documental é **IN_PROGRESS**, não fecha NFC-EXEC-20 ou 21. CI/Gov e validação deploy da PR #291 precisam terminar SUCCESS no HEAD final; comparar scripts realmente instalados na Contabo e validar o SHA publicado antes de qualquer operação no servidor.
+- `production=a3a2b3c97d26780b1e2b7581b4c93b6f07e86a70` no último auditado (reconsultar antes de promover); nenhuma migration/deploy/credencial/alteração de DB executada aqui. Worker continua fora do compose Contabo versionado; cobertura operacional BLD-06/08 ainda pendente.

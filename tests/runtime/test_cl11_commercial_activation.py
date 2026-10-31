@@ -4,9 +4,13 @@ import os
 from dataclasses import replace
 from datetime import UTC, datetime
 from decimal import Decimal
+from urllib.parse import parse_qsl, quote, urlencode, urlsplit, urlunsplit
+from uuid import uuid4
 
 import psycopg
 import pytest
+from psycopg import sql
+from psycopg.conninfo import conninfo_to_dict
 
 from kordena_fiscal.control_plane.models import AdminPrincipal, ControlPlanePermission
 from kordena_fiscal.persistence.commercial_fulfillment import (
@@ -45,16 +49,36 @@ def _dsn() -> str:
 
 @pytest.fixture
 def database() -> PostgresFiscalDatabase:
+    # Never drop public schema or touch a shared/remote PostgreSQL database.
     dsn = _dsn()
+    connection_info = conninfo_to_dict(dsn)
+    if (
+        connection_info.get("host") not in {"127.0.0.1", "localhost", "::1"}
+        or not connection_info.get("dbname", "").endswith("_test")
+    ):
+        pytest.fail("CL11 PostgreSQL tests require a local *_test disposable database")
+    schema = "cl11_activation_" + uuid4().hex
     with psycopg.connect(dsn, autocommit=True) as connection:
-        connection.execute("DROP SCHEMA public CASCADE")
-        connection.execute("CREATE SCHEMA public")
-    database = PostgresFiscalDatabase(dsn)
-    database.initialize()
+        connection.execute(sql.SQL("CREATE SCHEMA {}").format(sql.Identifier(schema)))
+    parts = urlsplit(dsn)
+    options = dict(parse_qsl(parts.query, keep_blank_values=True))
+    options["options"] = f"-c search_path={schema}"
+    isolated_dsn = urlunsplit(
+        parts._replace(query=urlencode(options, quote_via=quote))
+    )
+    database = None
     try:
+        database = PostgresFiscalDatabase(isolated_dsn)
+        database.initialize()
+        database.require_current_schema()
         yield database
     finally:
-        database.close()
+        if database is not None:
+            database.close()
+        with psycopg.connect(dsn, autocommit=True) as connection:
+            connection.execute(
+                sql.SQL("DROP SCHEMA {} CASCADE").format(sql.Identifier(schema))
+            )
 
 
 def _publish_growth_pricing(database: PostgresFiscalDatabase) -> None:

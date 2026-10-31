@@ -80,29 +80,37 @@ def create_public_trial_router(
                 content={"detail": "trial offers not released"},
                 headers=headers,
             )
-        catalog = pricing.current
-        if catalog is None:
+        try:
+            catalog = pricing.current
+            if catalog is None:
+                return JSONResponse(
+                    status_code=503,
+                    content={"detail": "trial plans not published"},
+                    headers=headers,
+                )
+            entries = []
+            for plan in catalog.plans:
+                if not plan.enabled or plan.trial_days < 1:
+                    continue
+                for price_id in plan.price_ids:
+                    price = catalog.price(price_id)
+                    if price.enabled:
+                        entries.append({
+                            "plan_id": plan.plan_id,
+                            "price_id": price.price_id,
+                            "display_name": plan.display_name,
+                            "trial_days": plan.trial_days,
+                            "currency": price.currency,
+                            "billing_cadence": price.cadence.value,
+                            "base_amount": str(price.base_amount),
+                        })
+        except Exception:
+            # The pricing authority is unavailable: never synthesize public offers.
             return JSONResponse(
                 status_code=503,
-                content={"detail": "trial plans not published"},
+                content={"detail": "trial plans temporarily unavailable"},
                 headers=headers,
             )
-        entries = []
-        for plan in catalog.plans:
-            if not plan.enabled or plan.trial_days < 1:
-                continue
-            for price_id in plan.price_ids:
-                price = catalog.price(price_id)
-                if price.enabled:
-                    entries.append({
-                        "plan_id": plan.plan_id,
-                        "price_id": price.price_id,
-                        "display_name": plan.display_name,
-                        "trial_days": plan.trial_days,
-                        "currency": price.currency,
-                        "billing_cadence": price.cadence.value,
-                        "base_amount": str(price.base_amount),
-                    })
         return JSONResponse(
             status_code=200,
             content={"plans": entries},
@@ -135,6 +143,15 @@ def create_public_trial_router(
                 "Vary": "Origin",
             },
         )
+
+    def _strict_trial_json_pairs(pairs: list[tuple[str, object]]) -> dict[str, object]:
+        """Reject ambiguous JSON objects at every nesting level."""
+        result: dict[str, object] = {}
+        for key, value in pairs:
+            if key in result:
+                raise ValueError("duplicate JSON field")
+            result[key] = value
+        return result
 
     @router.post("/v1/public/trials")
     async def public_trial(request: Request) -> JSONResponse:
@@ -177,21 +194,23 @@ def create_public_trial_router(
                 headers=headers,
             )
         key = request.headers.get("Idempotency-Key", "").strip()
-        if not (8 <= len(key) <= 128 and key.isascii() and key.isprintable()):
+        if not (16 <= len(key) <= 128 and key.isascii() and key.isprintable()):
             return JSONResponse(
                 status_code=400,
                 content={"detail": "invalid idempotency key"},
                 headers=headers,
             )
-        body = await request.body()
-        if len(body) > 4096:
-            return JSONResponse(
-                status_code=413,
-                content={"detail": "payload too large"},
-                headers=headers,
-            )
+        body = bytearray()
+        async for chunk in request.stream():
+            if len(body) + len(chunk) > 4096:
+                return JSONResponse(
+                    status_code=413,
+                    content={"detail": "payload too large"},
+                    headers=headers,
+                )
+            body.extend(chunk)
         try:
-            payload = json.loads(body)
+            payload = json.loads(bytes(body), object_pairs_hook=_strict_trial_json_pairs)
         except (ValueError, UnicodeDecodeError):
             return JSONResponse(
                 status_code=400,
