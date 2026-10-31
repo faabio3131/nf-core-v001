@@ -35,7 +35,10 @@ from kordena_fiscal.security.s2s import (
     InMemoryWebhookKeyRing,
     WebhookSecurity,
 )
-from kordena_fiscal.web.commercial_acquisition import create_commercial_acquisition_router
+from kordena_fiscal.web.commercial_acquisition import (
+    MAX_ACQUISITION_BODY_BYTES,
+    create_commercial_acquisition_router,
+)
 
 NOW = datetime(2026, 9, 28, 13, 0, tzinfo=UTC)
 SECRET = b"first-party-site-secret-key-material-2026"
@@ -426,3 +429,41 @@ def test_http_boundary_rate_limits_authenticated_site_key() -> None:
         },
     )
     assert second.status_code == 429
+
+
+@pytest.mark.parametrize("authenticated", [False, True])
+def test_acquisition_http_rejects_oversized_body_before_authentication_or_effect(
+    authenticated: bool,
+) -> None:
+    database = MemoryAcquisitionDatabase()
+    client, security = signed_client(database)
+    body = b"x" * (MAX_ACQUISITION_BODY_BYTES + 1)
+    headers = {"Idempotency-Key": "oversized-acquisition-test-0001"}
+    if authenticated:
+        headers["X-NFCore-Signature"] = security.sign(
+            body, now=datetime.now(UTC)
+        ).header_value
+    response = client.post(
+        "/v1/commercial/acquisitions", content=body, headers=headers,
+    )
+    assert response.status_code == 413
+    assert database.store.acquisitions == {}
+
+
+def test_acquisition_http_accepts_normal_signed_body_after_bounding() -> None:
+    database = MemoryAcquisitionDatabase()
+    client, security = signed_client(database)
+    body = acquisition_body()
+    assert len(body) < MAX_ACQUISITION_BODY_BYTES
+    response = client.post(
+        "/v1/commercial/acquisitions",
+        content=body,
+        headers={
+            "Idempotency-Key": "normal-acquisition-bounded-0001",
+            "X-NFCore-Signature": security.sign(
+                body, now=datetime.now(UTC)
+            ).header_value,
+        },
+    )
+    assert response.status_code == 201
+    assert len(database.store.acquisitions) == 1

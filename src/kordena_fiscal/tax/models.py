@@ -207,6 +207,9 @@ class TaxRuleOutcome:
     cofins_cst: str
     ibs_cbs_classification_code: str | None = None
     legal_notes: tuple[str, ...] = ()
+    # RTC metadata is opt-in: legacy TaxRule outcomes keep their original contract.
+    ibs_cbs_cst_code: str | None = None
+    ibs_cbs_classification_table_version: str | None = None
 
     def __post_init__(self) -> None:
         cfop = self.cfop.strip()
@@ -234,6 +237,18 @@ class TaxRuleOutcome:
                 32,
             ),
         )
+        if self.ibs_cbs_cst_code is not None:
+            cst = self.ibs_cbs_cst_code.strip()
+            if len(cst) != 3 or not cst.isascii() or not cst.isdigit():
+                raise FiscalValidationError("ibs_cbs_cst_code must contain 3 digits")
+            object.__setattr__(self, "ibs_cbs_cst_code", cst)
+        if self.ibs_cbs_classification_table_version is not None:
+            version = _required_text(
+                self.ibs_cbs_classification_table_version,
+                "ibs_cbs_classification_table_version",
+                max_length=64,
+            )
+            object.__setattr__(self, "ibs_cbs_classification_table_version", version)
         normalized_notes = tuple(
             _required_text(note, "legal_note", max_length=500) for note in self.legal_notes
         )

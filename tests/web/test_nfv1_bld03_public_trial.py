@@ -280,3 +280,98 @@ def test_trial_intake_tracks_governed_release_approval_and_revocation() -> None:
     )
     assert c.post("/v1/public/trials", json=body, headers=headers).status_code == 503
     assert len(service.calls) == 1
+
+
+@pytest.mark.parametrize(
+    "raw",
+    (
+        b'{"plan_id":"p","plan_id":"forged","price_id":"price","buyer_email":"a@example.com","legal_name":"ACME"}',
+        b'{"plan_id":"p","price_id":"price","buyer_email":"a@example.com","legal_name":"ACME","legal_name":"forged"}',
+        b'{"plan_id":"p","price_id":"price","buyer_email":"a@example.com","legal_name":"ACME","extra":{"key":1,"key":2}}',
+    ),
+)
+def test_public_trial_rejects_duplicate_json_fields_before_service(raw: bytes) -> None:
+    service = Trial()
+    response = client(service).post(
+        "/v1/public/trials",
+        content=raw,
+        headers={
+            "Origin": "https://fmtecnologia.com.br",
+            "Content-Type": "application/json",
+            "Idempotency-Key": "trial-duplicate-rejection",
+        },
+    )
+    assert response.status_code == 400
+    assert response.json() == {"detail": "invalid JSON"}
+    assert service.calls == []
+
+
+
+@pytest.mark.parametrize("failure", ["read", "malformed-catalog"])
+def test_public_trial_catalog_failure_is_503_without_offer_leak(failure: str) -> None:
+    class UnavailablePricing:
+        @property
+        def current(self):
+            if failure == "read":
+                raise RuntimeError("synthetic-internal-pricing-error")
+            return SimpleNamespace(plans=[SimpleNamespace(
+                enabled=True, trial_days=7, price_ids=["missing"],
+            )], price=lambda _id: (_ for _ in ()).throw(
+                RuntimeError("synthetic-internal-price-error")
+            ))
+
+    service = Trial()
+    app = FastAPI()
+    app.include_router(create_public_trial_router(
+        service,  # type: ignore[arg-type]
+        pricing=UnavailablePricing(),  # type: ignore[arg-type]
+        allowed_origins=("https://fmtecnologia.com.br",),
+        rate_limiter=FixedWindowRateLimiter(max_requests=3, window_seconds=3600),
+        delivery=Delivery(),  # type: ignore[arg-type]
+        commercially_authorized=lambda: True,
+    ))
+    response = TestClient(app).get(
+        "/v1/public/trial-plans",
+        headers={"Origin": "https://fmtecnologia.com.br"},
+    )
+    assert response.status_code == 503
+    assert response.json() == {"detail": "trial plans temporarily unavailable"}
+    assert "synthetic-internal" not in response.text
+    assert "plans" not in response.json()
+    assert response.headers["cache-control"] == "no-store"
+    assert service.calls == []
+
+
+@pytest.mark.parametrize("key", ("short-key", " " * 7 + "abcdefgh", " " * 16))
+def test_public_trial_rejects_key_shorter_than_canonical_minimum(key: str) -> None:
+    service = Trial()
+    response = client(service).post(
+        "/v1/public/trials",
+        json={
+            "plan_id": "p", "price_id": "price",
+            "buyer_email": "a@example.com", "legal_name": "ACME",
+        },
+        headers={
+            "Origin": "https://fmtecnologia.com.br",
+            "Idempotency-Key": key,
+        },
+    )
+    assert response.status_code == 400
+    assert response.json() == {"detail": "invalid idempotency key"}
+    assert service.calls == []
+
+
+def test_public_trial_streamed_payload_is_bounded_before_parsing() -> None:
+    service = Trial()
+    response = client(service).post(
+        "/v1/public/trials",
+        content=iter((b'{"plan_id":"p","padding":"', b"x" * 4096, b'"}')),
+        headers={
+            "Origin": "https://fmtecnologia.com.br",
+            "Content-Type": "application/json",
+            "Idempotency-Key": "trial-stream-overflow-key",
+        },
+    )
+    assert response.status_code == 413
+    assert response.json() == {"detail": "payload too large"}
+    assert service.calls == []
