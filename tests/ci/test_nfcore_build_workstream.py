@@ -76,17 +76,34 @@ def test_rejects_duplicate_concurrent_work_or_missing_proof() -> None:
 def test_bld09_preserves_status_dependency_and_current_gates() -> None:
     plan, ledger = inputs()
     assert not assess(plan, ledger)
-    assert any("estado inválido" in error and "BLD-09" in error
-               for error in assess(plan, ledger.replace(
-                   "### NFV1-BLD-09 — Core Cognitivo Vertical NFCore V1 (decisão 31/10/2026)\n- **Estado:** PENDING",
-                   "### NFV1-BLD-09 — Core Cognitivo Vertical NFCore V1 (decisão 31/10/2026)\n- **Estado:** PENDING_IMPLEMENTATION", 1)))
-    assert any("predecessores e CURRENT obrigatórios" in error and "BLD-09" in error
-               for error in assess(plan, ledger.replace(
-                   "- **Depende de:** BLD-01/02 (sessão, RBAC, tenant/unidade e leitura fiscal canônica), contrato S2S central FM/Command e Vault/Secret Reference aprovados; não depende do piloto de 02/11.\n", "", 1)))
-    assert any("predecessores e CURRENT obrigatórios" in error and "BLD-09" in error
-               for error in assess(plan, ledger.replace(
-                   "- **CURRENT:** `main=207fbf2ffbeae90759202975b443e7111d26e76f`;",
-                   "- **Contexto:** `main=207fbf2ffbeae90759202975b443e7111d26e76f`;", 1)))
-    assert any("IDs BLD-00..09" in error for error in assess(plan.replace(
+    heading = "### NFV1-BLD-09 — Core Cognitivo Vertical NFCore V1 (decisão 31/10/2026)"
+    assert heading in ledger
+    prefix = heading + "\n- **Estado:** "
+    invalid_state = ledger.replace(prefix + "PENDING", prefix + "PENDING_IMPLEMENTATION", 1)
+    assert any(
+        "estado inválido" in error and "BLD-09" in error
+        for error in assess(plan, invalid_state)
+    )
+
+    bld09_start = ledger.index(heading)
+    before, bld09 = ledger[:bld09_start], ledger[bld09_start:]
+    without_dependency = re.sub(
+        r"^- \\*\\*Depende de:\\*\\*.*\\n", "", bld09, count=1, flags=re.M
+    )
+    assert any(
+        "predecessores e CURRENT obrigatórios" in error and "BLD-09" in error
+        for error in assess(plan, before + without_dependency)
+    )
+    without_current = re.sub(
+        r"^- \\*\\*CURRENT:\\*\\*.*\\n", "", bld09, count=1, flags=re.M
+    )
+    assert any(
+        "predecessores e CURRENT obrigatórios" in error and "BLD-09" in error
+        for error in assess(plan, before + without_current)
+    )
+    invalid_plan = plan.replace(
         "### NFV1-BLD-09 — Core Cognitivo Vertical NFCore V1",
-        "#### NFV1-BLD-09 — Core Cognitivo Vertical NFCore V1", 1), ledger))
+        "#### NFV1-BLD-09 — Core Cognitivo Vertical NFCore V1",
+        1,
+    )
+    assert any("IDs BLD-00..09" in error for error in assess(invalid_plan, ledger))
