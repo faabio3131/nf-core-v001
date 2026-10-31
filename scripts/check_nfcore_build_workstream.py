@@ -30,8 +30,8 @@ def assess(plan: str, ledger: str) -> list[str]:
     plan_ids = [m.group(1) for m in PATTERN.finditer(plan)]
     entries = list(PATTERN.finditer(ledger))
     ledger_ids = [m.group(1) for m in entries]
-    if plan_ids != [f"{i:02d}" for i in range(9)]:
-        errors.append("anexo BUILD exige IDs BLD-00..08 completos e em ordem")
+    if plan_ids != [f"{i:02d}" for i in range(10)]:
+        errors.append("anexo BUILD exige IDs BLD-00..09 completos e em ordem")
     if ledger_ids != plan_ids:
         errors.append("ledger BUILD e anexo possuem IDs divergentes, repetidos ou fora de ordem")
     if not plan.startswith("# FM NFCORE V1 — Anexo"):
@@ -97,7 +97,7 @@ def main() -> int:
                 else len(ledger)]))),
             None,
         )
-        print(f"OK: 9 blocos BUILD, primeiro aberto BLD-{next_id or 'NONE'}; "
+        print(f"OK: 10 blocos BUILD, primeiro aberto BLD-{next_id or 'NONE'}; "
               "validação estrutural, não prova de runtime")
     return bool(errors)
 
