@@ -122,3 +122,10 @@ Cada `NFV1-BLD-xx` corresponde a um **bloco verificável de construção**. Se a
 ## 7. Resultado esperado
 
 `CONSTRUCTION_AND_WEB_INTEGRATION_COMPLETE` é marco **interno de construção funcional demonstrada**. Não significa `PRODUCTION_APPROVED`, `COMMERCIAL_LIVE` ou homologação fiscal. O cronograma mestre de 59 tarefas permanece em execução, com seus gates externos preservados e sem exigir repetição de etapas já comprovadas.
+
+
+## 8. Decisão posterior do Diretor — NFV1-BLD-09 Core Cognitivo Vertical V1 (31/10/2026)
+
+**Novo requisito obrigatório para fechamento da V1: Core Cognitivo Vertical consultivo**, sem engine próprio, usando backend central FM/Command, identidades server-side governadas, Vault/Secret Reference, escopo tenant/unidade, RBAC, minimização, cota por entitlement, proveniência e IA advisory (nunca execução fiscal). Este bloco **não integra o escopo aprovado em 18/10**, cuja lista histórica BLD-00..08 é preservada; foi **adicionado por decisão expressa posterior**, sem reabrir blocos certificados nem alterar os 59 IDs do cronograma mestre. O texto histórico “NFCORE V2 cognitive architecture remains outside this V1 closure” fica superado **neste ponto de escopo**. O piloto operacional de 02/11 é independente.
+
+**Plano detalhado e ordem de trabalho:** [`NFV1_BLD09_COGNITIVE_CORE_V1_DESIGN_2026-10-31.md`](NFV1_BLD09_COGNITIVE_CORE_V1_DESIGN_2026-10-31.md), T01 contrato S2S → T02 Context Pack → T03 porta/adapter central → T04 rejeições → T05 CST/cClassTrib/NCM consultivos → T06 conciliação/dúvidas → T07 entitlement/uso/custos → T08 gates E2E. **Estado: PENDING_IMPLEMENTATION / proposta documental, sem autorização para deploy, credencial, migração, mudança de produção ou declaração de GO.** Gate BLD-08 de construção fiscal/Web não certifica automaticamente o BLD-09.
