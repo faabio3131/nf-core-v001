@@ -87,15 +87,17 @@ def test_bld09_preserves_status_dependency_and_current_gates() -> None:
 
     bld09_start = ledger.index(heading)
     before, bld09 = ledger[:bld09_start], ledger[bld09_start:]
-    without_dependency = re.sub(
-        r"^- \\*\\*Depende de:\\*\\*.*\\n", "", bld09, count=1, flags=re.M
+    without_dependency = "\n".join(
+        line for line in bld09.split("\n")
+        if not line.startswith("- **Depende de:**")
     )
     assert any(
         "predecessores e CURRENT obrigatórios" in error and "BLD-09" in error
         for error in assess(plan, before + without_dependency)
     )
-    without_current = re.sub(
-        r"^- \\*\\*CURRENT:\\*\\*.*\\n", "", bld09, count=1, flags=re.M
+    without_current = "\n".join(
+        line for line in bld09.split("\n")
+        if not line.startswith("- **CURRENT:**")
     )
     assert any(
         "predecessores e CURRENT obrigatórios" in error and "BLD-09" in error
