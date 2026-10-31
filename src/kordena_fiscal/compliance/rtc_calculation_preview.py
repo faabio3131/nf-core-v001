@@ -8,7 +8,7 @@ use requires independently reviewed official source and a separate approval gate
 from __future__ import annotations
 
 import json
-from decimal import Decimal, InvalidOperation, ROUND_HALF_EVEN, ROUND_HALF_UP
+from decimal import ROUND_HALF_EVEN, ROUND_HALF_UP, Decimal, InvalidOperation
 
 from kordena_fiscal.compliance.rtc import (
     ReformTaxClassificationSnapshot,
