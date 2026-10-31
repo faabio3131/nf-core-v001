@@ -35,7 +35,7 @@
 | NFC-EXEC-01 | RTC-00/01 | Fechar lacunas do inventário e catálogo **oficial**: fonte, edição, vigência, SHA e revisão; identificar diferenças entre tabela piloto e produção sem ativação silenciosa | baseline em main | IMPLEMENTED_NOT_CERTIFIED | #267/#268/#270 merged; verificar cobertura normativa real e watcher versionado |
 | NFC-EXEC-02 | RTC-02 | Completar matriz CRT × regime IRPJ/CSLL, histórico temporal, competência e estabelecimento, com autorização e PostgreSQL isolado | 01 quando afetar norma | IMPLEMENTED_NOT_CERTIFIED | #269/#271/#272; achar gaps em código, não refazer contrato já integrado |
 | NFC-EXEC-03 | RTC-03 | Completar classificação nacional NCM/NBS, CST/cClassTrib, benefício, operação/destino/exceções, snapshots de decisão e falha fechada | 01/02 | IMPLEMENTED_NOT_CERTIFIED | #273/#274/#280; último merge `d1b8606` CI/Gov SUCCESS. Catálogo RTC precisa revisão normativa oficial |
-| NFC-EXEC-04 | RTC-04 | Calculadora determinística IBS/CBS/IS usando Decimal, bases, reduções, créditos, arredondamento e totalização **somente** para células sustentadas por fontes normativas/golden cases verificáveis | 03 para célula em questão | PENDING | Primeiro bloco novo de **construção RTC**. Não inventar taxas; dividir por célula fiscal/versão |
+| NFC-EXEC-04 | RTC-04 | Calculadora determinística IBS/CBS/IS usando Decimal, bases, reduções, créditos, arredondamento e totalização **somente** para células sustentadas por fontes normativas/golden cases verificáveis | 03 para célula em questão | IN_PROGRESS | PR #289 DRAFT — prévia Decimal isolada com taxa/rounding vindos de payload SHA-pinado e classificação validada; **não é fórmula fiscal oficial**, nem RTC-04 concluído. CI/Gov pendentes no HEAD; próximas células dependem de regra oficial e validação humana |
 | NFC-EXEC-05 | RTC-05 | Coexistência/temporalidade tributos legados + IBS/CBS/IS 2026–2033, snapshots e anti-regressão | 04 aplicável | PENDING | testes antes/depois por marco legal com vigência e prova |
 | NFC-EXEC-06 | RTC-06 | NF-e/NFC-e: grupos XML, totais, conditionalidade, XSD vigente, assinatura/rejeição/contingência pelos adapters canônicos | 03–05 | PENDING | golden XML oficiais e validação XSD por versão; sem transmissão oficial fictícia |
 | NFC-EXEC-07 | RTC-07 | NFS-e nacional/municípios homologáveis: DPS, NBS, IBS/CBS e eventos, sem alegar cobertura municipal universal | 03–05 | PENDING | testes por provedor/município/célula permitidos por fonte |
@@ -100,3 +100,10 @@ Novo estado (somente com evidência):
 ```
 
 **Regra de manutenção:** atualize a linha na **mesma entrega** que satisfaz seu critério de aceite ou na PR imediatamente vinculada; não deixe o progresso só no chat. Se falhar CI, tarefa permanece `IN_PROGRESS`. Se não houver trabalho ativo entre conversas, este plano continua sendo um snapshot versionado, não um monitor automático.
+
+### Checkpoint incremental 31/10/2026 — RTC-04 / PR #289
+
+- Baseline de branch: main `e5493bd0a7a2013e6eb361a478d2621b36cddac7` (merge de cronograma #288). Entrega em `feat/nfcore-rtc04-evidenced-decimal-preview-20261031`.
+- Microentrega: cálculo **apenas prévio/sintético** de uma componente Decimal, exigindo RATE_TABLE pinado por SHA, CST/cClassTrib via catálogo verificado, arredondamento fornecido pelo artefato; **sem alíquota oficial**, sem API/Worker/XML, sem persistência, migrações, deploy ou emissão.
+- Arquivos: `src/kordena_fiscal/compliance/rtc_calculation_preview.py`, `tests/compliance/test_rtc_calculation_preview.py`.
+- PR #289 Draft. CI, Governança e revisão de escopo ainda devem passar no SHA final antes de qualquer merge RTC. O próximo incremento precisa determinar fórmulas, vigências, bases e golden cases a partir das fontes oficiais, sem assumir que uma prévia é motor fiscal certificado.
