@@ -370,9 +370,10 @@ que só executa após Pytest na CI; preserva a mesma prova browser e schema úni
 
 
 ### NFV1-BLD-09 — Core Cognitivo Vertical NFCore V1 (decisão 31/10/2026)
-- **Estado:** PENDING_IMPLEMENTATION — auditoria/planejamento em PR documental; **zero código funcional ou certificação cognitiva nesta entrega**.
+- **Estado:** PENDING
+- **Depende de:** BLD-01/02 (sessão, RBAC, tenant/unidade e leitura fiscal canônica), contrato S2S central FM/Command e Vault/Secret Reference aprovados; não depende do piloto de 02/11.
+- **CURRENT:** `main=207fbf2ffbeae90759202975b443e7111d26e76f`; não há Core Cognitivo composto em `runtime/api.py`, `runtime/composition.py` ou `portal/`. A API de Core do Command existe, mas não constitui contrato S2S fiscal certificado. **Implementação ainda não iniciada; nenhuma certificação cognitiva nesta PR.**
 - **Decisão aprovada pelo Diretor:** a V1 DEVE conter Core Cognitivo Vertical, sob autoridade fiscal determinística, usando backend/provedor central FM/Command e Vault/Secret Reference, sem engine/chave por cliente. Sobrepõe-se **somente** à exclusão cognitiva histórica da V1 contida em `docs/NFCORE_V1_CL02_CL06_CONSOLIDATED_CERTIFICATION.md`; não altera o fechamento técnico CL02–06.
-- **Current auditado:** `main=207fbf2ffbeae90759202975b443e7111d26e76f`; em `runtime/api.py`, `runtime/composition.py`, `portal/`, `runtime/worker_composition.py` não foi localizado wiring de IA. API existente do Command `/api/core/query` não é contrato S2S NFCore certificado. Reutilizar autorização, tenant/unidade e leitura fiscal canônicos.
 - **Plano, critérios e riscos:** `docs/NFV1_BLD09_COGNITIVE_CORE_V1_DESIGN_2026-10-31.md`, tarefas T01–T08. Próxima ação: aprovação/validação do contrato central e autorização de execução; BLD-09 não interrompe piloto Web de 02/11.
 - **Evidência final:** PENDENTE — PR de implementação, SHA, CI/Governança, teste de integração e isolamento, E2E Web e prova externa central (quando autorizada). Não transformar proposta em DONE.
 - **Controles:** não publicar IA real ou alterar plano, IAM, segredos, migrações, produção sem ordem humana. NO-GO comercial inalterado.
