@@ -1,5 +1,5 @@
 # NFV1-BLD-09 — Core Cognitivo Vertical NFCore V1
-**Status: PROPOSTA DE ARQUITETURA / PENDING_IMPLEMENTATION — decisão do Diretor em 31/10/2026; somente auditoria e planejamento.**
+**Status: PROPOSTA DE ARQUITETURA / PENDING (implementação não iniciada) — decisão do Diretor em 31/10/2026; somente auditoria e planejamento.**
 **CURRENT de referência:** `faabio3131/nf-core-v001` `main=207fbf2ffbeae90759202975b443e7111d26e76f`; `production=a3a2b3c97d26780b1e2b7581b4c93b6f07e86a70`. Este documento não altera software, cron, ambiente ou 59 IDs originais. **NO-GO comercial/fiscal permanece**. O piloto de 02/11 é independente. A frase histórica “NFCORE V2 cognitive architecture remains outside this V1 closure” em `docs/NFCORE_V1_CL02_CL06_CONSOLIDATED_CERTIFICATION.md` foi **superada pela decisão de 31/10/2026**, sem apagar o histórico.
 
 ## 1. Achados verificáveis CURRENT → TARGET
