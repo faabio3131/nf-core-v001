@@ -20,12 +20,12 @@ from .adapters.logging_audit import LoggingAuditSink
 from .adapters.openai_compatible import build_model_from_environ
 from .api import create_cognitive_router
 from .command_api import create_command_metrics_router
+from .durable_usage import DurableTokenQuotaStore
 from .governance import DEFAULT_PILOT_DAILY_LIMIT, InMemoryUsageLedger, pilot_entitlement
 from .knowledge.official import OfficialTablesError, cached_official_catalog
 from .portal_evidence import PortalSurfaceEvidenceProvider, SurfaceReader
-from .durable_usage import DurableTokenQuotaStore
-from .quota_model import QuotaGovernedAdvisoryClient
 from .ports import AuditSinkPort
+from .quota_model import QuotaGovernedAdvisoryClient
 from .registry import default_baselines
 from .service import CognitiveAdviceService
 from .usage_aggregates import CognitiveUsageAggregates
