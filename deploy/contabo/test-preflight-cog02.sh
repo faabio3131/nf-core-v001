@@ -23,9 +23,9 @@ cat > "$TMP/bin/docker" <<'SH'
 printf 'docker %s\n' "$*" >> "$MOCK_CALLS"
 case "$1" in
   inspect)
-    case "$3" in
+    case "$4" in
       nfcore-db|nfcore-api|nfcore-portal)
-        if [[ "$2" == *State.Running* ]]; then
+        if [[ "$3" == *State.Running* ]]; then
           echo true
         else
           echo sha256:synthetic
