@@ -278,7 +278,7 @@ def test_migration_9_upgrades_an_existing_version_8_database() -> None:
     database = PostgresFiscalDatabase(dsn)
     try:
         assert database.initialize() == (9, 10, 11, 12, 13, 14, 15, 16, 17, 18)
-        assert database.applied_migrations() == tuple(range(1, 19))
+        assert database.applied_migrations() == tuple(range(1, 20))
         with database.connection() as connection:
             assert connection.execute(
                 "SELECT document_id, tenant_id, unit_id FROM fm_fiscal_lifecycle"
@@ -384,7 +384,7 @@ def test_migration_10_upgrades_existing_version_9_state() -> None:
     database = PostgresFiscalDatabase(dsn)
     try:
         assert database.initialize() == (10,)
-        assert database.applied_migrations() == tuple(range(1, 19))
+        assert database.applied_migrations() == tuple(range(1, 20))
         with database.connection() as connection:
             columns = connection.execute(
                 """
@@ -456,7 +456,7 @@ def test_migration_11_upgrades_existing_version_10_state() -> None:
     database = PostgresFiscalDatabase(dsn)
     try:
         assert database.initialize() == (11,)
-        assert database.applied_migrations() == tuple(range(1, 19))
+        assert database.applied_migrations() == tuple(range(1, 20))
         with database.connection() as connection:
             assert connection.execute(
                 "SELECT COUNT(*) FROM fm_commercial_acquisitions"
@@ -485,7 +485,7 @@ def test_migration_12_upgrades_existing_version_11_state() -> None:
     database = PostgresFiscalDatabase(dsn)
     try:
         assert database.initialize() == (12,)
-        assert database.applied_migrations() == tuple(range(1, 19))
+        assert database.applied_migrations() == tuple(range(1, 20))
         with database.connection() as connection:
             columns = connection.execute(
                 """
