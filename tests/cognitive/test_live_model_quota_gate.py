@@ -26,9 +26,10 @@ def test_live_model_is_not_initialized_without_durable_quota(
         Reader(),  # type: ignore[arg-type]
         {
             "NFCORE_COGNITIVE_ENABLED": "true",
-            "NFCORE_ENVIRONMENT": environment,
+            "NFCORE_ENVIRONMENT": "development",  # conflicting untrusted env must not override runtime
             "NFCORE_COGNITIVE_AI_PRIMARY_MODEL": "configured-but-not-enabled",
         },
+        runtime_environment=environment,
     )
     assert router is not None
     app = FastAPI()
@@ -36,3 +37,28 @@ def test_live_model_is_not_initialized_without_durable_quota(
     paths = set(app.openapi()["paths"])
     assert "/v1/portal/cognitive/advise" in paths
     assert "/v1/command/cognitive/metrics" in paths
+
+
+def test_model_client_initialization_only_in_explicit_development(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    called: list[str] = []
+
+    def model_builder(environ: object) -> None:
+        called.append("configured")
+        return None
+
+    monkeypatch.setattr(composition, "build_model_from_environ", model_builder)
+
+    class Reader:
+        def surface(self, **kwargs: object) -> tuple[()]:
+            return ()
+
+    router = composition.build_cognitive_router(
+        object.__new__(HumanIdentityService),
+        Reader(),  # type: ignore[arg-type]
+        {"NFCORE_COGNITIVE_ENABLED": "true"},
+        runtime_environment="development",
+    )
+    assert router is not None
+    assert called == ["configured"]
