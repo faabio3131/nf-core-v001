@@ -61,3 +61,18 @@ Se a `main` avançar, congelar o **novo** HEAD auditado e repetir a CI/Gov, nunc
 | Merge production/deploy/ativação de IA | **NÃO EXECUTADOS** |
 
 **Bloqueio principal:** Desktop Commander offline; falta evidência da versão e schema reais da Contabo. **Próxima ação:** concluir CI da PR preparatória, integrar na main somente se gates verdes e autorizados, restabelecer acesso seguro read-only ao servidor, obter inventário de runtime/banco/backup; então submeter Go/No-Go das operações produtivas separadas.
+
+## 5. Atualização verificada no servidor — 01/11/2026 18:02 UTC
+
+**FATOS CONFIRMADOS — inspeção estritamente read-only, SSH `fmadmin` via Desktop Commander, IP 13.140.234.22:**
+
+- Identidade do host: `vmi3692211`; SSH autenticado por chave via PC autorizado, sem envio de senha.
+- `/opt/fm/nfcore/.deployed` contém `SHA=a3a2b3c97d26780b1e2b7581b4c93b6f07e86a70`. Checkout `/opt/fm/nfcore/src` no mesmo SHA, HEAD destacado e `git status --short` sem alterações reportadas. É a versão da branch `production`, não a `main` atual.
+- `nfcore-db`, `nfcore-api` e `nfcore-portal` em execução, com Docker HEALTHY. Existem outros produtos e containers no mesmo host; não tocá-los.
+- `fm_schema_migrations` consultada via `docker exec nfcore-db psql -U nfcore -d nfcore` de forma somente leitura: versões instaladas **1 a 18 inclusive**, sem 19. Não houve DDL.
+- Backup diário `/opt/fm/backups/nfcore-diario/nfcore-20261101-034501.dump` presente com sidecar SHA-256; `sha256sum -c` resultou **OK**. Log diário às 03:45 registra **OK** em 29/10, 30/10, 31/10 e 01/11. **Integridade SHA-256 não substitui ensaio de restauração.**
+- `https://api.nfcore.com.br/health/ready` respondeu **HTTP 200**; `https://app.nfcore.com.br/` respondeu **HTTP 200**, consultados a partir do host via curl. Isto não certifica jornadas autenticadas, TLS aprofundado, fiscal ou Web comercial.
+- `/opt/fm/nfcore/deploy.sh` e `/opt/fm/nfcore/nfcore-backup.sh` existem no host. **Seu conteúdo/diferença com os scripts do GitHub e cron efetivo ainda não foram auditados.**
+- A PR #302 no commit `c412637c8d4b82316398ac954d32ec4463839ba7` passou **FM NFCORE V1 CI #41332772663**, **Deploy Contabo #41332772670** e **Governança #41332772693**. O bug de índices dos argumentos Docker no mock foi corrigido sem alterar o script de preflight. Esta atualização documental exige nova CI no HEAD resultante.
+
+**CURRENT → TARGET:** production/schema 18 saudável → release candidata atual reconciliada, plano de compatibilidade 18↔19, backup com restore ensaiado, janela aprovada, migration 19 e código novo promovidos sob Go/No-Go separado. Até lá **NO_GO_PRODUCTION**. Acesso operacional read-only está restabelecido, mas não equivale a aprovação de deploy. A PR #296 segue Draft/obsoleta e #302 Draft sem merge.
