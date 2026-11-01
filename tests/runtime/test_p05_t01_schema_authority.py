@@ -54,6 +54,76 @@ def test_schema_guard_is_read_only_and_requires_exact_version_set(
             database.require_current_schema()
 
 
+
+@pytest.mark.parametrize(
+    ("versions", "tables", "allowed"),
+    [
+        (tuple(range(1, 20)), ("fm_cognitive_token_counters",
+                              "fm_cognitive_token_reservations"), True),
+        (tuple(range(1, 20)), (None, "fm_cognitive_token_reservations"), False),
+        (tuple(range(1, 20)), ("fm_cognitive_token_counters", None), False),
+        (tuple(range(1, 21)), ("fm_cognitive_token_counters",
+                               "fm_cognitive_token_reservations"), False),
+        ((1, *range(3, 20)), ("fm_cognitive_token_counters",
+                              "fm_cognitive_token_reservations"), False),
+    ],
+)
+def test_legacy_production_bridge_only_accepts_verified_additive_schema19(
+    monkeypatch: pytest.MonkeyPatch,
+    versions: tuple[int, ...],
+    tables: tuple[str | None, str | None],
+    allowed: bool,
+) -> None:
+    database = object.__new__(PostgresFiscalDatabase)
+    monkeypatch.setattr(
+        PostgresFiscalDatabase, "applied_migrations", lambda _self: versions
+    )
+    calls: list[str] = []
+
+    class Cursor:
+        def fetchone(self) -> tuple[str | None, str | None]:
+            return tables
+
+    class Connection:
+        def execute(self, sql: str) -> Cursor:
+            calls.append(sql)
+            assert sql.startswith("SELECT to_regclass(")
+            return Cursor()
+
+    @contextmanager
+    def read_only_connection():
+        yield Connection()
+
+    monkeypatch.setattr(database, "connection", read_only_connection)
+    if allowed:
+        assert database.require_current_schema() == versions
+        assert len(calls) == 1
+    else:
+        with pytest.raises(PersistenceStateError, match="certified migration version"):
+            database.require_current_schema()
+    assert all(sql.startswith("SELECT") for sql in calls)
+
+
+def test_legacy_bridge_rejects_unavailable_schema_catalog(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    database = object.__new__(PostgresFiscalDatabase)
+    monkeypatch.setattr(
+        PostgresFiscalDatabase,
+        "applied_migrations",
+        lambda _self: tuple(range(1, 20)),
+    )
+
+    @contextmanager
+    def failed_connection():
+        raise RuntimeError("database unavailable")
+        yield
+
+    monkeypatch.setattr(database, "connection", failed_connection)
+    with pytest.raises(PersistenceStateError, match="certified migration version"):
+        database.require_current_schema()
+
+
 def test_api_staging_boot_checks_existing_schema_without_initialize(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
