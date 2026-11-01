@@ -102,3 +102,18 @@ Se a `main` avançar, congelar o **novo** HEAD auditado e repetir a CI/Gov, nunc
 **GATES E PRs:** #302 contém a preparação e o ativador, ainda Draft/sem merge; #303 candidata de compatibilidade schema 18/19, Draft/sem merge; #304 reconciliação de release, Draft/sem merge. As PRs #303/#304 tiveram CI e governança verdes no último HEAD consultado; CI da #302 estava em execução antes deste checkpoint, exigindo conferência no novo HEAD após registro. Nenhuma dessas PRs foi integrada a `production` e nenhuma tag/branch de aplicação produtiva foi promovida.
 
 **RISCO REMANESCENTE / NO_GO:** migration 19 permanece pendente. Antes de aplicar DDL ou autorizar o merge de release: testar restore de dump em banco inteiramente isolado, certificar compatibilidade bridge 18↔19 com cenário realista de PostgreSQL, congelar SHA da release, confirmar plano de manutenção/rollback e aprovar separadamente migration e deploy. O backup anterior do script inseguro existe **somente para recuperação operacional**, não deve ser reativado como autoridade automática de deploy. O mecanismo code-only agora está ativo na Contabo, mas **não autoriza operações produtivas futuras por si só**.
+
+## 7. Ensaio isolado de restore e migration 19 (01/11/2026)
+
+**AUTORIZAÇÃO:** concluir construção e testes seguros da atualização Web. O resultado NÃO autoriza DDL ou merge na branch de produção.
+
+- Fonte: dump real /opt/fm/backups/nfcore-diario/nfcore-20261101-034501.dump, com sidecar SHA-256 válido. Dados de clientes não foram expostos em logs, PR ou chat.
+- Execução: script versionado deploy/contabo/rehearse-cog02-migration19.sh, com postgres:16-alpine em container temporário isolado, sem rede e sem portas publicadas, base em tmpfs e cleanup automático.
+- DDL extraída exclusivamente do módulo canônico src/kordena_fiscal/persistence/cognitive_quota_schema.py da main d3d1002a54b78b0c7df7f77f28aeac181bc2c40d. Duas tabelas aditivas em transação, sem migration_guard --apply em produção.
+- Restore PASS: sequência fiscal 1..18; Cakto 1..2. Pós-DDL isolado PASS: sequência fiscal 1..19, exatamente duas novas tabelas.
+- Preservação de dados PASS: fingerprint SHA-256 do dump lógico --data-only --inserts dos dados preexistentes, excluindo somente o ledger de migrations intencionalmente modificado e as novas tabelas; pré e pós DDL idênticos.
+- Primeira execução retornou falso positivo no hash por chave aleatória de metacomandos restrict gerada pelo pg_dump. Comparação foi normalizada com --restrict-key fixo apenas no texto usado para fingerprint, nunca executado como restore. Segunda execução: três resultados PASS, exit code 0.
+- Warning ShellCheck SC2034 no loop de prontidão foi corrigido sem remover testes; CI do último HEAD deve ser verificada novamente.
+- Produção permanece SHA a3a2b3c97d26780b1e2b7581b4c93b6f07e86a70, schema 18, serviços intactos. Nenhuma migration real, atualização Web, alteração do banco produtivo ou merge na branch production nesta etapa.
+
+**DEPENDÊNCIAS PARA O CUTOVER:** CI/Gov da PR #302 no último HEAD; autorização distinta para merge da bridge #303 em production com runtime schema 18 saudável; autorização específica para migration 19 em produção e janela governada; certificação pós-DDL; merge governado da candidata #304; smoke autenticado, readiness e rollback. Sem esses gates, NO_GO.
