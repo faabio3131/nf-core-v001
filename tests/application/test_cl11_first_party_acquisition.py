@@ -467,3 +467,55 @@ def test_acquisition_http_accepts_normal_signed_body_after_bounding() -> None:
     )
     assert response.status_code == 201
     assert len(database.store.acquisitions) == 1
+
+
+@pytest.mark.parametrize(
+    "body",
+    (
+        b'{"plan_id":"growth","plan_id":"forged","price_id":"growth-monthly","buyer_email":"owner@example.com","legal_name":"ACME"}',
+        b'{"plan_id":"growth","price_id":"growth-monthly","buyer_email":"owner@example.com","legal_name":"ACME","extra":{"id":"a","id":"b"}}',
+    ),
+)
+def test_signed_acquisition_duplicate_json_is_denied_without_side_effect(
+    body: bytes,
+) -> None:
+    database = MemoryAcquisitionDatabase()
+    client, security = signed_client(database)
+    response = client.post(
+        "/v1/commercial/acquisitions",
+        content=body,
+        headers={
+            "Content-Type": "application/json",
+            "Idempotency-Key": "signed-duplicate-json-0001",
+            "X-NFCore-Signature": security.sign(
+                body, now=datetime.now(UTC)
+            ).header_value,
+        },
+    )
+    assert response.status_code == 400
+    assert response.json() == {
+        "detail": "commercial acquisition body must be valid JSON"
+    }
+    assert database.store.acquisitions == {}
+
+
+@pytest.mark.parametrize("idempotency_key", ("short", " " * 16, "a" * 129, "abc" + "\\t" + "0" * 20))
+def test_signed_acquisition_invalid_idempotency_denied_before_mutation(
+    idempotency_key: str,
+) -> None:
+    database = MemoryAcquisitionDatabase()
+    client, security = signed_client(database)
+    body = acquisition_body()
+    response = client.post(
+        "/v1/commercial/acquisitions",
+        content=body,
+        headers={
+            "Content-Type": "application/json",
+            "Idempotency-Key": idempotency_key,
+            "X-NFCore-Signature": security.sign(
+                body, now=datetime.now(UTC)
+            ).header_value,
+        },
+    )
+    assert response.status_code == 400
+    assert database.store.acquisitions == {}
