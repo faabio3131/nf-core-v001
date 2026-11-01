@@ -60,7 +60,11 @@ def build_cognitive_routers(
     except OfficialTablesError:
         # Fail-open: without the official tables the advice says "não verificado".
         catalog = None
-    model = build_model_from_environ(environ)
+    # Until commercial token quotas have a durable cross-worker reservation authority,
+    # production/staging may expose only the deterministic advisory baseline.
+    # Never turn an in-memory pilot counter into a commercial hard limit.
+    allow_pilot_model = environ.get("NFCORE_ENVIRONMENT", "").lower() in {"development", "test"}
+    model = build_model_from_environ(environ) if allow_pilot_model else None
     audit: AuditSinkPort | None = None
     entitlements = None
     ledger = None
