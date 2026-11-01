@@ -234,6 +234,11 @@ class CommercialCustomerActivationService:
             activation_reset=reset,
         )
 
+    def paid_plan_for_purchase(self, purchase: CommercialPurchaseRecord) -> CommercialPlan:
+        """Original published pricing is the only authority for paid entitlements."""
+        plan, _, _ = self._resolve_plan(purchase)
+        return plan
+
     def _resolve_plan(
         self,
         purchase: CommercialPurchaseRecord,
