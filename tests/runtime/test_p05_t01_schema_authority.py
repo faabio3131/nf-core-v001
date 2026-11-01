@@ -33,10 +33,10 @@ def _staging_settings() -> RuntimeSettings:
 @pytest.mark.parametrize(
     ("versions", "should_pass"),
     [
-        (tuple(range(1, 19)), True),
+        (tuple(range(1, 20)), True),
         ((), False),
         (tuple(range(1, 17)), False),
-        (tuple(range(1, 20)), False),
+        (tuple(range(1, 19)), False),
         ((1, 3, *range(4, 19)), False),
     ],
 )
@@ -65,7 +65,7 @@ def test_api_staging_boot_checks_existing_schema_without_initialize(
 
         def require_current_schema(self) -> tuple[int, ...]:
             calls.append("verify")
-            return tuple(range(1, 19))
+            return tuple(range(1, 20))
 
         def initialize(self) -> None:
             raise AssertionError("API must not apply migrations at service startup")

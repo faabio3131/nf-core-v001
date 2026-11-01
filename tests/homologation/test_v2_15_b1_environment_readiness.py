@@ -56,7 +56,7 @@ def _admin() -> AdminPrincipal:
 
 def _database(tmp_path) -> SqliteFiscalDatabase:
     database = SqliteFiscalDatabase(tmp_path / "v2-15-b1.sqlite3")
-    assert database.initialize() == (1, 2, 3, 4, 5, 13, 14, 17, 18)
+    assert database.initialize() == (1, 2, 3, 4, 5, 13, 14, 17, 18, 19)
     service = DurableControlPlaneService(database)
     service.onboard_organization(
         actor=_admin(),

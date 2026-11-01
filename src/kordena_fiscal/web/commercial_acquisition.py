@@ -19,6 +19,8 @@ from kordena_fiscal.security.s2s import (
     WebhookSignatureError,
 )
 
+MAX_ACQUISITION_BODY_BYTES = 64 * 1024
+
 
 def create_commercial_acquisition_router(
     service: CommercialAcquisitionService,
@@ -31,7 +33,17 @@ def create_commercial_acquisition_router(
     @router.post("/v1/commercial/acquisitions")
     async def begin_acquisition(request: Request) -> JSONResponse:
         now = datetime.now(UTC)
-        body = await request.body()
+        # Bound untrusted bodies before signature verification or JSON parsing.
+        # Reading the complete request here permits unbounded memory allocation.
+        body_buffer = bytearray()
+        async for chunk in request.stream():
+            if len(body_buffer) + len(chunk) > MAX_ACQUISITION_BODY_BYTES:
+                return JSONResponse(
+                    status_code=413,
+                    content={"detail": "commercial acquisition body too large"},
+                )
+            body_buffer.extend(chunk)
+        body = bytes(body_buffer)
         raw_signature = request.headers.get("X-NFCore-Signature", "").strip()
         if not raw_signature:
             return JSONResponse(

@@ -1,0 +1,32 @@
+{
+ "cclasstrib": {
+  "cst_url": "https://piloto-cbs.tributos.gov.br/servico/calculadora-consumo/api/calculadora/dados-abertos/situacoes-tributarias/cbs-ibs?siglaDfe=NFe&data=2026-10-31",
+  "file": "cclasstrib.json",
+  "raw_cst_sha256": "cb3b23173a79f61c8c82aed82c8fce88678f4480bf13df44a5b70ea419f448b4",
+  "raw_download_sha256": "19358eb86d712a4fe2ab94ccbf58eb8b95ebd1a2e86bf3acfe64d7a3b770fa7d",
+  "rows": 170,
+  "sha256": "fb7de6897c3f2cf03621f0b4d56ef4b24b2418fd2c02e6c0d99fe7d6b1291a04",
+  "source_label": "Calculadora RTC (Receita/CG-IBS) — dados abertos; ambiente piloto",
+  "source_url": "https://piloto-cbs.tributos.gov.br/servico/calculadora-consumo/api/calculadora/dados-abertos/classificacoes-tributarias/cbs-ibs?data=2026-10-31",
+  "source_version": {
+   "ambiente": "apr",
+   "dataVersaoDb": "2026-10-28",
+   "descricaoVersaoDb": "Exclui classificação indevida da tabela CLASSIF_NBS_INDOP_LC.",
+   "versaoApp": "1.6.2-a39944eb",
+   "versaoDb": "V0066"
+  }
+ },
+ "ncm": {
+  "file": "ncm.json",
+  "raw_download_sha256": "51c89e3bba9f7b2c0515fd11cd0fa08ede2d2352a7e4536995549e3b14558011",
+  "rows": 10516,
+  "sha256": "29c19bbe5fff79422272c4ec2f37215a86ed62beac43eebb0f1b58cf0a5ac645",
+  "source_ato": "Resolução Gecex nº 926/2026",
+  "source_label": "Portal Único Siscomex — Tabela NCM",
+  "source_url": "https://portalunico.siscomex.gov.br/classif/api/publico/nomenclatura/download/json?perfil=PUBLICO",
+  "source_vigencia": "Vigente em 31/10/2026"
+ },
+ "note": "Fonte oficial, integridade verificada por SHA-256, SEM revisão normativa humana. Uso consultivo.",
+ "retrieved_on": "2026-10-31",
+ "schema": "nfcore.cognitive.official-tables/v1"
+}

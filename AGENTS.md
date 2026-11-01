@@ -1,5 +1,8 @@
 # AGENTS.md — FM Fiscal Core V2
 
+> **CRONOGRAMA ATIVO DE PENDÊNCIAS RTC + BUILD + CONTABO (31/10/2026):** antes de executar a próxima tarefa, ler `docs/NFCORE_V1_RTC_BUILD_PENDING_EXECUTION_2026-10-31.md` e reconciliar com GitHub CURRENT e os ledgers canônicos. O plano adicional usa IDs `NFC-EXEC-01..25` para rastrear pendências sem substituir os 59 IDs, os WPs RTC ou os BUILD existentes. Ao concluir uma tarefa, atualizar **na mesma entrega** estado, PR, SHA, testes, CI/Gov pré/pós-merge, evidência operacional, riscos, blockers e próxima ação no plano + ledger adequado. Não concluir por documentação ou CI verde isolada. RTC-04 é a próxima construção fiscal elegível por célula normativa verificada; BLD-03/04 avançam independentemente; `production`/Contabo requer gate próprio. Nunca interpretar autorização de deploy como autorização de migration produtiva ou homologação fiscal.
+
+
 > **PONTO DE RETOMADA ANTI-RETRABALHO (31/10/2026):** consultar primeiro `docs/checkpoints/NFV1_CROSS_REPO_ANTI_REWORK_2026-10-31.md`, `docs/NFCORE_V1_BUILD_INTEGRATION_LEDGER.md`, PRs atuais e CI/Governança no SHA da `main`. A seção abaixo contém snapshots históricos Railway; não tomar qualquer SHA, estado de PR ou implantação registrada em datas passadas como CURRENT. O repositório atual `nf-core-v001` é o mesmo repository ID do nome anterior `kordena-fiscal-engine-v2`. `production` é branch de promoção distinta, não equivale ao container implantado na Contabo; alterações de produção exigem aprovação específica.
 
 ## Autoridade

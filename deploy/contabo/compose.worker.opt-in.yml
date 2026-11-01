@@ -1,0 +1,40 @@
+# Worker Contabo — overlay OPT-IN, fora do compose/deploy automaticos.
+# Nunca carregar este arquivo sem aprovação humana, identity GSM pinada e recovery ensaiado.
+# A montagem externa de identidade é obrigatória; não criar arquivos host automaticamente.
+services:
+  nfcore-worker:
+    profiles: ["worker-authorized"]
+    build:
+      context: ./src
+      dockerfile: Dockerfile.worker
+    image: nfcore-worker:controlled
+    container_name: nfcore-worker
+    restart: "no"
+    user: "10001:10001"
+    read_only: true
+    cap_drop: ["ALL"]
+    security_opt: ["no-new-privileges:true"]
+    pids_limit: 128
+    tmpfs:
+      - /tmp:uid=10001,gid=10001,mode=0700
+    env_file:
+      - path: .env.worker
+        required: true
+    environment:
+      NFCORE_ENVIRONMENT: production
+      NFCORE_PERSISTENCE_BACKEND: postgres
+      NFCORE_SECRET_BACKEND: external
+      NFCORE_WORKER_GSM_CREDENTIAL_FILE: /run/nfcore/worker-identity.json
+      DATABASE_URL: postgresql://nfcore:${POSTGRES_PASSWORD:?required}@nfcore-db:5432/nfcore
+    volumes:
+      - type: bind
+        source: ${NFCORE_WORKER_IDENTITY_HOST_PATH:?required}
+        target: /run/nfcore/worker-identity.json
+        read_only: true
+        bind:
+          create_host_path: false
+    depends_on:
+      nfcore-db:
+        condition: service_healthy
+    networks: [internal]
+    stop_grace_period: 30s

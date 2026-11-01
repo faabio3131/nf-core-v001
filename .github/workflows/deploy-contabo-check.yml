@@ -1,0 +1,27 @@
+name: Deploy Contabo (config e teste)
+
+on:
+  pull_request:
+    paths: ["deploy/contabo/**", ".github/workflows/deploy-contabo-check.yml"]
+  push:
+    branches: [main]
+    paths: ["deploy/contabo/**"]
+
+permissions:
+  contents: read
+
+jobs:
+  deploy-config:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Shellcheck dos scripts de deploy
+        run: shellcheck -S warning deploy/contabo/*.sh
+      - name: Teste do deploy.sh (docker simulado)
+        run: bash deploy/contabo/test-deploy.sh
+      - name: Validar compose de produção
+        run: |
+          printf 'POSTGRES_PASSWORD=x\n' > deploy/contabo/.env   # só no runner; o .env real nunca é versionado
+          docker compose -f deploy/contabo/compose.prod.yml config -q
+      - name: Testar overlay opt-in do Worker sem iniciá-lo
+        run: bash deploy/contabo/test-worker-opt-in.sh

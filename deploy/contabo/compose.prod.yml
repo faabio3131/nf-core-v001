@@ -1,0 +1,61 @@
+# NFCore — composição de PRODUÇÃO no servidor Contabo (projeto `nfcore`).
+# Fica em /opt/fm/nfcore/docker-compose.yml; o código-fonte é o clone em /opt/fm/nfcore/src.
+# Segredos NÃO entram aqui: vêm do /opt/fm/nfcore/.env (chmod 600), que nunca é versionado.
+# Worker (GSM) fica de fora até a composição de produção dele ser aprovada (ver README).
+name: nfcore
+
+services:
+  nfcore-db:
+    image: postgres:16-alpine
+    container_name: nfcore-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: nfcore
+      POSTGRES_USER: nfcore
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?defina POSTGRES_PASSWORD no .env}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U nfcore -d nfcore"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    volumes:
+      - nfcore_dbdata:/var/lib/postgresql/data
+    networks: [internal]            # sem porta publicada
+
+  nfcore-api:
+    build:
+      context: ./src
+      dockerfile: Dockerfile.api
+    image: nfcore-api:current       # tag fixa: o deploy.sh guarda a anterior como :prev
+    container_name: nfcore-api
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      NFCORE_ENVIRONMENT: production
+      NFCORE_PERSISTENCE_BACKEND: postgres
+      NFCORE_SECRET_BACKEND: external
+      NFCORE_REQUIRE_HTTPS: "true"
+      DATABASE_URL: postgresql://nfcore:${POSTGRES_PASSWORD}@nfcore-db:5432/nfcore
+    depends_on:
+      nfcore-db:
+        condition: service_healthy
+    networks: [internal, proxy-net]  # proxy-net: Nginx Proxy Manager -> nfcore-api:8080
+    stop_grace_period: 15s
+
+  nfcore-portal:
+    build:
+      context: ./src
+      dockerfile: Dockerfile.portal
+    image: nfcore-portal:current
+    container_name: nfcore-portal
+    restart: unless-stopped
+    networks: [internal, proxy-net]  # proxy-net: Nginx Proxy Manager -> nfcore-portal:8081
+
+networks:
+  internal: {}
+  proxy-net:
+    external: true
+
+volumes:
+  nfcore_dbdata:
+    name: nfcore_dbdata

@@ -32,7 +32,7 @@ def _scope(*, host: str = "kordena", correlation_id: str = "corr-inbox-001") -> 
 
 def _database(tmp_path) -> SqliteFiscalDatabase:
     database = SqliteFiscalDatabase(tmp_path / "fm-fiscal-inbox.sqlite3")
-    assert database.initialize() == (1, 2, 3, 4, 5, 13, 14, 17, 18)
+    assert database.initialize() == (1, 2, 3, 4, 5, 13, 14, 17, 18, 19)
     return database
 
 

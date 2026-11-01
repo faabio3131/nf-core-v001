@@ -206,3 +206,21 @@ test("RTC issuer profile enrollment uses governed portal operation and no browse
   assert.doesNotMatch(script, /tenant_id:\s*.*payload/);
   assert.doesNotMatch(script, /localStorage/);
 });
+
+test("cognitive advisor is advisory-only, session-scoped and renders model text as plain text", () => {
+  const start = script.indexOf("function appendCognitiveAdvisor");
+  assert.ok(start > 0);
+  const advisor = script.slice(start);
+  assert.match(advisor, /\/v1\/portal\/cognitive\/advise/);
+  assert.match(advisor, /X-CSRF-Token/);
+  assert.match(advisor, /Idempotency-Key/);
+  assert.match(advisor, /unit_id: selectedFiscalUnit/);
+  // Authority comes from the session: the browser never sends tenant, role or permissions.
+  assert.doesNotMatch(advisor, /tenant_id|permissions|host_namespace/);
+  // Model/provider text must never be interpreted as markup.
+  assert.doesNotMatch(advisor, /innerHTML|insertAdjacentHTML|outerHTML/);
+  assert.match(advisor, /Requer aprovação humana/);
+  assert.match(advisor, /IA desligada/);
+  // Only the two read-only explanation views expose the panel.
+  assert.match(script, /viewId === "errors" \|\| viewId === "reconciliation"\) appendCognitiveAdvisor/);
+});

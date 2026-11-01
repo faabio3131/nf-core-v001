@@ -76,6 +76,7 @@ class ControlPlaneAuditAction(StrEnum):
     PILOT_DEACTIVATED = "pilot.deactivated"
     PILOT_SCOPE_CHANGED = "pilot.scope_changed"
     PILOT_DECISION_RECORDED = "pilot.decision_recorded"
+    COGNITIVE_ADVICE_RECORDED = "cognitive_advice.recorded"
 
 
 @dataclass(frozen=True, slots=True)
