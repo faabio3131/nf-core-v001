@@ -206,7 +206,7 @@ def test_unknown_provider_usage_keeps_reservation(quota_db: tuple[Path, datetime
 def test_paid_allowance_renews_monthly_inside_annual_contract(
     quota_db: tuple[Path, datetime],
 ) -> None:
-    path, now = quota_db
+    path, _ = quota_db
     start = datetime(2026, 1, 31, 12, tzinfo=UTC)
     with sqlite3.connect(path) as db:
         db.execute(
