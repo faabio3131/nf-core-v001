@@ -1,10 +1,13 @@
 # FM NFCORE V1 — PLANO OPERACIONAL DE PENDÊNCIAS RTC + COMMERCIAL LAUNCH
 
-**Versão:** 2026-10-31 · **Estado:** EM_EXECUCAO / DOCUMENTADO_PENDENTE_INTEGRACAO · **Executor:** agentes vinculados ao repositório canônico.  
+**Versão-base:** 2026-10-31; **CURRENT reconciliado:** 2026-11-01, documento histórico com deltas posteriores. **Estado RTC:** EM_EXECUCAO / implementações parciais integradas; RTC-04 PR #289 ainda OPEN. **Executor:** agentes vinculados ao repositório canônico.  
 **Escopo:** pendências de Reforma Tributária (RTC-00..12), BUILD-ONLY (BLD-03..08), Web/Contabo, certificação e dependências externas; COG-01 como trilha independente.  
 **Não substitui:** `AGENTS.md`, cronograma mestre RTC `docs/NFCORE_RTC_MASTER_EXECUTION_SCHEDULE_2026-10-30.md`, plano de 59 tarefas `docs/NFCORE_V1_COMPLETION_MASTER_EXECUTION_SCHEDULE_2026-10-05.md`, `docs/NFCORE_V1_EXECUTION_LEDGER.md` e ledger BUILD. IDs `NFC-EXEC-xx` são **orquestração de pendências**, não uma segunda definição de regra ou checklist das 59 tarefas.
 
-## 0. Snapshot auditado — não confundir com CURRENT futuro
+
+> **CURRENT RTC em 01/11/2026 (prevalece sobre snapshots históricos abaixo):** `main=d3d1002a54b78b0c7df7f77f28aeac181bc2c40d`; `production=d7cf5e4d58cce8ab43105b17e13b2237edc551fb`; código Web promovido e saudável na Contabo, **sem homologação fiscal RTC**. RTC-00 #267, RTC-01 #268/#270, RTC-02 #269/#271/#272, RTC-03 #273/#274/#280 e RTC-09 inicial #275/#278 foram MERGED, **todos parciais frente ao aceite total**. RTC-04 PR #289 OPEN/NO MERGE, HEAD atualizado `576a0e165c926a1527ab87f20cc1ec28913b56b6`; CI #41357578346 (verificar conclusão no GitHub) e Governance #41357578344 SUCCESS, contendo apenas prévia não vinculada à emissão. RTC-05..08, RTC-10/11 ainda pendentes; RTC-12 BLOCKED_EXTERNAL. Mais detalhes: `docs/checkpoints/NFCORE_RTC_CURRENT_RECONCILIATION_2026-11-01.md`. As linhas antigas de 31/10 e sobre COG-02 são **snapshots históricos**, não sobrescrevem esse CURRENT; qualquer nova execução deve reconfirmar GitHub/host.
+
+## 0. Snapshot auditado em 31/10 — HISTÓRICO, não confundir com CURRENT
 
 - Repositório: `faabio3131/nf-core-v001` (mesmo repository ID do nome anterior `kordena-fiscal-engine-v2`).
 - `main`: `d1b86063939350208625e97d25e33cf381155323`. CI pós-merge `41231440835` SUCCESS; Governança `41231440812` SUCCESS. Prova de código e regressão interna **não** equivale a Web/Contabo/produção funcional.
@@ -32,15 +35,15 @@
 
 | ID | WP canônico | Entrega mínima verificável | Dependências | Estado em 31/10 | Evidência / próximo gate |
 |---|---|---|---|---|---|
-| NFC-EXEC-01 | RTC-00/01 | Fechar lacunas do inventário e catálogo **oficial**: fonte, edição, vigência, SHA e revisão; identificar diferenças entre tabela piloto e produção sem ativação silenciosa | baseline em main | IMPLEMENTED_NOT_CERTIFIED | #267/#268/#270 merged; verificar cobertura normativa real e watcher versionado |
-| NFC-EXEC-02 | RTC-02 | Completar matriz CRT × regime IRPJ/CSLL, histórico temporal, competência e estabelecimento, com autorização e PostgreSQL isolado | 01 quando afetar norma | IMPLEMENTED_NOT_CERTIFIED | #269/#271/#272; achar gaps em código, não refazer contrato já integrado |
-| NFC-EXEC-03 | RTC-03 | Completar classificação nacional NCM/NBS, CST/cClassTrib, benefício, operação/destino/exceções, snapshots de decisão e falha fechada | 01/02 | IMPLEMENTED_NOT_CERTIFIED | #273/#274/#280; último merge `d1b8606` CI/Gov SUCCESS. Catálogo RTC precisa revisão normativa oficial |
-| NFC-EXEC-04 | RTC-04 | Calculadora determinística IBS/CBS/IS usando Decimal, bases, reduções, créditos, arredondamento e totalização **somente** para células sustentadas por fontes normativas/golden cases verificáveis | 03 para célula em questão | PENDING | Primeiro bloco novo de **construção RTC**. Não inventar taxas; dividir por célula fiscal/versão |
+| NFC-EXEC-01 | RTC-00/01 | Fechar lacunas do inventário e catálogo **oficial**: fonte, edição, vigência, SHA e revisão; identificar diferenças entre tabela piloto e produção sem ativação silenciosa | baseline em main | IMPLEMENTED_PARTIAL | #267/#268/#270 merged; verificar cobertura normativa real e watcher versionado |
+| NFC-EXEC-02 | RTC-02 | Completar matriz CRT × regime IRPJ/CSLL, histórico temporal, competência e estabelecimento, com autorização e PostgreSQL isolado | 01 quando afetar norma | IMPLEMENTED_PARTIAL | #269/#271/#272; achar gaps em código, não refazer contrato já integrado |
+| NFC-EXEC-03 | RTC-03 | Completar classificação nacional NCM/NBS, CST/cClassTrib, benefício, operação/destino/exceções, snapshots de decisão e falha fechada | 01/02 | IMPLEMENTED_PARTIAL | #273/#274/#280; último merge `d1b8606` CI/Gov SUCCESS. Catálogo RTC precisa revisão normativa oficial |
+| NFC-EXEC-04 | RTC-04 | Calculadora determinística IBS/CBS/IS usando Decimal, bases, reduções, créditos, arredondamento e totalização **somente** para células sustentadas por fontes normativas/golden cases verificáveis | 03 para célula em questão | IMPLEMENTED_NOT_MERGED — PR #289 HEAD 576a0e1; CI verificar, cálculo não fiscal | Primeiro bloco novo de **construção RTC**. Não inventar taxas; dividir por célula fiscal/versão |
 | NFC-EXEC-05 | RTC-05 | Coexistência/temporalidade tributos legados + IBS/CBS/IS 2026–2033, snapshots e anti-regressão | 04 aplicável | PENDING | testes antes/depois por marco legal com vigência e prova |
 | NFC-EXEC-06 | RTC-06 | NF-e/NFC-e: grupos XML, totais, conditionalidade, XSD vigente, assinatura/rejeição/contingência pelos adapters canônicos | 03–05 | PENDING | golden XML oficiais e validação XSD por versão; sem transmissão oficial fictícia |
 | NFC-EXEC-07 | RTC-07 | NFS-e nacional/municípios homologáveis: DPS, NBS, IBS/CBS e eventos, sem alegar cobertura municipal universal | 03–05 | PENDING | testes por provedor/município/célula permitidos por fonte |
 | NFC-EXEC-08 | RTC-08 | Casos diferenciados: importação, exportação, combustíveis, créditos, devoluções, regimes especiais; cobertura explícita e bloqueios para casos não suportados | 03–07 aplicáveis | PENDING | matriz suportado/não suportado com casos positivos/negativos |
-| NFC-EXEC-09 | RTC-09 | Completar tela no Portal atual: classificação, cálculos, bloqueios, justificativas, fonte e vigência, com RBAC/CSRF/tenant/unidade e E2E | 02, 03 e cálculos suportados | IMPLEMENTED_NOT_CERTIFIED | #275/#278 primeira parte; restante PENDING |
+| NFC-EXEC-09 | RTC-09 | Completar tela no Portal atual: classificação, cálculos, bloqueios, justificativas, fonte e vigência, com RBAC/CSRF/tenant/unidade e E2E | 02, 03 e cálculos suportados | IMPLEMENTED_PARTIAL | #275/#278 primeira parte; restante PENDING |
 | NFC-EXEC-10 | RTC-10 | Persistência canônica, trilhas, snapshots imutáveis, replay, idempotência e worker; avaliar necessidade de migration antes de criar | 04–09 afetados | PENDING | PostgreSQL descartável, concorrência, recuperação/rollback; migration produtiva requer autorização específica |
 | NFC-EXEC-11 | RTC-11 | Certificação interna por regime × tributo × operação × documento × período × UF/município e CI/Gov verdes | 01–10 aplicáveis | PENDING | documento de cobertura com omissões explícitas; não igualar CI geral a conformidade |
 | NFC-EXEC-12 | RTC-12 | Homologação fiscal real, credenciais, certificados, piloto, evidências oficiais e Go/No-Go | 11 + decisões externas | BLOCKED_EXTERNAL | requer escolha de provedor/UF/município e aprovação humana; sem transmissão real automática |
@@ -70,7 +73,7 @@
 
 ### Sequência operacional sem retrabalho
 
-1. **Agora:** executar NFC-EXEC-04 (RTC-04) em microentregas normativas verificadas; NFC-EXEC-01/02/03 devem ser fechados **somente nos gaps comprovados** que condicionem a célula calculada. Em paralelo NFC-EXEC-14/15 se realmente independentes.
+1. **CURRENT:** RTC-04 #289 é prévia **não fiscal, OPEN/sem merge**; rever código/artefato, preservar RTC-00/01/02/03 já parcialmente integrados e completar **somente** gaps normativos comprovados que condicionem uma célula oficial RTC-04. Não ativar preview em emissão nem declarar RTC-04 integral. Em paralelo NFC-EXEC-14/15 se realmente independentes.
 2. Depois RTC-05→06/07→08→09/10→11. Não pular dependência nem criar cálculo sem fonte.
 3. Concluir BLD-03/04→05/06→07→08 conforme interfaces e decisões liberadas; fechar PR de infraestrutura #284 com seus próprios gates. Não assumir que a main já está implantada.
 4. COG-01 pode ser integrado em branch própria sem bloquear fiscal; nunca declarar IA em produção a partir do patch.
