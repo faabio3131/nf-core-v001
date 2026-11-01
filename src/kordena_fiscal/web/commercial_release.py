@@ -134,7 +134,9 @@ def create_commercial_release_router(
                 if public_trial_configured
                 else operational_readiness
             )
-            if readiness is not None:
+            if public_trial_configured and readiness is None:
+                trial_enabled = False
+            elif readiness is not None:
                 try:
                     trial_enabled = readiness() is True
                 except Exception:
