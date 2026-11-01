@@ -36,7 +36,7 @@ def _staging_settings() -> RuntimeSettings:
         (tuple(range(1, 20)), True),
         ((), False),
         (tuple(range(1, 17)), False),
-        (tuple(range(1, 20)), False),
+        (tuple(range(1, 19)), False),
         ((1, 3, *range(4, 19)), False),
     ],
 )
