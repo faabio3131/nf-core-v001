@@ -30,6 +30,19 @@ fi
 grep -Fq -- '--assert-current-production' "$ROOT/deploy.sh" ||
   blocked "installed deploy.sh lacks read-only production schema gate"
 
+# The actual Contabo compose and script paths must match the code-only runner.
+# The old host uses :cur and nfcore-backup.sh; the new runner requires
+# :current and backup.sh. Detect this mismatch without parsing/printing .env.
+[ -r "$ROOT/deploy-lib.sh" ] || blocked "installed deploy library missing"
+[ -x "$ROOT/backup.sh" ] || blocked "code-only backup.sh missing"
+[ -r "$ROOT/docker-compose.yml" ] || blocked "installed compose missing"
+images="$(docker compose -f "$ROOT/docker-compose.yml" config --images 2>/dev/null)" ||
+  blocked "cannot inspect compose image tags"
+printf '%s\n' "$images" | grep -Fxq 'nfcore-api:current' ||
+  blocked "compose API image tag incompatible with code-only deploy"
+printf '%s\n' "$images" | grep -Fxq 'nfcore-portal:current' ||
+  blocked "compose portal image tag incompatible with code-only deploy"
+
 # No local ref mutations. Remote branch SHAs come from ls-remote, not a
 # possibly stale origin/production cache.
 read_remote() {
