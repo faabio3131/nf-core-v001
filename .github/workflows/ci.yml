@@ -128,6 +128,7 @@ jobs:
           bash -n deploy/contabo/preflight-cog02.sh
           bash -n deploy/contabo/test-preflight-cog02.sh
           bash -n deploy/contabo/activate-code-only-host.sh
+          bash -n deploy/contabo/rehearse-cog02-migration19.sh
           bash deploy/contabo/test-preflight-cog02.sh
           if NFCORE_HOST_CONTRACT_APPROVED=false bash deploy/contabo/activate-code-only-host.sh --install; then
             echo 'UNSAFE: host activation accepted without explicit approval' >&2
