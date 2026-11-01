@@ -41,8 +41,10 @@ def create_commercial_release_router(
     checkout_processing_configured: bool = False,
     trial_ingress_configured: bool = False,
     trial_site_channel_configured: bool = False,
+    public_trial_configured: bool = False,
     delivery_readiness: CommercialDeliveryPathReadiness | None = None,
     operational_readiness: Callable[[], bool] | None = None,
+    trial_operational_readiness: Callable[[], bool] | None = None,
     runtime_metrics: MetricsRegistry | None = None,
 ) -> APIRouter:
     router = APIRouter(tags=["commercial-release"])
@@ -102,8 +104,12 @@ def create_commercial_release_router(
             delivery=resolved_delivery_readiness,
             operational_readiness=operational_readiness,
         )
-        # Public trial is separate from checkout, but must be explicitly
-        # authorized, remotely signed and capable of activation.
+        # Public trial and signed site-to-site trial are distinct authorized
+        # channels. Only the signed channel requires remote HMAC attestation;
+        # the browser channel requires explicit Origin and shared PG admission.
+        trial_channel_ready = public_trial_configured or (
+            trial_ingress_configured and trial_site_channel_configured
+        )
         trial_enabled = bool(
             release_current is not None
             and release_current.commercially_approved
@@ -116,15 +122,23 @@ def create_commercial_release_router(
                 )
                 for plan in pricing_current.plans
             )
-            and trial_ingress_configured
-            and trial_site_channel_configured
+            and trial_channel_ready
             and resolved_delivery_readiness.ready
         )
-        if trial_enabled and operational_readiness is not None:
-            try:
-                trial_enabled = operational_readiness() is True
-            except Exception:
-                trial_enabled = False
+        if trial_enabled:
+            # A trial may be issued without a payment processor; it must still
+            # prove durable state, activation delivery and rate gate readiness.
+            # The existing signed acquisition channel retains its old gate.
+            readiness = (
+                trial_operational_readiness
+                if public_trial_configured
+                else operational_readiness
+            )
+            if readiness is not None:
+                try:
+                    trial_enabled = readiness() is True
+                except Exception:
+                    trial_enabled = False
         checkout_payload = checkout_projection.to_public_mapping(
             processing_configured=processing_configured,
             expose_urls=purchase_enabled,
