@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import sqlite3
 from collections.abc import Iterator
 from concurrent.futures import ThreadPoolExecutor
@@ -11,7 +12,12 @@ from pathlib import Path
 
 import pytest
 
-from kordena_fiscal.cognitive.commercial_quotas import allowance_for_subscription
+from kordena_fiscal.cognitive.commercial_quotas import (
+    INPUT_QUOTA_METRIC,
+    OUTPUT_QUOTA_METRIC,
+    allowance_for_subscription,
+    configured_allowance,
+)
 from kordena_fiscal.cognitive.durable_usage import DurableTokenQuotaStore, QuotaDenied
 from kordena_fiscal.persistence.cognitive_quota_schema import COGNITIVE_QUOTA_SCHEMA
 
@@ -26,7 +32,8 @@ def quota_db(tmp_path: Path) -> tuple[Path, datetime]:
                 subscription_id TEXT NOT NULL, tenant_id TEXT NOT NULL,
                 plan_id TEXT NOT NULL, status TEXT NOT NULL,
                 period_start TEXT NOT NULL, period_end TEXT NOT NULL,
-                last_event_at TEXT NOT NULL
+                last_event_at TEXT NOT NULL,
+                quotas_json TEXT NOT NULL
             )"""
         )
         for ddl in COGNITIVE_QUOTA_SCHEMA:
@@ -37,13 +44,18 @@ def quota_db(tmp_path: Path) -> tuple[Path, datetime]:
             ("tenant-trial", "anything", "trial"),
             ("tenant-suspended", "escala", "suspended"),
         ):
+            limits = allowance_for_subscription(plan_id=plan, status=status)
+            quotas = [] if limits is None else [
+                {"metric_id": INPUT_QUOTA_METRIC, "limit": limits.input_tokens},
+                {"metric_id": OUTPUT_QUOTA_METRIC, "limit": limits.output_tokens},
+            ]
             db.execute(
-                "INSERT INTO fm_commercial_subscriptions VALUES (?, ?, ?, ?, ?, ?, ?)",
+                "INSERT INTO fm_commercial_subscriptions VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
                 (
                     f"sub-{tenant}", tenant, plan, status,
                     (now - timedelta(days=1)).isoformat(),
                     (now + timedelta(days=29)).isoformat(),
-                    now.isoformat(),
+                    now.isoformat(), json.dumps(quotas),
                 ),
             )
     return path, now
@@ -78,6 +90,16 @@ def test_approved_allowances_and_unknown_plan() -> None:
         allowance = allowance_for_subscription(plan_id=plan_id, status=status)
         assert allowance is not None
         assert (allowance.input_tokens, allowance.output_tokens) == expected
+    assert configured_allowance(
+        plan_id="essencial", status="active", quotas_json="[]"
+    ) is None
+    assert configured_allowance(
+        plan_id="essencial", status="active",
+        quotas_json=json.dumps([
+            {"metric_id": INPUT_QUOTA_METRIC, "limit": 1_000_001},
+            {"metric_id": OUTPUT_QUOTA_METRIC, "limit": 300_000},
+        ]),
+    ) is None
     assert allowance_for_subscription(plan_id="unknown", status="active") is None
     assert allowance_for_subscription(plan_id="escala", status="suspended") is None
 
