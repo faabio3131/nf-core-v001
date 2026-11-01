@@ -7,18 +7,18 @@ from dataclasses import dataclass, replace
 from datetime import datetime, timedelta
 from typing import Protocol
 
+from kordena_fiscal.cognitive.commercial_quotas import (
+    APPROVED_TOKEN_ALLOWANCES,
+    INPUT_QUOTA_METRIC,
+    OUTPUT_QUOTA_METRIC,
+    TokenQuotaPlan,
+)
 from kordena_fiscal.product.billing import (
     CommercialPlan,
     CommercialSubscription,
     SubscriptionStatus,
     UsagePeriodCheckpoint,
     UsageQuota,
-)
-from kordena_fiscal.cognitive.commercial_quotas import (
-    APPROVED_TOKEN_ALLOWANCES,
-    INPUT_QUOTA_METRIC,
-    OUTPUT_QUOTA_METRIC,
-    TokenQuotaPlan,
 )
 from kordena_fiscal.product.catalog import DEFAULT_COMMERCIAL_CATALOG, CommercialCatalog
 from kordena_fiscal.product.commercial_fulfillment import (
