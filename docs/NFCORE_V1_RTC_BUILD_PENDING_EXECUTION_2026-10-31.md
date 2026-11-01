@@ -66,7 +66,7 @@
 | NFC-EXEC-22 | Fiscal externo | Homologação SEFAZ/NFS-e por célula e evidência; certificado/CSC/UF/município/provedor, habilitação real | RTC-11 + recursos externos | BLOCKED_EXTERNAL |
 | NFC-EXEC-23 | Comercial externo | Definir oferta trial/preço/duração, prestador de cobrança, conta/segredos e transações reais, aprovar publicação | BUILD-03/04 internos | BLOCKED_HUMAN_ACTION |
 | NFC-EXEC-24 | Operação comercial | Health/observabilidade, alertas, backup/RPO/RTO/runbooks, TLS/domínio, atendimento e Go/No-Go humano final | 19/21/22/23 | PENDING |
-| NFC-EXEC-25 | COG-01 independente | Comparar patch do `cognitivo-nfcore-inteligencia-fiscal` com main; integrar sem segunda autoridade, hardening auditoria/limites/Portal, testes e aprovação própria; IA desligada por padrão | isolamento e CI; não bloquear RTC/BUILD | IN_PROGRESS — PR #300 Draft, imports + Portal/API opt-in, CI/Gov e homologação pendentes; sem merge/deploy |
+| NFC-EXEC-25 | COG-01 independente | Comparar patch do `cognitivo-nfcore-inteligencia-fiscal` com main; integrar sem segunda autoridade, hardening auditoria/limites/Portal, testes e aprovação própria; IA desligada por padrão | isolamento e CI; não bloquear RTC/BUILD | MERGED_INTERNAL_PENDING_POSTMERGE_PROOF — PR #300 integrada à main em `7a5c9e7b`; CI/Gov pré-merge SUCCESS, pós-merge não verificada, nenhuma ativação produtiva. COG-02 em PR #301 Draft |
 
 ### Sequência operacional sem retrabalho
 
@@ -118,3 +118,12 @@ Novo estado (somente com evidência):
 - CI preliminar do HEAD `f8e627d4`: 2.844 PASS / 2 FAIL / 3 SKIP (falha no **teste novo** que usou `router.routes.path` indevidamente), corrigido em `8056e4c`. CI final deve ser consultada no novo HEAD da PR; sem certificação antecipada.
 - Não houve merge em `main`, promoção em `production`, migration, segredo, ativação de IA nem deploy na Contabo. A PR #296 de release é Draft/NO-GO e uma promoção pode disparar deploy por cron.
 - Pendências: CI completa/E2E/containers, quotas duráveis, evidências fiscais normativas, segredo de IA via secret store, métricas Command e validação real de produção. Desktop Commander reportado offline nesta execução.
+
+### Checkpoint COG-02 — 01/11/2026 (execução independente)
+
+- Decisão comercial aprovada: trial 750k/210k tokens (30 dias), Essencial 1M/300k, Crescimento 3M/900k, Escala 8M/2,4M mensal. Essa decisão não implica publicação ou ativação financeira/fiscal.
+- PR #301 `feat/nfv1-cog02-durable-ai-quotas-20261101`, ainda Draft. Preserva pacote `kordena_fiscal`, Core Cognitivo da PR #300 e autoridade comercial existente. Schema19 aditivo em PR, **NÃO APLICADO** na Contabo.
+- Planos/status/período/quotas vêm de `fm_commercial_subscriptions`. Quotas aprovadas são teto e só são concedidas quando constam em snapshot contratual. Trial recebe quotas trial na provisão. Chamada IA exige reserva SQL atômica, dedupe e orçamento de fallback conservador; operação fiscal permanece independente.
+- Feature flags: `NFCORE_COGNITIVE_ENABLED` para aconselhamento; `NFCORE_COGNITIVE_DURABLE_AI_ENABLED` separado para modelo real somente com banco, auditoria e configuração segura. Ambos permanecem sem ativação produtiva.
+- Critérios para marcar DONE: CI e Governança da PR #301 no HEAD exato (Ruff, mypy, pytest, PostgreSQL concorrente, E2E, containers, restore), diff, merge permitido e pós-merge provado; schema e deploy produtivos em gate à parte. Até lá, `COG-02=IN_PROGRESS`.
+- Para procedimentos, consultar `docs/NFCORE_V1_COG02_APPROVED_AI_QUOTAS_2026-11-01.md` e `docs/NFCORE_COGNITIVE_CORE_ARCHITECTURE.md`.
