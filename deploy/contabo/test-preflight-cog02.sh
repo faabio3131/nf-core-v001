@@ -66,10 +66,10 @@ assert_run() {
 }
 
 MOCK_INSTALLED="$(seq -s, 1 18)"
-printf '%s\n' 'MOUT=$($MG --apply)' >> "$TMP/root/deploy.sh"
+printf '%s\n' "MOUT=\$(\$MG --apply)" >> "$TMP/root/deploy.sh"
 assert_run "legacy auto-migration deploy blocked" 42 'automatic migration or database restore'
 sed -i '$d' "$TMP/root/deploy.sh"
-printf '%s\n' 'nf_restore_db "$BKFILE"' >> "$TMP/root/deploy.sh"
+printf '%s\n' "nf_restore_db synthetic_backup" >> "$TMP/root/deploy.sh"
 assert_run "automatic database restore blocked" 42 'automatic migration or database restore'
 sed -i '$d' "$TMP/root/deploy.sh"
 printf '%s\n' 'NFCORE_SCHEMA_MIGRATION_APPROVED=true' >> "$TMP/root/deploy.sh"
