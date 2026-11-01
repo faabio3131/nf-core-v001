@@ -11,6 +11,11 @@ from typing import TypeVar
 
 from kordena_fiscal.domain import FiscalValidationError
 
+from .cognitive_quota_schema import (
+    COGNITIVE_QUOTA_NAME,
+    COGNITIVE_QUOTA_SCHEMA,
+    COGNITIVE_QUOTA_VERSION,
+)
 from .customer_configuration_schema import (
     CUSTOMER_CONFIGURATION_NAME,
     CUSTOMER_CONFIGURATION_SCHEMA,
@@ -18,11 +23,6 @@ from .customer_configuration_schema import (
 )
 from .fiscal_scope_schema import FISCAL_SCOPE_NAME, FISCAL_SCOPE_SCHEMA, FISCAL_SCOPE_VERSION
 from .ports import PersistenceStateError
-from .cognitive_quota_schema import (
-    COGNITIVE_QUOTA_NAME,
-    COGNITIVE_QUOTA_SCHEMA,
-    COGNITIVE_QUOTA_VERSION,
-)
 from .public_trial_rate_schema import (
     PUBLIC_TRIAL_RATE_NAME,
     PUBLIC_TRIAL_RATE_SCHEMA,
