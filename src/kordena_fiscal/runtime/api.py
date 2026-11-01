@@ -813,6 +813,7 @@ def create_runtime_app(
                 portal_executor,
                 os.environ,
                 audit_uow_factory=runtime.database,
+                runtime_environment=resolved.environment.value,
             ),
         ),
     )
