@@ -69,6 +69,7 @@ from .observability import (
     TraceContext,
 )
 from .otel_trace_sink import build_trace_sink
+from .production_command_ingress import production_command_resolver
 from .production_gsm import production_api_verifier
 from .public_trial_abuse import PostgresPublicTrialAbuseGate
 from .secret_manager import SecretBindingAdministration
@@ -213,10 +214,24 @@ def create_runtime_app(
         and runtime.database is not None
     ):
         staging_probe_security = staging_probe_verifier(runtime.database)
-    if resolved.environment.value == "production" and runtime.database is not None:
-        # Optional; if explicitly enabled, startup must verify the production
-        # service account, durable binding and real GSM read before readiness.
-        production_api_verifier(runtime.database)
+    if resolved.environment.value == "production":
+        # Separate, explicitly approved Command signing scope. A configured
+        # production channel may never downgrade to development HMAC material.
+        if runtime.database is None:
+            if os.getenv("NFCORE_PRODUCTION_COMMAND_MODE"):
+                raise RuntimeConfigurationError(
+                    "production Command requires canonical PostgreSQL"
+                )
+        else:
+            # Optional API identity probe, validating the existing GSM authority.
+            production_api_verifier(runtime.database)
+            approved_command = production_command_resolver(runtime.database)
+            if approved_command is not None:
+                if command_secret_resolver is not None:
+                    raise RuntimeConfigurationError(
+                        "duplicate production Command secret authority"
+                    )
+                command_secret_resolver = approved_command
     if resolved.environment.value == "staging" and runtime.database is not None:
         # Separate channel-specific GSM bindings, validated against the same
         # canonical external vault and existing nfcore-api identity.
