@@ -39,10 +39,10 @@ SH
 chmod +x "$TMP/bin/git" "$TMP/bin/docker"
 export PATH="$TMP/bin:$PATH"
 export NFCORE_ROOT="$TMP/root" NFCORE_BACKUP_DIR="$TMP/backups"
-export MOCK_CALLS="$TMP/calls" MOCK_MAIN_SHA MOCK_PRODUCTION_SHA\
-  MOCK_INSTALLED NFCORE_COG02_TARGET_MAIN_SHA
-export MOCK_MAIN_SHA="$(printf '%040d' 1)"
-export MOCK_PRODUCTION_SHA="$(printf '%040d' 2)"
+export MOCK_CALLS="$TMP/calls"
+export MOCK_MAIN_SHA MOCK_PRODUCTION_SHA MOCK_INSTALLED NFCORE_COG02_TARGET_MAIN_SHA
+MOCK_MAIN_SHA="$(printf '%040d' 1)"
+MOCK_PRODUCTION_SHA="$(printf '%040d' 2)"
 export NFCORE_COG02_TARGET_MAIN_SHA="$MOCK_MAIN_SHA"
 
 assert_run() {
@@ -64,14 +64,14 @@ assert_run() {
   echo "PASS $label"
 }
 
-export MOCK_INSTALLED="$(seq -s, 1 18)"
+MOCK_INSTALLED="$(seq -s, 1 18)"
 assert_run "legacy migration requires separate approval" 0 'migration19=REQUIRED_SEPARATELY'
-export MOCK_INSTALLED="$(seq -s, 1 19)"
+MOCK_INSTALLED="$(seq -s, 1 19)"
 assert_run "already installed migration does not run DDL" 0 'migration19=ALREADY_PRESENT'
 export MOCK_INSTALLED='1,2,4,19'
 assert_run "schema drift is blocked" 42 'schema drift'
-export MOCK_INSTALLED="$(seq -s, 1 18)"
-export NFCORE_COG02_TARGET_MAIN_SHA="$(printf '%040d' 3)"
+MOCK_INSTALLED="$(seq -s, 1 18)"
+NFCORE_COG02_TARGET_MAIN_SHA="$(printf '%040d' 3)"
 assert_run "moving main candidate is blocked" 42 'frozen target differs'
 unset NFCORE_COG02_TARGET_MAIN_SHA
 assert_run "missing target is blocked" 42 'TARGET_MAIN_SHA not set'
