@@ -8,7 +8,7 @@ from datetime import UTC, datetime
 from typing import Annotated, Any, Protocol, runtime_checkable
 from uuid import uuid4
 
-from fastapi import Body, FastAPI, Request
+from fastapi import APIRouter, Body, FastAPI, Request
 from fastapi.responses import JSONResponse
 
 from kordena_fiscal.control_plane.cakto_checkout import (
@@ -273,6 +273,7 @@ def create_app(
     commercial_operational_readiness: Callable[[], bool] | None = None,
     cakto_checkout_administration: CaktoCheckoutAdministrationService | None = None,
     runtime_metrics: MetricsRegistry | None = None,
+    cognitive_router: APIRouter | None = None,
 ) -> FastAPI:
     """Create the web adapter without granting fiscal authority by default."""
 
@@ -369,6 +370,8 @@ def create_app(
                 platform_surfaces=platform_surfaces,
             )
         )
+        if cognitive_router is not None:
+            app.include_router(cognitive_router)
         if pricing_administration is not None:
             app.include_router(
                 create_pricing_router(human_identity, pricing_administration)
