@@ -499,7 +499,7 @@ def test_signed_acquisition_duplicate_json_is_denied_without_side_effect(
     assert database.store.acquisitions == {}
 
 
-@pytest.mark.parametrize("idempotency_key", ("short", " " * 16, "a" * 129, "abc" + "\\t" + "0" * 20))
+@pytest.mark.parametrize("idempotency_key", ("short", " " * 16, "a" * 129, "não-ascii" * 3))
 def test_signed_acquisition_invalid_idempotency_denied_before_mutation(
     idempotency_key: str,
 ) -> None:
