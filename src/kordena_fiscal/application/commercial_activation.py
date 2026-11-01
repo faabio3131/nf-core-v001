@@ -339,7 +339,7 @@ class CommercialCustomerActivationService:
         if contract is not None:
             plan = contract.plan
             start, end = contract.periods[-1].start, contract.periods[-1].end
-        if purchase.billing_status is SubscriptionStatus.TRIAL:
+        if purchase.billing_status is SubscriptionStatus.TRIAL and contract is None:
             # Preserve the canonical plan and all non-AI entitlements/quotas;
             # override only the approved trial AI allowance in its durable snapshot.
             trial = APPROVED_TOKEN_ALLOWANCES[TokenQuotaPlan.TRIAL]
