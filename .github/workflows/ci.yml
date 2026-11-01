@@ -125,6 +125,9 @@ jobs:
           sh -n scripts/ci/production_preflight.sh
           sh -n scripts/ci/production_smoke.sh
           sh -n scripts/ci/run_production_promotion.sh
+          bash -n deploy/contabo/preflight-cog02.sh
+          bash -n deploy/contabo/test-preflight-cog02.sh
+          bash deploy/contabo/test-preflight-cog02.sh
 
       - name: Build runtime images
         run: |
