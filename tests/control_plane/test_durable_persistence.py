@@ -75,7 +75,7 @@ def _tenant_admin(tenant_id: str = "tenant-a") -> AdminPrincipal:
 
 def _database(tmp_path, name: str = "control-plane.sqlite3") -> SqliteFiscalDatabase:
     database = SqliteFiscalDatabase(tmp_path / name)
-    assert database.initialize() == (1, 2, 3, 4, 5, 13, 14, 17, 18)
+    assert database.initialize() == (1, 2, 3, 4, 5, 13, 14, 17, 18, 19)
     return database
 
 
@@ -202,7 +202,7 @@ def _remove_v4(connection: sqlite3.Connection) -> None:
 
 def test_v2_11_migration_v4_is_explicit_and_upgrades_v2_08_checkpoint(tmp_path) -> None:
     database = _database(tmp_path, "migration-v4.sqlite3")
-    assert database.applied_migrations() == (1, 2, 3, 4, 5, 13, 14, 17, 18)
+    assert database.applied_migrations() == (1, 2, 3, 4, 5, 13, 14, 17, 18, 19)
 
     with sqlite3.connect(database.path) as connection:
         _remove_v5(connection)
@@ -210,8 +210,8 @@ def test_v2_11_migration_v4_is_explicit_and_upgrades_v2_08_checkpoint(tmp_path) 
         connection.commit()
 
     assert database.applied_migrations() == (1, 2, 3)
-    assert database.initialize() == (4, 5, 13, 14, 17, 18)
-    assert database.applied_migrations() == (1, 2, 3, 4, 5, 13, 14, 17, 18)
+    assert database.initialize() == (4, 5, 13, 14, 17, 18, 19)
+    assert database.applied_migrations() == (1, 2, 3, 4, 5, 13, 14, 17, 18, 19)
 
     with sqlite3.connect(database.path) as connection:
         tables = {
