@@ -69,10 +69,15 @@ def store(db: tuple[Path, datetime]) -> DurableTokenQuotaStore:
 
 
 def test_approved_allowances_and_unknown_plan() -> None:
-    assert allowance_for_subscription(plan_id="any", status="trial").input_tokens == 750_000  # type: ignore[union-attr]
-    assert allowance_for_subscription(plan_id="essencial", status="active").output_tokens == 300_000  # type: ignore[union-attr]
-    assert allowance_for_subscription(plan_id="crescimento", status="active").input_tokens == 3_000_000  # type: ignore[union-attr]
-    assert allowance_for_subscription(plan_id="escala", status="active").output_tokens == 2_400_000  # type: ignore[union-attr]
+    for plan_id, status, expected in (
+        ("any", "trial", (750_000, 210_000)),
+        ("essencial", "active", (1_000_000, 300_000)),
+        ("crescimento", "active", (3_000_000, 900_000)),
+        ("escala", "active", (8_000_000, 2_400_000)),
+    ):
+        allowance = allowance_for_subscription(plan_id=plan_id, status=status)
+        assert allowance is not None
+        assert (allowance.input_tokens, allowance.output_tokens) == expected
     assert allowance_for_subscription(plan_id="unknown", status="active") is None
     assert allowance_for_subscription(plan_id="escala", status="suspended") is None
 
