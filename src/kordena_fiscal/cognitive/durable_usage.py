@@ -7,6 +7,7 @@ transaction discipline. No prompts, responses, API keys or fiscal authority.
 
 from __future__ import annotations
 
+from calendar import monthrange
 from collections.abc import Callable, Sequence
 from contextlib import AbstractContextManager
 from dataclasses import dataclass
@@ -51,6 +52,14 @@ class TokenBalance:
     used_output: int
     allowance: TokenAllowance
     period_end: datetime
+
+
+def _add_months(start: datetime, count: int) -> datetime:
+    """Calendar-month boundaries anchored to subscription start day."""
+    year = start.year + (start.month - 1 + count) // 12
+    month = (start.month - 1 + count) % 12 + 1
+    day = min(start.day, monthrange(year, month)[1])
+    return start.replace(year=year, month=month, day=day)
 
 
 class DurableTokenQuotaStore:
@@ -102,9 +111,22 @@ class DurableTokenQuotaStore:
             raise QuotaDenied("billing period must be timezone-aware")
         if status.lower() == "trial":
             end = min(end, start + timedelta(days=30))
+            if not start <= now < end:
+                raise QuotaDenied("billing period expired or not yet active")
+            return start.isoformat(), end.isoformat(), allowance, end
         if not start <= now < end:
             raise QuotaDenied("billing period expired or not yet active")
-        return start.isoformat(), end.isoformat(), allowance, end
+        # Paid allowances renew monthly even when the commercial contract
+        # renews quarterly or annually. Anchor at the original period start.
+        months = (now.year - start.year) * 12 + now.month - start.month
+        monthly_start = _add_months(start, months)
+        if monthly_start > now:
+            months -= 1
+            monthly_start = _add_months(start, months)
+        monthly_end = min(end, _add_months(start, months + 1))
+        return (
+            monthly_start.isoformat(), monthly_end.isoformat(), allowance, monthly_end
+        )
 
     def reserve(
         self, *,
