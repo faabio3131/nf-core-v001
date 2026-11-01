@@ -269,8 +269,10 @@ def create_app(
     commercial_checkout_processing_configured: bool = False,
     commercial_trial_ingress_configured: bool = False,
     commercial_trial_site_channel_configured: bool = False,
+    commercial_public_trial_configured: bool = False,
     commercial_delivery_readiness: CommercialDeliveryPathReadiness | None = None,
     commercial_operational_readiness: Callable[[], bool] | None = None,
+    commercial_trial_operational_readiness: Callable[[], bool] | None = None,
     cakto_checkout_administration: CaktoCheckoutAdministrationService | None = None,
     runtime_metrics: MetricsRegistry | None = None,
 ) -> FastAPI:
@@ -398,7 +400,9 @@ def create_app(
                     trial_site_channel_configured=(
                         commercial_trial_site_channel_configured
                     ),
+                    public_trial_configured=commercial_public_trial_configured,
                     operational_readiness=commercial_operational_readiness,
+                    trial_operational_readiness=commercial_trial_operational_readiness,
                     runtime_metrics=http_metrics,
                 )
             )
