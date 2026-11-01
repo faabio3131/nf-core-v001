@@ -23,6 +23,8 @@ from .command_api import create_command_metrics_router
 from .governance import DEFAULT_PILOT_DAILY_LIMIT, InMemoryUsageLedger, pilot_entitlement
 from .knowledge.official import OfficialTablesError, cached_official_catalog
 from .portal_evidence import PortalSurfaceEvidenceProvider, SurfaceReader
+from .durable_usage import DurableTokenQuotaStore
+from .quota_model import QuotaGovernedAdvisoryClient
 from .ports import AuditSinkPort
 from .registry import default_baselines
 from .service import CognitiveAdviceService
@@ -46,6 +48,7 @@ def build_cognitive_routers(
     *,
     audit_uow_factory: Callable[[], AbstractContextManager[Any]] | None = None,
     runtime_environment: str | None = None,
+    quota_store: DurableTokenQuotaStore | None = None,
 ) -> list[APIRouter]:
     """Portal advisory route plus the Command metrics route; empty unless explicitly enabled.
 
@@ -61,22 +64,37 @@ def build_cognitive_routers(
     except OfficialTablesError:
         # Fail-open: without the official tables the advice says "não verificado".
         catalog = None
-    # Until commercial token quotas have a durable cross-worker reservation authority,
-    # production/staging may expose only the deterministic advisory baseline.
-    # Never turn an in-memory pilot counter into a commercial hard limit.
+    # Production model use requires an independent opt-in, canonical subscription
+    # quota storage and durable audit. A mere API key or ENABLE_FLAG is insufficient.
     allow_pilot_model = runtime_environment in {"development", "test"}
-    model = build_model_from_environ(environ) if allow_pilot_model else None
+    allow_paid_model = (
+        runtime_environment in {"staging", "production"}
+        and environ.get("NFCORE_COGNITIVE_DURABLE_AI_ENABLED", "").lower() == "true"
+        and quota_store is not None
+        and audit_uow_factory is not None
+    )
+    model = (
+        build_model_from_environ(environ)
+        if (allow_pilot_model or allow_paid_model)
+        else None
+    )
     audit: AuditSinkPort | None = None
     entitlements = None
     ledger = None
     if model is not None:
-        audit = (
-            ControlPlaneAuditSink(audit_uow_factory)
-            if audit_uow_factory is not None
-            else LoggingAuditSink()
-        )
-        ledger = InMemoryUsageLedger()
-        entitlements = pilot_entitlement(ledger, daily_limit=_daily_limit(environ))
+        if allow_paid_model:
+            assert quota_store is not None
+            model = QuotaGovernedAdvisoryClient(model, quota_store)
+            assert audit_uow_factory is not None
+            audit = ControlPlaneAuditSink(audit_uow_factory)
+        else:
+            audit = (
+                ControlPlaneAuditSink(audit_uow_factory)
+                if audit_uow_factory is not None
+                else LoggingAuditSink()
+            )
+            ledger = InMemoryUsageLedger()
+            entitlements = pilot_entitlement(ledger, daily_limit=_daily_limit(environ))
     aggregates = CognitiveUsageAggregates()
     service = CognitiveAdviceService(
         baselines=default_baselines(classification_catalog=catalog),
@@ -104,12 +122,14 @@ def build_cognitive_router(
     *,
     audit_uow_factory: Callable[[], AbstractContextManager[Any]] | None = None,
     runtime_environment: str | None = None,
+    quota_store: DurableTokenQuotaStore | None = None,
 ) -> APIRouter | None:
     """One router mounting the Portal advisory route and the Command metrics route."""
     routers = build_cognitive_routers(
         identity, portal_executor, environ,
         audit_uow_factory=audit_uow_factory,
         runtime_environment=runtime_environment,
+        quota_store=quota_store,
     )
     if not routers:
         return None
