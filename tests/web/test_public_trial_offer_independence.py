@@ -30,7 +30,7 @@ def offer(
     public: bool = False,
     signed: bool = False,
     site_channel: bool = False,
-    ready: bool = True,
+    ready: bool | None = True,
     approve: bool = True,
     days: int = 7,
 ) -> dict[str, object]:
@@ -80,7 +80,9 @@ def offer(
             ),
             # Command checkout readiness remains separate and unavailable.
             operational_readiness=lambda: False,
-            trial_operational_readiness=lambda: ready,
+            trial_operational_readiness=(
+                (lambda: ready is True) if ready is not None else None
+            ),
         )
     )
     response = TestClient(app).get("/v1/commercial/offer")
@@ -101,6 +103,7 @@ def test_approved_public_trial_can_be_ready_without_paid_checkout() -> None:
         ("not-configured", {}),
         ("no-human-release", {"public": True, "approve": False}),
         ("missing-admission", {"public": True, "ready": False}),
+        ("missing-readiness-callback", {"public": True, "ready": None}),
         ("no-trial-days", {"public": True, "days": 0}),
         ("signed-without-site", {"signed": True}),
         ("signed-site-without-checkout", {"signed": True, "site_channel": True}),
