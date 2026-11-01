@@ -47,6 +47,11 @@ from kordena_fiscal.security.human_identity import (
 )
 from kordena_fiscal.security.human_recovery import PasswordResetRecord
 
+from .cognitive_quota_schema import (
+    COGNITIVE_QUOTA_NAME,
+    COGNITIVE_QUOTA_SCHEMA,
+    COGNITIVE_QUOTA_VERSION,
+)
 from .command_commercial_schema import (
     COMMAND_COMMERCIAL_NAME,
     COMMAND_COMMERCIAL_SCHEMA,
@@ -66,11 +71,6 @@ from .customer_configuration_schema import (
 from .fiscal_scope_schema import FISCAL_SCOPE_NAME, FISCAL_SCOPE_SCHEMA, FISCAL_SCOPE_VERSION
 from .ports import PersistenceStateError
 from .pricing_catalog import PostgresPricingCatalogRepository
-from .cognitive_quota_schema import (
-    COGNITIVE_QUOTA_NAME,
-    COGNITIVE_QUOTA_SCHEMA,
-    COGNITIVE_QUOTA_VERSION,
-)
 from .public_trial_rate_schema import (
     PUBLIC_TRIAL_RATE_NAME,
     PUBLIC_TRIAL_RATE_SCHEMA,
