@@ -21,7 +21,7 @@ from kordena_fiscal.runtime.controlled_pilots import ControlledPilotScope
 
 def test_v2_15_closure_keeps_database_migrations_explicit_and_stable(tmp_path) -> None:
     database = SqliteFiscalDatabase(tmp_path / "v2-15-closure.sqlite3")
-    assert database.initialize() == (1, 2, 3, 4, 5, 13, 14, 17, 18)
+    assert database.initialize() == (1, 2, 3, 4, 5, 13, 14, 17, 18, 19)
     assert database.initialize() == ()
 
 

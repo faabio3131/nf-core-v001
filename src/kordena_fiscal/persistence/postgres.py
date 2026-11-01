@@ -47,6 +47,11 @@ from kordena_fiscal.security.human_identity import (
 )
 from kordena_fiscal.security.human_recovery import PasswordResetRecord
 
+from .cognitive_quota_schema import (
+    COGNITIVE_QUOTA_NAME,
+    COGNITIVE_QUOTA_SCHEMA,
+    COGNITIVE_QUOTA_VERSION,
+)
 from .command_commercial_schema import (
     COMMAND_COMMERCIAL_NAME,
     COMMAND_COMMERCIAL_SCHEMA,
@@ -831,6 +836,19 @@ class PostgresFiscalDatabase:
                         ),
                     )
                     new_versions.append(PUBLIC_TRIAL_RATE_VERSION)
+                if COGNITIVE_QUOTA_VERSION not in applied:
+                    for statement in COGNITIVE_QUOTA_SCHEMA:
+                        raw.execute(statement)
+                    raw.execute(
+                        "INSERT INTO fm_schema_migrations (version, name, applied_at) "
+                        "VALUES (%s, %s, %s)",
+                        (
+                            COGNITIVE_QUOTA_VERSION,
+                            COGNITIVE_QUOTA_NAME,
+                            datetime.now().astimezone().isoformat(),
+                        ),
+                    )
+                    new_versions.append(COGNITIVE_QUOTA_VERSION)
                 raw.commit()
                 return tuple(new_versions)
             except Exception:
@@ -856,30 +874,31 @@ class PostgresFiscalDatabase:
         versions instead of creating tables during startup.
         """
         applied = self.applied_migrations()
-        required = tuple(range(1, PUBLIC_TRIAL_RATE_VERSION + 1))
-        if applied == required:
-            return applied
+        required = tuple(range(1, COGNITIVE_QUOTA_VERSION + 1))
+        if applied != required:
+            raise PersistenceStateError(
+                "PostgreSQL schema is not at the certified migration version"
+            )
 
-        # COG-02 production bridge ONLY: version 19 adds two private tables.
-        # No cognitive features exist in this legacy runtime, so the previous
-        # domain tables remain unchanged. Never accept arbitrary later versions,
-        # missing migrations, or a ledger claim without the additive tables.
-        if applied == (*required, PUBLIC_TRIAL_RATE_VERSION + 1):
-            try:
-                with self.connection() as connection:
-                    rows = connection.execute(
-                        "SELECT to_regclass('public.fm_cognitive_token_counters'), "
-                        "to_regclass('public.fm_cognitive_token_reservations')"
-                    ).fetchone()
-                if rows is not None and len(rows) == 2 and all(rows):
-                    return applied
-            except Exception as exc:
+        # The fiscal ledger alone is insufficient: migration 19 also requires
+        # both durable quota tables. This check must remain read-only.
+        try:
+            with self.connection() as connection:
+                tables = connection.execute(
+                    "SELECT to_regclass('public.fm_cognitive_token_counters'), "
+                    "to_regclass('public.fm_cognitive_token_reservations')"
+                ).fetchone()
+            if tables is None or len(tables) != 2 or not all(tables):
                 raise PersistenceStateError(
                     "PostgreSQL schema is not at the certified migration version"
-                ) from exc
-        raise PersistenceStateError(
-            "PostgreSQL schema is not at the certified migration version"
-        )
+                )
+        except PersistenceStateError:
+            raise
+        except Exception as exc:
+            raise PersistenceStateError(
+                "PostgreSQL schema is not at the certified migration version"
+            ) from exc
+        return applied
 
     def unit_of_work(self) -> PostgresFiscalUnitOfWork:
         return PostgresFiscalUnitOfWork(self)

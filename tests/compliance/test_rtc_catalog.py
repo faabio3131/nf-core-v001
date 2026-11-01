@@ -1,6 +1,7 @@
 """RTC-03: synthetic rows test trust and integrity, never tax correctness."""
 
 import json
+from dataclasses import replace
 from datetime import UTC, date, datetime
 from hashlib import sha256
 
@@ -13,7 +14,10 @@ from kordena_fiscal.compliance import (
     RegulatoryBaseline,
     RegulatoryBaselineError,
 )
-from kordena_fiscal.compliance.rtc_catalog import load_verified_rtc_classification_catalog
+from kordena_fiscal.compliance.rtc_catalog import (
+    VerifiedRtcClassificationCatalog,
+    load_verified_rtc_classification_catalog,
+)
 
 
 def _payload(rows: list[dict[str, str]] | None = None) -> bytes:
@@ -151,3 +155,28 @@ def test_catalog_rejects_boolean_schema_version() -> None:
     malformed = json.dumps(obj).encode("utf-8")
     with pytest.raises(RegulatoryBaselineError, match="schema version"):
         load_verified_rtc_classification_catalog(_baseline(malformed), malformed)
+
+
+def test_catalog_requires_pinned_loader_not_direct_construction() -> None:
+    # An arbitrary in-memory pair is NOT evidence of a normative artifact.
+    fabricated = VerifiedRtcClassificationCatalog(
+        artifact_version="SYNTHETIC-v1",
+        allowed_pairs=frozenset({("000", "000001")}),
+    )
+    with pytest.raises(RegulatoryBaselineError, match="pinned artifact"):
+        fabricated.require_classification(_snapshot())
+
+
+@pytest.mark.parametrize("alteration", ["pairs", "version"])
+def test_catalog_invalidates_provenance_when_verified_object_is_replaced(
+    alteration: str,
+) -> None:
+    payload = _payload()
+    verified = load_verified_rtc_classification_catalog(_baseline(payload), payload)
+    changed = (
+        replace(verified, allowed_pairs=frozenset({("999", "999999")}))
+        if alteration == "pairs"
+        else replace(verified, artifact_version="FORGED-v2")
+    )
+    with pytest.raises(RegulatoryBaselineError, match="pinned artifact"):
+        changed.require_classification(_snapshot())

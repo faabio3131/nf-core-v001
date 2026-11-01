@@ -256,7 +256,7 @@ def _configure_customer(
 
 def test_three_distinct_customers_survive_restart_with_same_source(tmp_path) -> None:
     database = SqliteFiscalDatabase(tmp_path / "zero-code-onboarding.sqlite3")
-    assert database.initialize() == (1, 2, 3, 4, 5, 13, 14, 17, 18)
+    assert database.initialize() == (1, 2, 3, 4, 5, 13, 14, 17, 18, 19)
     actor = _admin()
 
     for customer in CUSTOMERS:
@@ -323,7 +323,7 @@ def test_customer_configuration_is_exact_and_cross_partition_lookup_fails_closed
     tmp_path,
 ) -> None:
     database = SqliteFiscalDatabase(tmp_path / "zero-code-isolation.sqlite3")
-    assert database.initialize() == (1, 2, 3, 4, 5, 13, 14, 17, 18)
+    assert database.initialize() == (1, 2, 3, 4, 5, 13, 14, 17, 18, 19)
     actor = _admin()
     restaurant = CUSTOMERS[0]
     retail = CUSTOMERS[2]

@@ -6,9 +6,13 @@ from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 from threading import Barrier, Thread
 from types import SimpleNamespace
+from urllib.parse import parse_qsl, quote, urlencode, urlsplit, urlunsplit
+from uuid import uuid4
 
 import psycopg
 import pytest
+from psycopg import sql
+from psycopg.conninfo import conninfo_to_dict
 
 from kordena_fiscal.application import DurableFiscalOutboxWorker
 from kordena_fiscal.contingency import (
@@ -38,20 +42,37 @@ SELECTION = OutboxClaimSelection(SCOPE, frozenset({"deliver_webhook"}))
 
 @pytest.fixture(params=["sqlite", "postgres"])
 def database(request, tmp_path):
+    dsn = ""
+    schema = ""
+    db = None
     if request.param == "postgres":
         dsn = os.environ.get("NFCORE_TEST_POSTGRES_DSN", "").strip()
         if not dsn:
             pytest.skip("NFCORE_TEST_POSTGRES_DSN required for PostgreSQL proof")
+        info = conninfo_to_dict(dsn)
+        if (
+            info.get("host") not in {"127.0.0.1", "localhost", "::1"}
+            or not info.get("dbname", "").endswith("_test")
+        ):
+            pytest.fail("worker claim PostgreSQL test requires local *_test database")
+        schema = "worker_claim_" + uuid4().hex
         with psycopg.connect(dsn, autocommit=True) as conn:
-            conn.execute("DROP SCHEMA public CASCADE")
-            conn.execute("CREATE SCHEMA public")
-        db = PostgresFiscalDatabase(dsn)
+            conn.execute(sql.SQL("CREATE SCHEMA {}").format(sql.Identifier(schema)))
+        url = urlsplit(dsn)
+        args = dict(parse_qsl(url.query, keep_blank_values=True))
+        args["options"] = f"-c search_path={schema}"
+        isolated = urlunsplit(url._replace(query=urlencode(args, quote_via=quote)))
+        db = PostgresFiscalDatabase(isolated)
     else:
         db = SqliteFiscalDatabase(tmp_path / "isolated.sqlite3")
-    db.initialize()
-    yield db
-    if isinstance(db, PostgresFiscalDatabase):
-        db.close()
+    try:
+        db.initialize()
+        yield db
+    finally:
+        if isinstance(db, PostgresFiscalDatabase):
+            db.close()
+            with psycopg.connect(dsn, autocommit=True) as conn:
+                conn.execute(sql.SQL("DROP SCHEMA {} CASCADE").format(sql.Identifier(schema)))
 
 
 def enqueue(store, key, scope=SCOPE, operation="deliver_webhook", created=NOW):

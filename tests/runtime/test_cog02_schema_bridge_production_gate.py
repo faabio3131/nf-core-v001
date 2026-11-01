@@ -1,4 +1,4 @@
-"""Legacy COG-02 bridge production guard: no DDL, exact 18 or verified 19."""
+"""COG-02 release upgrade guard: exact schema 19, no DDL or migration."""
 from __future__ import annotations
 
 import importlib.util
@@ -38,9 +38,7 @@ class Database:
         self.queries: list[str] = []
         self.closed = False
 
-    def require_current_schema(self) -> tuple[int, ...]:
-        if self.versions not in (tuple(range(1, 19)), tuple(range(1, 20))):
-            raise PersistenceStateError("PostgreSQL schema is not certified")
+    def applied_migrations(self) -> tuple[int, ...]:
         return self.versions
 
     @contextmanager
@@ -62,9 +60,9 @@ class Database:
 
 @pytest.fixture
 def setup(monkeypatch: pytest.MonkeyPatch):
-    monkeypatch.setattr(guard, "validate_policy", lambda: tuple(range(1, 19)))
+    monkeypatch.setattr(guard, "validate_policy", lambda: tuple(range(1, 20)))
     monkeypatch.setenv("NFCORE_ENVIRONMENT", "production")
-    monkeypatch.setenv("DATABASE_URL", "postgresql://synthetic.invalid/bridge")
+    monkeypatch.setenv("DATABASE_URL", "postgresql://synthetic.invalid/release")
     monkeypatch.delenv("RAILWAY_SERVICE_ID", raising=False)
 
     def set_database(versions: tuple[int, ...], cakto: tuple[int, ...] | None):
@@ -76,14 +74,21 @@ def setup(monkeypatch: pytest.MonkeyPatch):
 
 
 @pytest.mark.parametrize("version", [18, 19])
-def test_bridge_deploy_gate_accepts_exact_18_or_19_without_write(
+def test_release_deploy_gate_accepts_19_rejects_18_without_write(
     setup, capsys: pytest.CaptureFixture[str], version: int,
 ) -> None:
     database = setup(tuple(range(1, version + 1)), (1, 2))
-    guard.assert_current_production()
-    assert "PASS READ_ONLY" in capsys.readouterr().out
+    if version == 19:
+        guard.assert_current_production()
+    else:
+        with pytest.raises(RuntimeError, match="pending/drifted fiscal migrations"):
+            guard.assert_current_production()
+    output = capsys.readouterr().out
+    if version == 19:
+        assert "PASS READ_ONLY" in output
+    else:
+        assert "PASS READ_ONLY" not in output
     assert database.closed
-    assert database.queries
     assert all(sql.startswith("SELECT") for sql in database.queries)
 
 
@@ -92,12 +97,12 @@ def test_bridge_deploy_gate_accepts_exact_18_or_19_without_write(
     [
         (tuple(range(1, 18)), (1, 2)),
         (tuple(range(1, 21)), (1, 2)),
-        (tuple(range(1, 19)), None),
+        (tuple(range(1, 20)), None),
         (tuple(range(1, 20)), (1,)),
-        (tuple(range(1, 19)), (1, 2, 3)),
+        (tuple(range(1, 20)), (1, 2, 3)),
     ],
 )
-def test_bridge_deploy_gate_rejects_schema_drift(
+def test_release_deploy_gate_rejects_schema_drift(
     setup, fiscal: tuple[int, ...], cakto: tuple[int, ...] | None,
 ) -> None:
     database = setup(fiscal, cakto)
@@ -108,7 +113,7 @@ def test_bridge_deploy_gate_rejects_schema_drift(
 
 
 @pytest.mark.parametrize("environment", ["", "staging", "development"])
-def test_bridge_gate_requires_production_before_db_access(
+def test_release_gate_requires_production_before_db_access(
     setup, monkeypatch: pytest.MonkeyPatch, environment: str,
 ) -> None:
     monkeypatch.setenv("NFCORE_ENVIRONMENT", environment)
@@ -117,7 +122,7 @@ def test_bridge_gate_requires_production_before_db_access(
         guard.assert_current_production()
 
 
-def test_bridge_gate_rejects_legacy_service_startup(
+def test_release_gate_rejects_service_startup(
     setup, monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setenv("RAILWAY_SERVICE_ID", "legacy")

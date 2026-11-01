@@ -13,6 +13,11 @@ from kordena_fiscal.persistence.cakto import (
     CAKTO_SCHEMA_VERSION,
     postgres_cakto_commercial_database,
 )
+from kordena_fiscal.persistence.cognitive_quota_schema import (
+    COGNITIVE_QUOTA_NAME,
+    COGNITIVE_QUOTA_SCHEMA,
+    COGNITIVE_QUOTA_VERSION,
+)
 from kordena_fiscal.persistence.command_commercial_schema import (
     COMMAND_COMMERCIAL_NAME,
     COMMAND_COMMERCIAL_SCHEMA,
@@ -102,6 +107,7 @@ def validate_policy() -> tuple[int, ...]:
         COMMERCIAL_PERIOD_VERSION,
         SECRET_BINDING_VERSION,
         PUBLIC_TRIAL_RATE_VERSION,
+        COGNITIVE_QUOTA_VERSION,
     )
     if versions != tuple(range(1, max(versions) + 1)):
         raise RuntimeError(f"migration versions must be contiguous from 1: {versions!r}")
@@ -172,6 +178,11 @@ def validate_policy() -> tuple[int, ...]:
         name=PUBLIC_TRIAL_RATE_NAME,
         statements=PUBLIC_TRIAL_RATE_SCHEMA,
     )
+    _reject_unapproved_destructive(
+        version=COGNITIVE_QUOTA_VERSION,
+        name=COGNITIVE_QUOTA_NAME,
+        statements=COGNITIVE_QUOTA_SCHEMA,
+    )
     print(
         "migration policy: PASS "
         f"versions={','.join(str(item) for item in versions)} "
@@ -237,26 +248,26 @@ def plan_staging() -> None:
     )
 
 
-def assert_current_production() -> None:
-    """Read-only deploy gate for the legacy 18/19 compatibility bridge.
 
-    No migration authority is granted here: only exact legacy schema 18 or
-    the verified COG-02 additive schema 19 is accepted by the database guard.
+def assert_current_production() -> None:
+    """Read-only gate: permit a code-only deploy only with exact current schema.
+
+    This command never runs migrations. Pending or drifted schemas require
+    separately approved migration workflow before any deploy.
     """
     expected = validate_policy()
-    if expected != tuple(range(1, 19)):
-        raise RuntimeError("legacy compatibility gate requires exactly version 18 baseline")
-    if os.getenv("NFCORE_ENVIRONMENT", "").strip().casefold() != "production":
+    if os.getenv("NFCORE_ENVIRONMENT") != "production":
         raise RuntimeError("production schema assertion requires production environment")
     if os.getenv("RAILWAY_SERVICE_ID", "").strip():
-        raise RuntimeError("production schema assertion cannot run inside service startup")
+        raise RuntimeError("production schema assertion must run outside service startup")
     dsn = os.getenv("DATABASE_URL", "").strip()
     if not dsn:
         raise RuntimeError("production schema assertion requires DATABASE_URL")
-
     database = PostgresFiscalDatabase(dsn)
     try:
-        installed = database.require_current_schema()
+        before = database.applied_migrations()
+        if before != expected:
+            raise RuntimeError("production schema has pending/drifted fiscal migrations")
         with database.connection() as connection:
             row = connection.execute(
                 "SELECT to_regclass('public.fm_cakto_schema_migrations')"
@@ -266,12 +277,12 @@ def assert_current_production() -> None:
             rows = connection.execute(
                 "SELECT version FROM fm_cakto_schema_migrations ORDER BY version"
             ).fetchall()
-        cakto = tuple(int(item[0]) for item in rows)
+            cakto = tuple(int(item[0]) for item in rows)
         if cakto != tuple(range(1, CAKTO_SCHEMA_VERSION + 1)):
             raise RuntimeError("production schema has pending/drifted Cakto migrations")
     finally:
         database.close()
-    print(f"production schema: PASS READ_ONLY compatible={installed}; no DDL")
+    print("production schema: PASS READ_ONLY CURRENT; no migration needed")
 
 
 def apply() -> None:

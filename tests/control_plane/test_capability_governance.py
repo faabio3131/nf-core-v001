@@ -72,7 +72,7 @@ def _tenant_admin(tenant_id: str = "tenant-a") -> AdminPrincipal:
 
 def _database(tmp_path, name: str = "capability.sqlite3") -> SqliteFiscalDatabase:
     database = SqliteFiscalDatabase(tmp_path / name)
-    assert database.initialize() == (1, 2, 3, 4, 5, 13, 14, 17, 18)
+    assert database.initialize() == (1, 2, 3, 4, 5, 13, 14, 17, 18, 19)
     return database
 
 

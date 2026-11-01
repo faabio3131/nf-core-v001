@@ -11,6 +11,11 @@ from typing import TypeVar
 
 from kordena_fiscal.domain import FiscalValidationError
 
+from .cognitive_quota_schema import (
+    COGNITIVE_QUOTA_NAME,
+    COGNITIVE_QUOTA_SCHEMA,
+    COGNITIVE_QUOTA_VERSION,
+)
 from .customer_configuration_schema import (
     CUSTOMER_CONFIGURATION_NAME,
     CUSTOMER_CONFIGURATION_SCHEMA,
@@ -776,6 +781,19 @@ class SqliteFiscalDatabase:
                     ),
                 )
                 new_versions.append(PUBLIC_TRIAL_RATE_VERSION)
+            if COGNITIVE_QUOTA_VERSION not in applied:
+                for statement in COGNITIVE_QUOTA_SCHEMA:
+                    connection.execute(statement)
+                connection.execute(
+                    "INSERT INTO fm_schema_migrations (version, name, applied_at) "
+                    "VALUES (?, ?, ?)",
+                    (
+                        COGNITIVE_QUOTA_VERSION,
+                        COGNITIVE_QUOTA_NAME,
+                        datetime.now().astimezone().isoformat(),
+                    ),
+                )
+                new_versions.append(COGNITIVE_QUOTA_VERSION)
             connection.commit()
             return tuple(new_versions)
         except Exception:

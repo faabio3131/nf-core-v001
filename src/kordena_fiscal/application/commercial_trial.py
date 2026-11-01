@@ -282,10 +282,13 @@ class GovernedTrialService:
 
             current = CommercialSubscription.restore(subscription.checkpoint)
             current.transition(SubscriptionStatus.ACTIVE)
+            # A paid conversion must not inherit the 30-day AI trial allowance.
+            # Resolve the paid plan from the original governed pricing publication.
+            paid_plan = self._activation.paid_plan_for_purchase(purchase)
             event_id = f"trial-converted-{hashlib.sha256(reference.encode()).hexdigest()[:32]}"
             updated_subscription = replace(
                 subscription,
-                checkpoint=current.checkpoint(),
+                checkpoint=replace(current.checkpoint(), plan=paid_plan),
                 last_event_id=event_id,
                 last_event_at=now,
             )
