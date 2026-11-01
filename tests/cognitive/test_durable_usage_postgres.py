@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import os
 from collections.abc import Iterator
 from concurrent.futures import ThreadPoolExecutor
@@ -12,6 +13,10 @@ from uuid import uuid4
 import psycopg
 import pytest
 
+from kordena_fiscal.cognitive.commercial_quotas import (
+    INPUT_QUOTA_METRIC,
+    OUTPUT_QUOTA_METRIC,
+)
 from kordena_fiscal.cognitive.durable_usage import DurableTokenQuotaStore, QuotaDenied
 from kordena_fiscal.persistence.cognitive_quota_schema import COGNITIVE_QUOTA_SCHEMA
 from kordena_fiscal.persistence.postgres import _PostgresCompatConnection
@@ -33,18 +38,23 @@ def test_atomic_reservations_across_postgres_connections() -> None:
                 subscription_id TEXT NOT NULL, tenant_id TEXT NOT NULL,
                 plan_id TEXT NOT NULL, status TEXT NOT NULL,
                 period_start TEXT NOT NULL, period_end TEXT NOT NULL,
-                last_event_at TEXT NOT NULL
+                last_event_at TEXT NOT NULL,
+                quotas_json TEXT NOT NULL
             )"""
         )
         for ddl in COGNITIVE_QUOTA_SCHEMA:
             conn.execute(ddl)
         conn.execute(
-            "INSERT INTO fm_commercial_subscriptions VALUES (%s, %s, %s, %s, %s, %s, %s)",
+            "INSERT INTO fm_commercial_subscriptions VALUES (%s, %s, %s, %s, %s, %s, %s, %s)",
             (
                 "sub-a", "tenant-a", "essencial", "active",
                 (now - timedelta(hours=1)).isoformat(),
                 (now + timedelta(days=30)).isoformat(),
                 now.isoformat(),
+                json.dumps([
+                    {"metric_id": INPUT_QUOTA_METRIC, "limit": 1_000_000},
+                    {"metric_id": OUTPUT_QUOTA_METRIC, "limit": 300_000},
+                ]),
             ),
         )
 
