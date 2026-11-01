@@ -26,7 +26,8 @@ def test_live_model_is_not_initialized_without_durable_quota(
         Reader(),  # type: ignore[arg-type]
         {
             "NFCORE_COGNITIVE_ENABLED": "true",
-            "NFCORE_ENVIRONMENT": "development",  # conflicting untrusted env must not override runtime
+            # Conflicting environment setting must not override the runtime authority.
+            "NFCORE_ENVIRONMENT": "development",
             "NFCORE_COGNITIVE_AI_PRIMARY_MODEL": "configured-but-not-enabled",
         },
         runtime_environment=environment,
