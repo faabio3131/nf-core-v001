@@ -20,6 +20,16 @@ command -v git >/dev/null || blocked "git unavailable"
 command -v docker >/dev/null || blocked "docker unavailable"
 [ -d "$SRC/.git" ] || blocked "canonical checkout missing at $SRC"
 
+# The installed script is the runtime authority, not a matching file in Git.
+# A legacy installer that automatically migrates/restores must block promotion
+# even if the repository contains a safe replacement candidate.
+[ -r "$ROOT/deploy.sh" ] || blocked "installed deploy.sh missing"
+if grep -Eq '[$]MG[[:space:]]+--apply|nf_restore_db|NFCORE_SCHEMA_MIGRATION_APPROVED=true|NFCORE_PRODUCTION_APPROVAL=PRODUCTION_APPROVED' "$ROOT/deploy.sh"; then
+  blocked "installed deploy.sh performs automatic migration or database restore"
+fi
+grep -Fq -- '--assert-current-production' "$ROOT/deploy.sh" ||
+  blocked "installed deploy.sh lacks read-only production schema gate"
+
 # No local ref mutations. Remote branch SHAs come from ls-remote, not a
 # possibly stale origin/production cache.
 read_remote() {
