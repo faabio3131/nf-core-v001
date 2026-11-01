@@ -14,7 +14,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from typing import Protocol
 
-from .commercial_quotas import TokenAllowance, allowance_for_subscription
+from .commercial_quotas import TokenAllowance, configured_allowance
 
 
 class QuotaDenied(ValueError):
@@ -91,7 +91,7 @@ class DurableTokenQuotaStore:
         self, connection: _Connection, tenant: str, now: datetime
     ) -> tuple[str, str, TokenAllowance, datetime]:
         row = connection.execute(
-            """SELECT plan_id, status, period_start, period_end
+            """SELECT plan_id, status, period_start, period_end, quotas_json
                FROM fm_commercial_subscriptions WHERE tenant_id = ?
                ORDER BY last_event_at DESC, subscription_id DESC LIMIT 1""",
             (tenant,),
@@ -99,9 +99,11 @@ class DurableTokenQuotaStore:
         if row is None:
             raise QuotaDenied("canonical subscription is unavailable")
         plan_id, status = str(row[0]), str(row[1])
-        allowance = allowance_for_subscription(plan_id=plan_id, status=status)
+        allowance = configured_allowance(
+            plan_id=plan_id, status=status, quotas_json=str(row[4])
+        )
         if allowance is None:
-            raise QuotaDenied("subscription cannot consume cognitive AI")
+            raise QuotaDenied("canonical subscription has no authorized cognitive quotas")
         try:
             start = datetime.fromisoformat(str(row[2]))
             end = datetime.fromisoformat(str(row[3]))
