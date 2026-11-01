@@ -277,7 +277,7 @@ def test_migration_9_upgrades_an_existing_version_8_database() -> None:
 
     database = PostgresFiscalDatabase(dsn)
     try:
-        assert database.initialize() == (9, 10, 11, 12, 13, 14, 15, 16, 17, 18)
+        assert database.initialize() == (9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19)
         assert database.applied_migrations() == tuple(range(1, 20))
         with database.connection() as connection:
             assert connection.execute(
