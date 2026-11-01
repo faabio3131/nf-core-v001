@@ -98,7 +98,7 @@ def _descriptor() -> ProviderDescriptor:
 
 def _database(tmp_path) -> SqliteFiscalDatabase:
     database = SqliteFiscalDatabase(tmp_path / "v2-15-b2-nfe.sqlite3")
-    assert database.initialize() == (1, 2, 3, 4, 5, 13, 14, 17, 18)
+    assert database.initialize() == (1, 2, 3, 4, 5, 13, 14, 17, 18, 19)
     control = DurableControlPlaneService(database)
     control.onboard_organization(
         actor=_admin(),
