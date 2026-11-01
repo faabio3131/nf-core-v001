@@ -12,6 +12,13 @@ from kordena_fiscal.product.billing import (
     CommercialSubscription,
     SubscriptionStatus,
     UsagePeriodCheckpoint,
+    UsageQuota,
+)
+from kordena_fiscal.cognitive.commercial_quotas import (
+    APPROVED_TOKEN_ALLOWANCES,
+    INPUT_QUOTA_METRIC,
+    OUTPUT_QUOTA_METRIC,
+    TokenQuotaPlan,
 )
 from kordena_fiscal.product.catalog import DEFAULT_COMMERCIAL_CATALOG, CommercialCatalog
 from kordena_fiscal.product.commercial_fulfillment import (
@@ -332,6 +339,21 @@ class CommercialCustomerActivationService:
         if contract is not None:
             plan = contract.plan
             start, end = contract.periods[-1].start, contract.periods[-1].end
+        if purchase.billing_status is SubscriptionStatus.TRIAL:
+            # Preserve the canonical plan and all non-AI entitlements/quotas;
+            # override only the approved trial AI allowance in its durable snapshot.
+            trial = APPROVED_TOKEN_ALLOWANCES[TokenQuotaPlan.TRIAL]
+            plan = CommercialPlan(
+                plan_id=plan.plan_id,
+                entitlement_ids=plan.entitlement_ids,
+                quotas=tuple(
+                    quota for quota in plan.quotas
+                    if quota.metric_id not in {INPUT_QUOTA_METRIC, OUTPUT_QUOTA_METRIC}
+                ) + (
+                    UsageQuota(INPUT_QUOTA_METRIC, trial.input_tokens),
+                    UsageQuota(OUTPUT_QUOTA_METRIC, trial.output_tokens),
+                ),
+            )
         subscription = CommercialSubscription(
             tenant_id=purchase.tenant_id,
             plan=plan,
