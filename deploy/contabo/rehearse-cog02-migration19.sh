@@ -58,7 +58,7 @@ docker run --rm -d --pull never --name "$C" --network none \
   -e POSTGRES_PASSWORD="$PASS" postgres:16-alpine >/dev/null
 unset PASS
 ready=0
-for i in $(seq 1 40); do
+for _ in $(seq 1 40); do
   if docker exec "$C" pg_isready -q -U nfcore -d nfcore >/dev/null 2>&1; then
     ready=1; break
   fi
