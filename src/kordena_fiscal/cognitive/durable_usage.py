@@ -36,6 +36,12 @@ class _Connection(Protocol):
     def rollback(self) -> None: ...
 
 
+def _db_count(value: object) -> int:
+    if not isinstance(value, int) or isinstance(value, bool) or value < 0:
+        raise QuotaDenied("invalid persisted token counter")
+    return value
+
+
 @dataclass(frozen=True, slots=True)
 class TokenReservation:
     tenant_id: str
@@ -158,8 +164,8 @@ class DurableTokenQuotaStore:
             if existing is not None:
                 if (
                     str(existing[0]) != start or str(existing[1]) != end
-                    or int(existing[2]) != max_input_tokens
-                    or int(existing[3]) != max_output_tokens
+                    or _db_count(existing[2]) != max_input_tokens
+                    or _db_count(existing[3]) != max_output_tokens
                 ):
                     raise QuotaDenied("idempotency key reused with different reservation")
                 return TokenReservation(
@@ -225,11 +231,11 @@ class DurableTokenQuotaStore:
             ).fetchone()
             if row is None:
                 raise QuotaDenied("missing cognitive token reservation")
-            reserved_in, reserved_out = int(row[2]), int(row[3])
+            reserved_in, reserved_out = _db_count(row[2]), _db_count(row[3])
             if input_tokens > reserved_in or output_tokens > reserved_out:
                 raise QuotaDenied("provider usage exceeded reserved budget")
             if str(row[6]) == "settled":
-                if (int(row[4]), int(row[5])) != (input_tokens, output_tokens):
+                if (_db_count(row[4]), _db_count(row[5])) != (input_tokens, output_tokens):
                     raise QuotaDenied("conflicting settlement replay")
                 return False
             # UPDATE serializes settlement: duplicate concurrent attempts cannot
@@ -270,5 +276,5 @@ class DurableTokenQuotaStore:
                    WHERE tenant_id = ? AND period_start = ? AND period_end = ?""",
                 (tenant, start, end),
             ).fetchone()
-            used_input, used_output = (0, 0) if row is None else (int(row[0]), int(row[1]))
+            used_input, used_output = (0, 0) if row is None else (_db_count(row[0]), _db_count(row[1]))
             return TokenBalance(used_input, used_output, allowance, expires_at)
