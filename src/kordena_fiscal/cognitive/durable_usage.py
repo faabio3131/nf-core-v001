@@ -276,5 +276,7 @@ class DurableTokenQuotaStore:
                    WHERE tenant_id = ? AND period_start = ? AND period_end = ?""",
                 (tenant, start, end),
             ).fetchone()
-            used_input, used_output = (0, 0) if row is None else (_db_count(row[0]), _db_count(row[1]))
+            used_input, used_output = (
+                (0, 0) if row is None else (_db_count(row[0]), _db_count(row[1]))
+            )
             return TokenBalance(used_input, used_output, allowance, expires_at)
