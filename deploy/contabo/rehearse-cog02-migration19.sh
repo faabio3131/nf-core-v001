@@ -81,8 +81,11 @@ tables_before="$(docker exec "$C" psql -X -U nfcore -d nfcore -At \
 # Only SHA256 fingerprint is retained/printed; customer records stay in
 # isolated in-memory Postgres and are never displayed in output.
 legacy_hash() {
+  # A fixed restrict key is safe here because the generated SQL is NEVER
+  # executed; it only normalizes the fingerprint comparison. PostgreSQL 16+
+  # otherwise emits a different random key on every pg_dump invocation.
   docker exec "$C" pg_dump -U nfcore -d nfcore --data-only \
-    --no-owner --no-acl --inserts \
+    --restrict-key=NFCoreCog02FingerprintOnly --no-owner --no-acl --inserts \
     --exclude-table=public.fm_schema_migrations \
     --exclude-table=public.fm_cognitive_token_counters \
     --exclude-table=public.fm_cognitive_token_reservations |
