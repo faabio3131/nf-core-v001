@@ -762,6 +762,28 @@ def create_runtime_app(
         )
         app.state.nfcore_public_trial_configured = True
 
+    def public_trial_operational_readiness() -> bool:
+        """Read-only, fail-closed availability of the independent browser trial."""
+        if (
+            not app.state.nfcore_public_trial_configured
+            or runtime.database is None
+            or composition is None
+            or composition.commercial_trial is None
+            or password_reset_delivery is None
+            or not commercial_delivery_readiness.ready
+        ):
+            return False
+        try:
+            if not runtime.ready()[0]:
+                return False
+            with runtime.database.connection() as connection:
+                row = connection.execute(
+                    "SELECT to_regclass('fm_public_trial_rate_windows')"
+                ).fetchone()
+            return row is not None and row[0] is not None
+        except Exception:
+            return False
+
     human_identity = None if composition is None else composition.human_identity
     password_recovery = None if composition is None else composition.password_recovery
     bridge_security = None if composition is None else composition.bridge_security
@@ -818,12 +840,18 @@ def create_runtime_app(
             commercial_trial_ingress_configured=(
                 app.state.nfcore_commercial_trial is not None
             ),
+            commercial_public_trial_configured=(
+                app.state.nfcore_public_trial_configured
+            ),
             # Explicitly operator-attested FM Site S2S route. Never infer
             # channel readiness from a secret existing on the API.
             commercial_trial_site_channel_configured=(
                 os.getenv("NFCORE_SITE_TRIAL_CHANNEL_READY", "") == "true"
             ),
             commercial_operational_readiness=commercial_operational_readiness,
+            commercial_trial_operational_readiness=(
+                public_trial_operational_readiness
+            ),
             cakto_checkout_administration=cakto_checkout_administration,
             runtime_metrics=runtime_metrics,
         ),
