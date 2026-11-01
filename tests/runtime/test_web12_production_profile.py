@@ -45,6 +45,9 @@ def test_runtime_profile_is_fail_closed_without_production_authority() -> None:
 
     assert response.status_code == 200
     assert response.json()["fiscal_production_activated"] is False
+    # Signed trial and anonymous public trial are distinct runtime capabilities.
+    assert response.json()["commercial_trial_configured"] is False
+    assert response.json()["public_trial_configured"] is False
     assert response.json()["fiscal_production_active_grants"] == 0
 
 

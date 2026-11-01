@@ -53,3 +53,17 @@ O serviço reutiliza `Dockerfile.worker` e `kordena_fiscal.runtime.worker_main`.
 
 **Não executar o Worker até:** autorização humana específica, acesso operacional ao servidor, auditoria do `production`/DB/segredos GSM, observabilidade, E2E de escopo/outbox/retry, recovery e Go/No-Go. Em especial, `NFCORE_WORKER_GSM_MODE` e material de assinatura não podem ser simulados em produção. O overlay por si só não constitui integração produtiva nem homologação.
 
+
+## Command comercial — canal de assinatura produtivo opt-in
+
+A composição produtiva só pode habilitar `command_webhook_configured` após validar o banco canônico, o `CommandBinding` previamente aprovado por `platform_admin`, seu `SecretBinding` GSM no mesmo escopo, a identidade `nfcore-api` e uma leitura real do material no Google Secret Manager. **Nenhuma configuração cria binding, publica preço, aprova checkout ou executa cobrança.**
+
+Variáveis de ativação **apenas após aprovação específica e acesso operacional**:
+
+- `NFCORE_PRODUCTION_COMMAND_MODE=scoped-production-command-gsm-v1`
+- `NFCORE_PRODUCTION_COMMAND_KEY_ID=<key_id previamente aprovado no CommandBinding>`
+- `NFCORE_API_GSM_MODE=scoped-production-sa-v1` e identidade/segredo GSM da API definidos pelo mecanismo canônico `production_gsm.py` (arquivo da identidade montado read-only, nunca colado no `.env` ou Git)
+
+O código usa exclusivamente o Secret Manager aprovado e as tabelas canônicas `fm_command_bindings` e de referências GSM. Referências, escopo/tenant, versão, revisão, status e expiração são verificadas antes de acesso ao segredo; falta de binding, credencial, IAM ou material forte aborta a composição **fail-closed**. A integração somente habilita o **receptor autenticado**, não processamento comercial ativo; exigem-se também plano publicado, checkout correspondente, release aprovado e E2E de pagamento/reconciliação.
+
+Não habilitar em ambiente produtivo até parametrizar a identidade e segredo em fluxo autorizado, executar smoke HTTP com eventos sintéticos e validar replay/estorno/cancelamento sem compras reais.
