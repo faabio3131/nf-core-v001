@@ -117,3 +117,19 @@ Se a `main` avançar, congelar o **novo** HEAD auditado e repetir a CI/Gov, nunc
 - Produção permanece SHA a3a2b3c97d26780b1e2b7581b4c93b6f07e86a70, schema 18, serviços intactos. Nenhuma migration real, atualização Web, alteração do banco produtivo ou merge na branch production nesta etapa.
 
 **DEPENDÊNCIAS PARA O CUTOVER:** CI/Gov da PR #302 no último HEAD; autorização distinta para merge da bridge #303 em production com runtime schema 18 saudável; autorização específica para migration 19 em produção e janela governada; certificação pós-DDL; merge governado da candidata #304; smoke autenticado, readiness e rollback. Sem esses gates, NO_GO.
+
+## 8. MIGRATION 19 PRODUTIVA APLICADA — 01/11/2026 19:28–19:29 UTC
+
+**DECISÃO APROVADA:** proprietário autorizou explicitamente aplicar a migration 19 no PostgreSQL produtivo. Essa autorização não inclui merge da PR #304, deploy de nova Web ou ativação de modelos de IA.
+
+**CURRENT confirmado imediatamente antes:** Contabo vmi3692211, usuário fmadmin, `.deployed` e checkout no SHA `79172ef9125c49f1e60e5a0a56e6b4c5f67c71be` (PR #303 integrada à production), branch remota idêntica, API/Portal/DB healthy, fiscal migrations exatas 1..18, Cakto 1..2 e script de deploy instalado code-only sem aprovação embutida/--apply. Backup anterior já havia sido restaurado e testado no PostgreSQL isolado (seção 7).
+
+**Autoridade e execução:** cópia versionada `deploy/contabo/execute-cog02-migration19-once.sh`, pinada a esse SHA de production, usa o lock do cron `/tmp/nfcore-deploy.lock`; a imagem descartável `nfcore-cog02-migration19:d3d1002` foi construída exclusivamente do código canônico main `d3d1002a54b78b0c7df7f77f28aeac181bc2c40d`, sem alterar checkout do serviço ou os containers existentes. `migration_guard.py --check-policy` retornou PASS `versions=1..19 cakto_schema=2`. O script usa override Compose temporário apenas para `docker compose run --rm --no-deps -T ... nfcore-api python scripts/ci/migration_guard.py --apply`, com flags de autorização restritas a essa execução e não aos serviços persistentes.
+
+**BACKUP PRÉ-DDL:** `/opt/fm/backups/nfcore-diario/nfcore-20261101-202852.dump` gerado sob lock pelo backup canônico, com SHA-256 verificado antes e depois. Não publicar backup, segredos ou informações de clientes.
+
+**RESULTADO REAL:** `CANONICAL_MIGRATION_GUARD_PASS`, `BRIDGE_SCHEMA=19`, `PRODUCTION_MIGRATION19_APPLIED_VERIFIED`, exit code 0. Log restrito no host: `/opt/fm/nfcore/.safe-deploy-stage-20261101/migration19-production-guarded.log`. Linha final do orquestrador: `before=(1..18), applied=(19,), after=(1..19), cakto_changed=False, cakto_versions=(1,2)`.
+
+**GATES PÓS-DDL (19:29:41 UTC):** consulta independente ao PostgreSQL confirma `fm_schema_migrations` min=1, max=19, count=19; Cakto min=1,max=2,count=2. `nfcore-api`, `nfcore-portal` e `nfcore-db` permanecem healthy; API readiness e Portal HTTPS HTTP 200; `.deployed` e checkout permanecem `79172ef...`, sem novo deploy/restart; checksum do backup de 19:28:52 UTC PASS. Sem rollback/restore necessário.
+
+**CLASSIFICAÇÃO:** migration 19 produtiva concluída e verificada; infraestrutura Web mais recente NÃO foi promovida. PR #304 segue Draft e sua branch está divergente da production após merge da #303 (comparação GitHub: 206 commits à frente / 5 atrás na referência consultada). Antes de qualquer merge em production: reconciliar a candidata preservando os commits da bridge, repetir CI/Gov no HEAD atualizado, verificar readiness e obter autorização específica de promoção Web. PR #302 permanece Draft, CI principal em execução no HEAD anterior ao presente checkpoint; reexecutar no HEAD atualizado.
