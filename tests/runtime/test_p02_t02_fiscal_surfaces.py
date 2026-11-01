@@ -217,7 +217,7 @@ def test_migration_13_preserves_legacy_without_inventing_scope(tmp_path):
             ("LEGACY", "draft", 0, fixture.NOW.isoformat(), "[]"),
         )
     database = SqliteFiscalDatabase(path)
-    assert database.initialize() == (13, 14, 17, 18)
+    assert database.initialize() == (13, 14, 17, 18, 19)
     assert database.initialize() == ()
     with database() as uow:
         assert uow.lifecycle.get("LEGACY").state.value == "draft"
