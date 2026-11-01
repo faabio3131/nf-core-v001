@@ -1,6 +1,6 @@
 # FM NFCORE V1 — CRONOGRAMA MESTRE RTC 2026→TRANSIÇÃO
 
-**Abertura:** 30/10/2026 · **Status:** EM EXECUÇÃO — início RTC-00, demais WPs pendentes · **Branch:** `feat/nfcore-rtc-reforma-tributaria-foundation-20261030`.  
+**Abertura:** 30/10/2026 · **Status CURRENT (reconciliado em 01/11/2026):** EM EXECUÇÃO, entregas RTC-00/01/02/03 e RTC-09 parciais integradas; RTC-04 em PR #289 ainda não integrada; RTC-05..08/10/11 pendentes, RTC-12 bloqueada externamente. **Base de auditoria:** `main@d3d1002a54b7`, `production@d7cf5e4d58cc`. Histórico de abertura preservado no checkpoint, não usar como CURRENT.  
 **Norma:** `AGENTS.md` + `docs/NFCORE_RTC_REFORMA_TRIBUTARIA_MASTER_2026-10-30.md`; esta é uma frente *independente*, não altera checkboxes do cronograma das 59 tarefas nem o ledger BUILD.
 
 ## Regras gerais de execução
@@ -9,16 +9,16 @@ Cada WP: auditar CURRENT e fonte oficial → mapear autoridade/camadas → conge
 
 | WP | Escopo/entrega | Dependência | Critério objetivo de aceite | Estado |
 |---|---|---|---|---|
-| **RTC-00** | Inventário completo de domínios/migrations/APIs/XML/Portal; catálogo de fontes, versões e baseline datada | `main` real, normas | Relatório Current→Target e pins oficiais sem ativação; testes de baseline | **IN_PROGRESS** |
-| **RTC-01** | Governança normativa: NTs/ITs tabelas CST, cClassTrib, alíquotas, XSD, dados oficiais, SHA/versionamento e watcher governado | RTC-00 | Artefatos originais verificáveis, comparação de versões, change review, rollback; nenhuma mudança autoativa | PENDING |
-| **RTC-02** | Modelo fiscal do estabelecimento: CRT × regime IRPJ/CSLL, opção Simples, histórico temporal, competências, jurisdição/atividade | RTC-00 | Autoridade de dados única; validade temporal; tenant/unidade/RBAC e anti-spoofing; migração só se justificada | PENDING |
-| **RTC-03** | Matriz nacional de incidência e classificação: NCM/NBS, CST IBS/CBS, cClassTrib, benefício, operação, destino, exceções | RTC-01/02 | Resolução determinística pelo `TaxRuleEngine`, ausência/empate fail-closed, fonte e versão por decisão | PENDING |
-| **RTC-04** | Calculadora transacional IBS UF/município + CBS + IS, reduções, créditos, regimes e eventos de ajuste aplicáveis | RTC-03 | Cálculos Decimal/rounding oficiais, Golden Cases verificáveis, sem taxas fictícias ou IA como autoridade | PENDING |
+| **RTC-00** | Inventário completo de domínios/migrations/APIs/XML/Portal; catálogo de fontes, versões e baseline datada | `main` real, normas | Relatório Current→Target e pins oficiais sem ativação; testes de baseline | IMPLEMENTED_PARTIAL — #267 MERGED; inventário/gate de aceite global pendente |
+| **RTC-01** | Governança normativa: NTs/ITs tabelas CST, cClassTrib, alíquotas, XSD, dados oficiais, SHA/versionamento e watcher governado | RTC-00 | Artefatos originais verificáveis, comparação de versões, change review, rollback; nenhuma mudança autoativa | IMPLEMENTED_PARTIAL — #268/#270 MERGED; catálogo/watcher/rollback normativo completos não certificados |
+| **RTC-02** | Modelo fiscal do estabelecimento: CRT × regime IRPJ/CSLL, opção Simples, histórico temporal, competências, jurisdição/atividade | RTC-00 | Autoridade de dados única; validade temporal; tenant/unidade/RBAC e anti-spoofing; migração só se justificada | IMPLEMENTED_PARTIAL — #269/#271/#272 MERGED; matriz integral e PG/RBAC por todas células não certificada |
+| **RTC-03** | Matriz nacional de incidência e classificação: NCM/NBS, CST IBS/CBS, cClassTrib, benefício, operação, destino, exceções | RTC-01/02 | Resolução determinística pelo `TaxRuleEngine`, ausência/empate fail-closed, fonte e versão por decisão | IMPLEMENTED_PARTIAL — #273/#274/#280 MERGED; NCM/NBS, benefícios e exceções ainda incompletos |
+| **RTC-04** | Calculadora transacional IBS UF/município + CBS + IS, reduções, créditos, regimes e eventos de ajuste aplicáveis | RTC-03 | Cálculos Decimal/rounding oficiais, Golden Cases verificáveis, sem taxas fictícias ou IA como autoridade | IMPLEMENTED_NOT_MERGED — PR #289 OPEN; CI/Gov SUCCESS no HEAD 61f8bdf; prévia sintética, não cálculo oficial |
 | **RTC-05** | Coexistência e transição: ICMS/ISS/IPI/PIS/Cofins com IBS/CBS/IS e vigências 2026–2033 conforme legislação atualizada | RTC-03/04 | Casos de antes/depois vigência, preservação de snapshots e histórico, sem desativar tributos legados antecipadamente | PENDING |
 | **RTC-06** | NF-e 55 e NFC-e 65: serializadores, leiaute NT 2025.002 versão vigente, XSD, assinatura, totais, rejeições, contingência | RTC-03/04/05 | XML golden oficial, schemas oficiais, assinatura e fluxo canônico de emissão/consulta/cancelamento; rollback no teste | PENDING |
 | **RTC-07** | NFS-e nacional e municipais pertinentes: DPS/NFS-e, NBS/códigos, IBS/CBS, serviços, eventos e regras municipal/nacional | RTC-03/04/05 | Leiaute nacional vigente e adapters suportados testados por município/célula; sem declarar universalidade | PENDING |
 | **RTC-08** | Casos especiais: export/import, combustíveis/monofásico, créditos, devoluções, regime especial, operações não padronizadas | RTC-03..07 | Matriz de operações cobertas/não cobertas, sem fallback silencioso, provas legais e técnicas por célula | PENDING |
-| **RTC-09** | API/application/Portal: cadastro e revisão de regime, visualização de cálculos/classificação e motivo de bloqueio | RTC-02..08 | Mesmo Portal/API, sessão/RBAC/CSRF, escopo, sem cálculo autoritativo no browser; E2E Web real interno | PENDING |
+| **RTC-09** | API/application/Portal: cadastro e revisão de regime, visualização de cálculos/classificação e motivo de bloqueio | RTC-02..08 | Mesmo Portal/API, sessão/RBAC/CSRF, escopo, sem cálculo autoritativo no browser; E2E Web real interno | IMPLEMENTED_PARTIAL — #275/#278 MERGED; classificação/cálculos/erros/E2E completos pendentes |
 | **RTC-10** | Persistência, ledger, auditoria, replay, idempotência, workers, performance, migrações, DR | RTC-03..09 | Teste PostgreSQL descartável, concorrência, rollback, schema convergence, snapshots imutáveis | PENDING |
 | **RTC-11** | Certificação interna ponta a ponta, matrix regimes × operações × documentos × período × UF/município | RTC-01..10 | Todos os casos obrigatórios aplicáveis evidenciados + CI/Gov verde sem gaps ocultos | PENDING |
 | **RTC-12** | Homologação oficial por provedor/jurisdição/operação, pilotos limitados, observabilidade, certificação de produção e Go/No-Go | RTC-11 + ações externas/humanas | Request/response oficiais + vault + ambiente + performance + runbooks + rollback e GO humano explícito | BLOCKED_EXTERNAL |
@@ -67,7 +67,7 @@ Cada WP: auditar CURRENT e fonte oficial → mapear autoridade/camadas → conge
 9. **Resiliência:** timeout/unknown, recuperação, concorrência, idempotência, rollback, fresh migration vs upgrade, backup/restore governados.
 10. **Conformidade:** golden files vinculados a artefato oficial SHA e versão; rejeição real somente homologação externa.
 
-## Tracker operacional inicial
+## Tracker operacional de abertura (HISTÓRICO; supersedido pelo CURRENT abaixo)
 
 | Entrega | Código/artefato | Estado | Evidência |
 |---|---|---|---|
@@ -79,4 +79,6 @@ Cada WP: auditar CURRENT e fonte oficial → mapear autoridade/camadas → conge
 | Alteração de TaxRuleEngine/RTC runtime | Nenhuma | NOT_STARTED | preservar atual até mapear delta |
 | Merge/main/deploy/migration | Nenhum | NOT_AUTHORIZED | não executar por reflexo da branch |
 
-**Próximo passo de implementação:** concluir RTC-00 com inventário operacional de compatibilidade e fonte oficial; adicionar gates de baseline à CI se necessário e então RTC-01 (tabelas, schemas e hash verificados). Se outra branch mudar a main, fazer compare e atualizar baseline antes de continuar. Separar essa execução de BLD-03; nunca usurpar trabalho de outra branch.
+**Próximo passo CURRENT (01/11/2026):** preservar RTC-00..03 e RTC-09 já integrados; resolver somente lacunas normativas comprovadas que bloqueiem uma célula RTC-04, concluir a revisão da PR #289 sem promover prévia sintética à emissão, e desenvolver o cálculo oficial por célula validada. Em seguida RTC-05 → RTC-06/07 → RTC-08 → complemento RTC-09/RTC-10 → RTC-11 → RTC-12 externo. A autorização BUILD não autoriza merge RTC, nem produção.
+
+**Evidências e anti-retrabalho:** `docs/checkpoints/NFCORE_RTC_CURRENT_RECONCILIATION_2026-11-01.md` (PRs, HEADs, CI, riscos e critérios faltantes). Esta tabela substitui o estado operacional da abertura; se divergir, auditar GitHub atual, nunca a memória.
