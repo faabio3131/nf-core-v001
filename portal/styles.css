@@ -949,3 +949,10 @@ html[data-theme="light"] .rtc-status { color: #153453; }
 @media (max-width: 760px) {
   .rtc-status { padding: 12px; }
 }
+
+.cognitive-advisor { margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid rgba(255, 255, 255, 0.12); }
+.cognitive-section { margin: 0.75rem 0; padding: 0.75rem 1rem; border-left: 3px solid var(--accent, #2bf47a); border-radius: 4px; background: rgba(255, 255, 255, 0.04); }
+.cognitive-section p { margin: 0.25rem 0 0; overflow-wrap: anywhere; }
+.cognitive-hypothesis { border-left-style: dashed; }
+.cognitive-action { border-left-color: #f5c542; }
+.cognitive-section details { margin-top: 0.4rem; }
