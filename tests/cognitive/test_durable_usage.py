@@ -201,3 +201,61 @@ def test_unknown_provider_usage_keeps_reservation(quota_db: tuple[Path, datetime
             input_tokens=50_001, output_tokens=1,
         )
     assert quota.balance(tenant_id="tenant-a").used_input == 50_000
+
+
+def test_paid_allowance_renews_monthly_inside_annual_contract(
+    quota_db: tuple[Path, datetime],
+) -> None:
+    path, now = quota_db
+    start = datetime(2026, 1, 31, 12, tzinfo=UTC)
+    with sqlite3.connect(path) as db:
+        db.execute(
+            """UPDATE fm_commercial_subscriptions
+               SET period_start = ?, period_end = ?
+               WHERE tenant_id = 'tenant-b'""",
+            (start.isoformat(), datetime(2027, 1, 31, 12, tzinfo=UTC).isoformat()),
+        )
+    first = DurableTokenQuotaStore(
+        lambda: _acquire_sqlite(path),
+        clock=lambda: datetime(2026, 2, 20, 12, tzinfo=UTC),
+    )
+    first.reserve(
+        tenant_id="tenant-b", request_id="january-period",
+        max_input_tokens=3_000_000, max_output_tokens=900_000,
+    )
+    assert first.balance(tenant_id="tenant-b").used_input == 3_000_000
+    second = DurableTokenQuotaStore(
+        lambda: _acquire_sqlite(path),
+        clock=lambda: datetime(2026, 3, 1, 12, tzinfo=UTC),
+    )
+    assert second.balance(tenant_id="tenant-b").used_input == 0
+    assert second.reserve(
+        tenant_id="tenant-b", request_id="february-period",
+        max_input_tokens=3_000_000, max_output_tokens=900_000,
+    ).created
+    # Anchored to Jan 31: Feb's monthly window ends Mar 31.
+    assert second.balance(tenant_id="tenant-b").period_end == datetime(
+        2026, 3, 31, 12, tzinfo=UTC
+    )
+
+
+def test_no_trial_token_reset_after_thirty_days(
+    quota_db: tuple[Path, datetime],
+) -> None:
+    path, now = quota_db
+    with sqlite3.connect(path) as db:
+        db.execute(
+            """UPDATE fm_commercial_subscriptions
+               SET period_end = ?
+               WHERE tenant_id = 'tenant-trial'""",
+            ((now + timedelta(days=80)).isoformat(),),
+        )
+    after_trial = DurableTokenQuotaStore(
+        lambda: _acquire_sqlite(path),
+        clock=lambda: now + timedelta(days=30),
+    )
+    with pytest.raises(QuotaDenied, match="expired"):
+        after_trial.reserve(
+            tenant_id="tenant-trial", request_id="too-late",
+            max_input_tokens=1, max_output_tokens=1,
+        )
