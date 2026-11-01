@@ -66,6 +66,11 @@ from .customer_configuration_schema import (
 from .fiscal_scope_schema import FISCAL_SCOPE_NAME, FISCAL_SCOPE_SCHEMA, FISCAL_SCOPE_VERSION
 from .ports import PersistenceStateError
 from .pricing_catalog import PostgresPricingCatalogRepository
+from .cognitive_quota_schema import (
+    COGNITIVE_QUOTA_NAME,
+    COGNITIVE_QUOTA_SCHEMA,
+    COGNITIVE_QUOTA_VERSION,
+)
 from .public_trial_rate_schema import (
     PUBLIC_TRIAL_RATE_NAME,
     PUBLIC_TRIAL_RATE_SCHEMA,
@@ -831,6 +836,19 @@ class PostgresFiscalDatabase:
                         ),
                     )
                     new_versions.append(PUBLIC_TRIAL_RATE_VERSION)
+                if COGNITIVE_QUOTA_VERSION not in applied:
+                    for statement in COGNITIVE_QUOTA_SCHEMA:
+                        raw.execute(statement)
+                    raw.execute(
+                        "INSERT INTO fm_schema_migrations (version, name, applied_at) "
+                        "VALUES (%s, %s, %s)",
+                        (
+                            COGNITIVE_QUOTA_VERSION,
+                            COGNITIVE_QUOTA_NAME,
+                            datetime.now().astimezone().isoformat(),
+                        ),
+                    )
+                    new_versions.append(COGNITIVE_QUOTA_VERSION)
                 raw.commit()
                 return tuple(new_versions)
             except Exception:
@@ -856,7 +874,7 @@ class PostgresFiscalDatabase:
         versions instead of creating tables during startup.
         """
         applied = self.applied_migrations()
-        required = tuple(range(1, PUBLIC_TRIAL_RATE_VERSION + 1))
+        required = tuple(range(1, COGNITIVE_QUOTA_VERSION + 1))
         if applied != required:
             raise PersistenceStateError(
                 "PostgreSQL schema is not at the certified migration version"
