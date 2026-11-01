@@ -1,6 +1,7 @@
 import json
 from dataclasses import replace
 from datetime import UTC, date, datetime
+from decimal import Decimal
 from hashlib import sha256
 
 import pytest
@@ -10,6 +11,9 @@ from kordena_fiscal.compliance.rtc import (
     RegulatoryArtifactPin,
     RegulatoryBaseline,
     RegulatoryBaselineError,
+)
+from kordena_fiscal.compliance.rtc_calculation_preview import (
+    calculate_rule_bound_rtc_preview,
 )
 from kordena_fiscal.compliance.rtc_catalog import (
     VerifiedRtcClassificationCatalog,
@@ -25,6 +29,7 @@ from kordena_fiscal.domain import (
     FiscalUnitCode,
     FiscalValidationError,
     Gtin,
+    Money,
     NcmCode,
     ProductOrigin,
     TaxRegimeCode,
@@ -381,3 +386,64 @@ def test_rtc_outcome_rejects_malformed_cst_without_changing_legacy_rules() -> No
         replace(_outcome(), ibs_cbs_cst_code="01")
     with pytest.raises(FiscalValidationError, match="ibs_cbs_classification_table_version"):
         replace(_outcome(), ibs_cbs_classification_table_version=" ")
+
+
+def _rule_bound_preview(*, rules: list[TaxRule] | None = None, day: int = 10):
+    """Synthetic rate/classification evidence; no fiscal authorization."""
+    payload = json.dumps({
+        "schema_version": 1,
+        "artifact_id": "RATE-SYNTHETIC",
+        "artifact_version": "SYNTHETIC-v1",
+        "component": "cbs",
+        "rate_percent": "1.25",
+        "quantum": "0.01",
+        "rounding_mode": "ROUND_HALF_UP",
+    }, sort_keys=True).encode("utf-8")
+    baseline = RegulatoryBaseline(
+        baseline_id="rtc-rule-bound-preview-synthetic", version=1,
+        captured_at=datetime(2026, 9, 11, tzinfo=UTC),
+        artifacts=(RegulatoryArtifactPin(
+            artifact_id="RATE-SYNTHETIC", kind=RegulatoryArtifactKind.RATE_TABLE,
+            version="SYNTHETIC-v1", published_on=date(2026, 9, 1),
+            effective_from=date(2026, 9, 1), source_reference="synthetic-test-only",
+            checksum_sha256=sha256(payload).hexdigest(),
+        ),),
+    )
+    return calculate_rule_bound_rtc_preview(
+        engine=TaxRuleEngine(), context=_context(instant=_instant(day)),
+        rules=[_rtc_rule()] if rules is None else rules,
+        baseline=baseline, rate_artifact_id="RATE-SYNTHETIC",
+        rate_payload=payload, catalog=_synthetic_rtc_catalog(),
+        tax_base=Money(Decimal("123.45")),
+    )
+
+
+def test_rtc04_preview_requires_canonical_rule_and_classification() -> None:
+    decision, result = _rule_bound_preview()
+    assert decision.rule_id == "rtc-synthetic"
+    assert decision.source_normative == "NORMA-SINTETICA-TESTE"
+    assert result.classification.cst_code == "000"
+    assert result.classification.classification_code == "000001"
+    assert result.tax_amount.amount == Decimal("1.54")
+
+
+def test_rtc04_preview_denies_unmatched_territory() -> None:
+    with pytest.raises(TaxRuleNotFoundError, match="no effective tax rule"):
+        _rule_bound_preview(rules=[_rule("other-state", TaxRuleSelector(state_code="RJ"))])
+
+
+def test_rtc04_preview_denies_ambiguous_rule() -> None:
+    duplicate = replace(_rtc_rule(), rule_id="rtc-synthetic-duplicate")
+    with pytest.raises(TaxRuleAmbiguityError, match="ambiguous"):
+        _rule_bound_preview(rules=[_rtc_rule(), duplicate])
+
+
+def test_rtc04_preview_denies_missing_classification_from_winner() -> None:
+    with pytest.raises(RegulatoryBaselineError, match="explicit CST"):
+        _rule_bound_preview(rules=[_rtc_rule(cst=None)])
+
+
+def test_rtc04_preview_denies_expired_rule() -> None:
+    expired = replace(_rtc_rule(), effective_to=_instant(9))
+    with pytest.raises(TaxRuleNotFoundError, match="no effective tax rule"):
+        _rule_bound_preview(rules=[expired])
