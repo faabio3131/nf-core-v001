@@ -857,11 +857,29 @@ class PostgresFiscalDatabase:
         """
         applied = self.applied_migrations()
         required = tuple(range(1, PUBLIC_TRIAL_RATE_VERSION + 1))
-        if applied != required:
-            raise PersistenceStateError(
-                "PostgreSQL schema is not at the certified migration version"
-            )
-        return applied
+        if applied == required:
+            return applied
+
+        # COG-02 production bridge ONLY: version 19 adds two private tables.
+        # No cognitive features exist in this legacy runtime, so the previous
+        # domain tables remain unchanged. Never accept arbitrary later versions,
+        # missing migrations, or a ledger claim without the additive tables.
+        if applied == (*required, PUBLIC_TRIAL_RATE_VERSION + 1):
+            try:
+                with self.connection() as connection:
+                    rows = connection.execute(
+                        "SELECT to_regclass('public.fm_cognitive_token_counters'), "
+                        "to_regclass('public.fm_cognitive_token_reservations')"
+                    ).fetchone()
+                if rows is not None and len(rows) == 2 and all(rows):
+                    return applied
+            except Exception as exc:
+                raise PersistenceStateError(
+                    "PostgreSQL schema is not at the certified migration version"
+                ) from exc
+        raise PersistenceStateError(
+            "PostgreSQL schema is not at the certified migration version"
+        )
 
     def unit_of_work(self) -> PostgresFiscalUnitOfWork:
         return PostgresFiscalUnitOfWork(self)
