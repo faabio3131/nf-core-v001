@@ -14,7 +14,7 @@ LEDGER = ROOT / "docs/NFCORE_V1_RTC_BUILD_PENDING_EXECUTION_2026-10-31.md"
 
 _STATUS = re.compile(r"^(?:IMPLEMENTED_PARTIAL|IMPLEMENTED_NOT_MERGED|PENDING|"
                      r"BLOCKED_EXTERNAL|BLOCKED_NORMATIVE|IN_PROGRESS|"
-                     r"DONE_CERTIFIED_INTERNAL|DONE_CERTIFIED_OPERATIONAL)\\b")
+                     r"DONE_CERTIFIED_INTERNAL|DONE_CERTIFIED_OPERATIONAL)\b")
 
 
 def _canonical_rows() -> dict[str, str]:
@@ -64,7 +64,7 @@ def test_rtc_ledger_matches_canonical_wp_state() -> None:
     operational = _operational_rows()
     assert set(operational) == {f"NFC-EXEC-{i:02d}" for i in range(1, 13)}
     for execution_id, (wp, state) in operational.items():
-        expected = tuple(token.strip() for token in wp.split("/"))
+        expected = (("RTC-00", "RTC-01") if wp == "RTC-00/01" else (wp,))
         assert all(part in canonical for part in expected)
         actual_status = _state(state)
         for part in expected:
