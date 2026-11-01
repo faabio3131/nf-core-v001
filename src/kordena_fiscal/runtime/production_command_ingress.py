@@ -41,6 +41,8 @@ def production_command_resolver(
     source = os.environ if environ is None else environ
     mode = source.get("NFCORE_PRODUCTION_COMMAND_MODE", "")
     if not mode:
+        if source.get("NFCORE_PRODUCTION_COMMAND_KEY_ID"):
+            raise RuntimeConfigurationError("production Command ingress mode missing")
         return None
     if (
         mode != _COMMAND_MODE
