@@ -8,6 +8,7 @@ use requires independently reviewed official source and a separate approval gate
 from __future__ import annotations
 
 import json
+from datetime import datetime
 from decimal import ROUND_HALF_EVEN, ROUND_HALF_UP, Decimal, InvalidOperation
 
 from kordena_fiscal.compliance.rtc import (
@@ -55,6 +56,7 @@ def calculate_evidenced_rtc_preview(
     catalog: VerifiedRtcClassificationCatalog,
     classification: ReformTaxClassificationSnapshot,
     tax_base: Money,
+    instant: datetime,
 ) -> ReformTaxComponentSnapshot:
     """Preview one pinned rate table entry using Decimal.
 
@@ -67,6 +69,16 @@ def calculate_evidenced_rtc_preview(
     artifact = baseline.artifact(rate_artifact_id)
     if artifact.kind is not RegulatoryArtifactKind.RATE_TABLE:
         raise RegulatoryBaselineError("rate artifact must be a rate_table")
+    # A checksum pin is not proof of temporal applicability. Do not calculate a
+    # historical period from a source that was unpublished or not yet effective.
+    if not isinstance(instant, datetime) or instant.tzinfo is None or instant.utcoffset() is None:
+        raise RegulatoryBaselineError("RTC preview instant must be timezone-aware")
+    if artifact.effective_from is None:
+        raise RegulatoryBaselineError("RTC rate artifact requires explicit effective_from")
+    if instant.date() < artifact.published_on:
+        raise RegulatoryBaselineError("RTC rate artifact was not published at instant")
+    if instant.date() < artifact.effective_from:
+        raise RegulatoryBaselineError("RTC rate artifact was not effective at instant")
     verify_regulatory_artifact_bytes(artifact, rate_payload)
     try:
         raw = json.loads(rate_payload, object_pairs_hook=_unique_json_pairs)

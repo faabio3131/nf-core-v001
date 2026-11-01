@@ -48,6 +48,9 @@ package-dir = {"" = "src"}
 [tool.setuptools.packages.find]
 where = ["src"]
 
+[tool.setuptools.package-data]
+"kordena_fiscal.cognitive.knowledge" = ["official/*.json"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-q"

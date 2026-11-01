@@ -13,6 +13,11 @@ from kordena_fiscal.persistence.cakto import (
     CAKTO_SCHEMA_VERSION,
     postgres_cakto_commercial_database,
 )
+from kordena_fiscal.persistence.cognitive_quota_schema import (
+    COGNITIVE_QUOTA_NAME,
+    COGNITIVE_QUOTA_SCHEMA,
+    COGNITIVE_QUOTA_VERSION,
+)
 from kordena_fiscal.persistence.command_commercial_schema import (
     COMMAND_COMMERCIAL_NAME,
     COMMAND_COMMERCIAL_SCHEMA,
@@ -102,6 +107,7 @@ def validate_policy() -> tuple[int, ...]:
         COMMERCIAL_PERIOD_VERSION,
         SECRET_BINDING_VERSION,
         PUBLIC_TRIAL_RATE_VERSION,
+        COGNITIVE_QUOTA_VERSION,
     )
     if versions != tuple(range(1, max(versions) + 1)):
         raise RuntimeError(f"migration versions must be contiguous from 1: {versions!r}")
@@ -171,6 +177,11 @@ def validate_policy() -> tuple[int, ...]:
         version=PUBLIC_TRIAL_RATE_VERSION,
         name=PUBLIC_TRIAL_RATE_NAME,
         statements=PUBLIC_TRIAL_RATE_SCHEMA,
+    )
+    _reject_unapproved_destructive(
+        version=COGNITIVE_QUOTA_VERSION,
+        name=COGNITIVE_QUOTA_NAME,
+        statements=COGNITIVE_QUOTA_SCHEMA,
     )
     print(
         "migration policy: PASS "

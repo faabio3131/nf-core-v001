@@ -60,7 +60,7 @@ def _scope(correlation_id: str = "corr-v2-08-final") -> ExecutionScope:
 
 def _database(tmp_path, name: str) -> SqliteFiscalDatabase:
     database = SqliteFiscalDatabase(tmp_path / name)
-    assert database.initialize() == (1, 2, 3, 4, 5, 13, 14, 17, 18)
+    assert database.initialize() == (1, 2, 3, 4, 5, 13, 14, 17, 18, 19)
     return database
 
 

@@ -23,3 +23,5 @@ jobs:
         run: |
           printf 'POSTGRES_PASSWORD=x\n' > deploy/contabo/.env   # só no runner; o .env real nunca é versionado
           docker compose -f deploy/contabo/compose.prod.yml config -q
+      - name: Testar overlay opt-in do Worker sem iniciá-lo
+        run: bash deploy/contabo/test-worker-opt-in.sh

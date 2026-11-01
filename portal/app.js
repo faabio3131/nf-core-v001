@@ -1775,6 +1775,7 @@ async function renderSurface(viewId) {
     if (viewId === "onboarding" || viewId === "units") appendOnboardingControls(article);
     if (viewId === "documents") appendArchiveLookup(article);
     if (viewId === "users") appendUserAdministration(article, rows);
+    if (viewId === "errors" || viewId === "reconciliation") appendCognitiveAdvisor(article, viewId);
     if (["inutilizations", "documents", "issuances", "reconciliation"].includes(viewId)) await appendFiscalRecovery(article);
     if (viewId === "inutilizations") appendInutilizationForm(article);
     if (["documents", "issuances", "reconciliation"].includes(viewId)) appendFiscalActions(article);
@@ -2023,4 +2024,117 @@ if (pendingPasswordResetToken) {
   showPasswordResetCompletion();
 } else {
   void bootstrap();
+}
+
+const COGNITIVE_CAPABILITIES = {
+  errors: {capability: "cognitive.explain_rejection", button: "Explicar estas falhas"},
+  reconciliation: {capability: "cognitive.explain_reconciliation", button: "Explicar esta conciliação"},
+};
+const COGNITIVE_KIND_LABELS = {fact: "Fato", hypothesis: "Hipótese", action: "Ação sugerida", source: "Fonte"};
+const COGNITIVE_ERRORS = {
+  COGNITIVE_NOT_CONFIGURED: "O assistente consultivo não está configurado neste ambiente.",
+  UNIT_REQUIRED: "Selecione uma unidade autorizada antes de pedir a explicação.",
+};
+
+/**
+ * Advisory panel: shows deterministic facts first and clearly separates model hypotheses.
+ * It never executes an operation; every suggested action needs a human decision.
+ * @param {HTMLElement} article
+ * @param {"errors"|"reconciliation"} viewId
+ */
+function appendCognitiveAdvisor(article, viewId) {
+  const spec = COGNITIVE_CAPABILITIES[viewId];
+  const box = document.createElement("section");
+  box.className = "cognitive-advisor";
+  box.setAttribute("aria-label", "Assistente fiscal consultivo");
+  const heading = document.createElement("h3");
+  heading.textContent = "Assistente fiscal consultivo";
+  const intro = document.createElement("p");
+  intro.className = "empty-state";
+  intro.textContent = "Explica o que aconteceu com base nos registros acima. Apenas orienta: não emite, cancela, reenvia nem altera impostos. Qualquer ação exige decisão de uma pessoa.";
+  const ask = document.createElement("button");
+  ask.type = "button";
+  ask.textContent = spec.button;
+  const result = document.createElement("div");
+  result.setAttribute("role", "status");
+  result.setAttribute("aria-live", "polite");
+  box.append(heading, intro, ask, result);
+  article.append(box);
+  /** @type {string|null} */
+  let attemptKey = null;
+  ask.addEventListener("click", async () => {
+    if (!selectedFiscalUnit) {
+      result.textContent = COGNITIVE_ERRORS.UNIT_REQUIRED;
+      return;
+    }
+    // A network interruption must not mint a new key; a completed answer always does.
+    attemptKey = attemptKey || crypto.randomUUID();
+    ask.disabled = true;
+    result.textContent = "Analisando registros autorizados...";
+    try {
+      const answer = await api("/v1/portal/cognitive/advise", {
+        method: "POST",
+        headers: {"X-CSRF-Token": csrfToken(), "Idempotency-Key": attemptKey},
+        body: JSON.stringify({capability: spec.capability, unit_id: selectedFiscalUnit}),
+      });
+      attemptKey = null;
+      renderCognitiveAnswer(result, answer);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "";
+      result.textContent = message || "O assistente está indisponível. As telas e operações continuam funcionando normalmente.";
+      result.className = "form-error";
+      return;
+    } finally {
+      ask.disabled = false;
+    }
+    result.className = "";
+  });
+}
+
+/**
+ * @param {HTMLElement} target
+ * @param {any} answer
+ */
+function renderCognitiveAnswer(target, answer) {
+  target.replaceChildren();
+  const sections = Array.isArray(answer?.sections) ? answer.sections : [];
+  const banner = document.createElement("p");
+  banner.className = "empty-state";
+  if (answer?.status === "insufficient_basis") {
+    banner.textContent = "Não há registros suficientes para explicar com segurança. Nada foi presumido.";
+  } else if (answer?.status === "denied") {
+    banner.textContent = "Acesso negado a este conteúdo no seu escopo.";
+  } else {
+    banner.textContent = answer?.aiEnabled
+      ? "Resposta com apoio de IA, validada contra os registros. Revise antes de agir."
+      : "Resposta determinística a partir do catálogo e dos registros (IA desligada).";
+  }
+  target.append(banner);
+  for (const section of sections) {
+    if (typeof section?.text !== "string") continue;
+    const block = document.createElement("div");
+    block.className = `cognitive-section cognitive-${String(section.kind)}`;
+    const tag = document.createElement("strong");
+    tag.textContent = COGNITIVE_KIND_LABELS[/** @type {keyof typeof COGNITIVE_KIND_LABELS} */ (section.kind)] || "Informação";
+    const text = document.createElement("p");
+    text.textContent = section.text;
+    block.append(tag, text);
+    const ids = Array.isArray(section.evidenceIds) ? section.evidenceIds.filter((/** @type {unknown} */ id) => typeof id === "string") : [];
+    if (ids.length) {
+      const details = document.createElement("details");
+      const summary = document.createElement("summary");
+      summary.textContent = "Evidências usadas";
+      const list = document.createElement("small");
+      list.textContent = ids.join(", ");
+      details.append(summary, list);
+      block.append(details);
+    }
+    target.append(block);
+  }
+  if (typeof answer?.disclaimer === "string") {
+    const note = document.createElement("p");
+    note.className = "empty-state";
+    note.textContent = `${answer.disclaimer} Requer aprovação humana.`;
+    target.append(note);
+  }
 }

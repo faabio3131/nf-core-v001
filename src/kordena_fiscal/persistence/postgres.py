@@ -47,6 +47,11 @@ from kordena_fiscal.security.human_identity import (
 )
 from kordena_fiscal.security.human_recovery import PasswordResetRecord
 
+from .cognitive_quota_schema import (
+    COGNITIVE_QUOTA_NAME,
+    COGNITIVE_QUOTA_SCHEMA,
+    COGNITIVE_QUOTA_VERSION,
+)
 from .command_commercial_schema import (
     COMMAND_COMMERCIAL_NAME,
     COMMAND_COMMERCIAL_SCHEMA,
@@ -831,6 +836,19 @@ class PostgresFiscalDatabase:
                         ),
                     )
                     new_versions.append(PUBLIC_TRIAL_RATE_VERSION)
+                if COGNITIVE_QUOTA_VERSION not in applied:
+                    for statement in COGNITIVE_QUOTA_SCHEMA:
+                        raw.execute(statement)
+                    raw.execute(
+                        "INSERT INTO fm_schema_migrations (version, name, applied_at) "
+                        "VALUES (%s, %s, %s)",
+                        (
+                            COGNITIVE_QUOTA_VERSION,
+                            COGNITIVE_QUOTA_NAME,
+                            datetime.now().astimezone().isoformat(),
+                        ),
+                    )
+                    new_versions.append(COGNITIVE_QUOTA_VERSION)
                 raw.commit()
                 return tuple(new_versions)
             except Exception:
@@ -856,7 +874,7 @@ class PostgresFiscalDatabase:
         versions instead of creating tables during startup.
         """
         applied = self.applied_migrations()
-        required = tuple(range(1, PUBLIC_TRIAL_RATE_VERSION + 1))
+        required = tuple(range(1, COGNITIVE_QUOTA_VERSION + 1))
         if applied != required:
             raise PersistenceStateError(
                 "PostgreSQL schema is not at the certified migration version"

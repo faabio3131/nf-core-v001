@@ -44,3 +44,12 @@ autorização do deploy** (decisão do Diretor, 26/10/2026). Nenhum agente entra
 
 ## Fora do deploy automático
 Segredos e `.env`, bootstrap do primeiro administrador (uma única vez, nunca reexecutar), Worker/GSM, hosts e certificados do Nginx Proxy Manager, DNS.
+
+## Worker canônico — composição opt-in (NFC-EXEC-17)
+
+`compose.worker.opt-in.yml` é uma **candidata desativada**: não é incluída em `deploy.sh`, `compose.prod.yml`, `install.sh` ou cron. Nenhum fluxo automático habilita Worker. Teste estático e seguro: `bash deploy/contabo/test-worker-opt-in.sh` (não inicia containers).
+
+O serviço reutiliza `Dockerfile.worker` e `kordena_fiscal.runtime.worker_main`. Só usa rede `internal` (sem porta pública), processo UID 10001, filesystem read-only, `/tmp` temporário, capabilities removidas e healthcheck canônico. A identity GSM exige bind mount **read-only** de arquivo preexistente (não cria caminho host), UID 10001 e permissão 0600; `production_gsm.py` valida projeto, identidade, vigência, tenant/unidade e bindings duráveis. Configuração do Worker fica em `/opt/fm/nfcore/.env.worker` (modelo de nomes em `worker-env.example`), nunca no repositório. O operador define `NFCORE_WORKER_IDENTITY_HOST_PATH` no ambiente Compose somente após configurar a identidade.
+
+**Não executar o Worker até:** autorização humana específica, acesso operacional ao servidor, auditoria do `production`/DB/segredos GSM, observabilidade, E2E de escopo/outbox/retry, recovery e Go/No-Go. Em especial, `NFCORE_WORKER_GSM_MODE` e material de assinatura não podem ser simulados em produção. O overlay por si só não constitui integração produtiva nem homologação.
+

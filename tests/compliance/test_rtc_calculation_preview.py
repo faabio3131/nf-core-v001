@@ -55,6 +55,7 @@ def _setup(
                 kind=RegulatoryArtifactKind.RATE_TABLE,
                 version="SYNTHETIC-1",
                 published_on=date(2026, 10, 31),
+                effective_from=date(2026, 10, 31),
                 source_reference="synthetic-fixture-not-official",
                 checksum_sha256=sha256(rate_bytes).hexdigest(),
             ),
@@ -91,6 +92,7 @@ def _preview(
         catalog=catalog,  # type: ignore[arg-type]
         classification=classification,
         tax_base=Money(Decimal(amount)),
+        instant=datetime(2026, 11, 1, tzinfo=UTC),
     )
 
 
@@ -167,3 +169,41 @@ def test_rounding_mode_is_selected_by_artifact_not_caller() -> None:
     b2, p2, c2, cl2 = _setup(rate_percent="0.5", rounding_mode="ROUND_HALF_EVEN")
     assert _preview(b1, p1, c1, cl1, amount="1.00").tax_amount.amount == Decimal("0.01")
     assert _preview(b2, p2, c2, cl2, amount="1.00").tax_amount.amount == Decimal("0.00")
+
+
+def test_rate_artifact_without_effective_date_fails_closed() -> None:
+    baseline, payload, catalog, classification = _setup()
+    unbounded = replace(baseline.artifacts[0], effective_from=None)
+    baseline = replace(baseline, artifacts=(unbounded, *baseline.artifacts[1:]))
+    with pytest.raises(RegulatoryBaselineError, match="effective_from"):
+        _preview(baseline, payload, catalog, classification)
+
+
+def test_rate_artifact_not_yet_effective_fails_closed() -> None:
+    baseline, payload, catalog, classification = _setup()
+    future = replace(baseline.artifacts[0], effective_from=date(2026, 11, 2))
+    baseline = replace(baseline, artifacts=(future, *baseline.artifacts[1:]))
+    with pytest.raises(RegulatoryBaselineError, match="not effective"):
+        _preview(baseline, payload, catalog, classification)
+
+
+def test_rate_artifact_not_yet_published_fails_closed() -> None:
+    baseline, payload, catalog, classification = _setup()
+    unpublished = replace(baseline.artifacts[0], published_on=date(2026, 11, 2))
+    baseline = replace(baseline, artifacts=(unpublished, *baseline.artifacts[1:]))
+    with pytest.raises(RegulatoryBaselineError, match="not published"):
+        _preview(baseline, payload, catalog, classification)
+
+
+def test_naive_rtc_instant_fails_closed() -> None:
+    baseline, payload, catalog, classification = _setup()
+    with pytest.raises(RegulatoryBaselineError, match="timezone-aware"):
+        calculate_evidenced_rtc_preview(
+            baseline=baseline,
+            rate_artifact_id="RTC-RATE-TEST",
+            rate_payload=payload,
+            catalog=catalog,
+            classification=classification,
+            tax_base=Money(Decimal("100.00")),
+            instant=datetime(2026, 11, 1),
+        )

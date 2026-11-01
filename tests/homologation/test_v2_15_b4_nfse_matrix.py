@@ -101,7 +101,7 @@ def _database(
     provider_a_credentials: bool = True,
 ) -> SqliteFiscalDatabase:
     database = SqliteFiscalDatabase(tmp_path / "v2-15-b4-nfse.sqlite3")
-    assert database.initialize() == (1, 2, 3, 4, 5, 13, 14, 17, 18)
+    assert database.initialize() == (1, 2, 3, 4, 5, 13, 14, 17, 18, 19)
     control = DurableControlPlaneService(database)
     control.onboard_organization(
         actor=_admin(),

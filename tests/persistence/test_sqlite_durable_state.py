@@ -54,7 +54,7 @@ def _binding() -> FiscalAccountBinding:
 
 def _database(tmp_path) -> SqliteFiscalDatabase:
     database = SqliteFiscalDatabase(tmp_path / "fm-fiscal-v2.sqlite3")
-    assert database.initialize() == (1, 2, 3, 4, 5, 13, 14, 17, 18)
+    assert database.initialize() == (1, 2, 3, 4, 5, 13, 14, 17, 18, 19)
     return database
 
 
@@ -62,7 +62,7 @@ def test_controlled_migration_is_idempotent_and_requires_durable_path(tmp_path) 
     database = _database(tmp_path)
 
     assert database.initialize() == ()
-    assert database.applied_migrations() == (1, 2, 3, 4, 5, 13, 14, 17, 18)
+    assert database.applied_migrations() == (1, 2, 3, 4, 5, 13, 14, 17, 18, 19)
 
     with pytest.raises(FiscalValidationError, match="filesystem"):
         SqliteFiscalDatabase(":memory:")

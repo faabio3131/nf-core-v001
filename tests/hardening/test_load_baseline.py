@@ -124,7 +124,7 @@ def test_metric_baseline_caps_noisy_neighbor_series() -> None:
 
 def test_durable_outbox_baseline_drains_200_entries_without_duplication(tmp_path) -> None:
     database = SqliteFiscalDatabase(tmp_path / "load-baseline.sqlite3")
-    assert database.initialize() == (1, 2, 3, 4, 5, 13, 14, 17, 18)
+    assert database.initialize() == (1, 2, 3, 4, 5, 13, 14, 17, 18, 19)
     scope = _scope()
 
     with database.unit_of_work() as uow:

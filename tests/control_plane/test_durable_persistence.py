@@ -75,7 +75,7 @@ def _tenant_admin(tenant_id: str = "tenant-a") -> AdminPrincipal:
 
 def _database(tmp_path, name: str = "control-plane.sqlite3") -> SqliteFiscalDatabase:
     database = SqliteFiscalDatabase(tmp_path / name)
-    assert database.initialize() == (1, 2, 3, 4, 5, 13, 14, 17, 18)
+    assert database.initialize() == (1, 2, 3, 4, 5, 13, 14, 17, 18, 19)
     return database
 
 
@@ -161,6 +161,10 @@ def _profile(
 
 def _remove_v5(connection: sqlite3.Connection) -> None:
     # Reconstruct the earlier schema, not just its migration ledger.
+    # COG-02 is a newer additive schema; remove its dependent rows/tables first.
+    connection.execute("DROP TABLE fm_cognitive_token_reservations")
+    connection.execute("DROP TABLE fm_cognitive_token_counters")
+    connection.execute("DELETE FROM fm_schema_migrations WHERE version = 19")
     connection.execute("DROP TABLE fm_public_trial_rate_windows")
     connection.execute("DELETE FROM fm_schema_migrations WHERE version = 18")
     connection.execute("DROP TABLE fm_secret_bindings")
@@ -202,7 +206,7 @@ def _remove_v4(connection: sqlite3.Connection) -> None:
 
 def test_v2_11_migration_v4_is_explicit_and_upgrades_v2_08_checkpoint(tmp_path) -> None:
     database = _database(tmp_path, "migration-v4.sqlite3")
-    assert database.applied_migrations() == (1, 2, 3, 4, 5, 13, 14, 17, 18)
+    assert database.applied_migrations() == (1, 2, 3, 4, 5, 13, 14, 17, 18, 19)
 
     with sqlite3.connect(database.path) as connection:
         _remove_v5(connection)
@@ -210,8 +214,8 @@ def test_v2_11_migration_v4_is_explicit_and_upgrades_v2_08_checkpoint(tmp_path) 
         connection.commit()
 
     assert database.applied_migrations() == (1, 2, 3)
-    assert database.initialize() == (4, 5, 13, 14, 17, 18)
-    assert database.applied_migrations() == (1, 2, 3, 4, 5, 13, 14, 17, 18)
+    assert database.initialize() == (4, 5, 13, 14, 17, 18, 19)
+    assert database.applied_migrations() == (1, 2, 3, 4, 5, 13, 14, 17, 18, 19)
 
     with sqlite3.connect(database.path) as connection:
         tables = {
