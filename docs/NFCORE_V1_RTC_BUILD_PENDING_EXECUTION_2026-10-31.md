@@ -66,7 +66,7 @@
 | NFC-EXEC-22 | Fiscal externo | Homologação SEFAZ/NFS-e por célula e evidência; certificado/CSC/UF/município/provedor, habilitação real | RTC-11 + recursos externos | BLOCKED_EXTERNAL |
 | NFC-EXEC-23 | Comercial externo | Definir oferta trial/preço/duração, prestador de cobrança, conta/segredos e transações reais, aprovar publicação | BUILD-03/04 internos | BLOCKED_HUMAN_ACTION |
 | NFC-EXEC-24 | Operação comercial | Health/observabilidade, alertas, backup/RPO/RTO/runbooks, TLS/domínio, atendimento e Go/No-Go humano final | 19/21/22/23 | PENDING |
-| NFC-EXEC-25 | COG-01 independente | Comparar patch do `cognitivo-nfcore-inteligencia-fiscal` com main; integrar sem segunda autoridade, hardening auditoria/limites/Portal, testes e aprovação própria; IA desligada por padrão | isolamento e CI; não bloquear RTC/BUILD | PENDING (não integrado) |
+| NFC-EXEC-25 | COG-01 independente | Comparar patch do `cognitivo-nfcore-inteligencia-fiscal` com main; integrar sem segunda autoridade, hardening auditoria/limites/Portal, testes e aprovação própria; IA desligada por padrão | isolamento e CI; não bloquear RTC/BUILD | IN_PROGRESS — PR #300 Draft, imports + Portal/API opt-in, CI/Gov e homologação pendentes; sem merge/deploy |
 
 ### Sequência operacional sem retrabalho
 
@@ -107,3 +107,14 @@ Novo estado (somente com evidência):
 - PR #291, branch `fix/nfcore-contabo-codeonly-schema-gate-20261031`: amplia `migration_guard.py` com `--assert-current-production` exclusivamente SELECT-only; deploy automático passa a executar apenas quando versões fiscal e Cakto estão integralmente atuais, sem `--apply` ou aprovação embutida de migration; falha fechada com schema pendente/ilegível. Testes de build e compose-up falhos preservam rollback seguro de código.
 - Esta atualização documental é **IN_PROGRESS**, não fecha NFC-EXEC-20 ou 21. CI/Gov e validação deploy da PR #291 precisam terminar SUCCESS no HEAD final; comparar scripts realmente instalados na Contabo e validar o SHA publicado antes de qualquer operação no servidor.
 - `production=a3a2b3c97d26780b1e2b7581b4c93b6f07e86a70` no último auditado (reconsultar antes de promover); nenhuma migration/deploy/credencial/alteração de DB executada aqui. Worker continua fora do compose Contabo versionado; cobertura operacional BLD-06/08 ainda pendente.
+
+
+### Atualização incremental COG-01 — 01/11/2026 (não substitui o snapshot 31/10)
+
+- Repositório canônico: `faabio3131/nf-core-v001`; repositório fonte: `faabio3131/cognitivo-nfcore-inteligencia-fiscal`, PRs #1–#5 integradas.
+- PR de integração: [#300](https://github.com/faabio3131/nf-core-v001/pull/300), branch `feat/nfv1-cog01-core-integration-20261101`, **Draft / IN_PROGRESS**.
+- Reutilizados módulos `src/kordena_fiscal/cognitive/`, catálogos e testes do Claude Code. Integração apenas por deltas em Runtime/API/Web/Portal, enum de auditoria e package-data; namespace legado preservado.
+- Guard de segurança: `NFCORE_COGNITIVE_ENABLED` é opt-in; modelo pago em staging/production bloqueado até quota de tokens durável, atômica entre workers e vinculada à assinatura canônica. O ambiente elegível para modelo em laboratório deve vir de `RuntimeSettings.environment`, não apenas do `os.environ` independente.
+- CI preliminar do HEAD `f8e627d4`: 2.844 PASS / 2 FAIL / 3 SKIP (falha no **teste novo** que usou `router.routes.path` indevidamente), corrigido em `8056e4c`. CI final deve ser consultada no novo HEAD da PR; sem certificação antecipada.
+- Não houve merge em `main`, promoção em `production`, migration, segredo, ativação de IA nem deploy na Contabo. A PR #296 de release é Draft/NO-GO e uma promoção pode disparar deploy por cron.
+- Pendências: CI completa/E2E/containers, quotas duráveis, evidências fiscais normativas, segredo de IA via secret store, métricas Command e validação real de produção. Desktop Commander reportado offline nesta execução.
