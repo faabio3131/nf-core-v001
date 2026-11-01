@@ -8,6 +8,7 @@ use requires independently reviewed official source and a separate approval gate
 from __future__ import annotations
 
 import json
+from collections.abc import Iterable
 from datetime import datetime
 from decimal import ROUND_HALF_EVEN, ROUND_HALF_UP, Decimal, InvalidOperation
 
@@ -19,9 +20,13 @@ from kordena_fiscal.compliance.rtc import (
     RegulatoryBaseline,
     RegulatoryBaselineError,
 )
-from kordena_fiscal.compliance.rtc_catalog import VerifiedRtcClassificationCatalog
+from kordena_fiscal.compliance.rtc_catalog import (
+    VerifiedRtcClassificationCatalog,
+    resolve_rule_with_verified_rtc_catalog,
+)
 from kordena_fiscal.compliance.rtc_evidence import verify_regulatory_artifact_bytes
 from kordena_fiscal.domain import FiscalValidationError, Money
+from kordena_fiscal.tax import TaxDecision, TaxRule, TaxRuleContext, TaxRuleEngine
 
 _ALLOWED_ROUNDING = {"ROUND_HALF_UP": ROUND_HALF_UP, "ROUND_HALF_EVEN": ROUND_HALF_EVEN}
 _ALLOWED_QUANTA = {"0.01", "0.0001"}
@@ -124,3 +129,40 @@ def calculate_evidenced_rtc_preview(
         tax_amount=Money(amount),
         classification=classification,
     )
+
+
+def calculate_rule_bound_rtc_preview(
+    *,
+    engine: TaxRuleEngine,
+    context: TaxRuleContext,
+    rules: Iterable[TaxRule],
+    baseline: RegulatoryBaseline,
+    rate_artifact_id: str,
+    rate_payload: bytes,
+    catalog: VerifiedRtcClassificationCatalog,
+    tax_base: Money,
+) -> tuple[TaxDecision, ReformTaxComponentSnapshot]:
+    """Compose the canonical tax decision and an isolated evidence-only preview.
+
+    Context and CST/cClassTrib come exclusively from the existing TaxRuleEngine;
+    callers cannot substitute classification or fiscal instant after resolution.
+    This is NOT an authoritative tax calculation or permission to issue XML.
+    """
+    if not isinstance(engine, TaxRuleEngine) or not isinstance(context, TaxRuleContext):
+        raise FiscalValidationError("canonical TaxRuleEngine and TaxRuleContext required")
+    decision, classification = resolve_rule_with_verified_rtc_catalog(
+        engine=engine,
+        context=context,
+        rules=rules,
+        catalog=catalog,
+    )
+    snapshot = calculate_evidenced_rtc_preview(
+        baseline=baseline,
+        rate_artifact_id=rate_artifact_id,
+        rate_payload=rate_payload,
+        catalog=catalog,
+        classification=classification,
+        tax_base=tax_base,
+        instant=context.instant,
+    )
+    return decision, snapshot
