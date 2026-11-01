@@ -1,6 +1,7 @@
 """Safety regression: no production/staging model on process-local pilot quotas."""
 
 import pytest
+from fastapi import FastAPI
 
 from kordena_fiscal.cognitive import composition
 from kordena_fiscal.security.human_identity import HumanIdentityService
@@ -30,6 +31,8 @@ def test_live_model_is_not_initialized_without_durable_quota(
         },
     )
     assert router is not None
-    routes = {route.path for route in router.routes}
-    assert "/v1/portal/cognitive/advise" in routes
-    assert "/v1/command/cognitive/metrics" in routes
+    app = FastAPI()
+    app.include_router(router)
+    paths = set(app.openapi()["paths"])
+    assert "/v1/portal/cognitive/advise" in paths
+    assert "/v1/command/cognitive/metrics" in paths
