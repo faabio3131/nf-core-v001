@@ -22,6 +22,15 @@ from kordena_fiscal.security.s2s import (
 MAX_ACQUISITION_BODY_BYTES = 64 * 1024
 
 
+def _unique_json_pairs(pairs: list[tuple[str, object]]) -> dict[str, object]:
+    result: dict[str, object] = {}
+    for key, value in pairs:
+        if key in result:
+            raise ValueError("duplicate JSON key")
+        result[key] = value
+    return result
+
+
 def create_commercial_acquisition_router(
     service: CommercialAcquisitionService,
     *,
@@ -70,9 +79,18 @@ def create_commercial_acquisition_router(
                 status_code=400,
                 content={"detail": "Idempotency-Key is required"},
             )
+        if not (
+            16 <= len(idempotency_key) <= 128
+            and idempotency_key.isascii()
+            and idempotency_key.isprintable()
+        ):
+            return JSONResponse(
+                status_code=400,
+                content={"detail": "Idempotency-Key is invalid"},
+            )
         try:
-            payload = json.loads(body)
-        except (UnicodeDecodeError, json.JSONDecodeError):
+            payload = json.loads(body, object_pairs_hook=_unique_json_pairs)
+        except (UnicodeDecodeError, ValueError):
             return JSONResponse(
                 status_code=400,
                 content={"detail": "commercial acquisition body must be valid JSON"},
