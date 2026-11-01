@@ -192,8 +192,14 @@ def test_valid_canonical_binding_resolves_pinned_production_gsm_only(
 def test_weak_material_fails_closed_without_secret_echo(monkeypatch) -> None:
     cmd, secret = canonical()
     db = _binding_fixture(monkeypatch, cmd, secret)
-    monkeypatch.setattr(candidate, "production_credentials", lambda *_a: ("creds", datetime.now(UTC)))
-    monkeypatch.setattr(candidate.secretmanager_v1, "SecretManagerServiceClient", lambda **_kw: object())
+    monkeypatch.setattr(
+        candidate, "production_credentials",
+        lambda *_a: ("creds", datetime.now(UTC)),
+    )
+    monkeypatch.setattr(
+        candidate.secretmanager_v1, "SecretManagerServiceClient",
+        lambda **_kw: object(),
+    )
     monkeypatch.setattr(candidate, "GoogleSdkSecretAccess", lambda *_a, **_kw: object())
     monkeypatch.setattr(candidate, "DurableGsmReader", lambda **_kw: object())
     monkeypatch.setattr(candidate, "GoogleSignatureSecretBackend", lambda *_a, **_kw: object())
