@@ -75,6 +75,6 @@ Condições invariantes:
 
 ## 8. Registro de estado e continuidade
 
-`RTC-00` iniciado: levantamento normativo, baseline de referência e teste executável que usa a autoridade de `compliance/rtc.py`. O arquivo JSON **não é calculadora** e não ativa obrigações. **RTC-01..RTC-12 estão pendentes**, vide cronograma independente `docs/NFCORE_RTC_MASTER_EXECUTION_SCHEDULE_2026-10-30.md`.
+**CURRENT reconciliado em 01/11/2026:** RTC-00 (#267), RTC-01 (#268/#270), RTC-02 (#269/#271/#272), RTC-03 (#273/#274/#280) e RTC-09 inicial (#275/#278) possuem código integrado à `main` e preservado em `production`, mas **não** aceitação integral. RTC-04 contém somente candidata de prévia Decimal pinada **não fiscal** na PR #289, OPEN/sem merge, com CI/Governança no HEAD `61f8bdf` verdes. RTC-05..08/10/11 permanecem sem entrega completa certificada; RTC-12 exige homologação externa. O baseline JSON **não** autoriza cálculo ou emissão. Consultar o checkpoint canônico `docs/checkpoints/NFCORE_RTC_CURRENT_RECONCILIATION_2026-11-01.md` e a tabela revisada do cronograma.
 
 Ao retomar: ler estes dois docs + `AGENTS.md` + ledger BUILD canônico; verificar main/HEAD/PRs/CI, comparar branch, identificar primeiro WP RTC aberto; não fazer merge/deploy sem gates e autorização apropriada. O trabalho RTC pode prosseguir em branch isolada paralela a BLD-03; não deve alterar nem sobrescrever o trabalho BLD-03.
