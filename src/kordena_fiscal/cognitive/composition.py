@@ -45,6 +45,7 @@ def build_cognitive_routers(
     environ: Mapping[str, str],
     *,
     audit_uow_factory: Callable[[], AbstractContextManager[Any]] | None = None,
+    runtime_environment: str | None = None,
 ) -> list[APIRouter]:
     """Portal advisory route plus the Command metrics route; empty unless explicitly enabled.
 
@@ -63,7 +64,7 @@ def build_cognitive_routers(
     # Until commercial token quotas have a durable cross-worker reservation authority,
     # production/staging may expose only the deterministic advisory baseline.
     # Never turn an in-memory pilot counter into a commercial hard limit.
-    allow_pilot_model = environ.get("NFCORE_ENVIRONMENT", "").lower() in {"development", "test"}
+    allow_pilot_model = runtime_environment in {"development", "test"}
     model = build_model_from_environ(environ) if allow_pilot_model else None
     audit: AuditSinkPort | None = None
     entitlements = None
@@ -102,10 +103,13 @@ def build_cognitive_router(
     environ: Mapping[str, str],
     *,
     audit_uow_factory: Callable[[], AbstractContextManager[Any]] | None = None,
+    runtime_environment: str | None = None,
 ) -> APIRouter | None:
     """One router mounting the Portal advisory route and the Command metrics route."""
     routers = build_cognitive_routers(
-        identity, portal_executor, environ, audit_uow_factory=audit_uow_factory
+        identity, portal_executor, environ,
+        audit_uow_factory=audit_uow_factory,
+        runtime_environment=runtime_environment,
     )
     if not routers:
         return None
