@@ -76,3 +76,29 @@ Se a `main` avançar, congelar o **novo** HEAD auditado e repetir a CI/Gov, nunc
 - A PR #302 no commit `c412637c8d4b82316398ac954d32ec4463839ba7` passou **FM NFCORE V1 CI #41332772663**, **Deploy Contabo #41332772670** e **Governança #41332772693**. O bug de índices dos argumentos Docker no mock foi corrigido sem alterar o script de preflight. Esta atualização documental exige nova CI no HEAD resultante.
 
 **CURRENT → TARGET:** production/schema 18 saudável → release candidata atual reconciliada, plano de compatibilidade 18↔19, backup com restore ensaiado, janela aprovada, migration 19 e código novo promovidos sob Go/No-Go separado. Até lá **NO_GO_PRODUCTION**. Acesso operacional read-only está restabelecido, mas não equivale a aprovação de deploy. A PR #296 segue Draft/obsoleta e #302 Draft sem merge.
+
+## 6. Correção operacional Contabo — 01/11/2026, executada e verificada
+
+**AUTORIZAÇÃO DO PROPRIETÁRIO:** corrigir conjuntamente mecanismo de deploy e seus contratos no servidor, **sem migration 19 e sem atualizar a aplicação**.
+
+**GATE E CURRENT antes da correção**
+
+- SSH via Desktop Commander conectado ao PC autorizado, usuário `fmadmin`, host `vmi3692211`, IP público validado pelo proprietário. Acesso por chave já carregada; nenhuma senha foi solicitada, lida ou publicada.
+- `/opt/fm/nfcore/.deployed`, checkout Git e `origin/production`: `a3a2b3c97d26780b1e2b7581b4c93b6f07e86a70`.
+- O script instalado executava `migration_guard.py --apply` com flags de aprovação produtiva embutidas e `nf_restore_db` no rollback: **risco produtivo comprovado**. O compose instalado usava imagens `:cur`, enquanto o fluxo seguro do GitHub usa `:current`; faltava `/opt/fm/nfcore/backup.sh`.
+- Backups diários existentes, com SHA-256 válido no dump de 01/11. Banco fiscal na versão 18 e Cakto 1–2; API e Portal saudáveis. Restore real em banco isolado ainda NÃO foi executado.
+- Scripts seguros retirados da árvore CURRENT da `main` verificada por merge de ensaio (tree idêntica); staged em `/opt/fm/nfcore/.safe-deploy-stage-20261101`. `bash -n`, teste de negação sem autorização e matriz mock do `deploy.sh`: **TODOS PASSARAM**. A falha inicial na cópia mock foi de permissão de execução do `backup.sh` transferido por SCP; corrigida apenas na cópia de ensaio antes da aprovação do gate.
+- Ativador versionado `deploy/contabo/activate-code-only-host.sh`, com lock `/tmp/nfcore-deploy.lock`, SHA congelado, verificação das refs/containers/contratos, snapshot de reversão e bloqueio de execução sem autorização explícita.
+
+**CORREÇÃO PRODUTIVA AUTORIZADA (somente artefatos operacionais, sem release):**
+
+1. Sob o mesmo lock exclusivo do cron, confirmou-se a igualdade entre `.deployed`, checkout e `origin/production` no SHA acima.
+2. Backup dos scripts/compose e marcador anterior, com permissão restrita, em `/opt/fm/nfcore/.code-only-host-contract-backup-20261101T184541Z`.
+3. Tags de imagem locais `nfcore-api:current` e `nfcore-portal:current` criadas como aliases das imagens `:cur` atuais; atualizado **somente** o campo de imagem dos serviços no `docker-compose.yml` instalado. Nenhum container foi recriado.
+4. Instalados `deploy.sh` **code-only**, `deploy-lib.sh` com proteção de restore apenas para DB descartável, e `backup.sh` compatível com o caminho `/opt/fm/backups/nfcore-diario`. O backup diário legada `nfcore-backup.sh` continua no cron, operando sem alterações.
+5. `deploy.sh` instalado **não contém** `--apply`, flags de aprovação de migration produtiva ou invocação de restore automático; exige `--assert-current-production` read-only para um futuro deploy autorizado. `deploy.sh status` e `--check` executados com sucesso sem atualizar a aplicação.
+6. Validação pós-instalação: Git e `.deployed` ainda `a3a2b3c...`; API, Portal e DB Docker healthy; API `/health/ready` HTTP **200**, Portal HTTPS HTTP **200**; ledger `fm_schema_migrations` ainda **18 versões, máximo 18**; cron de deploy `*/5` e backup 03:45 preservados; compose válido com imagens `:current`. **Sem DDL, deploy, alteração de dados, alteração de `.env` ou restart.**
+
+**GATES E PRs:** #302 contém a preparação e o ativador, ainda Draft/sem merge; #303 candidata de compatibilidade schema 18/19, Draft/sem merge; #304 reconciliação de release, Draft/sem merge. As PRs #303/#304 tiveram CI e governança verdes no último HEAD consultado; CI da #302 estava em execução antes deste checkpoint, exigindo conferência no novo HEAD após registro. Nenhuma dessas PRs foi integrada a `production` e nenhuma tag/branch de aplicação produtiva foi promovida.
+
+**RISCO REMANESCENTE / NO_GO:** migration 19 permanece pendente. Antes de aplicar DDL ou autorizar o merge de release: testar restore de dump em banco inteiramente isolado, certificar compatibilidade bridge 18↔19 com cenário realista de PostgreSQL, congelar SHA da release, confirmar plano de manutenção/rollback e aprovar separadamente migration e deploy. O backup anterior do script inseguro existe **somente para recuperação operacional**, não deve ser reativado como autoridade automática de deploy. O mecanismo code-only agora está ativo na Contabo, mas **não autoriza operações produtivas futuras por si só**.
