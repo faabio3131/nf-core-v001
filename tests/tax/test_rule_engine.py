@@ -1,8 +1,8 @@
 import json
 from dataclasses import replace
 from datetime import UTC, date, datetime
-from hashlib import sha256
 from decimal import Decimal
+from hashlib import sha256
 
 import pytest
 
@@ -28,8 +28,8 @@ from kordena_fiscal.domain import (
     FiscalProductProfile,
     FiscalUnitCode,
     FiscalValidationError,
-    Money,
     Gtin,
+    Money,
     NcmCode,
     ProductOrigin,
     TaxRegimeCode,
