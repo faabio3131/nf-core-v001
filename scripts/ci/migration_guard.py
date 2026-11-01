@@ -237,6 +237,43 @@ def plan_staging() -> None:
     )
 
 
+def assert_current_production() -> None:
+    """Read-only deploy gate for the legacy 18/19 compatibility bridge.
+
+    No migration authority is granted here: only exact legacy schema 18 or
+    the verified COG-02 additive schema 19 is accepted by the database guard.
+    """
+    expected = validate_policy()
+    if expected != tuple(range(1, 19)):
+        raise RuntimeError("legacy compatibility gate requires exactly version 18 baseline")
+    if os.getenv("NFCORE_ENVIRONMENT", "").strip().casefold() != "production":
+        raise RuntimeError("production schema assertion requires production environment")
+    if os.getenv("RAILWAY_SERVICE_ID", "").strip():
+        raise RuntimeError("production schema assertion cannot run inside service startup")
+    dsn = os.getenv("DATABASE_URL", "").strip()
+    if not dsn:
+        raise RuntimeError("production schema assertion requires DATABASE_URL")
+
+    database = PostgresFiscalDatabase(dsn)
+    try:
+        installed = database.require_current_schema()
+        with database.connection() as connection:
+            row = connection.execute(
+                "SELECT to_regclass('public.fm_cakto_schema_migrations')"
+            ).fetchone()
+            if row is None or row[0] is None:
+                raise RuntimeError("production schema has missing Cakto tracking table")
+            rows = connection.execute(
+                "SELECT version FROM fm_cakto_schema_migrations ORDER BY version"
+            ).fetchall()
+        cakto = tuple(int(item[0]) for item in rows)
+        if cakto != tuple(range(1, CAKTO_SCHEMA_VERSION + 1)):
+            raise RuntimeError("production schema has pending/drifted Cakto migrations")
+    finally:
+        database.close()
+    print(f"production schema: PASS READ_ONLY compatible={installed}; no DDL")
+
+
 def apply() -> None:
     validate_policy()
     environment = os.getenv("NFCORE_ENVIRONMENT", "").strip().casefold()
@@ -275,6 +312,7 @@ def main() -> int:
     action = parser.add_mutually_exclusive_group(required=True)
     action.add_argument("--check-policy", action="store_true")
     action.add_argument("--plan-staging", action="store_true")
+    action.add_argument("--assert-current-production", action="store_true")
     action.add_argument("--apply", action="store_true")
     args = parser.parse_args()
 
@@ -282,6 +320,8 @@ def main() -> int:
         validate_policy()
     elif args.plan_staging:
         plan_staging()
+    elif args.assert_current_production:
+        assert_current_production()
     else:
         apply()
     return 0
