@@ -63,3 +63,55 @@ def test_model_client_initialization_only_in_explicit_development(
     )
     assert router is not None
     assert called == ["configured"]
+
+
+@pytest.mark.parametrize(
+    ("flag", "has_quota", "has_audit", "expect_model"),
+    [
+        ("", True, True, False),
+        ("true", False, True, False),
+        ("true", True, False, False),
+        ("true", True, True, True),
+    ],
+)
+def test_production_model_requires_all_independent_gates(
+    monkeypatch: pytest.MonkeyPatch,
+    flag: str,
+    has_quota: bool,
+    has_audit: bool,
+    expect_model: bool,
+) -> None:
+    called: list[str] = []
+
+    class Model:
+        def advise(self, *args: object, **kwargs: object) -> None:
+            return None
+
+    def model_builder(environ: object) -> Model:
+        called.append("provider")
+        return Model()
+
+    def wrapped_model(model: object, quota: object) -> object:
+        called.append("durable-wrapper")
+        return model
+
+    monkeypatch.setattr(composition, "build_model_from_environ", model_builder)
+    monkeypatch.setattr(composition, "QuotaGovernedAdvisoryClient", wrapped_model)
+
+    class Reader:
+        def surface(self, **kwargs: object) -> tuple[()]:
+            return ()
+
+    router = composition.build_cognitive_router(
+        object.__new__(HumanIdentityService),
+        Reader(),  # type: ignore[arg-type]
+        {
+            "NFCORE_COGNITIVE_ENABLED": "true",
+            "NFCORE_COGNITIVE_DURABLE_AI_ENABLED": flag,
+        },
+        runtime_environment="production",
+        quota_store=object() if has_quota else None,  # type: ignore[arg-type]
+        audit_uow_factory=(lambda: None) if has_audit else None,  # type: ignore[arg-type]
+    )
+    assert router is not None
+    assert called == (["provider", "durable-wrapper"] if expect_model else [])

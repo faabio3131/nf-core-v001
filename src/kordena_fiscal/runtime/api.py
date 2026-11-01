@@ -16,6 +16,7 @@ from fastapi.responses import JSONResponse
 from kordena_fiscal.application.command_commercial import CommandCommercialReceiver
 from kordena_fiscal.application.commercial_acquisition import CommercialAcquisitionService
 from kordena_fiscal.cognitive.composition import build_cognitive_router
+from kordena_fiscal.cognitive.durable_usage import DurableTokenQuotaStore
 from kordena_fiscal.gateway.production_activation import ProductionExecutionAuthority
 from kordena_fiscal.persistence.command_commercial import CommandCommercialStore
 from kordena_fiscal.persistence.commercial_fulfillment import (
@@ -814,6 +815,10 @@ def create_runtime_app(
                 os.environ,
                 audit_uow_factory=runtime.database,
                 runtime_environment=resolved.environment.value,
+                quota_store=(
+                    DurableTokenQuotaStore(runtime.database.connection)
+                    if runtime.database is not None else None
+                ),
             ),
         ),
     )
