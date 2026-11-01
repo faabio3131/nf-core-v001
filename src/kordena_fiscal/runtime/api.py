@@ -15,6 +15,7 @@ from fastapi.responses import JSONResponse
 
 from kordena_fiscal.application.command_commercial import CommandCommercialReceiver
 from kordena_fiscal.application.commercial_acquisition import CommercialAcquisitionService
+from kordena_fiscal.cognitive.composition import build_cognitive_router
 from kordena_fiscal.gateway.production_activation import ProductionExecutionAuthority
 from kordena_fiscal.persistence.command_commercial import CommandCommercialStore
 from kordena_fiscal.persistence.commercial_fulfillment import (
@@ -807,6 +808,12 @@ def create_runtime_app(
             commercial_operational_readiness=commercial_operational_readiness,
             cakto_checkout_administration=cakto_checkout_administration,
             runtime_metrics=runtime_metrics,
+            cognitive_router=build_cognitive_router(
+                human_identity,
+                portal_executor,
+                os.environ,
+                audit_uow_factory=runtime.database,
+            ),
         ),
     )
     return app
