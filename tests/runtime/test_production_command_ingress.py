@@ -82,6 +82,17 @@ def _binding_fixture(monkeypatch, command: CommandBinding | None, secret: Secret
     return FakeDatabase(secret)
 
 
+def test_partial_command_identity_fails_closed_before_database() -> None:
+    with pytest.raises(RuntimeConfigurationError, match="mode missing"):
+        candidate.production_command_resolver(
+            object(),  # type: ignore[arg-type]
+            {
+                "NFCORE_ENVIRONMENT": "production",
+                "NFCORE_PRODUCTION_COMMAND_KEY_ID": KEY,
+            },
+        )
+
+
 def test_disabled_command_ingress_never_touches_database() -> None:
     assert candidate.production_command_resolver(
         object(), {"NFCORE_ENVIRONMENT": "production"}  # type: ignore[arg-type]
