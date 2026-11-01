@@ -157,7 +157,7 @@ def test_tenant_isolation_expiry_and_suspended(quota_db: tuple[Path, datetime]) 
         tenant_id="tenant-b", request_id="same-key",
         max_input_tokens=3_000_000, max_output_tokens=900_000,
     ).created
-    with pytest.raises(QuotaDenied, match="cannot consume"):
+    with pytest.raises(QuotaDenied, match="no authorized"):
         quota.reserve(
             tenant_id="tenant-suspended", request_id="req",
             max_input_tokens=1, max_output_tokens=1,
