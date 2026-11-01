@@ -39,7 +39,8 @@ SH
 chmod +x "$TMP/bin/git" "$TMP/bin/docker"
 export PATH="$TMP/bin:$PATH"
 export NFCORE_ROOT="$TMP/root" NFCORE_BACKUP_DIR="$TMP/backups"
-export MOCK_CALLS="$TMP/calls"
+export MOCK_CALLS="$TMP/calls" MOCK_MAIN_SHA MOCK_PRODUCTION_SHA\
+  MOCK_INSTALLED NFCORE_COG02_TARGET_MAIN_SHA
 export MOCK_MAIN_SHA="$(printf '%040d' 1)"
 export MOCK_PRODUCTION_SHA="$(printf '%040d' 2)"
 export NFCORE_COG02_TARGET_MAIN_SHA="$MOCK_MAIN_SHA"
