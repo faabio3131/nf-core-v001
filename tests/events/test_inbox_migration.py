@@ -7,6 +7,10 @@ from kordena_fiscal.persistence import SqliteFiscalDatabase
 
 def _remove_v5(connection: sqlite3.Connection) -> None:
     # Reconstruct the earlier schema, not just its migration ledger.
+    # COG-02 is a newer additive schema; remove its dependent rows/tables first.
+    connection.execute("DROP TABLE fm_cognitive_token_reservations")
+    connection.execute("DROP TABLE fm_cognitive_token_counters")
+    connection.execute("DELETE FROM fm_schema_migrations WHERE version = 19")
     connection.execute("DROP TABLE fm_public_trial_rate_windows")
     connection.execute("DELETE FROM fm_schema_migrations WHERE version = 18")
     connection.execute("DROP TABLE fm_secret_bindings")
