@@ -368,6 +368,7 @@ def create_runtime_app(
     )
     app.state.nfcore_command_commercial = command_receiver
     app.state.nfcore_commercial_acquisition = commercial_acquisition
+    app.state.nfcore_public_trial_configured = False
     app.state.nfcore_commercial_trial = (
         composition.commercial_trial
         if composition is not None
@@ -609,6 +610,8 @@ def create_runtime_app(
             "commercial_trial_configured": (
                 app.state.nfcore_commercial_trial is not None
             ),
+            # Separate the anonymous HTTPS trial route from signed S2S trial.
+            "public_trial_configured": app.state.nfcore_public_trial_configured,
             "cakto_checkout_admin_configured": (
                 cakto_checkout_administration is not None
             ),
@@ -757,6 +760,7 @@ def create_runtime_app(
                 commercially_authorized=trial_release_authorized,
             )
         )
+        app.state.nfcore_public_trial_configured = True
 
     human_identity = None if composition is None else composition.human_identity
     password_recovery = None if composition is None else composition.password_recovery
