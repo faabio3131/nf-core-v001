@@ -7,7 +7,7 @@
 - Repositório canônico: `faabio3131/nf-core-v001` (nome histórico `kordena-fiscal-engine-v2`).
 - `main`: `d3d1002a54b78b0c7df7f77f28aeac181bc2c40d` (auditado 01/11/2026); `production`: `d7cf5e4d58cce8ab43105b17e13b2237edc551fb` após PR #305, com API/Portal/DB healthy e HTTP 200 na Contabo, **sem homologação tributária**.
 - O cronograma RTC de 30/10 permanecia congelado no RTC-00 e marcava RTC-01..09 como PENDING apesar de merges posteriores. Este checkpoint reconcilia os estados **sem mudar o escopo nem inventar conclusão**.
-- PR #289: `OPEN` / `mergeable`, HEAD `61f8bdf32b35de19d02f64591c0665cba89aae5b`, CI `41253932330` SUCCESS e governança `41253932304` SUCCESS; base `main`, HEAD anterior ao CURRENT da main, merge sujeito a revisão de delta e autorização RTC. A candidata traz prévia Decimal sintética pinada, não emissão, não cálculo oficial amplo.
+- PR #289: `OPEN` / `mergeable`, HEAD CURRENT `576a0e165c926a1527ab87f20cc1ec28913b56b6` (reconciliado com `main@d3d1002a54b7`), CI `41357578346` em execução nesta auditoria (verificar resultado final), governança `41357578344` SUCCESS; revisão anterior `61f8bdf` teve CI `41253932330` e Gov `41253932304` SUCCESS, mas esses gates não certificam novo HEAD. Merge sujeito a revisão e autorização RTC. A candidata traz prévia Decimal sintética pinada, não emissão, não cálculo oficial amplo.
 
 ## Matriz de implementação RTC (CURRENT → TARGET)
 
@@ -17,7 +17,7 @@
 | RTC-01 | PRs #268 e #270, integridade/pins e versão IT 2025.002 v1.70 | artefatos oficiais efetivamente coletados, hash/licença/proveniência/version diff/review, watcher e rollback testados por família | IMPLEMENTED_PARTIAL |
 | RTC-02 | PRs #269/#271/#272, separação CRT x regime federal, verificação FiscalProfile e histórico | matriz completa estabelecimento/tempo/atividade, PostgreSQL, RBAC e anti-spoofing por célula | IMPLEMENTED_PARTIAL |
 | RTC-03 | PRs #273/#274/#280, catálogo CST/cClassTrib, fail-closed, integração com TaxRuleEngine | NCM/NBS, operações/destino, benefícios/créditos/exceções e cobertura normativa nacional | IMPLEMENTED_PARTIAL |
-| RTC-04 | PR #289 OPEN, preview Decimal por artefato pinado e teste sintético (NÃO integrado à main) | cálculo IBS UF/município, CBS e IS com bases, reduções, créditos, regras de arredondamento/totais oficiais por célula | IMPLEMENTED_NOT_MERGED |
+| RTC-04 | PR #289 OPEN, preview Decimal por artefato pinado, bloqueio de publicação/vigência futura, instante com fuso e testes sintéticos (NÃO integrado à main) | cálculo IBS UF/município, CBS e IS com bases, reduções, créditos, regras de arredondamento/totais oficiais por célula | IMPLEMENTED_NOT_MERGED |
 | RTC-05 | nenhum WP fechado | transição 2026–2033 e coexistência com tributos legados, casos de vigência | PENDING |
 | RTC-06 | nenhum WP fechado | XML NF-e/NFC-e RTC, XSD oficiais, assinatura, eventos, totals e autorização por ambiente | PENDING |
 | RTC-07 | nenhum WP fechado | DPS/NFS-e RTC por provedor/município, layout e casos autorizados | PENDING |
