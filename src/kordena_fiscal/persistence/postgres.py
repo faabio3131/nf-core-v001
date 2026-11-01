@@ -879,6 +879,25 @@ class PostgresFiscalDatabase:
             raise PersistenceStateError(
                 "PostgreSQL schema is not at the certified migration version"
             )
+
+        # The fiscal ledger alone is insufficient: migration 19 also requires
+        # both durable quota tables. This check must remain read-only.
+        try:
+            with self.connection() as connection:
+                tables = connection.execute(
+                    "SELECT to_regclass('public.fm_cognitive_token_counters'), "
+                    "to_regclass('public.fm_cognitive_token_reservations')"
+                ).fetchone()
+            if tables is None or len(tables) != 2 or not all(tables):
+                raise PersistenceStateError(
+                    "PostgreSQL schema is not at the certified migration version"
+                )
+        except PersistenceStateError:
+            raise
+        except Exception as exc:
+            raise PersistenceStateError(
+                "PostgreSQL schema is not at the certified migration version"
+            ) from exc
         return applied
 
     def unit_of_work(self) -> PostgresFiscalUnitOfWork:

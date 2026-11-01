@@ -47,6 +47,21 @@ def test_schema_guard_is_read_only_and_requires_exact_version_set(
     monkeypatch.setattr(
         PostgresFiscalDatabase, "applied_migrations", lambda _self: versions
     )
+
+    class Cursor:
+        def fetchone(self) -> tuple[str, str]:
+            return ("fm_cognitive_token_counters", "fm_cognitive_token_reservations")
+
+    class Connection:
+        def execute(self, sql: str) -> Cursor:
+            assert sql.startswith("SELECT to_regclass(")
+            return Cursor()
+
+    @contextmanager
+    def read_only_connection():
+        yield Connection()
+
+    monkeypatch.setattr(database, "connection", read_only_connection)
     if should_pass:
         assert database.require_current_schema() == versions
     else:
