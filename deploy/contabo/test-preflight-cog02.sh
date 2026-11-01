@@ -7,6 +7,7 @@ trap 'rm -rf "$TMP"' EXIT
 mkdir -p "$TMP/bin" "$TMP/root/src/.git" "$TMP/backups"
 touch "$TMP/backups/nfcore-fixture.dump"
 printf 'SHA=%040d\n' 9 > "$TMP/root/.deployed"
+printf '%s\n' '#!/bin/sh' 'python migration_guard.py --assert-current-production' > "$TMP/root/deploy.sh"
 
 cat > "$TMP/bin/git" <<'SH'
 #!/usr/bin/env bash
@@ -65,6 +66,15 @@ assert_run() {
 }
 
 MOCK_INSTALLED="$(seq -s, 1 18)"
+printf '%s\n' 'MOUT=$($MG --apply)' >> "$TMP/root/deploy.sh"
+assert_run "legacy auto-migration deploy blocked" 42 'automatic migration or database restore'
+sed -i '$d' "$TMP/root/deploy.sh"
+printf '%s\n' 'nf_restore_db "$BKFILE"' >> "$TMP/root/deploy.sh"
+assert_run "automatic database restore blocked" 42 'automatic migration or database restore'
+sed -i '$d' "$TMP/root/deploy.sh"
+printf '%s\n' 'NFCORE_SCHEMA_MIGRATION_APPROVED=true' >> "$TMP/root/deploy.sh"
+assert_run "hardcoded migration approval blocked" 42 'automatic migration or database restore'
+sed -i '$d' "$TMP/root/deploy.sh"
 assert_run "legacy migration requires separate approval" 0 'migration19=REQUIRED_SEPARATELY'
 MOCK_INSTALLED="$(seq -s, 1 19)"
 assert_run "already installed migration does not run DDL" 0 'migration19=ALREADY_PRESENT'
