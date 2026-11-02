@@ -165,3 +165,47 @@ def resolve_rule_with_verified_rtc_catalog(
     )
     catalog.require_classification(snapshot)
     return decision, snapshot
+
+
+def resolve_strict_rtc_2026_incidence_candidate(
+    *,
+    engine: TaxRuleEngine,
+    context: TaxRuleContext,
+    rules: Iterable[TaxRule],
+    catalog: VerifiedRtcClassificationCatalog,
+) -> tuple[TaxDecision, ReformTaxClassificationSnapshot]:
+    """Require a contextual, effective and versioned rule for RTC-04 analysis.
+
+    A catalog only validates a CST/cClassTrib pair; it does not prove that the
+    pair has correct legal incidence. This internal candidate is non-issuable.
+    In particular a wildcard tax rule cannot justify a 2026 IBS/CBS preview.
+    """
+    if not isinstance(context, TaxRuleContext) or not isinstance(engine, TaxRuleEngine):
+        raise RegulatoryBaselineError("canonical tax context and engine required")
+    if context.instant.year != 2026:
+        raise RegulatoryBaselineError("incidence candidate supports only 2026")
+    # Freeze the iterable so the canonical engine and the later audit see the
+    # exact same rule set, including one-shot iterators.
+    candidates = tuple(rules)
+    decision, snapshot = resolve_rule_with_verified_rtc_catalog(
+        engine=engine, context=context, rules=candidates, catalog=catalog,
+    )
+    winners = [
+        rule for rule in candidates
+        if rule.rule_id == decision.rule_id and rule.version == decision.rule_version
+    ]
+    if len(winners) != 1:
+        raise RegulatoryBaselineError("winning RTC rule identity must be unique")
+    selector = winners[0].selector
+    if (
+        selector.state_code is None
+        or selector.tax_regime is None
+        or selector.document_kind is None
+        or selector.operation_type is None
+        or selector.recipient_profile is None
+        or selector.ncm_prefix is None
+    ):
+        raise RegulatoryBaselineError("RTC incidence candidate requires explicit contextual selectors")
+    # The selector is already evaluated by TaxRuleEngine; never independently
+    # override its winning rule or its classifications with caller data.
+    return decision, snapshot
