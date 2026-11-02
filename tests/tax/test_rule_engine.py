@@ -543,6 +543,7 @@ def _art12_preview(**overrides: object):
         "confirmed_no_market_valuation_or_special_base": True,
         "confirmed_no_third_party_reimbursement": True,
         "confirmed_all_art12_exclusions_itemized": True,
+        "confirmed_tax_base_reviewed": True,
     }
     params.update(overrides)
     return calculate_2026_art12_base_preview(**params)  # type: ignore[arg-type]
@@ -619,3 +620,9 @@ def test_art12_denies_ambiguous_tax_rule() -> None:
     duplicate = replace(_rtc_rule(), rule_id="duplicate")
     with pytest.raises(TaxRuleAmbiguityError):
         _art12_preview(rules=[_rtc_rule(), duplicate])
+
+
+def test_art12_requires_explicit_tax_base_review_attestation() -> None:
+    for invalid in (False, None, 1):
+        with pytest.raises(RegulatoryBaselineError, match="reviewed standard scope"):
+            _art12_preview(confirmed_tax_base_reviewed=invalid)
