@@ -205,7 +205,9 @@ def resolve_strict_rtc_2026_incidence_candidate(
         or selector.recipient_profile is None
         or selector.ncm_prefix is None
     ):
-        raise RegulatoryBaselineError("RTC incidence candidate requires explicit contextual selectors")
+        raise RegulatoryBaselineError(
+            "RTC incidence candidate requires explicit contextual selectors"
+        )
     # The selector is already evaluated by TaxRuleEngine; never independently
     # override its winning rule or its classifications with caller data.
     return decision, snapshot
