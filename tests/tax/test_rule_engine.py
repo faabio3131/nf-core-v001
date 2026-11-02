@@ -781,3 +781,11 @@ def test_rtc2026_bundle_denies_2027_context() -> None:
 def test_rtc2026_bundle_reuses_same_rule_generator() -> None:
     candidate = _rtc2026_bundle(rules=(r for r in [_rtc_strict_rule()]))
     assert candidate.base.nominal_reference.decision == candidate.decision
+
+def test_rtc_2026_strict_incidence_denies_simples_even_if_rule_matches() -> None:
+    rule = _rtc_strict_rule()
+    simples_rule = replace(
+        rule, selector=replace(rule.selector, tax_regime=TaxRegimeCode.SIMPLES_NACIONAL)
+    )
+    with pytest.raises(RegulatoryBaselineError, match="excludes Simples Nacional"):
+        _strict_incidence(context=_context(), rules=[simples_rule])
