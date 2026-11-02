@@ -13,6 +13,7 @@ from kordena_fiscal.compliance.rtc import (
     RegulatoryBaselineError,
 )
 from kordena_fiscal.compliance.rtc_calculation_preview import (
+    calculate_2026_art12_base_preview,
     calculate_2026_nominal_reference_preview,
     calculate_rule_bound_rtc_preview,
 )
@@ -522,3 +523,99 @@ def test_rtc_2026_reference_denies_unverified_classification() -> None:
 def test_rtc_2026_reference_denies_negative_tax_base() -> None:
     with pytest.raises(FiscalValidationError, match="nonnegative"):
         _rtc_2026_reference(tax_base=Money(Decimal("-1.00")))
+
+
+# RTC-04: Art. 12 (general-operation-base subset), non-issuable pre-rounding.
+def _art12_preview(**overrides: object):
+    params: dict[str, object] = {
+        "engine": TaxRuleEngine(),
+        "context": _context(tax_regime=TaxRegimeCode.NORMAL),
+        "rules": [_rtc_rule()],
+        "catalog": _synthetic_rtc_catalog(),
+        "gross_operation_value": Money(Decimal("1000.00")),
+        "unconditional_discount": Money(Decimal("100.00")),
+        "ipi_excluded": Money(Decimal("20.00")),
+        "ibs_cbs_excluded": Money(Decimal("0.00")),
+        "legacy_taxes_excluded": Money(Decimal("80.00")),
+        "public_lighting_contribution_excluded": Money(Decimal("0.00")),
+        "confirmed_standard_nonfuel_operation": True,
+        "confirmed_no_differentiated_or_special_regime": True,
+        "confirmed_no_market_valuation_or_special_base": True,
+        "confirmed_no_third_party_reimbursement": True,
+        "confirmed_all_art12_exclusions_itemized": True,
+    }
+    params.update(overrides)
+    return calculate_2026_art12_base_preview(**params)  # type: ignore[arg-type]
+
+
+def test_art12_general_base_composition_and_nominal_2026_preview() -> None:
+    result = _art12_preview()
+    assert result.reviewed_base.amount == Decimal("800.00")
+    assert result.nominal_reference.tax_base == result.reviewed_base
+    assert result.nominal_reference.cbs_unrounded == Decimal("7.200")
+    assert result.nominal_reference.ibs_state_unrounded == Decimal("0.800")
+    assert "art. 12" in result.source_normative
+
+
+def test_art12_includes_conditional_discount_and_charges_in_gross() -> None:
+    # The charged operation amount already includes conditional price charges.
+    result = _art12_preview(
+        gross_operation_value=Money(Decimal("127.35")),
+        unconditional_discount=Money(Decimal("2.00")),
+        ipi_excluded=Money(Decimal("0.00")),
+        legacy_taxes_excluded=Money(Decimal("0.00")),
+    )
+    assert result.reviewed_base.amount == Decimal("125.35")
+    assert result.nominal_reference.cbs_unrounded == Decimal("1.12815")
+
+
+@pytest.mark.parametrize("field", [
+    "confirmed_no_market_valuation_or_special_base",
+    "confirmed_no_third_party_reimbursement",
+    "confirmed_all_art12_exclusions_itemized",
+])
+def test_art12_denies_unreviewed_exclusions_and_special_cases(field: str) -> None:
+    for invalid in (False, 1, None):
+        with pytest.raises(RegulatoryBaselineError, match="reviewed general-base"):
+            _art12_preview(**{field: invalid})
+
+
+@pytest.mark.parametrize("field", [
+    "gross_operation_value",
+    "unconditional_discount",
+    "ipi_excluded",
+    "ibs_cbs_excluded",
+    "legacy_taxes_excluded",
+    "public_lighting_contribution_excluded",
+])
+def test_art12_denies_invalid_money_fields(field: str) -> None:
+    for invalid in (None, "100", Money(Decimal("-0.01"))):
+        with pytest.raises(FiscalValidationError, match="finite nonnegative Money"):
+            _art12_preview(**{field: invalid})
+
+
+def test_art12_denies_exclusions_larger_than_gross() -> None:
+    with pytest.raises(FiscalValidationError, match="exceed gross"):
+        _art12_preview(unconditional_discount=Money(Decimal("1001.00")))
+
+
+def test_art12_denies_double_deduction_of_itemized_legacy_taxes() -> None:
+    with pytest.raises(FiscalValidationError, match="exceed gross"):
+        _art12_preview(
+            gross_operation_value=Money(Decimal("80.00")),
+            legacy_taxes_excluded=Money(Decimal("80.00")),
+        )
+
+
+def test_art12_denies_2027_and_simples_contexts() -> None:
+    old = _context(tax_regime=TaxRegimeCode.NORMAL)
+    with pytest.raises(RegulatoryBaselineError, match="only to 2026"):
+        _art12_preview(context=replace(old, instant=datetime(2027, 1, 1, tzinfo=UTC)))
+    with pytest.raises(RegulatoryBaselineError, match="Simples Nacional"):
+        _art12_preview(context=_context())
+
+
+def test_art12_denies_ambiguous_tax_rule() -> None:
+    duplicate = replace(_rtc_rule(), rule_id="duplicate")
+    with pytest.raises(TaxRuleAmbiguityError):
+        _art12_preview(rules=[_rtc_rule(), duplicate])
