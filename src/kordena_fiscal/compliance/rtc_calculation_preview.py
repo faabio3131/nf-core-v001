@@ -24,6 +24,7 @@ from kordena_fiscal.compliance.rtc import (
 from kordena_fiscal.compliance.rtc_catalog import (
     VerifiedRtcClassificationCatalog,
     resolve_rule_with_verified_rtc_catalog,
+    resolve_strict_rtc_2026_incidence_candidate,
 )
 from kordena_fiscal.compliance.rtc_evidence import verify_regulatory_artifact_bytes
 from kordena_fiscal.domain import FiscalValidationError, Money, TaxRegimeCode
@@ -337,4 +338,173 @@ def calculate_2026_art12_base_preview(
         reviewed_base=reviewed_base,
         nominal_reference=nominal_reference,
         source_normative="LC 214/2025 (atualizada), art. 12 §§ 1-5 e 7, arts. 343/346/348",
+    )
+
+
+
+@dataclass(frozen=True, slots=True)
+class RtcRoundedFieldCandidate:
+    """Auditable hypothetical field rounding, never an authorised XML value."""
+
+    field_name: str
+    unrounded: Decimal
+    candidate: Decimal
+    technical_note_version: str
+    artifact_id: str
+
+    @property
+    def authoritative(self) -> bool:
+        return False
+
+
+def calculate_pinned_rtc_field_rounding_candidate(
+    *,
+    baseline: RegulatoryBaseline,
+    artifact_id: str,
+    policy_payload: bytes,
+    field_name: str,
+    amount: Decimal,
+    instant: datetime,
+) -> RtcRoundedFieldCandidate:
+    """Apply a strictly pinned candidate policy, without inventing a fiscal rule.
+
+    Exact SHA checks normalized test/review bytes only, not official publication
+    authenticity or legal validity. Returned candidates must NOT enter DF-e
+    serialization or be treated as payable/authoritative tax amounts.
+    """
+    if not isinstance(baseline, RegulatoryBaseline):
+        raise RegulatoryBaselineError("RTC rounding baseline required")
+    artifact = baseline.artifact(artifact_id)
+    if artifact.kind is not RegulatoryArtifactKind.TECHNICAL_NOTE:
+        raise RegulatoryBaselineError("RTC rounding requires a pinned technical note")
+    if not isinstance(instant, datetime) or instant.tzinfo is None or instant.utcoffset() is None:
+        raise RegulatoryBaselineError("RTC rounding instant must be timezone-aware")
+    if artifact.effective_from is None or instant.date() < max(
+        artifact.published_on, artifact.effective_from
+    ):
+        raise RegulatoryBaselineError("RTC rounding artifact not published/effective at instant")
+    if not isinstance(amount, Decimal) or not amount.is_finite() or amount < 0:
+        raise FiscalValidationError("RTC rounding amount must be nonnegative finite Decimal")
+    if field_name not in {"pAliqEfet", "vBC", "vIBSUF", "vIBSMun", "vCBS"}:
+        raise RegulatoryBaselineError("unsupported RTC rounding field")
+    verify_regulatory_artifact_bytes(artifact, policy_payload)
+    try:
+        raw = json.loads(policy_payload, object_pairs_hook=_unique_json_pairs)
+    except (ValueError, UnicodeDecodeError) as exc:
+        raise RegulatoryBaselineError("invalid RTC rounding policy JSON") from exc
+    if not isinstance(raw, dict) or set(raw) != {
+        "schema_version", "artifact_id", "artifact_version", "field_name",
+        "quantum", "rounding_mode",
+    }:
+        raise RegulatoryBaselineError("invalid RTC rounding policy schema")
+    if type(raw["schema_version"]) is not int or raw["schema_version"] != 1:
+        raise RegulatoryBaselineError("invalid RTC rounding policy schema version")
+    if raw["artifact_id"] != artifact.artifact_id or raw["artifact_version"] != artifact.version:
+        raise RegulatoryBaselineError("RTC rounding policy artifact mismatch")
+    if raw["field_name"] != field_name:
+        raise RegulatoryBaselineError("RTC rounding field mismatch")
+    quantum_text = raw["quantum"]
+    if not isinstance(quantum_text, str) or quantum_text not in _ALLOWED_QUANTA:
+        raise RegulatoryBaselineError("unsupported RTC rounding quantum")
+    mode = raw["rounding_mode"]
+    if not isinstance(mode, str) or mode not in _ALLOWED_ROUNDING:
+        raise RegulatoryBaselineError("unsupported RTC rounding mode")
+    candidate = amount.quantize(Decimal(quantum_text), rounding=_ALLOWED_ROUNDING[mode])
+    return RtcRoundedFieldCandidate(
+        field_name=field_name,
+        unrounded=amount,
+        candidate=candidate,
+        technical_note_version=artifact.version,
+        artifact_id=artifact.artifact_id,
+    )
+
+
+@dataclass(frozen=True, slots=True)
+class Rtc2026AuditedPreviewBundle:
+    """Combined, context-bound internal candidate; NEVER a fiscal tax result."""
+
+    decision: TaxDecision
+    classification: ReformTaxClassificationSnapshot
+    base: Rtc2026Art12BasePreview
+    cbs_rounding_candidate: RtcRoundedFieldCandidate
+
+    @property
+    def authoritative(self) -> bool:
+        return False
+
+
+def calculate_2026_audited_preview_bundle(
+    *,
+    engine: TaxRuleEngine,
+    context: TaxRuleContext,
+    rules: Iterable[TaxRule],
+    catalog: VerifiedRtcClassificationCatalog,
+    gross_operation_value: Money,
+    unconditional_discount: Money,
+    ipi_excluded: Money,
+    ibs_cbs_excluded: Money,
+    legacy_taxes_excluded: Money,
+    public_lighting_contribution_excluded: Money,
+    confirmed_standard_nonfuel_operation: bool,
+    confirmed_no_differentiated_or_special_regime: bool,
+    confirmed_no_market_valuation_or_special_base: bool,
+    confirmed_no_third_party_reimbursement: bool,
+    confirmed_all_art12_exclusions_itemized: bool,
+    confirmed_tax_base_reviewed: bool,
+    rounding_baseline: RegulatoryBaseline,
+    rounding_artifact_id: str,
+    rounding_policy_payload: bytes,
+) -> Rtc2026AuditedPreviewBundle:
+    """Compose RTC-04 B1/B2 with canonical Art.12 preliminary base, fail closed.
+
+    All components use the same immutable TaxRuleContext, frozen rule iterable
+    and verified classification; no caller-supplied tax decision is accepted.
+    The rounded CBS candidate MUST NOT be forwarded to fiscal XML or ledger.
+    """
+    candidates = tuple(rules)
+    decision, classification = resolve_strict_rtc_2026_incidence_candidate(
+        engine=engine, context=context, rules=candidates, catalog=catalog,
+    )
+    base = calculate_2026_art12_base_preview(
+        engine=engine,
+        context=context,
+        rules=candidates,
+        catalog=catalog,
+        gross_operation_value=gross_operation_value,
+        unconditional_discount=unconditional_discount,
+        ipi_excluded=ipi_excluded,
+        ibs_cbs_excluded=ibs_cbs_excluded,
+        legacy_taxes_excluded=legacy_taxes_excluded,
+        public_lighting_contribution_excluded=public_lighting_contribution_excluded,
+        confirmed_standard_nonfuel_operation=confirmed_standard_nonfuel_operation,
+        confirmed_no_differentiated_or_special_regime=(
+            confirmed_no_differentiated_or_special_regime
+        ),
+        confirmed_no_market_valuation_or_special_base=(
+            confirmed_no_market_valuation_or_special_base
+        ),
+        confirmed_no_third_party_reimbursement=confirmed_no_third_party_reimbursement,
+        confirmed_all_art12_exclusions_itemized=(
+            confirmed_all_art12_exclusions_itemized
+        ),
+        confirmed_tax_base_reviewed=confirmed_tax_base_reviewed,
+    )
+    if (
+        base.nominal_reference.decision != decision
+        or base.nominal_reference.classification != classification
+    ):
+        raise RegulatoryBaselineError("inconsistent RTC incidence and base-preview decisions")
+    rounding = calculate_pinned_rtc_field_rounding_candidate(
+        baseline=rounding_baseline,
+        artifact_id=rounding_artifact_id,
+        policy_payload=rounding_policy_payload,
+        field_name="vCBS",
+        amount=base.nominal_reference.cbs_unrounded,
+        instant=context.instant,
+    )
+    return Rtc2026AuditedPreviewBundle(
+        decision=decision,
+        classification=classification,
+        base=base,
+        cbs_rounding_candidate=rounding,
     )

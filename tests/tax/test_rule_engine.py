@@ -14,6 +14,7 @@ from kordena_fiscal.compliance.rtc import (
 )
 from kordena_fiscal.compliance.rtc_calculation_preview import (
     calculate_2026_art12_base_preview,
+    calculate_2026_audited_preview_bundle,
     calculate_2026_nominal_reference_preview,
     calculate_rule_bound_rtc_preview,
 )
@@ -692,3 +693,91 @@ def test_rtc_2026_strict_incidence_rejects_next_year() -> None:
             _context(tax_regime=TaxRegimeCode.NORMAL),
             instant=datetime(2027, 1, 2, tzinfo=UTC),
         ))
+
+
+def _rtc2026_bundle(**overrides: object):
+    payload = json.dumps({
+        "schema_version": 1,
+        "artifact_id": "SYNTHETIC-CBS-ROUND",
+        "artifact_version": "SYNTHETIC-v1",
+        "field_name": "vCBS",
+        "quantum": "0.01",
+        "rounding_mode": "ROUND_HALF_UP",
+    }, sort_keys=True).encode("utf-8")
+    note = RegulatoryArtifactPin(
+        artifact_id="SYNTHETIC-CBS-ROUND",
+        kind=RegulatoryArtifactKind.TECHNICAL_NOTE,
+        version="SYNTHETIC-v1",
+        published_on=date(2026, 1, 1),
+        effective_from=date(2026, 1, 1),
+        source_reference="synthetic-test-only",
+        checksum_sha256=sha256(payload).hexdigest(),
+    )
+    baseline = RegulatoryBaseline(
+        baseline_id="synthetic-cbs-rounding",
+        version=1,
+        captured_at=datetime(2026, 9, 10, tzinfo=UTC),
+        artifacts=(note,),
+    )
+    values: dict[str, object] = {
+        "engine": TaxRuleEngine(),
+        "context": _context(tax_regime=TaxRegimeCode.NORMAL),
+        "rules": [_rtc_strict_rule()],
+        "catalog": _synthetic_rtc_catalog(),
+        "gross_operation_value": Money(Decimal("123.45")),
+        "unconditional_discount": Money(Decimal("0.00")),
+        "ipi_excluded": Money(Decimal("0.00")),
+        "ibs_cbs_excluded": Money(Decimal("0.00")),
+        "legacy_taxes_excluded": Money(Decimal("0.00")),
+        "public_lighting_contribution_excluded": Money(Decimal("0.00")),
+        "confirmed_standard_nonfuel_operation": True,
+        "confirmed_no_differentiated_or_special_regime": True,
+        "confirmed_no_market_valuation_or_special_base": True,
+        "confirmed_no_third_party_reimbursement": True,
+        "confirmed_all_art12_exclusions_itemized": True,
+        "confirmed_tax_base_reviewed": True,
+        "rounding_baseline": baseline,
+        "rounding_artifact_id": "SYNTHETIC-CBS-ROUND",
+        "rounding_policy_payload": payload,
+    }
+    values.update(overrides)
+    return calculate_2026_audited_preview_bundle(**values)  # type: ignore[arg-type]
+
+
+def test_rtc2026_bundle_binds_strict_incidence_base_and_pinned_rounding() -> None:
+    candidate = _rtc2026_bundle()
+    assert candidate.decision.rule_id == "rtc-synthetic"
+    assert candidate.base.reviewed_base.amount == Decimal("123.45")
+    assert candidate.base.nominal_reference.cbs_unrounded == Decimal("1.11105")
+    assert candidate.cbs_rounding_candidate.candidate == Decimal("1.11")
+    assert candidate.cbs_rounding_candidate.authoritative is False
+    assert candidate.authoritative is False
+
+
+def test_rtc2026_bundle_denies_wildcard_rule() -> None:
+    with pytest.raises(RegulatoryBaselineError, match="explicit contextual selectors"):
+        _rtc2026_bundle(rules=[_rtc_rule()])
+
+
+def test_rtc2026_bundle_denies_bad_base_review() -> None:
+    with pytest.raises(RegulatoryBaselineError, match="reviewed standard scope"):
+        _rtc2026_bundle(confirmed_tax_base_reviewed=False)
+
+
+def test_rtc2026_bundle_denies_tampered_rounding_policy() -> None:
+    with pytest.raises(RegulatoryBaselineError):
+        _rtc2026_bundle(rounding_policy_payload=b"untrusted-not-a-note")
+
+
+def test_rtc2026_bundle_denies_2027_context() -> None:
+    context = replace(
+        _context(tax_regime=TaxRegimeCode.NORMAL),
+        instant=datetime(2027, 1, 1, tzinfo=UTC),
+    )
+    with pytest.raises(RegulatoryBaselineError, match="only 2026"):
+        _rtc2026_bundle(context=context)
+
+
+def test_rtc2026_bundle_reuses_same_rule_generator() -> None:
+    candidate = _rtc2026_bundle(rules=(r for r in [_rtc_strict_rule()]))
+    assert candidate.base.nominal_reference.decision == candidate.decision
