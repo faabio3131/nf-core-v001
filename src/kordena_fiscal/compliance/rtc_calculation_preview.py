@@ -278,6 +278,7 @@ def calculate_2026_art12_base_preview(
     confirmed_no_market_valuation_or_special_base: bool,
     confirmed_no_third_party_reimbursement: bool,
     confirmed_all_art12_exclusions_itemized: bool,
+    confirmed_tax_base_reviewed: bool,
 ) -> Rtc2026Art12BasePreview:
     """Compose the general Art. 12 base and 2026 unrounded reference, fail-closed.
 
@@ -324,7 +325,7 @@ def calculate_2026_art12_base_preview(
         confirmed_no_differentiated_or_special_regime=(
             confirmed_no_differentiated_or_special_regime
         ),
-        confirmed_tax_base_reviewed=True,
+        confirmed_tax_base_reviewed=confirmed_tax_base_reviewed,
     )
     return Rtc2026Art12BasePreview(
         gross_operation_value=gross_operation_value,
