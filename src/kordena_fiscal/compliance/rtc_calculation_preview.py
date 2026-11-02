@@ -351,7 +351,10 @@ class RtcRoundedFieldCandidate:
     candidate: Decimal
     technical_note_version: str
     artifact_id: str
-    authoritative: bool = False
+
+    @property
+    def authoritative(self) -> bool:
+        return False
 
 
 def calculate_pinned_rtc_field_rounding_candidate(
@@ -424,7 +427,10 @@ class Rtc2026AuditedPreviewBundle:
     classification: ReformTaxClassificationSnapshot
     base: Rtc2026Art12BasePreview
     cbs_rounding_candidate: RtcRoundedFieldCandidate
-    authoritative: bool = False
+
+    @property
+    def authoritative(self) -> bool:
+        return False
 
 
 def calculate_2026_audited_preview_bundle(
