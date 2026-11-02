@@ -350,7 +350,11 @@ class RtcRoundedFieldCandidate:
     candidate: Decimal
     technical_note_version: str
     artifact_id: str
-    authoritative: bool = False
+
+    @property
+    def authoritative(self) -> bool:
+        # An integrity-checked candidate must never be promoted by a flag.
+        return False
 
 
 def calculate_pinned_rtc_field_rounding_candidate(
