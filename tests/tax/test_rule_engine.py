@@ -692,3 +692,12 @@ def test_rtc_2026_strict_incidence_rejects_next_year() -> None:
             _context(tax_regime=TaxRegimeCode.NORMAL),
             instant=datetime(2027, 1, 2, tzinfo=UTC),
         ))
+
+
+def test_rtc_2026_strict_incidence_denies_simples_even_if_rule_matches() -> None:
+    rule = _rtc_strict_rule()
+    simples_rule = replace(
+        rule, selector=replace(rule.selector, tax_regime=TaxRegimeCode.SIMPLES_NACIONAL)
+    )
+    with pytest.raises(RegulatoryBaselineError, match="excludes Simples Nacional"):
+        _strict_incidence(context=_context(), rules=[simples_rule])
