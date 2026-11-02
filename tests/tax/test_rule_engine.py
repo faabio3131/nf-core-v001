@@ -21,6 +21,7 @@ from kordena_fiscal.compliance.rtc_catalog import (
     VerifiedRtcClassificationCatalog,
     load_verified_rtc_classification_catalog,
     resolve_rule_with_verified_rtc_catalog,
+    resolve_strict_rtc_2026_incidence_candidate,
 )
 from kordena_fiscal.domain import (
     BrazilianJurisdiction,
@@ -626,3 +627,77 @@ def test_art12_requires_explicit_tax_base_review_attestation() -> None:
     for invalid in (False, None, 1):
         with pytest.raises(RegulatoryBaselineError, match="reviewed standard scope"):
             _art12_preview(confirmed_tax_base_reviewed=invalid)
+
+
+def _rtc_strict_rule() -> TaxRule:
+    return replace(
+        _rtc_rule(),
+        selector=TaxRuleSelector(
+            state_code="SP",
+            tax_regime=TaxRegimeCode.NORMAL,
+            document_kind=FiscalDocumentKind.NFCE,
+            operation_type=TaxOperationType.SALE,
+            recipient_profile=RecipientTaxProfile.CONSUMER_FINAL,
+            ncm_prefix="2106",
+        ),
+    )
+
+
+def _strict_incidence(**overrides: object):
+    args: dict[str, object] = {
+        "engine": TaxRuleEngine(),
+        "context": _context(tax_regime=TaxRegimeCode.NORMAL),
+        "rules": [_rtc_strict_rule()],
+        "catalog": _synthetic_rtc_catalog(),
+    }
+    args.update(overrides)
+    return resolve_strict_rtc_2026_incidence_candidate(**args)  # type: ignore[arg-type]
+
+
+def test_rtc_2026_strict_incidence_preserves_canonical_decision() -> None:
+    decision, classification = _strict_incidence()
+    assert decision.rule_id == "rtc-synthetic"
+    assert classification.classification_table_version == "SYNTHETIC-v1"
+
+
+@pytest.mark.parametrize("field", [
+    "state_code", "tax_regime", "document_kind",
+    "operation_type", "recipient_profile", "ncm_prefix",
+])
+def test_rtc_2026_strict_incidence_rejects_wildcard_selector(field: str) -> None:
+    rule = _rtc_strict_rule()
+    with pytest.raises(RegulatoryBaselineError, match="explicit contextual selectors"):
+        _strict_incidence(rules=[replace(rule, selector=replace(rule.selector, **{field: None}))])
+
+
+def test_rtc_2026_strict_incidence_does_not_accept_wrong_region() -> None:
+    with pytest.raises(TaxRuleNotFoundError):
+        _strict_incidence(context=_context(
+            tax_regime=TaxRegimeCode.NORMAL,
+            jurisdiction=BrazilianJurisdiction("RJ", "3304557"),
+        ))
+
+
+def test_rtc_2026_strict_incidence_rejects_ambiguous_rule_and_bad_catalog() -> None:
+    rule = _rtc_strict_rule()
+    with pytest.raises(TaxRuleAmbiguityError):
+        _strict_incidence(rules=[rule, replace(rule, rule_id="rtc-tie")])
+    with pytest.raises(RegulatoryBaselineError, match="verified RTC"):
+        _strict_incidence(catalog=None)
+
+
+def test_rtc_2026_strict_incidence_rejects_next_year() -> None:
+    with pytest.raises(RegulatoryBaselineError, match="only 2026"):
+        _strict_incidence(context=replace(
+            _context(tax_regime=TaxRegimeCode.NORMAL),
+            instant=datetime(2027, 1, 2, tzinfo=UTC),
+        ))
+
+
+def test_rtc_2026_strict_incidence_denies_simples_even_if_rule_matches() -> None:
+    rule = _rtc_strict_rule()
+    simples_rule = replace(
+        rule, selector=replace(rule.selector, tax_regime=TaxRegimeCode.SIMPLES_NACIONAL)
+    )
+    with pytest.raises(RegulatoryBaselineError, match="excludes Simples Nacional"):
+        _strict_incidence(context=_context(), rules=[simples_rule])
