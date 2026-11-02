@@ -19,6 +19,7 @@ from kordena_fiscal.compliance.rtc import (
     RegulatoryBaselineError,
 )
 from kordena_fiscal.compliance.rtc_evidence import verify_regulatory_artifact_bytes
+from kordena_fiscal.domain import TaxRegimeCode
 from kordena_fiscal.tax import TaxDecision, TaxRule, TaxRuleContext, TaxRuleEngine
 
 # Local construction witness: a catalog object is not verified merely by its type.
@@ -184,6 +185,8 @@ def resolve_strict_rtc_2026_incidence_candidate(
         raise RegulatoryBaselineError("canonical tax context and engine required")
     if context.instant.year != 2026:
         raise RegulatoryBaselineError("incidence candidate supports only 2026")
+    if context.tax_regime is not TaxRegimeCode.NORMAL:
+        raise RegulatoryBaselineError("2026 incidence candidate excludes Simples Nacional")
     # Freeze the iterable so the canonical engine and the later audit see the
     # exact same rule set, including one-shot iterators.
     candidates = tuple(rules)
