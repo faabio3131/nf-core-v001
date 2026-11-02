@@ -338,3 +338,78 @@ def calculate_2026_art12_base_preview(
         nominal_reference=nominal_reference,
         source_normative="LC 214/2025 (atualizada), art. 12 §§ 1-5 e 7, arts. 343/346/348",
     )
+
+
+
+@dataclass(frozen=True, slots=True)
+class RtcRoundedFieldCandidate:
+    """Auditable hypothetical field rounding, never an authorised XML value."""
+
+    field_name: str
+    unrounded: Decimal
+    candidate: Decimal
+    technical_note_version: str
+    artifact_id: str
+    authoritative: bool = False
+
+
+def calculate_pinned_rtc_field_rounding_candidate(
+    *,
+    baseline: RegulatoryBaseline,
+    artifact_id: str,
+    policy_payload: bytes,
+    field_name: str,
+    amount: Decimal,
+    instant: datetime,
+) -> RtcRoundedFieldCandidate:
+    """Apply a strictly pinned candidate policy, without inventing a fiscal rule.
+
+    Exact SHA checks normalized test/review bytes only, not official publication
+    authenticity or legal validity. Returned candidates must NOT enter DF-e
+    serialization or be treated as payable/authoritative tax amounts.
+    """
+    if not isinstance(baseline, RegulatoryBaseline):
+        raise RegulatoryBaselineError("RTC rounding baseline required")
+    artifact = baseline.artifact(artifact_id)
+    if artifact.kind is not RegulatoryArtifactKind.TECHNICAL_NOTE:
+        raise RegulatoryBaselineError("RTC rounding requires a pinned technical note")
+    if not isinstance(instant, datetime) or instant.tzinfo is None or instant.utcoffset() is None:
+        raise RegulatoryBaselineError("RTC rounding instant must be timezone-aware")
+    if artifact.effective_from is None or instant.date() < max(
+        artifact.published_on, artifact.effective_from
+    ):
+        raise RegulatoryBaselineError("RTC rounding artifact not published/effective at instant")
+    if not isinstance(amount, Decimal) or not amount.is_finite() or amount < 0:
+        raise FiscalValidationError("RTC rounding amount must be nonnegative finite Decimal")
+    if field_name not in {"pAliqEfet", "vBC", "vIBSUF", "vIBSMun", "vCBS"}:
+        raise RegulatoryBaselineError("unsupported RTC rounding field")
+    verify_regulatory_artifact_bytes(artifact, policy_payload)
+    try:
+        raw = json.loads(policy_payload, object_pairs_hook=_unique_json_pairs)
+    except (ValueError, UnicodeDecodeError) as exc:
+        raise RegulatoryBaselineError("invalid RTC rounding policy JSON") from exc
+    if not isinstance(raw, dict) or set(raw) != {
+        "schema_version", "artifact_id", "artifact_version", "field_name",
+        "quantum", "rounding_mode",
+    }:
+        raise RegulatoryBaselineError("invalid RTC rounding policy schema")
+    if type(raw["schema_version"]) is not int or raw["schema_version"] != 1:
+        raise RegulatoryBaselineError("invalid RTC rounding policy schema version")
+    if raw["artifact_id"] != artifact.artifact_id or raw["artifact_version"] != artifact.version:
+        raise RegulatoryBaselineError("RTC rounding policy artifact mismatch")
+    if raw["field_name"] != field_name:
+        raise RegulatoryBaselineError("RTC rounding field mismatch")
+    quantum_text = raw["quantum"]
+    if not isinstance(quantum_text, str) or quantum_text not in _ALLOWED_QUANTA:
+        raise RegulatoryBaselineError("unsupported RTC rounding quantum")
+    mode = raw["rounding_mode"]
+    if not isinstance(mode, str) or mode not in _ALLOWED_ROUNDING:
+        raise RegulatoryBaselineError("unsupported RTC rounding mode")
+    candidate = amount.quantize(Decimal(quantum_text), rounding=_ALLOWED_ROUNDING[mode])
+    return RtcRoundedFieldCandidate(
+        field_name=field_name,
+        unrounded=amount,
+        candidate=candidate,
+        technical_note_version=artifact.version,
+        artifact_id=artifact.artifact_id,
+    )
