@@ -244,3 +244,97 @@ def calculate_2026_nominal_reference_preview(
         ibs_state_unrounded=tax_base.amount * _RTC_2026_IBS_STATE_REFERENCE / Decimal("100"),
         source_normative=_RTC_2026_SOURCE,
     )
+
+
+@dataclass(frozen=True, slots=True)
+class Rtc2026Art12BasePreview:
+    """Art. 12 line-item reconciliation, never a payable or issuable base."""
+
+    gross_operation_value: Money
+    unconditional_discount: Money
+    ipi_excluded: Money
+    ibs_cbs_excluded: Money
+    legacy_taxes_excluded: Money
+    public_lighting_contribution_excluded: Money
+    reviewed_base: Money
+    nominal_reference: Rtc2026NominalReferencePreview
+    source_normative: str
+
+
+def calculate_2026_art12_base_preview(
+    *,
+    engine: TaxRuleEngine,
+    context: TaxRuleContext,
+    rules: Iterable[TaxRule],
+    catalog: VerifiedRtcClassificationCatalog,
+    gross_operation_value: Money,
+    unconditional_discount: Money,
+    ipi_excluded: Money,
+    ibs_cbs_excluded: Money,
+    legacy_taxes_excluded: Money,
+    public_lighting_contribution_excluded: Money,
+    confirmed_standard_nonfuel_operation: bool,
+    confirmed_no_differentiated_or_special_regime: bool,
+    confirmed_no_market_valuation_or_special_base: bool,
+    confirmed_no_third_party_reimbursement: bool,
+    confirmed_all_art12_exclusions_itemized: bool,
+    confirmed_tax_base_reviewed: bool,
+) -> Rtc2026Art12BasePreview:
+    """Compose the general Art. 12 base and 2026 unrounded reference, fail-closed.
+
+    gross_operation_value MUST include all amounts charged under Art. 12 §1,
+    including charges and conditional discounts, BEFORE the listed exclusions.
+    Every excluded field MUST be an actual amount already present in that gross
+    value, never an extra deduction from a net document amount. This function
+    does not prove legal incidence, documentation, currency conversion, market
+    valuation, special bases, credit, offset, rounding or XML compliance.
+    The flags are review assertions, NOT authoritative eligibility evidence.
+    """
+    if (
+        confirmed_no_market_valuation_or_special_base is not True
+        or confirmed_no_third_party_reimbursement is not True
+        or confirmed_all_art12_exclusions_itemized is not True
+    ):
+        raise RegulatoryBaselineError("Art. 12 preview requires reviewed general-base evidence")
+    amounts = (
+        gross_operation_value,
+        unconditional_discount,
+        ipi_excluded,
+        ibs_cbs_excluded,
+        legacy_taxes_excluded,
+        public_lighting_contribution_excluded,
+    )
+    if any(
+        not isinstance(value, Money)
+        or not value.amount.is_finite()
+        or value.amount < 0
+        for value in amounts
+    ):
+        raise FiscalValidationError("Art. 12 preview requires finite nonnegative Money")
+    exclusions = sum((value.amount for value in amounts[1:]), Decimal("0"))
+    if exclusions > gross_operation_value.amount:
+        raise FiscalValidationError("Art. 12 exclusions exceed gross operation value")
+    reviewed_base = Money(gross_operation_value.amount - exclusions)
+    nominal_reference = calculate_2026_nominal_reference_preview(
+        engine=engine,
+        context=context,
+        rules=rules,
+        catalog=catalog,
+        tax_base=reviewed_base,
+        confirmed_standard_nonfuel_operation=confirmed_standard_nonfuel_operation,
+        confirmed_no_differentiated_or_special_regime=(
+            confirmed_no_differentiated_or_special_regime
+        ),
+        confirmed_tax_base_reviewed=confirmed_tax_base_reviewed,
+    )
+    return Rtc2026Art12BasePreview(
+        gross_operation_value=gross_operation_value,
+        unconditional_discount=unconditional_discount,
+        ipi_excluded=ipi_excluded,
+        ibs_cbs_excluded=ibs_cbs_excluded,
+        legacy_taxes_excluded=legacy_taxes_excluded,
+        public_lighting_contribution_excluded=public_lighting_contribution_excluded,
+        reviewed_base=reviewed_base,
+        nominal_reference=nominal_reference,
+        source_normative="LC 214/2025 (atualizada), art. 12 §§ 1-5 e 7, arts. 343/346/348",
+    )
