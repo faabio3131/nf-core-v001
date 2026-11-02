@@ -13,6 +13,7 @@ from kordena_fiscal.compliance.rtc import (
     RegulatoryBaselineError,
 )
 from kordena_fiscal.compliance.rtc_calculation_preview import (
+    calculate_2026_nominal_reference_preview,
     calculate_rule_bound_rtc_preview,
 )
 from kordena_fiscal.compliance.rtc_catalog import (
@@ -447,3 +448,77 @@ def test_rtc04_preview_denies_expired_rule() -> None:
     expired = replace(_rtc_rule(), effective_to=_instant(9))
     with pytest.raises(TaxRuleNotFoundError, match="no effective tax rule"):
         _rule_bound_preview(rules=[expired])
+
+
+# RTC-04/2026: nominal legal-reference arithmetic only; no XML, rounding or
+# collection is certified by these fixtures. LC 214/2025, arts. 343/346/348.
+
+def _rtc_2026_reference(**overrides: object):
+    params: dict[str, object] = {
+        "engine": TaxRuleEngine(),
+        "context": _context(tax_regime=TaxRegimeCode.NORMAL),
+        "rules": [_rtc_rule()],
+        "catalog": _synthetic_rtc_catalog(),
+        "tax_base": Money(Decimal("123.45")),
+        "confirmed_standard_nonfuel_operation": True,
+        "confirmed_no_differentiated_or_special_regime": True,
+        "confirmed_tax_base_reviewed": True,
+    }
+    params.update(overrides)
+    return calculate_2026_nominal_reference_preview(**params)  # type: ignore[arg-type]
+
+
+def test_rtc_2026_statutory_nominal_reference_is_unrounded() -> None:
+    result = _rtc_2026_reference()
+    assert result.decision.rule_id == "rtc-synthetic"
+    assert result.classification.classification_code == "000001"
+    assert result.cbs_rate_percent == Decimal("0.9")
+    assert result.ibs_state_rate_percent == Decimal("0.1")
+    assert result.cbs_unrounded == Decimal("1.11105")
+    assert result.ibs_state_unrounded == Decimal("0.12345")
+    assert "343" in result.source_normative
+    assert "348" in result.source_normative
+
+
+@pytest.mark.parametrize("day", [1, 10])
+def test_rtc_2026_reference_accepts_only_2026(day: int) -> None:
+    # Recreate a valid context for 2027 to avoid product-snapshot expiry mistakes.
+    original = _context(tax_regime=TaxRegimeCode.NORMAL)
+    outside = replace(original, instant=datetime(2027, 1, day, tzinfo=UTC))
+    with pytest.raises(RegulatoryBaselineError, match="only to 2026"):
+        _rtc_2026_reference(context=outside)
+
+
+def test_rtc_2026_reference_rejects_simples_nacional() -> None:
+    with pytest.raises(RegulatoryBaselineError, match="Simples Nacional"):
+        _rtc_2026_reference(context=_context())
+
+
+@pytest.mark.parametrize("missing", [
+    "confirmed_standard_nonfuel_operation",
+    "confirmed_no_differentiated_or_special_regime",
+    "confirmed_tax_base_reviewed",
+])
+def test_rtc_2026_reference_rejects_unreviewed_scope(missing: str) -> None:
+    with pytest.raises(RegulatoryBaselineError, match="reviewed standard scope"):
+        _rtc_2026_reference(**{missing: False})
+    with pytest.raises(RegulatoryBaselineError, match="reviewed standard scope"):
+        _rtc_2026_reference(**{missing: 1})
+
+
+def test_rtc_2026_reference_denies_missing_or_ambiguous_rule() -> None:
+    with pytest.raises(TaxRuleNotFoundError):
+        _rtc_2026_reference(rules=[])
+    duplicate = replace(_rtc_rule(), rule_id="rtc-duplicate")
+    with pytest.raises(TaxRuleAmbiguityError):
+        _rtc_2026_reference(rules=[_rtc_rule(), duplicate])
+
+
+def test_rtc_2026_reference_denies_unverified_classification() -> None:
+    with pytest.raises(RegulatoryBaselineError, match="version mismatch"):
+        _rtc_2026_reference(rules=[_rtc_rule(version="UNVERIFIED-v1")])
+
+
+def test_rtc_2026_reference_denies_negative_tax_base() -> None:
+    with pytest.raises(FiscalValidationError, match="nonnegative"):
+        _rtc_2026_reference(tax_base=Money(Decimal("-1.00")))

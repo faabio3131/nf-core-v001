@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 from collections.abc import Iterable
+from dataclasses import dataclass
 from datetime import datetime
 from decimal import ROUND_HALF_EVEN, ROUND_HALF_UP, Decimal, InvalidOperation
 
@@ -25,7 +26,7 @@ from kordena_fiscal.compliance.rtc_catalog import (
     resolve_rule_with_verified_rtc_catalog,
 )
 from kordena_fiscal.compliance.rtc_evidence import verify_regulatory_artifact_bytes
-from kordena_fiscal.domain import FiscalValidationError, Money
+from kordena_fiscal.domain import FiscalValidationError, Money, TaxRegimeCode
 from kordena_fiscal.tax import TaxDecision, TaxRule, TaxRuleContext, TaxRuleEngine
 
 _ALLOWED_ROUNDING = {"ROUND_HALF_UP": ROUND_HALF_UP, "ROUND_HALF_EVEN": ROUND_HALF_EVEN}
@@ -166,3 +167,80 @@ def calculate_rule_bound_rtc_preview(
         instant=context.instant,
     )
     return decision, snapshot
+
+
+# Law text: LC 214/2025, as amended by LC 227/2026, arts. 343, 346, 348.
+# https://www2.camara.leg.br/legin/fed/leicom/2025/
+# leicomplementar-214-16-janeiro-2025-796905-normaatualizada-pl.html
+_RTC_2026_IBS_STATE_REFERENCE = Decimal("0.1")
+_RTC_2026_CBS_REFERENCE = Decimal("0.9")
+_RTC_2026_SOURCE = "LC 214/2025 (atualizada), arts. 343, 346 e 348"
+
+
+@dataclass(frozen=True, slots=True)
+class Rtc2026NominalReferencePreview:
+    """Unrounded statutory nominal comparison, NEVER a payable/issuable tax amount.
+
+    In particular this does not compute tax-base adjustments, benefits, credits,
+    collection/compensation, currency rounding or XML totals.
+    """
+
+    decision: TaxDecision
+    classification: ReformTaxClassificationSnapshot
+    tax_base: Money
+    cbs_rate_percent: Decimal
+    ibs_state_rate_percent: Decimal
+    cbs_unrounded: Decimal
+    ibs_state_unrounded: Decimal
+    source_normative: str
+
+
+def calculate_2026_nominal_reference_preview(
+    *,
+    engine: TaxRuleEngine,
+    context: TaxRuleContext,
+    rules: Iterable[TaxRule],
+    catalog: VerifiedRtcClassificationCatalog,
+    tax_base: Money,
+    confirmed_standard_nonfuel_operation: bool,
+    confirmed_no_differentiated_or_special_regime: bool,
+    confirmed_tax_base_reviewed: bool,
+) -> Rtc2026NominalReferencePreview:
+    """Isolated reference arithmetic from LC 214 arts. 343/346/348.
+
+    Review flags are caller attestations, NOT proof of fiscal eligibility. The
+    output is deliberately not a ReformTaxComponentSnapshot and cannot be used
+    in authoritative fiscal emission; only law-scoped, unrounded comparison.
+    No implied eligibility for Simples, fuel, benefits, exemptions or IS.
+    """
+    if not isinstance(context, TaxRuleContext) or not isinstance(engine, TaxRuleEngine):
+        raise FiscalValidationError("canonical RTC tax context and engine required")
+    if context.instant.year != 2026:
+        raise RegulatoryBaselineError("2026 nominal reference applies only to 2026 facts")
+    if context.tax_regime is not TaxRegimeCode.NORMAL:
+        raise RegulatoryBaselineError("2026 reference not applicable to Simples Nacional")
+    if (
+        confirmed_standard_nonfuel_operation is not True
+        or confirmed_no_differentiated_or_special_regime is not True
+        or confirmed_tax_base_reviewed is not True
+    ):
+        raise RegulatoryBaselineError("2026 nominal reference requires reviewed standard scope")
+    if (
+        not isinstance(tax_base, Money)
+        or not tax_base.amount.is_finite()
+        or tax_base.amount < 0
+    ):
+        raise FiscalValidationError("2026 nominal reference requires nonnegative finite Money")
+    decision, classification = resolve_rule_with_verified_rtc_catalog(
+        engine=engine, context=context, rules=rules, catalog=catalog,
+    )
+    return Rtc2026NominalReferencePreview(
+        decision=decision,
+        classification=classification,
+        tax_base=tax_base,
+        cbs_rate_percent=_RTC_2026_CBS_REFERENCE,
+        ibs_state_rate_percent=_RTC_2026_IBS_STATE_REFERENCE,
+        cbs_unrounded=tax_base.amount * _RTC_2026_CBS_REFERENCE / Decimal("100"),
+        ibs_state_unrounded=tax_base.amount * _RTC_2026_IBS_STATE_REFERENCE / Decimal("100"),
+        source_normative=_RTC_2026_SOURCE,
+    )
