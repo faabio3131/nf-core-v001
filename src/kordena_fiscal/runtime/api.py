@@ -17,7 +17,9 @@ from kordena_fiscal.application.command_commercial import CommandCommercialRecei
 from kordena_fiscal.application.commercial_acquisition import CommercialAcquisitionService
 from kordena_fiscal.cognitive.composition import build_cognitive_router
 from kordena_fiscal.cognitive.durable_usage import DurableTokenQuotaStore
+from kordena_fiscal.compliance.nfse_preaudit import nfse_preaudit
 from kordena_fiscal.gateway.production_activation import ProductionExecutionAuthority
+from kordena_fiscal.issuance.nfse_dps_builder import build_signed_dps
 from kordena_fiscal.persistence.command_commercial import CommandCommercialStore
 from kordena_fiscal.persistence.commercial_fulfillment import (
     postgres_canonical_commercial_database,
@@ -910,7 +912,9 @@ app = create_runtime_app(
     password_reset_delivery=build_activation_delivery_from_environ(),
     certificate_vault=_entrypoint_certificate_vault,
     fiscal_dependency_probe=lambda: fiscal_external_dependency_snapshot(
-        certificate_vault=_entrypoint_certificate_vault
+        certificate_vault=_entrypoint_certificate_vault,
+        trusted_signed_dps_builder=build_signed_dps,
+        nfse_preaudit=nfse_preaudit,
     ),
     command_secret_resolver=development_command_resolver(
         _entrypoint_settings, os.environ
@@ -921,7 +925,11 @@ app = create_runtime_app(
         else None
     ),
     fiscal_operation_handler_factory=(
-        build_runtime_fiscal_handler_factory(certificate_vault=_entrypoint_certificate_vault)
+        build_runtime_fiscal_handler_factory(
+            certificate_vault=_entrypoint_certificate_vault,
+            trusted_signed_dps_builder=build_signed_dps,
+            nfse_preaudit=nfse_preaudit,
+        )
         if _entrypoint_settings.environment.value in {"staging", "production"}
         else None
     ),

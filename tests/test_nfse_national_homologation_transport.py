@@ -68,11 +68,15 @@ def test_dps_signature_is_verifiable_and_envelope_is_gzipped() -> None:
     key.public_key().verify(
         base64.b64decode(signature_value),
         etree.tostring(signed_info, method="c14n", exclusive=False, with_comments=False),
-        padding.PKCS1v15(), hashes.SHA256(),
+        padding.PKCS1v15(), hashes.SHA1(),  # noqa: S303 -- pinned National DPS XSD fixes RSA-SHA1
     )
+    signature_method = signed_info.find(f".//{{{_DS}}}SignatureMethod")
+    digest_method = signature.find(f".//{{{_DS}}}DigestMethod")
+    assert signature_method is not None and signature_method.get("Algorithm") == f"{_DS}rsa-sha1"
+    assert digest_method is not None and digest_method.get("Algorithm") == f"{_DS}sha1"
     digest = signature.findtext(f".//{{{_DS}}}DigestValue")
     assert digest == base64.b64encode(
-        hashlib.sha256(
+        hashlib.sha1(  # noqa: S324 -- pinned National DPS XSD fixes SHA-1 digests
             etree.tostring(info, method="c14n", exclusive=False, with_comments=False)
         ).digest()
     ).decode("ascii")
