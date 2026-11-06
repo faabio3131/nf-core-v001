@@ -43,6 +43,7 @@ from kordena_fiscal.web.command_commercial import create_command_commercial_rout
 from kordena_fiscal.web.commercial_acquisition import (
     create_commercial_acquisition_router,
 )
+from kordena_fiscal.web.commercial_claim import create_commercial_claim_router
 from kordena_fiscal.web.commercial_trial import create_commercial_trial_router
 from kordena_fiscal.web.human_recovery import PasswordResetDelivery
 from kordena_fiscal.web.production_gsm_binding_admin import create_production_gsm_binding_router
@@ -726,6 +727,25 @@ def create_runtime_app(
                         window_seconds=3600,
                     )
                 ),
+                delivery=password_reset_delivery,
+            )
+        )
+
+    # Self-service claim: lets a paying customer, who already received a
+    # one-time claim link by email after an upstream checkout provider (e.g.
+    # Cakto) confirmed payment, activate their own canonical purchase. Gated on
+    # the same composition/delivery used by every other activation path so no
+    # second provisioning or account-creation authority is introduced here.
+    if (
+        composition is not None
+        and composition.commercial_claim is not None
+        and composition.commercial_activation is not None
+        and password_reset_delivery is not None
+    ):
+        app.include_router(
+            create_commercial_claim_router(
+                composition.commercial_claim,
+                activation=composition.commercial_activation,
                 delivery=password_reset_delivery,
             )
         )
