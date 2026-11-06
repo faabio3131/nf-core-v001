@@ -125,7 +125,7 @@ def test_cakto_schema_upgrades_existing_v1_to_v2_without_dropping_history() -> N
                 WHERE table_name = 'fm_cakto_webhook_inbox'
                 """
             ).fetchall()
-        assert tuple(versions) == ((1,), (2,))
+        assert tuple(versions) == ((1,), (2,), (3,))
         assert ("callback_token",) in columns
         assert ("external_subscription_id",) in columns
     finally:

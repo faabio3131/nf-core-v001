@@ -146,6 +146,7 @@ class CaktoWebhookInboxEntry:
     last_error: str | None = None
     tenant_id: str | None = None
     outcome_reference: str | None = None
+    external_customer_email: str | None = None
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "event_key", _text(self.event_key, "event_key", 320))
@@ -206,6 +207,12 @@ class CaktoWebhookInboxEntry:
             _aware(self.next_attempt_at, "next_attempt_at")
         if self.tenant_id is not None:
             object.__setattr__(self, "tenant_id", _token(self.tenant_id, "tenant_id"))
+        if self.external_customer_email is not None:
+            object.__setattr__(
+                self,
+                "external_customer_email",
+                _optional_email(self.external_customer_email),
+            )
 
 
 @dataclass(frozen=True, slots=True)
@@ -534,6 +541,9 @@ class CaktoWebhookVerifier:
         customer_id = customer.get("id")
         if not isinstance(customer_id, (str, int)) or isinstance(customer_id, bool):
             raise CaktoPayloadError("customer.id must be string or integer")
+        customer_email = customer.get("email")
+        if customer_email is not None and not isinstance(customer_email, str):
+            raise CaktoPayloadError("customer.email must be string or null")
         order_status = _text(data.get("status"), "status", 80)
         callback_raw = data.get("callback")
         if callback_raw is not None and not isinstance(callback_raw, str):
@@ -564,6 +574,7 @@ class CaktoWebhookVerifier:
             external_subscription_id=external_subscription_id,
             payload_sha256=payload_hash,
             received_at=received_at,
+            external_customer_email=customer_email,
         )
 
 
@@ -896,6 +907,29 @@ def _object(value: object, field_name: str) -> dict[str, Any]:
     if not isinstance(value, dict):
         raise CaktoPayloadError(f"{field_name} must be object")
     return value
+
+
+def _optional_email(value: str) -> str | None:
+    """Normalize an externally-reported email as an unverified delivery hint.
+
+    This is never treated as proof of identity (see ``CommercialClaimService``
+    and ``CaktoClaimAutomationService``). A value that is present but does not
+    look like a usable address is dropped rather than rejecting the whole
+    authenticated webhook event over optional, provider-supplied metadata.
+    """
+
+    normalized = value.strip().casefold()
+    if (
+        not normalized
+        or len(normalized) > 320
+        or normalized.count("@") != 1
+        or normalized.startswith("@")
+        or normalized.endswith("@")
+        or "\r" in normalized
+        or "\n" in normalized
+    ):
+        return None
+    return normalized
 
 
 def _iso_datetime(value: object, field_name: str) -> datetime:

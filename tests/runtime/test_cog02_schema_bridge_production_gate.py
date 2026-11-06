@@ -77,7 +77,7 @@ def setup(monkeypatch: pytest.MonkeyPatch):
 def test_release_deploy_gate_accepts_19_rejects_18_without_write(
     setup, capsys: pytest.CaptureFixture[str], version: int,
 ) -> None:
-    database = setup(tuple(range(1, version + 1)), (1, 2))
+    database = setup(tuple(range(1, version + 1)), (1, 2, 3))
     if version == 19:
         guard.assert_current_production()
     else:
@@ -95,11 +95,11 @@ def test_release_deploy_gate_accepts_19_rejects_18_without_write(
 @pytest.mark.parametrize(
     ("fiscal", "cakto"),
     [
-        (tuple(range(1, 18)), (1, 2)),
-        (tuple(range(1, 21)), (1, 2)),
+        (tuple(range(1, 18)), (1, 2, 3)),
+        (tuple(range(1, 21)), (1, 2, 3)),
         (tuple(range(1, 20)), None),
         (tuple(range(1, 20)), (1,)),
-        (tuple(range(1, 20)), (1, 2, 3)),
+        (tuple(range(1, 20)), (1, 2, 3, 4)),
     ],
 )
 def test_release_deploy_gate_rejects_schema_drift(

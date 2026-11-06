@@ -56,7 +56,8 @@ from .activation_email import build_activation_delivery_from_environ
 from .ai_secrets import build_production_openai_key_readers
 from .alert_rules import InternalAlertMonitor, OperationalSignals
 from .api_staging_gsm_probe import staging_probe_verifier
-from .cakto import build_cakto_webhook_router
+from .cakto import build_cakto_webhook_router, compose_postgres_cakto_commercial_runtime
+from .cakto_claim_email import build_cakto_claim_delivery_from_environ
 from .canonical_fiscal_composition import (
     build_runtime_fiscal_handler_factory,
     fiscal_external_dependency_snapshot,
@@ -81,6 +82,7 @@ from .observability import (
     TraceContext,
 )
 from .otel_trace_sink import build_trace_sink
+from .production_cakto_ingress import production_cakto_webhook_secret
 from .production_command_ingress import production_command_resolver
 from .production_gsm import production_api_verifier
 from .public_trial_abuse import PostgresPublicTrialAbuseGate
@@ -136,6 +138,7 @@ class RuntimeApi:
                         password_reset_ttl=timedelta(
                             minutes=settings.password_reset_ttl_minutes
                         ),
+                        cakto_claim_delivery=build_cakto_claim_delivery_from_environ(),
                     )
                 except Exception:
                     self._composition_boot_error = True
@@ -250,6 +253,27 @@ def create_runtime_app(
                         "duplicate production Command secret authority"
                     )
                 command_secret_resolver = approved_command
+            # Separate, explicitly approved Cakto webhook signing scope. A
+            # configured production secret may never downgrade to a caller-
+            # supplied receiver or guessed/default material.
+            approved_cakto_webhook_secret = production_cakto_webhook_secret(
+                runtime.database
+            )
+            if approved_cakto_webhook_secret is not None:
+                if cakto_receiver is not None:
+                    raise RuntimeConfigurationError(
+                        "duplicate production Cakto webhook authority"
+                    )
+                cakto_receiver = compose_postgres_cakto_commercial_runtime(
+                    fiscal_database=runtime.database,
+                    webhook_secret=approved_cakto_webhook_secret,
+                    metrics=runtime_metrics,
+                    canonical_bridge=(
+                        composition.cakto_canonical_bridge
+                        if composition is not None
+                        else None
+                    ),
+                ).receiver
     if resolved.environment.value == "staging" and runtime.database is not None:
         # Separate channel-specific GSM bindings, validated against the same
         # canonical external vault and existing nfcore-api identity.

@@ -54,7 +54,7 @@ class _Cursor:
 
     def fetchall(self) -> tuple[tuple[int, ...], ...]:
         if "FROM fm_cakto_schema_migrations" in self._statement:
-            return ((1,), (2,))
+            return ((1,), (2,), (3,))
         return ()
 
 

@@ -273,7 +273,7 @@ def test_cakto_schema_guard_is_read_only(tmp_path) -> None:
     assert rows == [], "read-only guard must not initialize missing schema"
 
     assert database.initialize() is True
-    assert database.require_current_schema() == (1, 2)
+    assert database.require_current_schema() == (1, 2, 3)
     with sqlite3.connect(path) as connection:
         connection.execute("DELETE FROM fm_cakto_schema_migrations WHERE version = 2")
     with pytest.raises(CaktoStateConflictError, match="certified migration version"):

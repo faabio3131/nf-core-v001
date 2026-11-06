@@ -59,8 +59,9 @@ class _ConnectionContext(Protocol):
 
 ConnectionContextFactory = Callable[[], _ConnectionContext]
 
-CAKTO_SCHEMA_VERSION = 2
+CAKTO_SCHEMA_VERSION = 3
 CAKTO_SCHEMA_NAME = "cl11_cakto_canonical_reconciliation"
+CAKTO_SCHEMA_V3_NAME = "nfv1_cakto_claim_automation_email"
 CAKTO_SCHEMA_V1_NAME = "web11_cakto_commercial_activation"
 CAKTO_SCHEMA_V1_STATEMENTS: tuple[str, ...] = (
     """
@@ -126,9 +127,14 @@ CAKTO_SCHEMA_V2_STATEMENTS: tuple[str, ...] = (
     ),
 )
 
+CAKTO_SCHEMA_V3_STATEMENTS: tuple[str, ...] = (
+    "ALTER TABLE fm_cakto_webhook_inbox ADD COLUMN external_customer_email TEXT",
+)
+
 CAKTO_SCHEMA_STATEMENTS: tuple[str, ...] = (
     *CAKTO_SCHEMA_V1_STATEMENTS,
     *CAKTO_SCHEMA_V2_STATEMENTS,
+    *CAKTO_SCHEMA_V3_STATEMENTS,
 )
 
 
@@ -264,8 +270,8 @@ class CaktoSqlCommercialStore(CaktoCommercialStore):
                     external_offer_id, external_customer_id, order_status,
                     occurred_at, payload_sha256, received_at, status, attempt_count,
                     next_attempt_at, last_error, tenant_id, outcome_reference,
-                   callback_token, external_subscription_id
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                   callback_token, external_subscription_id, external_customer_email
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     entry.event_key,
@@ -286,6 +292,7 @@ class CaktoSqlCommercialStore(CaktoCommercialStore):
                     entry.outcome_reference,
                     entry.callback_token,
                     entry.external_subscription_id,
+                    entry.external_customer_email,
                 ),
             )
         except sqlite3.IntegrityError:
@@ -303,7 +310,7 @@ class CaktoSqlCommercialStore(CaktoCommercialStore):
                    external_offer_id, external_customer_id, order_status,
                    occurred_at, payload_sha256, received_at, status, attempt_count,
                    next_attempt_at, last_error, tenant_id, outcome_reference,
-                   callback_token, external_subscription_id
+                   callback_token, external_subscription_id, external_customer_email
             FROM fm_cakto_webhook_inbox WHERE event_key = ?
             """,
             (event_key,),
@@ -321,7 +328,7 @@ class CaktoSqlCommercialStore(CaktoCommercialStore):
                    external_offer_id, external_customer_id, order_status,
                    occurred_at, payload_sha256, received_at, status, attempt_count,
                    next_attempt_at, last_error, tenant_id, outcome_reference,
-                   callback_token, external_subscription_id
+                   callback_token, external_subscription_id, external_customer_email
             FROM fm_cakto_webhook_inbox
             WHERE status IN (?, ?)
               AND (next_attempt_at IS NULL OR next_attempt_at <= ?)
@@ -517,6 +524,7 @@ class CaktoSqlCommercialStore(CaktoCommercialStore):
             outcome_reference=_optional_text(row[15]),
             callback_token=_optional_text(row[16]),
             external_subscription_id=_optional_text(row[17]),
+            external_customer_email=_optional_text(row[18]),
         )
 
     @staticmethod
@@ -634,6 +642,7 @@ class CaktoCommercialDatabase:
             migrations = (
                 (1, CAKTO_SCHEMA_V1_NAME, CAKTO_SCHEMA_V1_STATEMENTS),
                 (2, CAKTO_SCHEMA_NAME, CAKTO_SCHEMA_V2_STATEMENTS),
+                (3, CAKTO_SCHEMA_V3_NAME, CAKTO_SCHEMA_V3_STATEMENTS),
             )
             for version, name, statements in migrations:
                 if version in applied:

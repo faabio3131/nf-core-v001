@@ -354,3 +354,65 @@ def test_reconciliation_delegates_to_canonical_bridge_and_reports_drift(tmp_path
 def test_legacy_commercial_models_have_no_fiscal_activation_surface() -> None:
     assert "fiscal" not in CaktoCommercialEntitlement.__dataclass_fields__
     assert "fiscal" not in CaktoCommercialTenant.__dataclass_fields__
+
+
+def test_customer_email_is_captured_and_persisted_as_a_delivery_hint(tmp_path) -> None:
+    database = _database(tmp_path)
+    order = _order()
+    order["customer"] = {"id": 481920, "name": "Test Customer", "email": "Buyer@Example.com"}
+
+    entries = _receive(database, "purchase_approved", order)
+
+    assert len(entries) == 1
+    assert entries[0].external_customer_email == "buyer@example.com"
+    with database() as uow:
+        persisted = uow.commercial.get_cakto_event(entries[0].event_key)
+    assert persisted is not None
+    assert persisted.external_customer_email == "buyer@example.com"
+
+
+def test_missing_customer_email_persists_as_none(tmp_path) -> None:
+    database = _database(tmp_path)
+    order = _order()  # customer dict has no "email" key
+
+    entries = _receive(database, "purchase_approved", order)
+
+    assert entries[0].external_customer_email is None
+    with database() as uow:
+        persisted = uow.commercial.get_cakto_event(entries[0].event_key)
+    assert persisted is not None
+    assert persisted.external_customer_email is None
+
+
+def test_non_string_customer_email_is_rejected() -> None:
+    order = _order()
+    order["customer"] = {"id": 481920, "email": 12345}
+    body = _body("purchase_approved", order)
+    timestamp_header, signature = _headers(body)
+
+    with pytest.raises(CaktoPayloadError, match="customer.email"):
+        CaktoWebhookVerifier(SECRET).verify_and_parse(
+            raw_body=body,
+            timestamp_header=timestamp_header,
+            signature_header=signature,
+            received_at=NOW,
+        )
+
+
+def test_malformed_customer_email_is_dropped_not_rejected(tmp_path) -> None:
+    database = _database(tmp_path)
+    order = _order()
+    order["customer"] = {"id": 481920, "email": "not-an-email"}
+
+    entries = _receive(database, "purchase_approved", order)
+
+    # An unusable email is a delivery hint, not a document to reject the
+    # whole authenticated webhook event over.
+    assert entries[0].external_customer_email is None
+
+
+def test_schema_applies_all_three_migrations_idempotently(tmp_path) -> None:
+    database = _database(tmp_path)
+    # require_current_schema() raises unless exactly versions 1..CAKTO_SCHEMA_VERSION
+    # (now 3, including the new external_customer_email column) have been applied.
+    assert database.require_current_schema() == (1, 2, 3)

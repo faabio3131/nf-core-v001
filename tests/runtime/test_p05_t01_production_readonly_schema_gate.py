@@ -83,13 +83,13 @@ def test_production_exact_schema_permits_code_only_without_approval(setup, capsy
 @pytest.mark.parametrize(
     ("fiscal", "cakto", "reason"),
     [
-        (tuple(range(1, 18)), (1, 2), "fiscal"),
-        ((1, 3), (1, 2), "fiscal"),
-        (tuple(range(1, 20)), (1, 2), "fiscal"),
+        (tuple(range(1, 18)), (1, 2, 3), "fiscal"),
+        ((1, 3), (1, 2, 3), "fiscal"),
+        (tuple(range(1, 20)), (1, 2, 3), "fiscal"),
         (tuple(range(1, 19)), None, "Cakto"),
         (tuple(range(1, 19)), (1,), "Cakto"),
         (tuple(range(1, 19)), (2,), "Cakto"),
-        (tuple(range(1, 19)), (1, 2, 3), "Cakto"),
+        (tuple(range(1, 19)), (1, 2, 3, 4), "Cakto"),
     ],
 )
 def test_production_schema_mismatch_blocks_without_write(setup, fiscal, cakto, reason):

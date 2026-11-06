@@ -4,8 +4,29 @@ The static catalog is advisory only and never authorizes provider transmission.
 The canonical DurableProviderBindingResolver performs the actual exact-match
 lookup by tenant, unit, environment, kind, issuer jurisdiction and operation.
 No second authorization state, persistence, or fiscal gateway is introduced.
+
+Municipal (São Paulo city) routing guard -- Simples Nacional / Emissor Nacional
+--------------------------------------------------------------------------------
+The São Paulo Secretaria Municipal da Fazenda made the national NFS-e emitter
+(Emissor Nacional, https://www.gov.br/nfse) mandatory for Simples Nacional
+taxpayers as of 2026-09-01 (and for self-employed/liberal professionals as of
+2026-08-01); see https://prefeitura.sp.gov.br/web/fazenda/w/usoemissornacional.
+From that date, the legacy municipal webservice (`lotenfe.asmx` /
+`nfews.prefeitura.sp.gov.br/lotenfe.asmx`, built by
+`gateway/nfse_paulistana_envelope.py`) only serves consultation and
+retroactive issuance for Simples Nacional issuers -- NOT new issuance.
+
+``ensure_municipal_sp_transport_permitted`` is a structural fail-closed guard,
+not a routing decision: it does not pick a provider, does not call the
+Emissor Nacional, and is not wired into any production transmission path
+today (none exists yet for Nota Paulistana). Any future transport client for
+the municipal webservice MUST call it before submitting, so a Simples
+Nacional issuer can never be silently routed to a webservice that can no
+longer accept new issuance for that regime.
 """
 from __future__ import annotations
+
+from datetime import UTC, datetime
 
 from kordena_fiscal.domain import (
     BrazilianJurisdiction,
@@ -17,6 +38,44 @@ from kordena_fiscal.gateway.provider import (
     ProviderSelectionResolver,
     UnsupportedProviderError,
 )
+from kordena_fiscal.tax.regimes import FederalIncomeTaxRegime
+
+# Published by the São Paulo Secretaria Municipal da Fazenda; see the module
+# docstring. This is a sourced regulatory date, not an engineering estimate.
+SIMPLES_NACIONAL_EMISSOR_NACIONAL_MANDATORY_FROM = datetime(2026, 9, 1, tzinfo=UTC)
+
+
+class MunicipalTransportNotPermittedError(UnsupportedProviderError):
+    """Raised when the legacy São Paulo webservice cannot accept new issuance."""
+
+
+def ensure_municipal_sp_transport_permitted(
+    federal_income_tax_regime: FederalIncomeTaxRegime,
+    *,
+    issuer_ibge_code: str,
+    as_of: datetime,
+) -> None:
+    """Fail closed before any new-issuance call to the legacy SP webservice.
+
+    Only São Paulo city (IBGE 3550308) is affected by this specific municipal
+    deadline; other SP municipalities are untouched by this guard. A Simples
+    Nacional issuer on or after the mandatory date must be routed to the
+    Emissor Nacional instead -- this function never does that routing itself,
+    it only refuses the legacy path so a caller cannot reach it by omission.
+    """
+    if issuer_ibge_code != "3550308":
+        return
+    if as_of.tzinfo is None:
+        raise UnsupportedProviderError("as_of must be timezone-aware")
+    if (
+        federal_income_tax_regime is FederalIncomeTaxRegime.SIMPLES_NACIONAL
+        and as_of >= SIMPLES_NACIONAL_EMISSOR_NACIONAL_MANDATORY_FROM
+    ):
+        raise MunicipalTransportNotPermittedError(
+            "Simples Nacional issuers in São Paulo city must use the national "
+            "NFS-e emitter (Emissor Nacional) for new issuance on or after "
+            "2026-09-01; the legacy municipal webservice no longer accepts it"
+        )
 
 # Candidate migration/UX catalog: NOT approved municipal provider bindings.
 # Source: executive research candidates; current municipal contracts require

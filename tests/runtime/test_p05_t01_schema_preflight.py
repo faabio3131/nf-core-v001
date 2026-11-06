@@ -66,7 +66,7 @@ class _Db:
     [
         (tuple(range(1, 13)), None, "fiscal_pending=(13, 14, 15, 16, 17, 18)"),
         (tuple(range(1, 19)), (1, 2), "fiscal_pending=()"),
-        (tuple(range(1, 15)), (1,), "cakto_pending=(2,)"),
+        (tuple(range(1, 15)), (1,), "cakto_pending=(2, 3)"),
     ],
 )
 def test_preflight_is_read_only(
@@ -91,7 +91,7 @@ def test_preflight_is_read_only(
         ((1, 3), None),
         (tuple(range(1, 20)), None),
         (tuple(range(1, 13)), (2,)),
-        (tuple(range(1, 13)), (1, 2, 3)),
+        (tuple(range(1, 13)), (1, 2, 3, 4)),
     ],
 )
 def test_schema_drift_blocks_preflight(monkeypatch, installed, cakto) -> None:

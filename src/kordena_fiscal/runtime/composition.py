@@ -11,6 +11,13 @@ from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from datetime import timedelta
 
+from kordena_fiscal.application.cakto_claim_automation import (
+    CaktoClaimAutomationService,
+    CaktoClaimDelivery,
+)
+from kordena_fiscal.application.cakto_reconciliation import (
+    CaktoCanonicalCommercialBridgeService,
+)
 from kordena_fiscal.application.commercial_activation import (
     CommercialCustomerActivationService,
 )
@@ -81,6 +88,8 @@ class RuntimeComposition:
     pricing_administration: CommercialPricingAdministrationService
     commercial_release_administration: CommercialReleaseAdministrationService
     cakto_checkout_administration: CaktoCheckoutAdministrationService | None
+    cakto_claim_automation: CaktoClaimAutomationService
+    cakto_canonical_bridge: CaktoCanonicalCommercialBridgeService
     fiscal_application: FiscalApplicationService
     fiscal_operation_path: CanonicalFiscalOperationPath
     bridge_security: CanonicalBridgeSecurityBoundary
@@ -101,6 +110,7 @@ def build_postgres_runtime_composition(
     enable_cakto_checkout: bool = False,
     metrics: MetricsRegistry | None = None,
     password_reset_ttl: timedelta = timedelta(minutes=10),
+    cakto_claim_delivery: CaktoClaimDelivery | None = None,
 ) -> RuntimeComposition:
     """Compose commercial, human and fiscal ingress over the same PostgreSQL lifecycle."""
 
@@ -168,6 +178,17 @@ def build_postgres_runtime_composition(
     commercial_release_administration = CommercialReleaseAdministrationService(
         database.commercial_release_catalog()
     )
+    cakto_claim_automation = CaktoClaimAutomationService(
+        unit_of_work_factory=canonical_commercial_database,
+        claims=commercial_claim,
+        delivery=cakto_claim_delivery,
+    )
+    cakto_canonical_bridge = CaktoCanonicalCommercialBridgeService(
+        unit_of_work_factory=canonical_commercial_database,
+        fulfillment=commercial_fulfillment,
+        pricing=pricing_administration,
+        claim_automation=cakto_claim_automation,
+    )
     cakto_checkout_administration: CaktoCheckoutAdministrationService | None = None
     if enable_cakto_checkout:
         cakto_commercial_database = postgres_cakto_commercial_database(database)
@@ -230,6 +251,8 @@ def build_postgres_runtime_composition(
         pricing_administration=pricing_administration,
         commercial_release_administration=commercial_release_administration,
         cakto_checkout_administration=cakto_checkout_administration,
+        cakto_claim_automation=cakto_claim_automation,
+        cakto_canonical_bridge=cakto_canonical_bridge,
         fiscal_application=fiscal_application,
         fiscal_operation_path=fiscal_operation_path,
         bridge_security=bridge_security,
