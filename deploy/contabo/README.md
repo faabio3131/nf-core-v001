@@ -31,6 +31,20 @@ autorização do deploy** (decisão do Diretor, 26/10/2026). Nenhum agente entra
 
 **Atenção:** o fluxo contém apenas API e Portal. Worker/GSM não está nesse compose; não declarar publicação completa por este deploy. A restauração do banco exige runbook manual com ensaio isolado, sem `DROP SCHEMA public CASCADE` automático.
 
+## Trial público opt-in (`/v1/public/trial-plans`)
+
+Desligado por padrão. Para habilitar, defina `NFCORE_PUBLIC_TRIAL_ALLOWED_ORIGINS` no `.env` (modelo em `.env.example`) com as origens separadas por vírgula; cada uma precisa também constar em `NFCORE_ALLOWED_ORIGINS`, e o e-mail de ativação precisa estar configurado — o runtime recusa subir (`RuntimeConfigurationError`) se qualquer pré-requisito faltar em ambiente de produção. Isso é decisão do Diretor, não automática por estar documentada aqui.
+
+## Checklist de homologação (`tpAmb=2`) antes de produção (`tpAmb=1`)
+
+Antes de qualquer decisão de ativar `tpAmb=1` (produção fiscal real), rodar a partir do servidor ou de um host com a mesma saída de rede:
+
+```
+PYTHONPATH=src python3 scripts/healthcheck_homologation.py --require-all-pinned-reachable
+```
+
+Confere conectividade TLS (sem assinar ou submeter nada) com os webservices de homologação já integrados e pinados no código: SEFAZ NF-e SP e SEFIN Nacional (NFS-e). **Nota Paulistana aparece como `NOT_PINNED`** — ainda não existe cliente de transporte real integrado para ela (`gateway/nfse_paulistana_envelope.py` só monta o envelope XML); o script nunca inventa ou tenta adivinhar esse endpoint. Um resultado verde aqui é pré-condição de rede, não prova de homologação fiscal, autorização de provedor ou prontidão operacional — não substitui a certificação por tenant.
+
 ## Como publicar (agentes)
 1. PR para `main`, CI verde.
 2. **Somente com ordem do Diretor no chat:** promover `main` → `production` (PR ou push, conforme a regra da branch).
