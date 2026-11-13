@@ -4,6 +4,8 @@ SOURCE_URLS = (
     "https://dfe-portal.svrs.rs.gov.br/Nfe/Servicos",
     "https://dfe-portal.svrs.rs.gov.br/Nfce/Servicos",
     "https://portalsped.fazenda.mg.gov.br/spedmg/nfce/web-services/",
+    "https://portal.fazenda.sp.gov.br/servicos/nfce/Paginas/WebServices.aspx",
+    "https://portal.fazenda.sp.gov.br/servicos/nfe/Paginas/URL-WEBSERVICES.aspx",
 )
 
 # (UF, family, environment, authority, source index, services)
@@ -168,7 +170,7 @@ ENDPOINT_GROUPS = (
         "receipt": "https://nfe.svrs.rs.gov.br/ws/NfeRetAutorizacao/NFeRetAutorizacao4.asmx",
         "status": "https://nfe.svrs.rs.gov.br/ws/NfeStatusServico/NfeStatusServico4.asmx",
     }),
-    ("SP", "nfce", "homologation", "SP", 1, {
+    ("SP", "nfce", "homologation", "SP", 3, {
         "authorize": "https://homologacao.nfce.fazenda.sp.gov.br/ws/NFeAutorizacao4.asmx",
         "cancel": "https://homologacao.nfce.fazenda.sp.gov.br/ws/NFeRecepcaoEvento4.asmx",
         "inutilize": "https://homologacao.nfce.fazenda.sp.gov.br/ws/NFeInutilizacao4.asmx",
@@ -176,7 +178,7 @@ ENDPOINT_GROUPS = (
         "receipt": "https://homologacao.nfce.fazenda.sp.gov.br/ws/NFeRetAutorizacao4.asmx",
         "status": "https://homologacao.nfce.fazenda.sp.gov.br/ws/NFeStatusServico4.asmx",
     }),
-    ("SP", "nfce", "production", "SP", 1, {
+    ("SP", "nfce", "production", "SP", 3, {
         "authorize": "https://nfce.fazenda.sp.gov.br/ws/NFeAutorizacao4.asmx",
         "cancel": "https://nfce.fazenda.sp.gov.br/ws/NFeRecepcaoEvento4.asmx",
         "inutilize": "https://nfce.fazenda.sp.gov.br/ws/NFeInutilizacao4.asmx",
@@ -184,7 +186,7 @@ ENDPOINT_GROUPS = (
         "receipt": "https://nfce.fazenda.sp.gov.br/ws/NFeRetAutorizacao4.asmx",
         "status": "https://nfce.fazenda.sp.gov.br/ws/NFeStatusServico4.asmx",
     }),
-    ("SP", "nfe", "homologation", "SP", 0, {
+    ("SP", "nfe", "homologation", "SP", 4, {
         "authorize": "https://homologacao.nfe.fazenda.sp.gov.br/ws/nfeautorizacao4.asmx",
         "cancel": "https://homologacao.nfe.fazenda.sp.gov.br/ws/nferecepcaoevento4.asmx",
         "inutilize": "https://homologacao.nfe.fazenda.sp.gov.br/ws/nfeinutilizacao4.asmx",
@@ -192,7 +194,7 @@ ENDPOINT_GROUPS = (
         "receipt": "https://homologacao.nfe.fazenda.sp.gov.br/ws/nferetautorizacao4.asmx",
         "status": "https://homologacao.nfe.fazenda.sp.gov.br/ws/nfestatusservico4.asmx",
     }),
-    ("SP", "nfe", "production", "SP", 0, {
+    ("SP", "nfe", "production", "SP", 4, {
         "authorize": "https://nfe.fazenda.sp.gov.br/ws/nfeautorizacao4.asmx",
         "cancel": "https://nfe.fazenda.sp.gov.br/ws/nferecepcaoevento4.asmx",
         "inutilize": "https://nfe.fazenda.sp.gov.br/ws/nfeinutilizacao4.asmx",

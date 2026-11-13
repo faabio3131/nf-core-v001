@@ -4,7 +4,7 @@ from importlib.resources import files
 
 from kordena_fiscal.domain import FiscalValidationError
 
-from .schema import SchemaResource, SchemaSet, XmlSchemaValidator
+from .schema import SchemaIntegrityError, SchemaResource, SchemaSet, XmlSchemaValidator
 
 _SOURCE = (
     "https://www.gov.br/nfse/pt-br/biblioteca/documentacao-tecnica/documentacao-atual/"
@@ -32,6 +32,38 @@ _HASHES = {
 }
 
 
+# Regulatory compatibility exception: the *unmodified* official 2026-02-09
+# NFS-e 1.01 package includes PCRE-style anchors in the TSSerieDPS xs:pattern.
+# XSD regex syntax implicitly anchors the whole value; '^' and '$' are literal.
+# Do not edit official XML files or accept an arbitrary unverified replacement.
+# Source and derived digests are independently pinned and documented.
+_XSD101_SERIE_NAME = "tiposSimples_v1.01.xsd"
+_XSD101_SERIE_OFFICIAL = b'<xs:pattern value="^0{0,4}\\d{1,5}$"/>'
+_XSD101_SERIE_DERIVED = b'<xs:pattern value="0{0,4}\\d{1,5}"/>'
+_XSD101_SERIE_DERIVED_SHA256 = (
+    "42a3026812524f787c5157cb1d6411d4461151798a33569df069c3f35ef18773"
+)
+
+
+def _pinned_schema_resource(
+    *, version: str, name: str, official_bytes: bytes, official_sha256: str,
+) -> SchemaResource:
+    """Verify official bytes first; derive only the single audited 1.01 erratum.
+
+    A changed upstream package, an unexpected count of the offending pattern,
+    or a drifted derived digest fails closed before XML validation.
+    """
+    official = SchemaResource(name, official_bytes, official_sha256)
+    if version != "1.01" or name != _XSD101_SERIE_NAME:
+        return official
+    if official.content.count(_XSD101_SERIE_OFFICIAL) != 1:
+        raise SchemaIntegrityError("NFS-e 1.01 TSSerieDPS official source no longer matches audit")
+    derived_bytes = official.content.replace(
+        _XSD101_SERIE_OFFICIAL, _XSD101_SERIE_DERIVED, 1,
+    )
+    return SchemaResource(name, derived_bytes, _XSD101_SERIE_DERIVED_SHA256)
+
+
 @lru_cache(maxsize=2)
 def national_dps_validator(version: str) -> XmlSchemaValidator:
     if version not in _HASHES:
@@ -41,7 +73,12 @@ def national_dps_validator(version: str) -> XmlSchemaValidator:
         version=version,
         root_schema=f"DPS_v{version}.xsd",
         resources=tuple(
-            SchemaResource(name, directory.joinpath(name).read_bytes(), digest)
+            _pinned_schema_resource(
+                version=version,
+                name=name,
+                official_bytes=directory.joinpath(name).read_bytes(),
+                official_sha256=digest,
+            )
             for name, digest in _HASHES[version].items()
         ),
         source_uri=_SOURCE,

@@ -96,6 +96,7 @@ _OPERATION_PERMISSIONS: dict[str, PortalPermission] = {
     "configureSettings": PortalPermission.CONFIGURATION_WRITE,
     "registerFiscalProfile": PortalPermission.CONFIGURATION_WRITE,
     "prepareExtremaNfse": PortalPermission.CONFIGURATION_WRITE,
+    "prepareNativeNfse": PortalPermission.DOCUMENT_ISSUE,
     "createUser": PortalPermission.USER_MANAGE,
     "updateUser": PortalPermission.USER_MANAGE,
     "issueFiscalDocument": PortalPermission.DOCUMENT_ISSUE,
@@ -117,6 +118,7 @@ _IDEMPOTENT_MUTATIONS = {
     "configureSettings",
     "registerFiscalProfile",
     "prepareExtremaNfse",
+    "prepareNativeNfse",
     "createUser",
     "updateUser",
     "issueFiscalDocument",
@@ -394,7 +396,7 @@ def create_portal_router(
         """Serve immutable fiscal files to the same authorized human session."""
         auth = authority(request)
         _authorized(auth, PortalPermission.DOCUMENT_QUERY, unit_id=unit_id)
-        if kind not in {"authorized_xml", "danfe"}:
+        if kind not in {"authorized_xml", "danfe", "auxiliary_pdf"}:
             raise HTTPException(400, detail={"code": "FISCAL_ARTIFACT_KIND_INVALID"})
         if not 1 <= len(document_reference) <= 256:
             raise HTTPException(400, detail={"code": "FISCAL_ARTIFACT_REFERENCE_INVALID"})

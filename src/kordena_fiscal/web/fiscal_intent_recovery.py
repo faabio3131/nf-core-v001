@@ -169,7 +169,31 @@ class FiscalIntentRecovery:
         raise denied(code, status)
 
     @staticmethod
-    def project(row: Mapping[str, object], *, replay: bool = True) -> Mapping[str, Any]:
+    def _safe_result(value: object) -> dict[str, object]:
+        """Only scoped, non-secret fiscal status; never persist a provider payload."""
+        if not isinstance(value, Mapping):
+            return {}
+        texts = {
+            "document_id", "status", "result_reference",
+            "rejection_reason", "rejection_message", "query_status",
+        }
+        flags = {"recovery_required"}
+        safe: dict[str, object] = {}
+        for key in texts:
+            item = value.get(key)
+            if isinstance(item, str) and len(item) <= 512:
+                safe[key] = item
+        for key in flags:
+            item = value.get(key)
+            if type(item) is bool:
+                safe[key] = item
+        return safe
+
+    @classmethod
+    def project(
+        cls, row: Mapping[str, object], *, replay: bool = True
+    ) -> Mapping[str, Any]:
+        safe = cls._safe_result(row.get("operation_result"))
         return {
             key: row.get(key)
             for key in (
@@ -182,7 +206,9 @@ class FiscalIntentRecovery:
                 "state",
                 "reference_id",
             )
-        } | {"replay": replay, "fiscal_confirmation": "not_inferred_from_receipt"}
+        } | {
+            "replay": replay, "fiscal_confirmation": "not_inferred_from_receipt",
+        } | ({"operation_result": safe} if safe else {})
 
     def validate(
         self,
@@ -346,12 +372,15 @@ class FiscalIntentRecovery:
         scope: ExecutionScope,
         row: Mapping[str, object],
         reference: object = None,
+        operation_result: Mapping[str, Any] | None = None,
     ) -> Mapping[str, object]:
         intent = str(row["intent_id"])
         updated = dict(row) | {
             "state": "recorded",
             "reference_id": reference if isinstance(reference, str) else None,
         }
+        if operation_result is not None:
+            updated["operation_result"] = self._safe_result(operation_result)
         with self.factory() as uow:
             if not uow.commercial.replace_configuration_receipt(scope, intent, row, updated):
                 current = uow.commercial.configuration_receipt(scope, intent)

@@ -157,3 +157,49 @@ def test_sp_operation_gate_rejects_invalid_or_naive_context() -> None:
             operation=ProviderOperation.INUTILIZE,
             requested_at=datetime(2026, 11, 4, tzinfo=UTC),
         )
+
+
+@pytest.mark.parametrize("city", CITIES)
+@pytest.mark.parametrize("competence", [
+    date(2023, 9, 1), date(2026, 9, 1), date(2026, 10, 31),
+])
+def test_mei_pilot_uses_national_from_2023_without_2026_me_epp_cutoff(
+    city: str, competence: date,
+) -> None:
+    route = resolve_sp_pilot_route(
+        jurisdiction=BrazilianJurisdiction("SP", city),
+        document="nfse",
+        tax_regime=TaxRegimeCode.MEI,
+        competence_date=competence,
+    )
+    assert route.channel == "nfse-national"
+    assert route.requires_external_homologation
+
+
+@pytest.mark.parametrize("city", CITIES)
+def test_mei_before_september_2023_fails_closed_without_legacy_contract(
+    city: str,
+) -> None:
+    with pytest.raises(FiscalValidationError, match="explicit official eligibility"):
+        resolve_sp_pilot_route(
+            jurisdiction=BrazilianJurisdiction("SP", city),
+            document="nfse",
+            tax_regime=TaxRegimeCode.MEI,
+            competence_date=date(2023, 8, 31),
+        )
+
+
+@pytest.mark.parametrize("regime", [
+    TaxRegimeCode.SIMPLES_NACIONAL,
+    TaxRegimeCode.SIMPLES_NACIONAL_EXCESS_SUBLIMIT,
+])
+def test_me_epp_pre_november_2026_not_forced_into_national(
+    regime: TaxRegimeCode,
+) -> None:
+    with pytest.raises(FiscalValidationError, match="explicit official eligibility"):
+        resolve_sp_pilot_route(
+            jurisdiction=BrazilianJurisdiction("SP", "3550308"),
+            document="nfse",
+            tax_regime=regime,
+            competence_date=date(2026, 10, 31),
+        )

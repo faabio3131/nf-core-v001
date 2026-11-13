@@ -1,13 +1,14 @@
 """Durable provider-neutral NFS-e preparation and restart recovery."""
 
 import json
-from datetime import UTC, datetime
+from dataclasses import replace
+from datetime import UTC, date, datetime
 from decimal import Decimal
 
 import pytest
 
 from kordena_fiscal.application import FiscalApplicationService
-from kordena_fiscal.archive import RetentionPolicyMetadata
+from kordena_fiscal.archive import FiscalArchiveKind, RetentionPolicyMetadata
 from kordena_fiscal.domain import (
     BrazilianJurisdiction,
     CnaeCode,
@@ -30,6 +31,7 @@ from kordena_fiscal.issuance import (
     NfseGatewayClient,
     NfseQueryClient,
     NfseServiceLine,
+    NfseServiceTaker,
 )
 from kordena_fiscal.issuance.nfse_archive import decode_prepared_nfse, encode_prepared_nfse
 from kordena_fiscal.lifecycle import FiscalDocumentState
@@ -316,3 +318,139 @@ def test_national_gateway_requires_binding_and_preaudit_before_dispatch(case):
         jurisdiction=request.document.issuer.address.jurisdiction,
         operation="authorize",
     )
+
+
+@pytest.mark.parametrize("ibge", ("3509205", "3505708", "3534401", "3525904"))
+def test_sp4_national_authorization_archives_returned_xml_atomically(
+    tmp_path, ibge: str,
+) -> None:
+    """Four issuer jurisdictions: authorized XML and lifecycle share a durable commit.
+
+    No fiscal network call occurs. The upstream gateway alone verifies the
+    signed SEFIN NFSe XML; this test protects the archive transaction.
+    """
+    database = SqliteFiscalDatabase(tmp_path / f"nfse-sp4-{ibge}.sqlite")
+    database.initialize()
+    source = nfse_document()
+    issuer_jurisdiction = BrazilianJurisdiction("SP", ibge)
+    issuer = replace(
+        source.issuer,
+        address=replace(
+            source.issuer.address,
+            jurisdiction=issuer_jurisdiction,
+            municipality_name="SP4 Test Municipality",
+        ),
+    )
+    document = replace(
+        source,
+        document_id=f"nfse-sp4-{ibge}",
+        issuer=issuer,
+        service_jurisdiction=issuer_jurisdiction,
+        competence_date=date(2026, 11, 13),
+    )
+    app = FiscalApplicationService(database)
+    prepared = app.prepare_nfse_authorization(
+        document, occurred_at=NOW, retention=RETENTION,
+    )
+    key = "35" + "0" * 48
+    xml = (
+        '<NFSe xmlns="http://www.sped.fazenda.gov.br/nfse">'
+        f'<infNFSe Id="NFS{key}"/></NFSe>'
+    ).encode()
+
+    class AuthorizedNationalTestDouble:
+        def authorize(self, req: NfseAuthorizationRequest) -> NfseAuthorizationResult:
+            return NfseAuthorizationResult(
+                status=AuthorizationStatus.AUTHORIZED,
+                scope=req.document.scope,
+                document_id=req.document.document_id,
+                idempotency_key=req.idempotency_key,
+                request_fingerprint=req.request_fingerprint,
+                provider=GatewayProviderMetadata("nfse-nacional-test-double", "1"),
+                invoice_reference=key,
+                authorized_xml=xml,
+            )
+
+    result = app.authorize_prepared_document(
+        document_id=document.document_id, request=prepared.request,
+        gateway=NfseGatewayClient(AuthorizedNationalTestDouble()), occurred_at=NOW,
+    )
+    assert result.lifecycle.state is FiscalDocumentState.AUTHORIZED
+    assert result.provider_result is not None
+    assert result.provider_result.authorized_xml == xml
+    with database() as uow:
+        evidence = [
+            entry for entry in uow.archive.list_for_document(document.scope, document.document_id)
+            if entry.kind is FiscalArchiveKind.AUTHORIZED_XML
+        ]
+        assert len(evidence) == 1
+        assert evidence[0].content == xml
+        assert uow.lifecycle.get(document.document_id).state is FiscalDocumentState.AUTHORIZED
+
+
+def test_prepared_nfse_taker_survives_archiving_and_rejects_tamper() -> None:
+    base = nfse_document()
+    taker = NfseServiceTaker(
+        tax_id=Cnpj("12345678000195"),
+        legal_name="Tomador Sintetico Ltda",
+        address=FiscalAddress(
+            street="Rua da Empresa", number="30", district="Centro",
+            municipality_name="Sao Paulo",
+            jurisdiction=BrazilianJurisdiction("SP", "3550308"),
+            postal_code="01001000",
+        ),
+    )
+    request = NfseAuthorizationRequest.build(replace(base, service_taker=taker))
+    encoded = encode_prepared_nfse(request)
+    assert decode_prepared_nfse(encoded, scope=base.scope) == request
+    changed = json.loads(encoded)
+    changed["service_taker"]["legal_name"] = "Outra Empresa"
+    # Decoder intentionally masks integrity details, without accepting tampered content.
+    with pytest.raises(FiscalValidationError, match="invalid prepared NFS-e artifact"):
+        decode_prepared_nfse(json.dumps(changed).encode(), scope=base.scope)
+
+
+
+def test_authorized_nfse_xml_is_durably_archived_by_canonical_engine(tmp_path) -> None:
+    """No government call: provider evidence must survive authorization and restart."""
+    database = SqliteFiscalDatabase(tmp_path / "nfse-official-archive.sqlite")
+    database.initialize()
+    document = nfse_document()
+    app = FiscalApplicationService(database)
+    prepared = app.prepare_nfse_authorization(
+        document, occurred_at=NOW, retention=RETENTION
+    )
+    official_fixture = (
+        b'<NFSe xmlns="http://www.sped.fazenda.gov.br/nfse">'
+        b'<infNFSe Id="NFS35000000000000000000000000000000000000000000000000"/>'
+        b'</NFSe>'
+    )
+
+    class ProviderWithVerifiedXml:
+        def authorize(self, request: NfseAuthorizationRequest) -> NfseAuthorizationResult:
+            return NfseAuthorizationResult(
+                status=AuthorizationStatus.AUTHORIZED,
+                scope=request.document.scope,
+                document_id=request.document.document_id,
+                idempotency_key=request.idempotency_key,
+                request_fingerprint=request.request_fingerprint,
+                provider=GatewayProviderMetadata("synthetic-national-provider", "1"),
+                invoice_reference="35000000000000000000000000000000000000000000000000",
+                authorized_xml=official_fixture,
+            )
+
+    outcome = app.authorize_prepared_document(
+        document_id=document.document_id,
+        request=prepared.request,
+        gateway=NfseGatewayClient(ProviderWithVerifiedXml()),
+        occurred_at=NOW,
+    )
+    assert outcome.lifecycle.state is FiscalDocumentState.AUTHORIZED
+    with database() as uow:
+        evidence = [
+            e for e in uow.archive.list_for_document(document.scope, document.document_id)
+            if e.kind is FiscalArchiveKind.AUTHORIZED_XML
+        ]
+        assert len(evidence) == 1
+        assert evidence[0].content == official_fixture
+        assert evidence[0].media_type == "application/xml"

@@ -8,15 +8,17 @@ from __future__ import annotations
 import json
 import ssl
 from collections.abc import Callable
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from urllib.error import HTTPError, URLError
 from urllib.request import HTTPSHandler, Request, build_opener
 
 from kordena_fiscal.domain import (
+    BrazilianJurisdiction,
     Cnpj,
     ExecutionScope,
     FiscalEnvironment,
     FiscalValidationError,
+    TaxRegimeCode,
 )
 from kordena_fiscal.gateway.authorization import (
     AuthorizationStatus,
@@ -24,6 +26,7 @@ from kordena_fiscal.gateway.authorization import (
 )
 from kordena_fiscal.gateway.fiscal_tls import RejectFiscalRedirects, build_fiscal_tls_context
 from kordena_fiscal.gateway.mg_nfse_channel_guard import require_mg_national_channel_eligibility
+from kordena_fiscal.gateway.municipal_sp_routing import classify_sp_national_nfse_eligibility
 from kordena_fiscal.gateway.nfse_national_homologation import (
     SEFIN_HOMOLOGATION_NFSE_URL,
     build_nfse_dps_request,
@@ -78,6 +81,35 @@ def _exchange_http(payload: bytes, context: ssl.SSLContext, timeout: float) -> b
         ) from None
 
 
+def require_nfse_national_issuer_eligibility(
+    *,
+    jurisdiction: BrazilianJurisdiction,
+    tax_regime: TaxRegimeCode,
+    competence_date: date,
+) -> None:
+    """Negative-only federal issuer guard; durable provider binding remains authoritative.
+
+    SP MEI/ME-EPP are validated per service competence before the A1 vault or
+    outbound call. MG retains its independently reviewed municipal policies.
+    Other states retain their prior behavior pending their own coverage audit;
+    this guard never grants a provider binding or production authorization.
+    """
+    if not isinstance(jurisdiction, BrazilianJurisdiction):
+        raise FiscalValidationError("NFS-e requires a valid issuer jurisdiction")
+    if jurisdiction.state_code == "SP":
+        classify_sp_national_nfse_eligibility(
+            issuer_jurisdiction=jurisdiction,
+            tax_regime=tax_regime,
+            competence_date=competence_date,
+        )
+        return
+    require_mg_national_channel_eligibility(
+        jurisdiction=jurisdiction,
+        tax_regime=tax_regime,
+        competence_date=competence_date,
+    )
+
+
 class NfseNacionalHomologationGateway:
     """Real REST/mTLS transport with trusted prepared signed-DPS dependency."""
 
@@ -109,20 +141,22 @@ class NfseNacionalHomologationGateway:
         if issuer_municipality is None:
             raise OfficialNfseTransportError("DPS requires an issuer municipality")
         try:
-            require_mg_national_channel_eligibility(
+            require_nfse_national_issuer_eligibility(
                 jurisdiction=document.issuer.address.jurisdiction,
                 tax_regime=document.issuer.tax_regime,
                 competence_date=document.competence_date,
             )
         except FiscalValidationError:
-            # Never open the A1 vault or contact SEFIN for a wrong issuer.
+            # Never open the A1 vault or contact SEFIN for an ineligible issuer.
+            jurisdiction = document.issuer.address.jurisdiction
             municipality_label = (
-                "Contagem/MG" if issuer_municipality == "3118601"
-                else f"IBGE {issuer_municipality}/MG"
+                "Contagem" if jurisdiction.state_code == "MG"
+                and issuer_municipality == "3118601"
+                else f"IBGE {issuer_municipality}/{jurisdiction.state_code}"
             )
             raise OfficialNfseTransportError(
-                f"{municipality_label}: contrato do Emissor Nacional nao autorizado "
-                "para regime e competencia informados"
+                f"{municipality_label}: "
+                "Emissor Nacional nao autorizado para regime e competencia informados"
             ) from None
         material = self._resolve_certificate(document.scope, issuer_cnpj)
         validate_a1_for_issuer(
@@ -144,6 +178,10 @@ class NfseNacionalHomologationGateway:
             raise OfficialNfseTransportError("Resposta SEFIN sem homologação válida") from None
 
         key = result.get("chaveAcesso")
+        invoice_reference: str | None = None
+        authorized_xml: bytes | None = None
+        rejection_code: str | None = None
+        rejection_message: str | None = None
         if isinstance(key, str) and key:
             # The access key alone is not proof of an authorized invoice.
             # The SEFIN must provide the corresponding decompressible XML.
@@ -152,23 +190,21 @@ class NfseNacionalHomologationGateway:
             if parsed.get("chaveAcesso") != key:
                 raise OfficialNfseTransportError("NFS-e autorizada com chave divergente")
             status = AuthorizationStatus.AUTHORIZED
-            kwargs = {"invoice_reference": key[:512]}
+            invoice_reference = key[:512]
+            authorized_xml = parsed["xml"].encode("utf-8")
         else:
             errors = result.get("erros")
             if isinstance(errors, list) and errors:
                 first = errors[0] if isinstance(errors[0], dict) else {}
                 status = AuthorizationStatus.REJECTED
-                kwargs = {
-                    "rejection_code": str(
-                        first.get("Codigo", first.get("codigo", "NFSE_REJECTED"))
-                    )[:512],
-                    "rejection_message": str(
-                        first.get("Descricao", first.get("descricao", "DPS rejeitada"))
-                    )[:512],
-                }
+                rejection_code = str(
+                    first.get("Codigo", first.get("codigo", "NFSE_REJECTED"))
+                )[:512]
+                rejection_message = str(
+                    first.get("Descricao", first.get("descricao", "DPS rejeitada"))
+                )[:512]
             else:
                 status = AuthorizationStatus.PENDING
-                kwargs = {}
         return NfseAuthorizationResult(
             status=status, scope=document.scope, document_id=document.document_id,
             idempotency_key=request.idempotency_key,
@@ -176,7 +212,8 @@ class NfseNacionalHomologationGateway:
             provider=_PROVIDER,
             provider_request_id=str(result["idDps"])[:512]
             if isinstance(result.get("idDps"), str) else None,
-            invoice_reference=kwargs.get("invoice_reference"),
-            rejection_code=kwargs.get("rejection_code"),
-            rejection_message=kwargs.get("rejection_message"),
+            invoice_reference=invoice_reference,
+            authorized_xml=authorized_xml,
+            rejection_code=rejection_code,
+            rejection_message=rejection_message,
         )

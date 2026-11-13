@@ -15,6 +15,7 @@ from lxml import etree
 
 from kordena_fiscal.control_plane.sefaz_endpoint_catalog import SefazService, resolve_sefaz_endpoint
 from kordena_fiscal.domain import (
+    BrazilianJurisdiction,
     Cnpj,
     ExecutionScope,
     FiscalDocumentKind,
@@ -32,6 +33,10 @@ from kordena_fiscal.gateway.nfe_sp_homologation import (
     _parse_xml,
     _tls_context,
 )
+from kordena_fiscal.gateway.pilot_sp_jurisdiction import (
+    require_sp_jurisdiction_operation_policy,
+)
+from kordena_fiscal.gateway.provider import ProviderOperation
 from kordena_fiscal.operations import (
     CancellationRequest,
     CancellationResult,
@@ -334,6 +339,16 @@ class SefazHomologationOperationsGateway:
             raise OfficialNfeOperationsError(
                 f"Inutilization model {request.model.value} disagrees with "
                 f"gateway model {self._model}"
+            )
+        if self._state == "35":
+            # Defence in depth: direct adapter invocations must not bypass
+            # ProviderGatewayService's SP prohibition. No A1/Vault/HTTP
+            # resolution is permitted for post-2026-11-01 inutilization.
+            require_sp_jurisdiction_operation_policy(
+                jurisdiction=BrazilianJurisdiction("SP"),
+                document_kind=FiscalDocumentKind.NFE,
+                operation=ProviderOperation.INUTILIZE,
+                requested_at=datetime.now(UTC),
             )
         if self._resolve_issuer is None:
             raise OfficialNfeOperationsError("Emitente da unidade não configurado")

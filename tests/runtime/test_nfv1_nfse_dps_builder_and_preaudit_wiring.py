@@ -186,6 +186,8 @@ def test_real_builder_and_preaudit_authorize_a_valid_document_end_to_end() -> No
     result = gateway.authorize(_request())
     assert result.status is AuthorizationStatus.AUTHORIZED
     assert result.invoice_reference == "35" + "0" * 48
+    assert result.authorized_xml is not None
+    assert b"<infNFSe" in result.authorized_xml
 
 
 def test_real_preaudit_blocks_before_any_signing_on_rate_divergence() -> None:

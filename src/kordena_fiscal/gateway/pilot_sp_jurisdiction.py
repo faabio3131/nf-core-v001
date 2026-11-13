@@ -22,7 +22,10 @@ if TYPE_CHECKING:
 PilotDocument = Literal["nfe", "nfce", "nfse"]
 PilotChannel = Literal["sefaz-sp-nfe", "sefaz-sp-nfce", "nfse-national"]
 _SP_IBGE = frozenset({"3509205", "3548708", "3550308"})
-_NFSE_CUTOVER = date(2026, 11, 1)
+# MEI service invoices have used the national emitter since CGSN 169/2022.
+_NFSE_MEI_CUTOVER = date(2023, 9, 1)
+# For ME/EPP optantes Simples, CGSN 191/2026 revoked the Sept/2026 date.
+_NFSE_SIMPLES_CUTOVER = date(2026, 11, 1)
 _SP_INUTILIZATION_END = date(2026, 11, 1)
 _SP_FIXED_OFFSET_2026 = timezone(timedelta(hours=-3))
 
@@ -59,13 +62,17 @@ def resolve_sp_pilot_route(
     elif document == "nfce":
         channel = "sefaz-sp-nfce"
     elif (
-        competence_date >= _NFSE_CUTOVER
-        and tax_regime in (
-            TaxRegimeCode.SIMPLES_NACIONAL,
-            TaxRegimeCode.SIMPLES_NACIONAL_EXCESS_SUBLIMIT,
-            TaxRegimeCode.MEI,
+        (tax_regime is TaxRegimeCode.MEI and competence_date >= _NFSE_MEI_CUTOVER)
+        or (
+            tax_regime in (
+                TaxRegimeCode.SIMPLES_NACIONAL,
+                TaxRegimeCode.SIMPLES_NACIONAL_EXCESS_SUBLIMIT,
+            )
+            and competence_date >= _NFSE_SIMPLES_CUTOVER
         )
     ):
+        # Logical channel only. Provider registration, fiscal review, A1 and
+        # municipality-aware transport are still mandatory and independent.
         channel = "nfse-national"
     else:
         raise FiscalValidationError(

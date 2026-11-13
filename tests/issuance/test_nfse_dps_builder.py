@@ -1,6 +1,7 @@
 """Unit tests for the National NFS-e DPS builder (build_signed_dps)."""
 from __future__ import annotations
 
+from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 
@@ -16,6 +17,7 @@ from kordena_fiscal.domain import (
     BrazilianJurisdiction,
     CnaeCode,
     Cnpj,
+    Cpf,
     ExecutionScope,
     FiscalAddress,
     FiscalEnvironment,
@@ -31,8 +33,9 @@ from kordena_fiscal.issuance.nfe_nfse import (
     NfseAuthorizationRequest,
     NfseCanonicalDocument,
     NfseServiceLine,
+    NfseServiceTaker,
 )
-from kordena_fiscal.issuance.nfse_dps_builder import build_signed_dps
+from kordena_fiscal.issuance.nfse_dps_builder import build_signed_dps, derive_national_dps_id
 from kordena_fiscal.vault import EphemeralCertificateMaterial
 from kordena_fiscal.xml.nfse_nacional_schema import national_dps_validator
 
@@ -239,3 +242,67 @@ def test_build_signed_dps_rejects_municipal_registration_over_limit() -> None:
     document = _document(issuer=issuer)
     with pytest.raises(FiscalValidationError, match="15-character"):
         build_signed_dps(_request(document), _certificate())
+
+
+def test_taker_with_cpf_and_address_is_signed_and_xsd_valid() -> None:
+    taker = NfseServiceTaker(
+        tax_id=Cpf("52998224725"), legal_name="Tomadora Sintetica",
+        address=FiscalAddress(
+            street="Rua do Tomador", number="21", district="Centro",
+            municipality_name="Sao Paulo",
+            jurisdiction=BrazilianJurisdiction("SP", "3550308"),
+            postal_code="01001000",
+        ),
+    )
+    request = _request(replace(_document(), service_taker=taker))
+    signed = build_signed_dps(request, _certificate())
+    national_dps_validator("1.00").validate_document(signed)
+    root = etree.fromstring(signed)
+    prefix = f"{{{_NFSE_NS}}}"
+    toma = root.find(f"{prefix}infDPS/{prefix}toma")
+    assert toma is not None
+    assert toma.findtext(f"{prefix}CPF") == "52998224725"
+    assert toma.findtext(f"{prefix}xNome") == "Tomadora Sintetica"
+    assert toma.findtext(f"{prefix}end/{prefix}endNac/{prefix}cMun") == "3550308"
+    assert toma.findtext(f"{prefix}end/{prefix}endNac/{prefix}CEP") == "01001000"
+
+
+def test_taker_cnpj_without_optional_address_is_xsd_valid() -> None:
+    taker = NfseServiceTaker(
+        tax_id=Cnpj("12345678000195"), legal_name="Pessoa Juridica Sintetica",
+    )
+    signed = build_signed_dps(_request(replace(_document(), service_taker=taker)), _certificate())
+    national_dps_validator("1.00").validate_document(signed)
+    root = etree.fromstring(signed)
+    prefix = f"{{{_NFSE_NS}}}"
+    toma = root.find(f"{prefix}infDPS/{prefix}toma")
+    assert toma.findtext(f"{prefix}CNPJ") == "12345678000195"
+    assert toma.find(f"{prefix}end") is None
+
+
+def test_integrated_taker_dps_id_matches_national_read_only_recovery() -> None:
+    """SP4 query must resolve the exact issued DPS even with native taker data."""
+    taker = NfseServiceTaker(
+        tax_id=Cnpj("12345678000195"),
+        legal_name="Tomador Sintetico Fiscal Ltda",
+        address=FiscalAddress(
+            street="Rua Contabil", number="40", district="Centro",
+            municipality_name="Cajamar",
+            jurisdiction=BrazilianJurisdiction("SP", "3509205"),
+            postal_code="07750000",
+        ),
+    )
+    document = replace(_document(), service_taker=taker)
+    request = _request(document)
+    xml = build_signed_dps(request, _certificate())
+    national_dps_validator("1.00").validate_document(xml)
+    root = etree.fromstring(xml)
+    prefix = f"{{{_NFSE_NS}}}"
+    info = root.find(f"{prefix}infDPS")
+    assert info is not None
+    assert info.get("Id") == derive_national_dps_id(request)
+    toma = info.find(f"{prefix}toma")
+    assert toma is not None
+    assert toma.findtext(f"{prefix}CNPJ") == taker.tax_id.value
+    assert toma.findtext(f"{prefix}xNome") == taker.legal_name
+    assert toma.findtext(f"{prefix}end/{prefix}endNac/{prefix}cMun") == "3509205"

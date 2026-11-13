@@ -12,6 +12,7 @@ from kordena_fiscal.domain import (
     BrazilianJurisdiction,
     CnaeCode,
     Cnpj,
+    Cpf,
     ExecutionScope,
     FiscalAddress,
     FiscalProfile,
@@ -23,7 +24,12 @@ from kordena_fiscal.domain import (
     TaxRegimeCode,
 )
 
-from .nfe_nfse import NfseAuthorizationRequest, NfseCanonicalDocument, NfseServiceLine
+from .nfe_nfse import (
+    NfseAuthorizationRequest,
+    NfseCanonicalDocument,
+    NfseServiceLine,
+    NfseServiceTaker,
+)
 
 NFSE_PREPARED_MEDIA_TYPE = "application/vnd.nfcore.prepared-nfse.v1+json"
 
@@ -91,6 +97,24 @@ def encode_prepared_nfse(request: NfseAuthorizationRequest) -> bytes:
             for line in document.services
         ],
         "service_taker_reference": document.service_taker_reference,
+        "service_taker": None if document.service_taker is None else {
+            "tax_id_type": "cnpj" if isinstance(document.service_taker.tax_id, Cnpj) else "cpf",
+            "tax_id": document.service_taker.tax_id.value,
+            "legal_name": document.service_taker.legal_name,
+            "municipal_registration": document.service_taker.municipal_registration,
+            "address": None if document.service_taker.address is None else {
+                "street": document.service_taker.address.street,
+                "number": document.service_taker.address.number,
+                "district": document.service_taker.address.district,
+                "municipality_name": document.service_taker.address.municipality_name,
+                "state_code": document.service_taker.address.jurisdiction.state_code,
+                "municipality_ibge_code": (
+                    document.service_taker.address.jurisdiction.municipality_ibge_code
+                ),
+                "postal_code": document.service_taker.address.postal_code,
+                "complement": document.service_taker.address.complement,
+            },
+        },
         "schema_version": document.schema_version,
         "idempotency_key": request.idempotency_key.value,
         "request_fingerprint": request.request_fingerprint,
@@ -203,6 +227,37 @@ def decode_prepared_nfse(content: bytes, *, scope: ExecutionScope) -> NfseAuthor
             for raw in raw_services
             for item in (_mapping(raw, "service"),)
         )
+        taker = None
+        if root.get("service_taker") is not None:
+            raw_taker = _mapping(root["service_taker"], "service_taker")
+            tax_id_text = _text(raw_taker["tax_id"], "service_taker.tax_id")
+            kind = _text(raw_taker["tax_id_type"], "service_taker.tax_id_type")
+            if kind not in {"cnpj", "cpf"}:
+                raise FiscalValidationError("unsupported NFS-e taker tax ID type")
+            raw_taker_address = raw_taker.get("address")
+            taker_address = None
+            if raw_taker_address is not None:
+                ta = _mapping(raw_taker_address, "service_taker.address")
+                taker_address = FiscalAddress(
+                    street=_text(ta["street"], "taker.street"),
+                    number=_text(ta["number"], "taker.number"),
+                    district=_text(ta["district"], "taker.district"),
+                    municipality_name=_text(ta["municipality_name"], "taker.municipality"),
+                    jurisdiction=BrazilianJurisdiction(
+                        _text(ta["state_code"], "taker.state_code"),
+                        _text(ta["municipality_ibge_code"], "taker.municipality_ibge_code"),
+                    ),
+                    postal_code=_text(ta["postal_code"], "taker.postal_code"),
+                    complement=_optional_text(ta.get("complement"), "taker.complement"),
+                )
+            taker = NfseServiceTaker(
+                tax_id=Cnpj(tax_id_text) if kind == "cnpj" else Cpf(tax_id_text),
+                legal_name=_text(raw_taker["legal_name"], "taker.legal_name"),
+                address=taker_address,
+                municipal_registration=_optional_text(
+                    raw_taker.get("municipal_registration"), "taker.municipal_registration"
+                ),
+            )
         document = NfseCanonicalDocument(
             document_id=_text(root["document_id"], "document_id"),
             scope=scope,
@@ -222,6 +277,7 @@ def decode_prepared_nfse(content: bytes, *, scope: ExecutionScope) -> NfseAuthor
                 root.get("service_taker_reference"), "service_taker_reference"
             ),
             schema_version=root["schema_version"],
+            service_taker=taker,
         )
         request = NfseAuthorizationRequest.build(document)
         if request.idempotency_key.value != _text(root["idempotency_key"], "idempotency_key"):

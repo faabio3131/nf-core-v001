@@ -27,6 +27,7 @@ from .nfe_nfse import (
     NfseQueryClient,
     NfseQueryGateway,
     NfseServiceLine,
+    NfseServiceTaker,
     build_nfse_issuance_key,
     build_nfse_request_fingerprint,
 )
@@ -56,6 +57,7 @@ __all__ = [
     "NfseQueryClient",
     "NfseQueryGateway",
     "NfseServiceLine",
+    "NfseServiceTaker",
     "build_nfse_issuance_key",
     "build_nfse_request_fingerprint",
 ]

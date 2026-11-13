@@ -7,13 +7,16 @@ import json
 from dataclasses import dataclass
 from datetime import date, datetime
 from decimal import Decimal
-from typing import Protocol
+from typing import Any, Protocol
 
 from kordena_fiscal.documents import CanonicalFiscalDocument
 from kordena_fiscal.domain import (
     BrazilianJurisdiction,
+    Cnpj,
+    Cpf,
     ElectronicInvoiceModel,
     ExecutionScope,
+    FiscalAddress,
     FiscalDocumentKind,
     FiscalDomainError,
     FiscalProfile,
@@ -216,6 +219,34 @@ class NfseDocumentTotals:
 
 
 @dataclass(frozen=True, slots=True)
+class NfseServiceTaker:
+    """Immutable recipient facts for the National NFS-e toma group.
+
+    A reference alone is insufficient to build the official DPS. The
+    optional address is validated as a complete canonical address.
+    """
+
+    tax_id: Cnpj | Cpf
+    legal_name: str
+    address: FiscalAddress | None = None
+    municipal_registration: str | None = None
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.tax_id, (Cnpj, Cpf)):
+            raise FiscalValidationError("NFS-e taker requires a validated CPF or CNPJ")
+        object.__setattr__(
+            self, "legal_name", _required(self.legal_name, "taker.legal_name", 120)
+        )
+        if self.address is not None and not isinstance(self.address, FiscalAddress):
+            raise FiscalValidationError("taker.address must be FiscalAddress")
+        if self.municipal_registration is not None:
+            object.__setattr__(
+                self, "municipal_registration",
+                _optional(self.municipal_registration, "taker.municipal_registration", 15),
+            )
+
+
+@dataclass(frozen=True, slots=True)
 class NfseCanonicalDocument:
     """Canonical NFS-e service snapshot kept separate from merchandise-line semantics."""
 
@@ -229,6 +260,7 @@ class NfseCanonicalDocument:
     services: tuple[NfseServiceLine, ...]
     service_taker_reference: str | None = None
     schema_version: int = 1
+    service_taker: NfseServiceTaker | None = None
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "document_id", _required(self.document_id, "document_id", 128))
@@ -261,6 +293,8 @@ class NfseCanonicalDocument:
             "service_taker_reference",
             _optional(self.service_taker_reference, "service_taker_reference", 256),
         )
+        if self.service_taker is not None and not isinstance(self.service_taker, NfseServiceTaker):
+            raise FiscalValidationError("service_taker must be NfseServiceTaker")
         if not isinstance(self.schema_version, int) or isinstance(self.schema_version, bool):
             raise FiscalValidationError("schema_version must be an integer")
         if self.schema_version < 1:
@@ -310,7 +344,7 @@ def build_nfse_request_fingerprint(document: NfseCanonicalDocument) -> str:
     }
     if document.scope.host_namespace is not None:
         scope_payload["host_namespace"] = document.scope.host_namespace
-    payload = {
+    payload: dict[str, Any] = {
         "scope": scope_payload,
         "source": document.source.canonical_tuple,
         "issued_at": document.issued_at.isoformat(),
@@ -342,6 +376,22 @@ def build_nfse_request_fingerprint(document: NfseCanonicalDocument) -> str:
             for line in document.services
         ],
     }
+    if document.service_taker is not None:
+        taker = document.service_taker
+        address = taker.address
+        payload["service_taker"] = {
+            "tax_id_type": "cnpj" if isinstance(taker.tax_id, Cnpj) else "cpf",
+            "tax_id": taker.tax_id.value,
+            "legal_name": taker.legal_name,
+            "municipal_registration": taker.municipal_registration,
+            "address": None if address is None else {
+                "street": address.street, "number": address.number,
+                "district": address.district, "municipality_name": address.municipality_name,
+                "state_code": address.jurisdiction.state_code,
+                "municipality_ibge_code": address.jurisdiction.municipality_ibge_code,
+                "postal_code": address.postal_code, "complement": address.complement,
+            },
+        }
     encoded = json.dumps(
         payload,
         ensure_ascii=False,

@@ -23,7 +23,7 @@ from decimal import ROUND_HALF_UP, Decimal
 
 from lxml import etree
 
-from kordena_fiscal.domain import FiscalValidationError, TaxRegimeCode
+from kordena_fiscal.domain import Cnpj, FiscalValidationError, TaxRegimeCode
 from kordena_fiscal.issuance.nfe_nfse import NfseAuthorizationRequest
 from kordena_fiscal.signing.nfse_xmldsig import sign_nfse_dps_xml
 from kordena_fiscal.vault import EphemeralCertificateMaterial
@@ -76,6 +76,28 @@ def _derive_dps_numbering(request: NfseAuthorizationRequest) -> tuple[str, str]:
     if len(n_dps) != 15:  # pragma: no cover - defensive, arithmetic guarantees this
         raise FiscalValidationError("nDPS derivation did not produce 15 digits")
     return "1", n_dps
+
+
+def derive_national_dps_id(request: NfseAuthorizationRequest) -> str:
+    """Reconstruct the immutable official DPS identifier for read-only recovery.
+
+    No new sequence is allocated and no provider POST is performed. The exact
+    same identifier is used by build_signed_dps and GET /dps/{id}.
+    """
+    if not isinstance(request, NfseAuthorizationRequest):
+        raise FiscalValidationError("DPS recovery requires a canonical authorization request")
+    cnpj = request.document.issuer.cnpj.value
+    municipality = request.document.issuer.address.jurisdiction.municipality_ibge_code
+    if (
+        not isinstance(municipality, str) or len(municipality) != 7
+        or not municipality.isdecimal() or len(cnpj) != 14 or not cnpj.isdecimal()
+    ):
+        raise FiscalValidationError("National DPS recovery requires numeric CNPJ and IBGE")
+    serie, n_dps = _derive_dps_numbering(request)
+    return (
+        "DPS" + municipality + _FEDERAL_INSCRIPTION_TYPE_CNPJ
+        + cnpj + serie.zfill(5) + n_dps
+    )
 
 
 def build_signed_dps(
@@ -132,14 +154,7 @@ def build_signed_dps(
         )
 
     serie, n_dps = _derive_dps_numbering(request)
-    dps_id = (
-        "DPS"
-        + issuer_municipality
-        + _FEDERAL_INSCRIPTION_TYPE_CNPJ
-        + cnpj
-        + serie.zfill(5)
-        + n_dps
-    )
+    dps_id = derive_national_dps_id(request)
 
     root = etree.Element(f"{{{_NFSE_NS}}}DPS", nsmap={None: _NFSE_NS})  # type: ignore[dict-item]
     root.set("versao", _SCHEMA_VERSION)
@@ -182,6 +197,28 @@ def build_signed_dps(
         # revisit with the owner before relying on this for real submission.
         _child(reg_trib, "regApTribSN", "3")
     _child(reg_trib, "regEspTrib", "0")  # Nenhum; FiscalProfile models no special regime today
+
+    # The official 1.00 XSD places toma after prest and before serv. Never
+    # infer identity from service_taker_reference, which is only a source ID.
+    if document.service_taker is not None:
+        taker = document.service_taker
+        toma = etree.SubElement(info, f"{{{_NFSE_NS}}}toma")
+        _child(toma, "CNPJ" if isinstance(taker.tax_id, Cnpj) else "CPF", taker.tax_id.value)
+        if taker.municipal_registration is not None:
+            _child(toma, "IM", taker.municipal_registration)
+        _child(toma, "xNome", taker.legal_name)
+        if taker.address is not None:
+            address = taker.address
+            end = etree.SubElement(toma, f"{{{_NFSE_NS}}}end")
+            national = etree.SubElement(end, f"{{{_NFSE_NS}}}endNac")
+            _child(national, "cMun", address.jurisdiction.municipality_ibge_code or "")
+            _child(national, "CEP", address.postal_code)
+            _child(end, "xLgr", address.street)
+            _child(end, "nro", address.number)
+            if address.complement is not None:
+                _child(end, "xCpl", address.complement)
+            _child(end, "xBairro", address.district)
+
 
     serv = etree.SubElement(info, f"{{{_NFSE_NS}}}serv")
     loc_prest = etree.SubElement(serv, f"{{{_NFSE_NS}}}locPrest")

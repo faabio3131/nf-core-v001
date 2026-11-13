@@ -323,3 +323,28 @@ def test_persistence_unavailable_prevents_dispatch(database, monkeypatch):
     with pytest.raises(PersistenceStateError):
         resume(http, intent)
     assert calls == []
+
+
+
+def test_rejection_reason_is_preserved_only_as_scoped_safe_status(database):
+    def rejected(scope, payload, key):
+        return {
+            "document_id": "synthetic-doc", "status": "rejected",
+            "rejection_reason": "X-TEST-001",
+            "rejection_message": "Teste de rejeicao; corrigir fiscal",
+            "recovery_required": False, "provider_secret": "NEVER-PROJECT",
+        }
+
+    app, _, _, calls = harness(database, handler=rejected)
+    http = login(app)
+    intent = prepare(http)
+    response = resume(http, intent)
+    assert response.status_code == 200, response.text
+    projected = response.json()["operation_result"]
+    assert projected["status"] == "rejected"
+    assert projected["rejection_reason"] == "X-TEST-001"
+    assert projected["rejection_message"] == "Teste de rejeicao; corrigir fiscal"
+    assert "provider_secret" not in str(response.json())
+    replay = resume(http, intent)
+    assert replay.json()["operation_result"] == projected
+    assert calls == ["original-key"]

@@ -27,6 +27,7 @@ class FiscalArchiveKind(StrEnum):
     FISCAL_EVENT = "fiscal_event"
     PROVIDER_RESPONSE = "provider_response"
     DANFE = "danfe"
+    AUXILIARY_PDF = "auxiliary_pdf"  # virtual rendering, not fiscal evidence
     OTHER = "other"
 
 

@@ -64,3 +64,36 @@ def test_service_paths_retain_authorizer_specific_spelling(ibge, family, service
         service=service,
     )
     assert urlsplit(route.url).path == tail
+
+
+
+@pytest.mark.parametrize("document_kind,official_source,expected_host", [
+    (
+        FiscalDocumentKind.NFE,
+        "https://portal.fazenda.sp.gov.br/servicos/nfe/Paginas/URL-WEBSERVICES.aspx",
+        "homologacao.nfe.fazenda.sp.gov.br",
+    ),
+    (
+        FiscalDocumentKind.NFCE,
+        "https://portal.fazenda.sp.gov.br/servicos/nfce/Paginas/WebServices.aspx",
+        "homologacao.nfce.fazenda.sp.gov.br",
+    ),
+])
+@pytest.mark.parametrize("operation", [
+    SefazService.AUTHORIZE, SefazService.QUERY, SefazService.CANCEL,
+    SefazService.STATUS, SefazService.RECEIPT,
+])
+def test_sp55_sp65_must_use_respective_sefaz_sp_sources_not_svrs(
+    document_kind: FiscalDocumentKind, official_source: str,
+    expected_host: str, operation: SefazService,
+) -> None:
+    route = resolve_sefaz_endpoint(
+        state_ibge_code="35",
+        document_kind=document_kind,
+        environment=FiscalEnvironment.HOMOLOGATION,
+        service=operation,
+        jurisdiction=BrazilianJurisdiction("SP", "3550308"),
+    )
+    assert route.source_url == official_source
+    assert urlsplit(route.url).hostname == expected_host
+    assert route.authorizer == "SP"
