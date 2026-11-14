@@ -1,6 +1,6 @@
 {
-  "checked": 3,
-  "compatible": 3,
+  "checked": 5,
+  "compatible": 5,
   "incompatible": 0,
   "not_checked": [
     "Actual WSDL/SOAPAction (mTLS authentication required)",
@@ -17,6 +17,12 @@
     },
     {
       "official_xsd_valid": true,
+      "operation": "RECEPCIONAR_LOTE_RPS_RTC_2026",
+      "root_qname": "{http://www.giss.com.br/enviar-lote-rps-envio-v2_04.xsd}EnviarLoteRpsEnvio",
+      "xml_sha256": "0cda2b74db15ad024079b10a079dca426dab4e82e22e9320eb308f7ca5658efa"
+    },
+    {
+      "official_xsd_valid": true,
       "operation": "CANCELAR_NFSE",
       "root_qname": "{http://www.giss.com.br/cancelar-nfse-envio-v2_04.xsd}CancelarNfseEnvio",
       "xml_sha256": "fa6bb87993fd75d7ba080879e4b176ea4a8dd08417e349dedc5466e8706852c7"
@@ -26,6 +32,12 @@
       "operation": "CONSULTAR_NFSE_POR_RPS",
       "root_qname": "{http://www.giss.com.br/consultar-nfse-rps-envio-v2_04.xsd}ConsultarNfseRpsEnvio",
       "xml_sha256": "ab3261af4497bbaac9c3872713709eca308ed5ecd7764aa50908665070249fbe"
+    },
+    {
+      "official_xsd_valid": true,
+      "operation": "CONSULTAR_NFSE_RPS_ALTERNATE_BUILDER",
+      "root_qname": "{http://www.giss.com.br/consultar-nfse-rps-envio-v2_04.xsd}ConsultarNfseRpsEnvio",
+      "xml_sha256": "9d112514826f0e1d9e71815f6aa0215d954c6ba39afc0f990f45c1b678756e4b"
     }
   ],
   "source_rar_sha256": "c14a542de5fa2ce1a6a2b43da6e4eb0bebab12e6ebc850fe24dbdc8f6bb04356",
