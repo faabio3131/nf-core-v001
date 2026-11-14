@@ -42,6 +42,8 @@ BARUERI_HOMOLOGATION_URL = "https://testeeiss.barueri.sp.gov.br/nfeservice/wsrps
 _NS = "http://www.barueri.sp.gov.br/nfe"
 _SOAP = "http://schemas.xmlsoap.org/soap/envelope/"
 _LIMIT = 2_097_152
+# The official TXT is Base64 inside SOAP: wire size can exceed decoded size.
+_SOAP_LIMIT = 4 * ((_LIMIT + 2) // 3) + 65_536
 _METHODS = frozenset({
     "NFeLoteEnviarArquivo", "NFeLoteStatusArquivo",
     "NFeLoteBaixarArquivo", "NFeLoteListarArquivos",
@@ -121,7 +123,7 @@ class BarueriRpsBatch:
         )
         if header != expected:
             raise BarueriContractError("PMB004 header/remittance mismatch")
-        # Official RPS Layout v4.2 (06/01/2026): field positions are fixed
+        # Official PMB004 layout v4.4 (28/05/2026): field positions are fixed
         # length BEFORE CRLF: records 1=25,2=1970,3=18,4=531,5=697,9=38.
         # A validator supplied by the trusted issuer still verifies ALL fiscal
         # fields (ISS, RTC, withholding and municipality-specific conditions).
@@ -147,7 +149,7 @@ class BarueriRpsBatch:
             or int(footer[1:8]) != len(records)
         ):
             raise BarueriContractError("PMB004 trailer count or monetary totals are invalid")
-        # Official RPS_Layout-v4.2, Jan/2026: record 2 positions 16-25
+        # Official PMB004 layout v4.4, May/2026: record 2 positions 16-25
         # identify RPS, 26-39 date/time, 458-463 quantity, 464-478 unit
         # service value in centavos. Type 3 positions 4-18 carry retained
         # amounts. Type 9 positions 9-23 and 24-38 are monetary checksums.
@@ -176,7 +178,7 @@ class BarueriRpsBatch:
                 situation = record[39:40]
                 reason = record[40:42]
                 target_note = record[42:49]
-                # RPS_Layout-v4.2 (06/01/2026), page 2:
+                # PMB004 v4.4, May/2026, type 2:
                 # cancel 01/02 MUST carry zero RPS; substitute 03 MUST
                 # carry newly allocated RPS; normal E/R requires an RPS.
                 if situation == b"C":
@@ -313,18 +315,18 @@ def _exchange(body: bytes, action: str, tls: ssl.SSLContext, timeout: float) -> 
     try:
         opener = build_opener(HTTPSHandler(context=tls), RejectFiscalRedirects())
         with opener.open(request, timeout=timeout) as stream:
-            result = stream.read(_LIMIT + 1)
+            result = stream.read(_SOAP_LIMIT + 1)
     except (HTTPError, URLError, TimeoutError, OSError, ssl.SSLError):
         raise BarueriContractError(
             "Barueri mTLS indisponivel; consultar protocolo antes de retransmitir"
         ) from None
-    if not isinstance(result, bytes) or not 0 < len(result) <= _LIMIT:
+    if not isinstance(result, bytes) or not 0 < len(result) <= _SOAP_LIMIT:
         raise BarueriContractError("Invalid bounded Barueri SOAP reply")
     return result
 
 
 def _parse_reply(raw: bytes, method: str) -> BarueriReceipt:
-    if not isinstance(raw, bytes) or not 0 < len(raw) <= _LIMIT:
+    if not isinstance(raw, bytes) or not 0 < len(raw) <= _SOAP_LIMIT:
         raise BarueriContractError("Missing Barueri SOAP response")
     try:
         node = etree.fromstring(
@@ -355,7 +357,11 @@ def _parse_reply(raw: bytes, method: str) -> BarueriReceipt:
         if not nodes:
             return None
         value = nodes[0].text
-        if value is not None and len(value) > 256:
+        # SOAP embeds the complete downloaded TXT in this ONE binary-bearing
+        # field. Treating it like a 256-character metadata field prevents any
+        # real municipal invoice return from being recovered.
+        maximum = 4 * ((_LIMIT + 2) // 3) if name == "ArquivoRPSBase64" else 256
+        if value is not None and len(value) > maximum:
             raise BarueriContractError("Barueri response field exceeds limit")
         return value
 
