@@ -132,6 +132,16 @@ def test_guard_untrusted_provider_message_cannot_ground_code() -> None:
     assert "ungrounded_code" in result.findings[0]
 
 
+def test_guard_rejects_numeric_claim_citing_unrelated_evidence() -> None:
+    request = make_request(evidence=rejection_evidence())
+    response = ProviderSection(
+        SectionKind.HYPOTHESIS, "A rejeição 204 está confirmada.", ("doc-1",)
+    )
+    result = OutputGuard().validate((response,), request)
+    assert result.accepted == ()
+    assert "ungrounded_code" in result.findings[0]
+
+
 def test_guard_numeric_code_requires_exact_evidence_token() -> None:
     request = make_request(evidence=rejection_evidence(code="2040"))
     response = ProviderSection(
