@@ -2209,6 +2209,13 @@ def test_jundiai_http_portal_durable_rps_pending_recovery_archive_and_isolation(
     assert second.json().get("status") == FiscalDocumentState.AUTHORIZED.value, second.text
     assert len(submits) == 1
     assert len(queries) == 2
+    same_poll = web.post(reconcile_url, json=body, headers={
+        CSRF_HEADER: csrf, "Idempotency-Key": "jundiai-lookup-authorized",
+    })
+    assert same_poll.status_code == 200, same_poll.text
+    assert same_poll.json()["replay"] is True
+    assert same_poll.json()["operation_result"]["status"] == "authorized"
+    assert len(queries) == 2
     verified.assert_called_once()
     archive = web.get(
         f"/v1/portal/documents/{identifier}/artifacts/authorized_xml",
