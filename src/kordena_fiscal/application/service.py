@@ -81,6 +81,7 @@ from kordena_fiscal.gateway.osasco_rtc_invoice_interpreter import (
     decode_osasco_archived_full_invoice,
 )
 from kordena_fiscal.gateway.sp4_municipal_canonical import (
+    SP4_MUNICIPAL_PROVIDERS,
     Sp4OriginalRps,
     Sp4VerifiedInvoice,
 )
@@ -749,7 +750,7 @@ class FiscalApplicationService:
                 or not document.scope.host_namespace
                 or document.issuer.address.jurisdiction.state_code != "SP"
                 or document.issuer.address.jurisdiction.municipality_ibge_code
-                not in {"3509205", "3505708", "3534401"}
+                not in SP4_MUNICIPAL_PROVIDERS.values()
             ):
                 raise FiscalValidationError(
                     "SP4 municipal original RPS requires reviewed scope and series"
