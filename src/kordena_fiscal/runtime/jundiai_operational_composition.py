@@ -16,6 +16,9 @@ from kordena_fiscal.domain import (
     FiscalDocumentKind,
     FiscalValidationError,
 )
+from kordena_fiscal.gateway.jundiai_giss_cancellation_result import (
+    JundiaiGissCancellationDecision,
+)
 from kordena_fiscal.gateway.jundiai_giss_homologation import (
     JundiaiGissHomologationTransport,
     JundiaiGissWsdlContract,
@@ -47,6 +50,10 @@ class JundiaiTrustedRuntimePorts:
     fiscal_issuer_policy: Callable[[NfseAuthorizationRequest], None]
     validate_prepared_rps: Callable[[Sp4OriginalRps], None]
     verify_official_invoice_xml: Callable[[Sp4VerifiedInvoice], None]
+    submit_verified_cancel: Callable[
+        [NfseAuthorizationRequest, Sp4OriginalRps, Sp4VerifiedInvoice, str],
+        JundiaiGissCancellationDecision,
+    ] | None = None
 
     def __post_init__(self) -> None:
         if not isinstance(self.transport, JundiaiGissHomologationTransport) or not all(
@@ -57,6 +64,12 @@ class JundiaiTrustedRuntimePorts:
             )
         ):
             raise FiscalValidationError("Jundiai reviewed Giss runtime ports incomplete")
+        if self.submit_verified_cancel is not None and not callable(self.submit_verified_cancel):
+            raise FiscalValidationError("Jundiai cancellation requires reviewed official port")
+
+    @property
+    def supports_events(self) -> bool:
+        return self.submit_verified_cancel is not None
 
     def attach(self, application: FiscalApplicationService) -> Sp4ReviewedMunicipalPorts:
         """Bind ONLY the canonical application loader; never use local tenant state."""
