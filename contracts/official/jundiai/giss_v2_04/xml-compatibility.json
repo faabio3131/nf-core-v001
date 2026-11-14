@@ -1,0 +1,33 @@
+{
+  "checked": 3,
+  "compatible": 3,
+  "incompatible": 0,
+  "not_checked": [
+    "Actual WSDL/SOAPAction (mTLS authentication required)",
+    "Signed SOAP request response against live municipality",
+    "Persistence, retry, timeout and HTTP/DB E2E",
+    "SubstituirNfse (not implemented in reviewed method map)"
+  ],
+  "operations": [
+    {
+      "official_xsd_valid": true,
+      "operation": "RECEPCIONAR_LOTE_RPS",
+      "root_qname": "{http://www.giss.com.br/enviar-lote-rps-envio-v2_04.xsd}EnviarLoteRpsEnvio",
+      "xml_sha256": "a1fae95c9932a830aa45263d7aa41161dbed30f48db89552b6fbb25946515e72"
+    },
+    {
+      "official_xsd_valid": true,
+      "operation": "CANCELAR_NFSE",
+      "root_qname": "{http://www.giss.com.br/cancelar-nfse-envio-v2_04.xsd}CancelarNfseEnvio",
+      "xml_sha256": "fa6bb87993fd75d7ba080879e4b176ea4a8dd08417e349dedc5466e8706852c7"
+    },
+    {
+      "official_xsd_valid": true,
+      "operation": "CONSULTAR_NFSE_POR_RPS",
+      "root_qname": "{http://www.giss.com.br/consultar-nfse-rps-envio-v2_04.xsd}ConsultarNfseRpsEnvio",
+      "xml_sha256": "ab3261af4497bbaac9c3872713709eca308ed5ecd7764aa50908665070249fbe"
+    }
+  ],
+  "source_rar_sha256": "c14a542de5fa2ce1a6a2b43da6e4eb0bebab12e6ebc850fe24dbdc8f6bb04356",
+  "type": "actual-current-code-vs-official-jundiai-public-XSD"
+}
