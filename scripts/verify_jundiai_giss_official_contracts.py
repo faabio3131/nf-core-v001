@@ -95,6 +95,14 @@ def _wsdl_bindings(data: bytes) -> tuple[str, dict[str, str]]:
     namespace = root.get("targetNamespace")
     if not isinstance(namespace, str) or not namespace.startswith("http"):
         raise ContractAuditError("Unrecognized Giss WSDL targetNamespace")
+    if root.findall(_WSDL + "import"):
+        raise ContractAuditError("Unbundled WSDL imports need independent review")
+    endpoints = {
+        node.get("location")
+        for node in root.findall(".//" + _SOAP + "address")
+    }
+    if WSDL_URL.removesuffix("?wsdl") not in endpoints:
+        raise ContractAuditError("Official WSDL SOAP service endpoint differs")
     actions: dict[str, str] = {}
     for binding in root.findall(_WSDL + "binding"):
         soap11 = binding.find(_SOAP + "binding")
@@ -113,6 +121,16 @@ def _wsdl_bindings(data: bytes) -> tuple[str, dict[str, str]]:
             ):
                 raise ContractAuditError("Ambiguous SOAPAction in WSDL")
             actions[method] = action
+    documented = {
+        "CancelarNfse", "RecepcionarLoteRps", "ConsultarLoteRps",
+        "ConsultarNfsePorFaixa", "ConsultarNfsePorRps",
+        "ConsultarNfseServicoPrestado",
+    }
+    if not documented.issubset(actions):
+        missing = sorted(documented - actions.keys())
+        raise ContractAuditError(
+            "Documented Giss WSDL methods missing: " + ", ".join(missing)
+        )
     required = set(_EXPECTED) - {
         "ConsultarNfseRpsResposta", "CancelarNfseResposta",
     }
