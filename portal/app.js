@@ -636,6 +636,107 @@ function appendCajamarCancellation(article) {
   });
 }
 
+/** Human-reviewed Jundiaí GissOnline v2.04 events on the existing fiscal Portal.
+ * @param {HTMLElement} article
+ * @param {"cancelJundiaiNfse"|"substituteJundiaiNfse"} operation
+ */
+function appendJundiaiFiscalEvent(article, operation) {
+  const available = bootstrapState?.projection.configured_fiscal_operations;
+  const substitution = operation === "substituteJundiaiNfse";
+  if (!bootstrapState?.permissions.includes("document.cancel")
+    || (substitution && !bootstrapState?.permissions.includes("document.issue"))
+    || !Array.isArray(available) || !available.includes(operation)) return;
+  const form = document.createElement("form");
+  form.id = substitution ? "jundiai-substitute-form" : "jundiai-cancel-form";
+  form.className = "panel-form";
+  const heading = document.createElement("h3");
+  heading.textContent = substitution
+    ? "Revisar substituição — Jundiaí GissOnline 2.04"
+    : "Cancelar NFS-e — Jundiaí GissOnline 2.04";
+  const notice = document.createElement("p");
+  notice.textContent = substitution
+    ? "Confira a NFS-e autorizada e um RPS substituto previamente preparado. A primeira etapa cancela a nota original; a emissão do substituto é separada, após confirmação oficial. O vínculo não representa substituição municipal atômica."
+    : "A nota original deve estar autorizada. A confirmação municipal é verificada por XML oficial; se o retorno for incerto, não retransmita o cancelamento.";
+  /** @param {string} text */
+  function reference(text) {
+    const label = document.createElement("label");
+    label.textContent = text;
+    const input = document.createElement("input");
+    input.type = "text";
+    input.required = true;
+    input.maxLength = 128;
+    input.autocomplete = "off";
+    label.append(input); form.append(label);
+    return input;
+  }
+  const original = reference("ID da nota fiscal original autorizada");
+  const replacement = substitution ? reference("ID do RPS substituto preparado") : null;
+  const codeLabel = document.createElement("label");
+  codeLabel.textContent = "Código oficial de cancelamento GissOnline";
+  const code = document.createElement("select");
+  code.required = true;
+  for (const [value, label] of [
+    ["", "Escolha o código fiscal revisado"],
+    ["1", "Código de cancelamento 1"],
+    ["2", "Código de cancelamento 2"],
+    ["4", "Código de cancelamento 4"],
+  ]) {
+    const option = document.createElement("option");
+    option.value = value; option.textContent = label; code.append(option);
+  }
+  codeLabel.append(code);
+  const approvalLabel = document.createElement("label");
+  const approval = document.createElement("input");
+  approval.type = "checkbox"; approval.required = true;
+  approvalLabel.append(approval, document.createTextNode(
+    " Conferi o emitente, o documento original, o código e autorizo esta operação fiscal."
+  ));
+  const submit = document.createElement("button");
+  submit.type = "submit"; submit.className = "primary";
+  submit.textContent = substitution ? "Solicitar revisão de substituição" : "Cancelar nota original";
+  const output = document.createElement("p");
+  output.setAttribute("role", "status"); output.setAttribute("aria-live", "polite");
+  form.append(heading, notice, codeLabel, approvalLabel, submit, output);
+  article.append(form);
+  /** @type {{fingerprint:string,key:string}|null} */
+  let attempt = null;
+  form.addEventListener("submit", async event => {
+    event.preventDefault();
+    if (!form.reportValidity()) return;
+    if (!selectedFiscalUnit || selectedFiscalEnvironment !== "homologation") {
+      output.textContent = "Selecione uma unidade fiscal autorizada em homologação."; return;
+    }
+    const payload = {
+      unit_id: selectedFiscalUnit, environment: selectedFiscalEnvironment,
+      ...(substitution
+        ? {original_id: original.value.trim(), replacement_id: replacement?.value.trim() || ""}
+        : {document_id: original.value.trim()}),
+      reason_code: code.value, human_approval: approval.checked,
+    };
+    const fingerprint = JSON.stringify(payload);
+    if (attempt && attempt.fingerprint !== fingerprint) {
+      output.textContent = "Já existe um evento pendente. Não altere nem retransmita a solicitação.";
+      return;
+    }
+    attempt ||= {fingerprint, key: crypto.randomUUID()};
+    submit.disabled = true;
+    output.textContent = "Registrando intenção fiscal durável e consultando confirmação municipal...";
+    try {
+      const reply = await api("/v1/portal/operations/" + operation, {
+        method: "POST",
+        headers: {"X-CSRF-Token": csrfToken(), "Idempotency-Key": attempt.key},
+        body: JSON.stringify(payload),
+      });
+      output.textContent = reply.official_fiscal_confirmation
+        ? "Cancelamento oficialmente confirmado. Consulte o XML arquivado."
+        : "Cancelamento não confirmado. Consulte o histórico antes de qualquer nova operação.";
+    } catch (error) {
+      output.textContent = (error instanceof Error ? error.message : "Resultado incerto")
+        + " O evento pode ter sido recebido; não o retransmita sem conciliação.";
+    }
+  });
+}
+
 /** Barueri PMB004 v4.4 municipal events, over the existing authenticated Portal.
  * The operator enters the original durable IDs and legally reviewed reason.
  * The server validates the taxpayer, original authorization, scope and source.
@@ -2720,6 +2821,8 @@ async function renderSurface(viewId) {
     if (viewId === "issuances") appendExtremaNfsePreparation(article);
     if (viewId === "issuances") appendExtremaCancellation(article);
     if (viewId === "issuances") appendCajamarCancellation(article);
+    if (viewId === "issuances") appendJundiaiFiscalEvent(article, "cancelJundiaiNfse");
+    if (viewId === "issuances") appendJundiaiFiscalEvent(article, "substituteJundiaiNfse");
     if (viewId === "issuances") appendBarueriFiscalEvent(article, "cancelBarueriNfse");
     if (viewId === "issuances") appendBarueriFiscalEvent(article, "substituteBarueriNfse");
     if (viewId === "issuances" || viewId === "reconciliation") appendBarueriEventReconciliation(article);
