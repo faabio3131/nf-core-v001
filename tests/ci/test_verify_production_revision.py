@@ -2,14 +2,21 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+from importlib import util
+from pathlib import Path
 from typing import Any
 
 import pytest
 
-from scripts.ci.verify_production_revision import (
-    ProductionRevisionNotCertified,
-    verify_production_revision,
-)
+# scripts/ is deliberately not an installed Python package in NFCore. Load
+# the exact production verifier source rather than importing a shadow module.
+_LOCATION = Path(__file__).resolve().parents[2] / "scripts/ci/verify_production_revision.py"
+_SPEC = util.spec_from_file_location("nfcore_production_revision", _LOCATION)
+assert _SPEC is not None and _SPEC.loader is not None
+_MODULE = util.module_from_spec(_SPEC)
+_SPEC.loader.exec_module(_MODULE)
+ProductionRevisionNotCertified = _MODULE.ProductionRevisionNotCertified
+verify_production_revision = _MODULE.verify_production_revision
 
 _SHA = "a" * 40
 _REPO = "faabio3131/nf-core-v001"
