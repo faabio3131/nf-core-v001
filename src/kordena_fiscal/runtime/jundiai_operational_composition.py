@@ -54,6 +54,10 @@ class JundiaiTrustedRuntimePorts:
         [NfseAuthorizationRequest, Sp4OriginalRps, Sp4VerifiedInvoice, str],
         JundiaiGissCancellationDecision,
     ] | None = None
+    query_verified_cancel: Callable[
+        [NfseAuthorizationRequest, Sp4OriginalRps, Sp4VerifiedInvoice],
+        JundiaiGissCancellationDecision,
+    ] | None = None
 
     def __post_init__(self) -> None:
         if not isinstance(self.transport, JundiaiGissHomologationTransport) or not all(
@@ -64,8 +68,19 @@ class JundiaiTrustedRuntimePorts:
             )
         ):
             raise FiscalValidationError("Jundiai reviewed Giss runtime ports incomplete")
-        if self.submit_verified_cancel is not None and not callable(self.submit_verified_cancel):
-            raise FiscalValidationError("Jundiai cancellation requires reviewed official port")
+        if (
+            (self.submit_verified_cancel is None)
+            != (self.query_verified_cancel is None)
+            or (
+                self.submit_verified_cancel is not None
+                and not callable(self.submit_verified_cancel)
+            )
+            or (
+                self.query_verified_cancel is not None
+                and not callable(self.query_verified_cancel)
+            )
+        ):
+            raise FiscalValidationError("Jundiai events require submit and read-only recovery")
 
     @property
     def supports_events(self) -> bool:
