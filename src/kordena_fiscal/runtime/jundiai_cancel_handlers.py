@@ -20,6 +20,7 @@ from .jundiai_operational_composition import JundiaiTrustedRuntimePorts
 _CANCEL = frozenset({
     "unit_id", "environment", "document_id", "human_approval", "reason_code",
 })
+_RECOVER = frozenset({"unit_id", "environment", "document_id"})
 _REPLACE = frozenset({
     "unit_id", "environment", "original_id", "replacement_id",
     "human_approval", "reason_code",
@@ -38,7 +39,8 @@ def build_jundiai_event_handlers(
     ):
         raise ValueError("Jundiai requires one canonical A1 event authority")
     submit = reviewed.submit_verified_cancel
-    assert submit is not None
+    query = reviewed.query_verified_cancel
+    assert submit is not None and query is not None
 
     def validate(
         scope: ExecutionScope, payload: Mapping[str, Any], key: str | None,
@@ -139,7 +141,45 @@ def build_jundiai_event_handlers(
             "substitution_mode": "separate_original_cancel_then_replacement_issue",
         }
 
+    def recovery_preflight(
+        scope: ExecutionScope, payload: Mapping[str, Any], key: str | None,
+    ) -> None:
+        if (
+            set(payload) != _RECOVER
+            or payload.get("unit_id") != scope.unit_id
+            or payload.get("environment") != scope.environment.value
+            or not isinstance(payload.get("document_id"), str)
+            or not payload["document_id"].strip()
+        ):
+            raise FiscalValidationError("Jundiai recovery needs original tenant-scoped note")
+        original = application.load_sp4_original_rps(
+            scope, str(payload["document_id"]),
+        )
+        if original.issuer_ibge != "3525904":
+            raise FiscalValidationError("Jundiai recovery source municipality differs")
+
+    def reconcile(
+        scope: ExecutionScope, payload: Mapping[str, Any], key: str | None,
+    ) -> Mapping[str, Any]:
+        recovery_preflight(scope, payload, key)
+        outcome = application.reconcile_jundiai_nfse_cancellation(
+            scope=scope, document_id=str(payload["document_id"]),
+            query_verified_cancel=query,
+            occurred_at=datetime.now(UTC), retention=retention,
+        )
+        return {
+            "document_id": str(payload["document_id"]),
+            "municipality_ibge": "3525904",
+            "status": outcome.lifecycle.state.value,
+            "event_archive_id": outcome.archive_reference,
+            "official_fiscal_confirmation": outcome.decision.confirmed is True,
+            "recovery_required": outcome.decision.confirmed is not True,
+        }
+
     return {
+        "reconcileJundiaiNfseCancellation": PreflightFiscalOperationHandler(
+            reconcile, recovery_preflight,
+        ),
         "cancelJundiaiNfse": PreflightFiscalOperationHandler(
             cancel, cancel_preflight,
         ),
