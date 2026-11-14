@@ -6,6 +6,7 @@ from pathlib import Path
 from runpy import run_path
 
 import pytest
+from lxml import etree
 
 # Scripts live outside the installed src/ package; load their functions
 # directly rather than implicitly assuming repository-root PYTHONPATH.
@@ -125,3 +126,30 @@ def test_inventory_does_not_claim_provenance_or_homologation(tmp_path: Path) -> 
     assert report["source_rar_sha256"] == hashlib.sha256(package.read_bytes()).hexdigest()
     assert report["xsd_package_sha256"]
     assert report["all_operation_xsd_compilation"] == "passed"
+
+
+def test_vendor_substitution_schema_does_not_license_unverified_soap_operation() -> None:
+    """Actual vendor XSD defines an XML request, NOT a proven municipal WSDL method."""
+    from kordena_fiscal.gateway import jundiai_giss_homologation as gateway
+
+    source = (
+        Path(__file__).resolve().parents[2]
+        / "contracts/official/jundiai/giss_v2_04/xsd/Schemas_XSD-Servicos_Prestados"
+    )
+    parser = etree.XMLParser(no_network=True, resolve_entities=False, load_dtd=False)
+    request = etree.fromstring(
+        (source / "substituir-nfse-envio-v2_04.xsd").read_bytes(), parser=parser,
+    )
+    response = etree.fromstring(
+        (source / "substituir-nfse-resposta-v2_04.xsd").read_bytes(), parser=parser,
+    )
+    # Preserve the official vendor anomaly; never rewrite into guessed namespace.
+    for xsd in (request, response):
+        assert xsd.get("targetNamespace") == (
+            "http://www.giss.com.br/gerar-nfse-resposta-v2_04.xsd"
+        )
+    assert request.find(
+        "{http://www.w3.org/2001/XMLSchema}element[@name='SubstituirNfseEnvio']"
+    ) is not None
+    # SOAP exposure requires an independently authenticated mTLS WSDL.
+    assert "SubstituirNfse" not in gateway._OPERATION_MAP
