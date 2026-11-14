@@ -269,7 +269,7 @@ class DurableJundiaiCancellationOutcome:
 
     decision: JundiaiGissCancellationDecision
     lifecycle: FiscalStateSnapshot
-    archive_reference: str
+    archive_reference: str | None
 
 
 @dataclass(frozen=True, slots=True)
@@ -3134,6 +3134,119 @@ class FiscalApplicationService:
                     archived_at=occurred_at, retention=retention,
                 )
                 uow.archive.append(linkage)
+            uow.commit()
+        return DurableJundiaiCancellationOutcome(
+            decision=decision, lifecycle=final, archive_reference=archived.entry_id,
+        )
+
+
+    def reconcile_jundiai_nfse_cancellation(
+        self, *, scope: ExecutionScope, document_id: str,
+        query_verified_cancel: Callable[
+            [NfseAuthorizationRequest, Sp4OriginalRps, Sp4VerifiedInvoice],
+            JundiaiGissCancellationDecision,
+        ],
+        occurred_at: datetime, retention: RetentionPolicyMetadata,
+    ) -> DurableJundiaiCancellationOutcome:
+        """Recover a claimed Giss cancellation with read-only ConsultarNfsePorRps.
+
+        No new cancel POST, no unverified mutation and no second archive owner.
+        """
+        if (
+            not isinstance(scope, ExecutionScope)
+            or scope.environment is not FiscalEnvironment.HOMOLOGATION
+            or not isinstance(document_id, str) or not document_id.strip()
+            or not callable(query_verified_cancel)
+            or not isinstance(occurred_at, datetime)
+            or occurred_at.tzinfo is None
+            or not isinstance(retention, RetentionPolicyMetadata)
+        ):
+            raise FiscalValidationError("Jundiai reconciliation needs canonical fiscal scope")
+        with self._uow_factory() as uow:
+            request = self._load_prepared_from_uow(uow, scope, document_id)
+            if not isinstance(request, NfseAuthorizationRequest):
+                raise PersistenceStateError("No original Jundiai fiscal document")
+            uow.lifecycle.assert_scope(document_id, scope)
+            current = uow.lifecycle.get(document_id)
+            attempts = uow.idempotency.attempts(request.idempotency_key)
+            if (
+                current is None
+                or current.state not in (
+                    FiscalDocumentState.CANCEL_REQUESTED,
+                    FiscalDocumentState.CANCELLED,
+                )
+                or not attempts
+                or attempts[-1].status is not IssuanceAttemptStatus.AUTHORIZED
+                or attempts[-1].document_id != document_id
+                or attempts[-1].request_fingerprint != request.request_fingerprint
+                or request.document.issuer.address.jurisdiction.municipality_ibge_code
+                != "3525904"
+            ):
+                raise PersistenceStateError(
+                    "Jundiai reconciliation requires one claimed authorized original"
+                )
+            invoices = [
+                item for item in uow.archive.list_for_document(scope, document_id)
+                if item.kind is FiscalArchiveKind.AUTHORIZED_XML
+                and item.media_type == "application/xml"
+            ]
+            if len(invoices) != 1:
+                raise PersistenceStateError("Missing original Giss municipal XML archive")
+            FiscalArchiveVerifier().verify_entry(invoices[0])
+            archived_invoice_xml = invoices[0].content
+            if current.state is FiscalDocumentState.CANCELLED:
+                finals = [
+                    item for item in uow.archive.list_for_document(scope, document_id)
+                    if item.kind is FiscalArchiveKind.FISCAL_EVENT
+                    and item.media_type == "application/xml"
+                ]
+                if not finals:
+                    raise PersistenceStateError("Cancelled Jundiai NFS-e needs event evidence")
+                FiscalArchiveVerifier().verify_entry(finals[-1])
+                return DurableJundiaiCancellationOutcome(
+                    decision=JundiaiGissCancellationDecision(
+                        confirmed=True, response_xml=finals[-1].content,
+                    ), lifecycle=current, archive_reference=finals[-1].entry_id,
+                )
+        original = self.load_sp4_original_rps(scope, document_id)
+        invoice = decode_jundiai_archived_invoice(
+            archived_invoice_xml, original,
+        )
+        if attempts[-1].result_reference != invoice.invoice_reference:
+            raise PersistenceConflictError("Jundiai original invoice identity changed")
+        binding = self.resolve_configured_provider_id(
+            scope=scope, document_kind=FiscalDocumentKind.NFSE,
+            jurisdiction=request.document.issuer.address.jurisdiction,
+            operation="query",
+        )
+        if binding != "jundiai-giss-v2-homologation":
+            raise FiscalValidationError("Jundiai cancellation recovery binding mismatch")
+        decision = query_verified_cancel(request, original, invoice)
+        if not isinstance(decision, JundiaiGissCancellationDecision):
+            raise FiscalValidationError("Unverified Jundiai municipal recovery")
+        if decision.confirmed is not True:
+            return DurableJundiaiCancellationOutcome(
+                decision=decision, lifecycle=current, archive_reference=None,
+            )
+        event = FiscalArchiveEntry.build(
+            scope=scope, document_reference=document_id,
+            kind=FiscalArchiveKind.FISCAL_EVENT,
+            content=decision.response_xml, media_type="application/xml",
+            archived_at=occurred_at, retention=retention,
+        )
+        with self._uow_factory() as uow:
+            uow.lifecycle.assert_scope(document_id, scope)
+            latest = uow.lifecycle.get(document_id)
+            if latest != current:
+                raise PersistenceConflictError("Jundiai cancellation changed during recovery")
+            final = self._state_machine.transition(
+                latest, FiscalDocumentState.CANCELLED,
+                occurred_at=occurred_at,
+                reason="Jundiai Giss cancellation confirmed by read-only RPS query",
+                correlation_id=scope.correlation_id,
+            )
+            uow.lifecycle.save(final, expected_version=latest.version)
+            archived = uow.archive.append(event)
             uow.commit()
         return DurableJundiaiCancellationOutcome(
             decision=decision, lifecycle=final, archive_reference=archived.entry_id,
