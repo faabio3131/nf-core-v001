@@ -58,7 +58,7 @@ jobs:
         run: python -m pip install -e ".[dev]"
       - name: Govern migration policy
         run: python scripts/ci/migration_guard.py --check-policy
-      - name: Fail-closed preflight, migrate, deploy, smoke and rollback on failure
+      - name: Fail-closed code-only preflight, schema assertion, deploy and smoke
         run: sh scripts/ci/run_production_promotion.sh
       - name: Write safe promotion evidence
         if: success()
