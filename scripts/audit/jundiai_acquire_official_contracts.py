@@ -9,14 +9,14 @@ from __future__ import annotations
 import hashlib
 import json
 import os
-from pathlib import Path
 import shutil
 import subprocess
 import tempfile
+import xml.etree.ElementTree as ET
+from pathlib import Path
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlparse
 from urllib.request import Request, urlopen
-import xml.etree.ElementTree as ET
 
 BASE = "https://jundiai.giss.com.br/giss-ajuda/manuais/"
 PUBLIC = {
@@ -31,10 +31,18 @@ PUBLIC = {
 # Baseline downloaded on 2026-11-14 from the official portal, not generated
 # from simulator fixtures. Unexpected upstream changes require human review.
 EXPECTED_SOURCE_SHA256 = {
-    "schemas-servicos-prestados.rar": "c14a542de5fa2ce1a6a2b43da6e4eb0bebab12e6ebc850fe24dbdc8f6bb04356",
-    "manual-servicos-prestados-v1.8.pdf": "cdf8095944bbe0308d7df11a9632da78cba85b1daa3973dfdd51a86f9b4b58fd",
-    "manual-servicos-prestados-retorno-v1.0.pdf": "8becda8d0a97a34fe938baef6709dd8bee7867c40cc4defc54b775d670fd0db1",
-    "referencia-conceitual-abrasf-2.04.pdf": "d6ac7c1237a9064042df63bb7af2b539676f8b3589bdfb3fea8378a1b2f10bb9",
+    "schemas-servicos-prestados.rar": (
+        "c14a542de5fa2ce1a6a2b43da6e4eb0bebab12e6ebc850fe24dbdc8f6bb04356"
+    ),
+    "manual-servicos-prestados-v1.8.pdf": (
+        "cdf8095944bbe0308d7df11a9632da78cba85b1daa3973dfdd51a86f9b4b58fd"
+    ),
+    "manual-servicos-prestados-retorno-v1.0.pdf": (
+        "8becda8d0a97a34fe938baef6709dd8bee7867c40cc4defc54b775d670fd0db1"
+    ),
+    "referencia-conceitual-abrasf-2.04.pdf": (
+        "d6ac7c1237a9064042df63bb7af2b539676f8b3589bdfb3fea8378a1b2f10bb9"
+    ),
 }
 
 WSDL = {
