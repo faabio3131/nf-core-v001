@@ -2337,3 +2337,196 @@ def test_barueri_http_portal_issue_recover_and_authorized_xml(
     )
     with pytest.raises((StateError, FiscalValidationError)):
         application.load_sp4_original_rps(different_tenant, identifier)
+
+
+@pytest.mark.parametrize(("substitution", "cancel_confirmed"), [(False, False), (True, True)])
+def test_jundiai_http_cancel_or_substitute_officially_scoped_and_idempotent(
+    tmp_path: Path, substitution: bool, cancel_confirmed: bool,
+) -> None:
+    """Synthetic GISS response proves HTTP/UoW controls, not municipal atomic substitution."""
+    from kordena_fiscal.gateway.jundiai_giss_cancellation_result import (
+        JundiaiGissCancellationDecision,
+    )
+    from kordena_fiscal.gateway.jundiai_giss_homologation import (
+        JundiaiGissHomologationTransport,
+    )
+    from kordena_fiscal.runtime.jundiai_cancel_handlers import (
+        build_jundiai_event_handlers,
+    )
+    from kordena_fiscal.runtime.jundiai_operational_composition import (
+        JundiaiTrustedRuntimePorts,
+    )
+
+    db = _database(
+        tmp_path / ("jundiai-substitute.sqlite" if substitution else "jundiai-cancel.sqlite"),
+        issuer_ibge="3525904", provider_id="jundiai-giss-v2-homologation",
+        tax_regime=TaxRegimeCode.NORMAL,
+    )
+    application = FiscalApplicationService(db)
+    posted = Mock(return_value=Sp4ProviderOutcome(
+        status=AuthorizationStatus.PENDING, provider_request_id="GISS-LOT-01",
+    ))
+
+    def confirmed_invoice(
+        request: NfseAuthorizationRequest, original: Sp4OriginalRps,
+    ) -> Sp4ProviderOutcome:
+        ns = "http://www.giss.com.br/consultar-nfse-rps-resposta-v2_04.xsd"
+        types = "http://www.giss.com.br/tipos-v2_04.xsd"
+        xml = (
+            f'<ConsultarNfseRpsResposta xmlns="{ns}" xmlns:t="{types}">'
+            '<t:CompNfse><t:Nfse><t:InfNfse>'
+            '<t:Numero>8765</t:Numero><t:CodigoVerificacao>GISS-TEST-01</t:CodigoVerificacao>'
+            f'<t:OrgaoGerador><t:CodigoMunicipio>{original.issuer_ibge}</t:CodigoMunicipio></t:OrgaoGerador>'
+            '<t:PrestadorServico><t:IdentificacaoPrestador><t:CpfCnpj>'
+            f'<t:Cnpj>{original.issuer_cnpj.value}</t:Cnpj>'
+            '</t:CpfCnpj></t:IdentificacaoPrestador></t:PrestadorServico>'
+            '<t:DeclaracaoPrestacaoServico><t:InfDeclaracaoPrestacaoServico>'
+            '<t:Rps><t:IdentificacaoRps>'
+            f'<t:Numero>{original.rps_number}</t:Numero><t:Serie>{original.rps_series}</t:Serie>'
+            '</t:IdentificacaoRps></t:Rps>'
+            f'<t:Competencia>{original.competence_date.isoformat()}</t:Competencia>'
+            '<t:Prestador><t:CpfCnpj>'
+            f'<t:Cnpj>{original.issuer_cnpj.value}</t:Cnpj>'
+            '</t:CpfCnpj></t:Prestador><t:Servico><t:Valores>'
+            f'<t:ValorServicos>{original.gross_amount:.2f}</t:ValorServicos>'
+            '</t:Valores></t:Servico></t:InfDeclaracaoPrestacaoServico>'
+            '</t:DeclaracaoPrestacaoServico></t:InfNfse></t:Nfse></t:CompNfse>'
+            '</ConsultarNfseRpsResposta>'
+        ).encode()
+        return Sp4ProviderOutcome(
+            status=AuthorizationStatus.AUTHORIZED,
+            official_invoice=Sp4VerifiedInvoice(
+                issuer_cnpj=original.issuer_cnpj,
+                issuer_ibge=original.issuer_ibge,
+                competence_date=original.competence_date,
+                rps_number=original.rps_number,
+                rps_series=original.rps_series,
+                gross_amount=original.gross_amount,
+                invoice_number="8765", verification_code="GISS-TEST-01",
+                invoice_reference="8765", authorized_xml=xml,
+            ),
+        )
+
+    queried = Mock(side_effect=confirmed_invoice)
+    ports = Sp4ReviewedMunicipalPorts(
+        load_original_rps=Mock(side_effect=AssertionError("noncanonical RPS loader")),
+        fiscal_issuer_policy=Mock(), validate_prepared_rps=Mock(),
+        submit_official_rps=posted, query_official_rps=queried,
+        verify_official_invoice_xml=Mock(),
+    )
+    transport = JundiaiGissHomologationTransport(
+        resolver=Mock(), resolve_certificate=Mock(),
+        contract_for_method=Mock(), validate_signed_xml=Mock(),
+        exchange=Mock(side_effect=AssertionError("No real GISS network access")),
+    )
+    pending = JundiaiGissCancellationDecision(
+        confirmed=None, response_xml=b"<SyntheticCancelPending/>",
+    )
+    approved = JundiaiGissCancellationDecision(
+        confirmed=True, response_xml=b"<SyntheticCancelConfirmed/>",
+    )
+    cancellation_post = Mock(return_value=approved if cancel_confirmed else pending)
+    cancellation_query = Mock(return_value=approved)
+    reviewed = JundiaiTrustedRuntimePorts(
+        transport=transport, build_signed_operation=Mock(),
+        verify_signed_rps_identity=Mock(), fiscal_issuer_policy=Mock(),
+        validate_prepared_rps=Mock(), verify_official_invoice_xml=Mock(),
+        submit_verified_cancel=cancellation_post,
+        query_verified_cancel=cancellation_query,
+    )
+    handlers = dict(build_runtime_fiscal_handler_factory(
+        operations_gateway=FakeFiscalOperationsGateway(),
+        sp4_reviewed_municipalities={"jundiai-giss-v2-homologation": ports},
+    )(application))
+    handlers.update(build_jundiai_event_handlers(
+        application=application, reviewed=reviewed,
+        retention=RetentionPolicyMetadata("nfcore-fiscal-archive", 1),
+    ))
+    web = _client(db, operation_executor=CanonicalPortalOperationExecutor(
+        unit_of_work_factory=db,
+        path=CanonicalFiscalOperationPath(application, handlers=handlers),
+    ))
+    fields = _payload() | _TAKER_ADDRESS | {
+        "competence_date": "2026-11-12",
+        "source_id": "jundiai-original-verified-event",
+        "service_municipality_ibge": "3525904",
+    }
+    first = _post(web, fields, "jundiai-cancel-preparation")
+    assert first.status_code == 200, first.text
+    original_id = first.json()["document_id"]
+    replacement_id = None
+    if substitution:
+        candidate = _post(
+            web, fields | {"source_id": "jundiai-separate-replacement"},
+            "jundiai-substitution-candidate",
+        )
+        assert candidate.status_code == 200, candidate.text
+        replacement_id = candidate.json()["document_id"]
+        assert original_id != replacement_id
+    csrf = web.cookies.get(CSRF_COOKIE)
+    assert csrf
+    root = "/v1/portal/operations/"
+    original_body = {"unit_id": UNIT, "environment": "homologation", "document_id": original_id}
+    issued = web.post(root + "issueFiscalDocument", json=original_body, headers={
+        CSRF_HEADER: csrf, "Idempotency-Key": "jundiai-issued-once",
+    })
+    assert issued.status_code == 200, issued.text
+    assert posted.call_count == 1
+    authorized = web.post(root + "reconcileFiscalOperation", json=original_body, headers={
+        CSRF_HEADER: csrf, "Idempotency-Key": "jundiai-issued-query",
+    })
+    assert authorized.status_code == 200, authorized.text
+    assert authorized.json()["status"] == FiscalDocumentState.AUTHORIZED.value
+
+    operation = "substituteJundiaiNfse" if substitution else "cancelJundiaiNfse"
+    payload = {
+        "unit_id": UNIT, "environment": "homologation",
+        "human_approval": True, "reason_code": "1",
+    }
+    if substitution:
+        payload.update({"original_id": original_id, "replacement_id": replacement_id})
+    else:
+        payload["document_id"] = original_id
+
+    assert web.post(root + operation, json=payload).status_code == 403
+    unapproved = web.post(root + operation, json=payload | {
+        "human_approval": False,
+    }, headers={CSRF_HEADER: csrf, "Idempotency-Key": "jundiai-unapproved"})
+    assert unapproved.status_code in (400, 403), unapproved.text
+    cancellation_post.assert_not_called()
+    event = web.post(root + operation, json=payload, headers={
+        CSRF_HEADER: csrf, "Idempotency-Key": "jundiai-one-event",
+    })
+    assert event.status_code == 200, event.text
+    cancellation_post.assert_called_once()
+    assert posted.call_count == 1
+    if substitution:
+        assert event.json()["original_status"] == FiscalDocumentState.CANCELLED.value
+        assert event.json()["substitution_mode"] == (
+            "separate_original_cancel_then_replacement_issue"
+        )
+        assert event.json()["replacement_status"] == "ready_to_transmit"
+        assert event.json()["next_action"] == "issueFiscalDocument"
+        assert replacement_id is not None
+        scope = ExecutionScope(
+            TENANT, UNIT, FiscalEnvironment.HOMOLOGATION, "replacement-read", "fm-nfcore",
+        )
+        with db() as uow:
+            assert uow.lifecycle.get(replacement_id).state is (
+                FiscalDocumentState.READY_TO_TRANSMIT
+            )
+    else:
+        assert event.json()["status"] == FiscalDocumentState.CANCEL_REQUESTED.value
+        recovered = web.post(root + "reconcileJundiaiNfseCancellation", json=original_body,
+                             headers={CSRF_HEADER: csrf, "Idempotency-Key": "jundiai-cancel-read"})
+        assert recovered.status_code == 200, recovered.text
+        assert recovered.json()["status"] == FiscalDocumentState.CANCELLED.value
+        cancellation_query.assert_called_once()
+        cancellation_post.assert_called_once()
+        repeated = web.post(root + "reconcileJundiaiNfseCancellation",
+                            json=original_body, headers={
+                                CSRF_HEADER: csrf, "Idempotency-Key": "jundiai-cancel-read",
+                            })
+        assert repeated.status_code == 200, repeated.text
+        cancellation_query.assert_called_once()
+        cancellation_post.assert_called_once()
