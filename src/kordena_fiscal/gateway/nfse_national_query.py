@@ -14,7 +14,7 @@ from datetime import UTC, datetime
 from urllib.error import HTTPError, URLError
 from urllib.request import HTTPSHandler, Request, build_opener
 
- from kordena_fiscal.domain import (
+from kordena_fiscal.domain import (
     Cnpj,
     ExecutionScope,
     FiscalDocumentKind,
@@ -43,6 +43,7 @@ _PROVIDER_ID = "nfse-nacional-producao-restrita"
 _PROVIDER = GatewayProviderMetadata(_PROVIDER_ID, "1.0")
 _URL_BASE = SEFIN_HOMOLOGATION_NFSE_URL.rsplit("/nfse", 1)[0]
 _MAX_RESPONSE = 4_194_304
+
 
 def _dps_id(request: NfseAuthorizationRequest) -> str:
     document = request.document
