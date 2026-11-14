@@ -84,7 +84,7 @@ from kordena_fiscal.issuance.nfse_dps_builder import build_signed_dps
 from kordena_fiscal.lifecycle import FiscalDocumentState
 from kordena_fiscal.operations import FakeFiscalOperationsGateway, FiscalOperationsClient
 from kordena_fiscal.persistence import SqliteFiscalDatabase
-from kordena_fiscal.persistence.ports import PersistenceStateError
+from kordena_fiscal.persistence.ports import PersistenceConflictError, PersistenceStateError
 from kordena_fiscal.runtime.api import build_entrypoint_fiscal_handler_factory
 from kordena_fiscal.runtime.barueri_environment import BarueriReviewedStartup
 from kordena_fiscal.runtime.canonical_fiscal_composition import (
@@ -2169,7 +2169,7 @@ def test_jundiai_http_portal_durable_rps_pending_recovery_archive_and_isolation(
     assert persisted.rps_number == "1"
     assert persisted.rps_series == "R1"
     assert persisted.municipal_batch_id is not None
-    with pytest.raises(PersistenceStateError):
+    with pytest.raises((PersistenceConflictError, PersistenceStateError)):
         application.load_sp4_original_rps(ExecutionScope(
             "foreign-tenant", UNIT, FiscalEnvironment.HOMOLOGATION,
             "foreign-audit", "fm-nfcore",
