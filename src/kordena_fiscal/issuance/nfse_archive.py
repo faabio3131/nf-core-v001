@@ -393,5 +393,15 @@ def decode_prepared_nfse(content: bytes, *, scope: ExecutionScope) -> NfseAuthor
         if request.request_fingerprint != _text(root["request_fingerprint"], "request_fingerprint"):
             raise FiscalValidationError("archived NFS-e fingerprint does not match")
         return request
+    except FiscalValidationError as exc:
+        # FiscalValidationError also derives from ValueError. Preserve an
+        # explicit immutable-artifact integrity failure rather than masking
+        # the fingerprint mismatch as a generic malformed JSON field.
+        if str(exc) in {
+            "archived NFS-e idempotency key does not match",
+            "archived NFS-e fingerprint does not match",
+        }:
+            raise
+        raise FiscalValidationError("invalid prepared NFS-e artifact") from exc
     except (KeyError, TypeError, ValueError, ArithmeticError) as exc:
         raise FiscalValidationError("invalid prepared NFS-e artifact") from exc
