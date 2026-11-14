@@ -64,14 +64,14 @@ from kordena_fiscal.gateway.cajamar_geisweb_cancellation_builder import (
     CajamarCancellationDecision,
 )
 from kordena_fiscal.gateway.cajamar_geisweb_homologation import CAJAMAR_GEISWEB_PROVIDER
+from kordena_fiscal.gateway.cajamar_geisweb_invoice_interpreter import (
+    decode_cajamar_archived_invoice,
+)
 from kordena_fiscal.gateway.jundiai_giss_cancellation_result import (
     JundiaiGissCancellationDecision,
 )
 from kordena_fiscal.gateway.jundiai_giss_invoice_interpreter import (
     decode_jundiai_archived_invoice,
-)
-from kordena_fiscal.gateway.cajamar_geisweb_invoice_interpreter import (
-    decode_cajamar_archived_invoice,
 )
 from kordena_fiscal.gateway.osasco_rtc_cancellation_builder import (
     OsascoCancellationDecision,
