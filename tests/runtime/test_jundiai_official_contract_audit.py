@@ -3,16 +3,20 @@ from __future__ import annotations
 
 import hashlib
 from pathlib import Path
+from runpy import run_path
 
 import pytest
 
-from scripts.verify_jundiai_giss_official_contracts import (
-    _EXPECTED,
-    ContractAuditError,
-    _schema_resources,
-    _wsdl_bindings,
-    audit,
+# Scripts live outside the installed src/ package; load their functions
+# directly rather than implicitly assuming repository-root PYTHONPATH.
+_audit_tool = run_path(
+    str(Path(__file__).resolve().parents[2] / "scripts" / "verify_jundiai_giss_official_contracts.py")
 )
+_EXPECTED = _audit_tool["_EXPECTED"]
+ContractAuditError = _audit_tool["ContractAuditError"]
+_schema_resources = _audit_tool["_schema_resources"]
+_wsdl_bindings = _audit_tool["_wsdl_bindings"]
+audit = _audit_tool["audit"]
 
 _XS = "http://www.w3.org/2001/XMLSchema"
 _NS = "http://www.giss.com.br/"
