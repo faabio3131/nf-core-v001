@@ -188,7 +188,7 @@ def _schema_resources(folder: Path) -> tuple[tuple[SchemaResource, ...], dict[st
         SchemaResource.from_bytes(name, payload)
         for name, payload in sorted(found.items())
     )
-    for name, entry in sorted(roots.items()):
+    for _name, entry in sorted(roots.items()):
         # Compile *all* official operation entrypoints using the exact same
         # no-network schema implementation as the production runtime.
         XmlSchemaValidator(SchemaSet(
