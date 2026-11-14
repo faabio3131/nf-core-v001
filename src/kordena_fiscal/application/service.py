@@ -2543,11 +2543,12 @@ class FiscalApplicationService:
                     or replacement_id == document_id
                 ):
                     raise PersistenceStateError("Invalid archived substitute document")
-                replacement_request = self._load_prepared_from_uow(
+                loaded_replacement = self._load_prepared_from_uow(
                     uow, scope, replacement_id,
                 )
-                if not isinstance(replacement_request, NfseAuthorizationRequest):
+                if not isinstance(loaded_replacement, NfseAuthorizationRequest):
                     raise PersistenceStateError("Prepared substitute is unavailable")
+                replacement_request = loaded_replacement
                 replacement_state = uow.lifecycle.get(replacement_id)
                 replacement_attempts = uow.idempotency.attempts(
                     replacement_request.idempotency_key,
