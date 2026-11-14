@@ -11,22 +11,27 @@ from dataclasses import dataclass
 
 from kordena_fiscal.application.service import FiscalApplicationService
 from kordena_fiscal.domain import (
-    BrazilianJurisdiction, ExecutionScope, FiscalDocumentKind,
+    BrazilianJurisdiction,
+    ExecutionScope,
+    FiscalDocumentKind,
     FiscalValidationError,
 )
 from kordena_fiscal.gateway.jundiai_giss_homologation import (
-    JundiaiGissHomologationTransport, JundiaiGissWsdlContract,
+    JundiaiGissHomologationTransport,
+    JundiaiGissWsdlContract,
     JundiaiSignedOperation,
 )
 from kordena_fiscal.gateway.sp4_municipal_canonical import (
-    Sp4OriginalRps, Sp4VerifiedInvoice,
+    Sp4OriginalRps,
+    Sp4VerifiedInvoice,
 )
 from kordena_fiscal.issuance.nfe_nfse import NfseAuthorizationRequest
 from kordena_fiscal.vault.encrypted_a1 import EncryptedA1Vault
 
 from .sp4_municipal_canonical_composition import Sp4ReviewedMunicipalPorts
 from .sp4_municipal_provider_bridges import (
-    Sp4BridgeAuthority, build_jundiai_reviewed_ports,
+    Sp4BridgeAuthority,
+    build_jundiai_reviewed_ports,
 )
 
 
