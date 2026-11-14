@@ -218,9 +218,67 @@ def _schema_resources(folder: Path) -> tuple[tuple[SchemaResource, ...], dict[st
     return resources, roots
 
 
-def audit(wsdl: Path, xsd_dir: Path, archive: Path | None = None) -> dict[str, object]:
+
+_OFFICIAL_ROOT = (
+    Path(__file__).resolve().parents[1] / "contracts/official/jundiai/giss_v2_04"
+)
+_OFFICIAL_XSD_DIR = _OFFICIAL_ROOT / "xsd/Schemas_XSD-Servicos_Prestados"
+
+
+def _verify_pinned_manifest(folder: Path, manifest_path: Path) -> str:
+    """Bind each exact ORIGINAL official schema to its acquired-source digest."""
+    try:
+        manifest_bytes = _read(manifest_path)
+        spec = json.loads(manifest_bytes)
+    except (json.JSONDecodeError, UnicodeDecodeError) as exc:
+        raise ContractAuditError("Malformed Giss official schema manifest") from exc
+    if (
+        not isinstance(spec, dict)
+        or spec.get("municipality_ibge") != "3525904"
+        or not isinstance(spec.get("schemas"), list)
+        or len(spec["schemas"]) != 24
+    ):
+        raise ContractAuditError("Incomplete Jundiai official schema manifest")
+    expected: dict[str, str] = {}
+    official_folder = folder.resolve()
+    for row in spec["schemas"]:
+        if not isinstance(row, dict) or set(row) < {"path", "sha256"}:
+            raise ContractAuditError("Incomplete pinned schema entry")
+        relative = row["path"]
+        digest = row["sha256"]
+        if not isinstance(relative, str) or not isinstance(digest, str):
+            raise ContractAuditError("Invalid pinned schema identity")
+        target = (manifest_path.parent / relative).resolve()
+        if (
+            target.parent != official_folder
+            or target.suffix.lower() != ".xsd"
+            or target.name in expected
+            or len(digest) != 64
+        ):
+            raise ContractAuditError("Invalid pinned schema path or digest")
+        expected[target.name] = digest
+    actual = {
+        path.name for path in folder.iterdir()
+        if path.is_file() and path.suffix.lower() == ".xsd"
+    }
+    if len(expected) != 24 or actual != set(expected):
+        raise ContractAuditError("Official Giss XSD distribution differs from manifest")
+    for name, digest in sorted(expected.items()):
+        if hashlib.sha256(_read(folder / name)).hexdigest() != digest:
+            raise ContractAuditError("Official Giss XSD checksum mismatch: " + name)
+    return hashlib.sha256(manifest_bytes).hexdigest()
+
+
+def audit(
+    wsdl: Path, xsd_dir: Path, archive: Path | None = None,
+    pinned_manifest: Path | None = None,
+) -> dict[str, object]:
     wsdl_xml = _read(wsdl)
     namespace, actions = _wsdl_bindings(wsdl_xml)
+    manifest_sha = (
+        _verify_pinned_manifest(xsd_dir, pinned_manifest)
+        if pinned_manifest is not None else None
+    )
     resources, roots = _schema_resources(xsd_dir)
     schema = SchemaSet(
         version="giss-abrasf-2.04-official",
@@ -246,6 +304,8 @@ def audit(wsdl: Path, xsd_dir: Path, archive: Path | None = None) -> dict[str, o
         "source_authenticity": "requires_independent_review",
         "municipal_homologation": "not_claimed",
     }
+    if manifest_sha is not None:
+        result["pinned_official_manifest_sha256"] = manifest_sha
     if archive is not None:
         if archive.suffix.lower() != ".rar":
             raise ContractAuditError("Official Giss distribution must be RAR")
@@ -258,12 +318,16 @@ def audit(wsdl: Path, xsd_dir: Path, archive: Path | None = None) -> dict[str, o
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--wsdl", required=True, type=Path)
-    parser.add_argument("--xsd-dir", required=True, type=Path)
+    parser.add_argument("--xsd-dir", type=Path, default=_OFFICIAL_XSD_DIR)
     parser.add_argument("--source-rar", type=Path)
+    parser.add_argument("--pinned-manifest", type=Path)
     parser.add_argument("--report", required=True, type=Path)
     args = parser.parse_args()
     try:
-        result = audit(args.wsdl, args.xsd_dir, args.source_rar)
+        pin = args.pinned_manifest
+        if pin is None and args.xsd_dir.resolve() == _OFFICIAL_XSD_DIR.resolve():
+            pin = _OFFICIAL_ROOT / "manifest.json"
+        result = audit(args.wsdl, args.xsd_dir, args.source_rar, pin)
         if args.report.exists() or args.report.is_symlink():
             raise ContractAuditError("Do not overwrite immutable audit evidence")
         args.report.parent.mkdir(parents=True, exist_ok=True)
