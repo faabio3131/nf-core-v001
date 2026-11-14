@@ -10,7 +10,11 @@ import pytest
 # Scripts live outside the installed src/ package; load their functions
 # directly rather than implicitly assuming repository-root PYTHONPATH.
 _audit_tool = run_path(
-    str(Path(__file__).resolve().parents[2] / "scripts" / "verify_jundiai_giss_official_contracts.py")
+    str(
+        Path(__file__).resolve().parents[2]
+        / "scripts"
+        / "verify_jundiai_giss_official_contracts.py"
+    )
 )
 _EXPECTED = _audit_tool["_EXPECTED"]
 ContractAuditError = _audit_tool["ContractAuditError"]
