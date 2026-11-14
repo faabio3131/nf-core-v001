@@ -279,7 +279,14 @@ class FiscalIntentRecovery:
             raise denied("MISSING_IDEMPOTENCY_KEY", 400)
         scope = self.scope(auth, payload)
         fingerprint = self.fingerprint(operation, scope, payload)
-        intent = self.prefix(auth) + digest(self.prefix(auth) + fingerprint)
+        # Reconciliation queries are read-only and must support a subsequent
+        # independent poll after a PENDING result. Mutating operations retain
+        # content-scoped at-most-once claims irrespective of HTTP key changes.
+        # The same key still resolves to exactly the same scoped claim.
+        intent_material = self.prefix(auth) + fingerprint
+        if operation == "reconcileFiscalOperation":
+            intent_material += ":read-only-poll:" + digest(key)
+        intent = self.prefix(auth) + digest(intent_material)
         alias = "fiscal-key:" + digest(HOST + ":" + auth.account.account_id + ":" + key)
         now = datetime.now(UTC)
         row: Mapping[str, object] = {

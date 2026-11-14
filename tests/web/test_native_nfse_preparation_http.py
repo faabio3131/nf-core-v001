@@ -84,7 +84,7 @@ from kordena_fiscal.issuance.nfse_dps_builder import build_signed_dps
 from kordena_fiscal.lifecycle import FiscalDocumentState
 from kordena_fiscal.operations import FakeFiscalOperationsGateway, FiscalOperationsClient
 from kordena_fiscal.persistence import SqliteFiscalDatabase
-from kordena_fiscal.persistence.ports import PersistenceStateError
+from kordena_fiscal.persistence.ports import PersistenceConflictError, PersistenceStateError
 from kordena_fiscal.runtime.api import build_entrypoint_fiscal_handler_factory
 from kordena_fiscal.runtime.barueri_environment import BarueriReviewedStartup
 from kordena_fiscal.runtime.canonical_fiscal_composition import (
@@ -165,7 +165,7 @@ def _database(
             state_registration=StateRegistration("SP", "123456789"),
             municipal_registration=(
                 MunicipalRegistration("123456") if issuer_ibge == "3534401"
-                else MunicipalRegistration("1234567") if issuer_ibge == "3505708"
+                else MunicipalRegistration("1234567") if issuer_ibge in ("3505708", "3525904")
                 else None
             ),
             primary_cnae=CnaeCode("6201501"),
@@ -173,7 +173,8 @@ def _database(
                 street="Rua de Homologacao", number="10", district="Centro",
                 municipality_name=(
                     "Osasco" if issuer_ibge == "3534401"
-                    else "Barueri" if issuer_ibge == "3505708" else "Cajamar"
+                    else "Barueri" if issuer_ibge == "3505708"
+                    else "Jundiai" if issuer_ibge == "3525904" else "Cajamar"
                 ), jurisdiction=jurisdiction,
                 postal_code="07750000",
             ),
@@ -191,6 +192,7 @@ def _database(
             if provider_id in {
                 "cajamar-geisweb-homologation", "osasco-rtc-homologation",
                 "barueri-pmb004-homologation",
+                "jundiai-giss-v2-homologation",
             }:
                 uow.commercial.put_provider_binding(ProviderBinding(
                     binding_id="cajamar-query-binding",
@@ -2074,3 +2076,264 @@ def test_barueri_api_entrypoint_portal_issue_reconcile_cancel_replay_and_archive
         assert replay_recovery.status_code == 200, replay_recovery.text
         assert replay_recovery.json()["replay"] is True
         assert calls.count("NFeLoteEnviarArquivo") == 2
+
+
+def test_jundiai_http_portal_durable_rps_pending_recovery_archive_and_isolation(
+    tmp_path: Path,
+) -> None:
+    """Real HTTP/CSRF/session -> SQLite/UoW -> SP4 bridge with synthetic provider.
+
+    Does not certify live Giss WSDL or the municipality's invoice XML signature;
+    the Giss request serialization itself is audited against official XSD by
+    scripts/audit/jundiai_test_xml_against_official.py.
+    """
+    db_path = tmp_path / "jundiai-http-durable.sqlite"
+    db = _database(
+        db_path, issuer_ibge="3525904",
+        provider_id="jundiai-giss-v2-homologation",
+        tax_regime=TaxRegimeCode.NORMAL,
+    )
+    application = FiscalApplicationService(db)
+    submits: list[Sp4OriginalRps] = []
+    queries: list[Sp4OriginalRps] = []
+    verified = Mock()
+    polling = [False, True]
+
+    def submit(
+        request: NfseAuthorizationRequest, original: Sp4OriginalRps,
+    ) -> Sp4ProviderOutcome:
+        assert request.request_fingerprint == original.request_fingerprint
+        assert original.issuer_ibge == "3525904"
+        assert original.municipal_batch_id is not None
+        assert original.rps_series == "R1"
+        submits.append(original)
+        return Sp4ProviderOutcome(
+            status=AuthorizationStatus.PENDING, provider_request_id="synthetic-batch-42",
+        )
+
+    def recover(
+        request: NfseAuthorizationRequest, original: Sp4OriginalRps,
+    ) -> Sp4ProviderOutcome:
+        assert request.request_fingerprint == original.request_fingerprint
+        queries.append(original)
+        if not polling.pop(0):
+            return Sp4ProviderOutcome(status=AuthorizationStatus.PENDING)
+        verified_invoice = Sp4VerifiedInvoice(
+            issuer_cnpj=original.issuer_cnpj, issuer_ibge=original.issuer_ibge,
+            competence_date=original.competence_date,
+            rps_number=original.rps_number, rps_series=original.rps_series,
+            gross_amount=original.gross_amount, invoice_number="8765",
+            verification_code="SYNTHETIC42", invoice_reference="8765",
+            authorized_xml=b"<SyntheticJundiaiInvoice>8765</SyntheticJundiaiInvoice>",
+        )
+        return Sp4ProviderOutcome(
+            status=AuthorizationStatus.AUTHORIZED, official_invoice=verified_invoice,
+        )
+
+    ports = Sp4ReviewedMunicipalPorts(
+        load_original_rps=Mock(
+            side_effect=AssertionError("non-canonical municipality RPS loader used")
+        ),
+        fiscal_issuer_policy=Mock(), validate_prepared_rps=Mock(),
+        submit_official_rps=submit, query_official_rps=recover,
+        verify_official_invoice_xml=verified,
+    )
+    factory = build_runtime_fiscal_handler_factory(
+        operations_gateway=FakeFiscalOperationsGateway(),
+        sp4_reviewed_municipalities={"jundiai-giss-v2-homologation": ports},
+    )
+    handlers = factory(application)
+    runtime = CanonicalPortalOperationExecutor(
+        unit_of_work_factory=db,
+        path=CanonicalFiscalOperationPath(application, handlers=handlers),
+    )
+    web = _client(db, operation_executor=runtime)
+    original_payload = _payload() | _TAKER_ADDRESS | {
+        "service_municipality_ibge": "3525904",
+        "competence_date": "2026-11-12",
+        "source_id": "jundiai-http-verified-2026",
+    }
+
+    prepared = _post(web, original_payload, "jundiai-prepare")
+    assert prepared.status_code == 200, prepared.text
+    assert prepared.json()["numbering_authority"] == "municipal_rps_durable"
+    identifier = prepared.json()["document_id"]
+    assert _post(web, original_payload, "jundiai-second-preparation-key").json()["replay"]
+    scope = ExecutionScope(
+        TENANT, UNIT, FiscalEnvironment.HOMOLOGATION, "jundiai-db-audit", "fm-nfcore",
+    )
+    persisted = FiscalApplicationService(
+        SqliteFiscalDatabase(db_path)
+    ).load_sp4_original_rps(scope, identifier)
+    assert persisted.issuer_ibge == "3525904"
+    assert persisted.rps_number == "1"
+    assert persisted.rps_series == "R1"
+    assert persisted.municipal_batch_id is not None
+    with pytest.raises((PersistenceConflictError, PersistenceStateError)):
+        application.load_sp4_original_rps(ExecutionScope(
+            "foreign-tenant", UNIT, FiscalEnvironment.HOMOLOGATION,
+            "foreign-audit", "fm-nfcore",
+        ), identifier)
+
+    body = {
+        "unit_id": UNIT, "environment": "homologation",
+        "document_id": identifier,
+    }
+    csrf = web.cookies.get(CSRF_COOKIE)
+    assert csrf is not None
+    issue_url = "/v1/portal/operations/issueFiscalDocument"
+    assert web.post(issue_url, json=body).status_code == 403
+    assert web.post(
+        issue_url, json=body | {"tenant_id": "foreign-tenant"},
+        headers={CSRF_HEADER: csrf, "Idempotency-Key": "bad-tenant"},
+    ).status_code in (400, 403)
+
+    issued = web.post(issue_url, json=body, headers={
+        CSRF_HEADER: csrf, "Idempotency-Key": "jundiai-one-soap-post",
+    })
+    assert issued.status_code == 200, issued.text
+    assert len(submits) == 1
+    assert queries == []
+
+    reconcile_url = "/v1/portal/operations/reconcileFiscalOperation"
+    first = web.post(reconcile_url, json=body, headers={
+        CSRF_HEADER: csrf, "Idempotency-Key": "jundiai-lookup-pending",
+    })
+    assert first.status_code == 200, first.text
+    assert first.json()["status"] != FiscalDocumentState.AUTHORIZED.value
+    assert len(submits) == 1
+    second = web.post(reconcile_url, json=body, headers={
+        CSRF_HEADER: csrf, "Idempotency-Key": "jundiai-lookup-authorized",
+    })
+    assert second.status_code == 200, second.text
+    assert second.json().get("status") == FiscalDocumentState.AUTHORIZED.value, second.text
+    assert len(submits) == 1
+    assert len(queries) == 2
+    same_poll = web.post(reconcile_url, json=body, headers={
+        CSRF_HEADER: csrf, "Idempotency-Key": "jundiai-lookup-authorized",
+    })
+    assert same_poll.status_code == 200, same_poll.text
+    assert same_poll.json()["replay"] is True
+    assert same_poll.json()["operation_result"]["status"] == "authorized"
+    assert len(queries) == 2
+    verified.assert_called_once()
+    archive = web.get(
+        f"/v1/portal/documents/{identifier}/artifacts/authorized_xml",
+        params={"unit_id": UNIT, "environment": "homologation"},
+    )
+    assert archive.status_code == 200, archive.text
+    assert archive.content == b"<SyntheticJundiaiInvoice>8765</SyntheticJundiaiInvoice>"
+    replay = web.post(issue_url, json=body, headers={
+        CSRF_HEADER: csrf, "Idempotency-Key": "jundiai-one-soap-post",
+    })
+    assert replay.status_code == 200, replay.text
+    assert len(submits) == 1, "replay cannot trigger a duplicate municipal POST"
+    second_key_same_invoice = web.post(issue_url, json=body, headers={
+        CSRF_HEADER: csrf, "Idempotency-Key": "different-key-same-issued-rps",
+    })
+    assert second_key_same_invoice.status_code == 200, second_key_same_invoice.text
+    assert second_key_same_invoice.json()["replay"] is True
+    assert len(submits) == 1, "a second issue key must not retransmit the same RPS"
+
+def test_barueri_http_portal_issue_recover_and_authorized_xml(
+    tmp_path: Path,
+) -> None:
+    """Use the real authenticated Portal, durable original and archive; synthetic provider."""
+    db = _database(
+        tmp_path / "barueri-e2e.sqlite", issuer_ibge="3505708",
+        provider_id="barueri-pmb004-homologation",
+        tax_regime=TaxRegimeCode.NORMAL,
+    )
+    application = FiscalApplicationService(db)
+    submit = Mock(return_value=Sp4ProviderOutcome(
+        status=AuthorizationStatus.PENDING,
+        provider_request_id="PROTOCOL-BARUERI-01",
+    ))
+    validate_invoice = Mock()
+
+    def read_authorized(
+        request: NfseAuthorizationRequest, original: Sp4OriginalRps,
+    ) -> Sp4ProviderOutcome:
+        assert original.issuer_ibge == "3505708"
+        assert original.rps_number == "1"
+        assert original.municipal_batch_id == "00000000001"
+        assert request.request_fingerprint == original.request_fingerprint
+        return Sp4ProviderOutcome(
+            status=AuthorizationStatus.AUTHORIZED,
+            official_invoice=Sp4VerifiedInvoice(
+                issuer_cnpj=original.issuer_cnpj,
+                issuer_ibge=original.issuer_ibge,
+                competence_date=original.competence_date,
+                rps_number=original.rps_number,
+                rps_series=original.rps_series,
+                gross_amount=original.gross_amount,
+                invoice_number="1001001",
+                verification_code="BARUERI-TEST-01",
+                invoice_reference="3505708-BARUERI-TEST-01",
+                authorized_xml=b"<BarueriOfficialSynthetic>1001001</BarueriOfficialSynthetic>",
+            ),
+        )
+
+    query = Mock(side_effect=read_authorized)
+    ports = Sp4ReviewedMunicipalPorts(
+        load_original_rps=Mock(side_effect=AssertionError("noncanonical loader")),
+        fiscal_issuer_policy=Mock(), validate_prepared_rps=Mock(),
+        submit_official_rps=submit, query_official_rps=query,
+        verify_official_invoice_xml=validate_invoice,
+    )
+    handlers = build_runtime_fiscal_handler_factory(
+        operations_gateway=FakeFiscalOperationsGateway(),
+        sp4_reviewed_municipalities={"barueri-pmb004-homologation": ports},
+    )(application)
+    web = _client(db, operation_executor=CanonicalPortalOperationExecutor(
+        unit_of_work_factory=db,
+        path=CanonicalFiscalOperationPath(application, handlers=handlers),
+    ))
+    fields = _payload() | _TAKER_ADDRESS | {
+        "competence_date": "2026-10-31",
+        "source_id": "barueri-http-original",
+        "service_municipality_ibge": "3505708",
+    }
+    first = _post(web, fields, key="barueri-prepared")
+    assert first.status_code == 200, first.text
+    identifier = first.json()["document_id"]
+    csrf = web.cookies.get(CSRF_COOKIE)
+    assert csrf
+    command = {
+        "unit_id": UNIT, "environment": "homologation", "document_id": identifier,
+    }
+    sent = web.post(
+        "/v1/portal/operations/issueFiscalDocument",
+        json=command, headers={CSRF_HEADER: csrf, "Idempotency-Key": "issue-barueri"},
+    )
+    assert sent.status_code == 200, sent.text
+    assert submit.call_count == 1
+    assert query.call_count == 0
+    result = web.post(
+        "/v1/portal/operations/reconcileFiscalOperation",
+        json=command, headers={CSRF_HEADER: csrf, "Idempotency-Key": "poll-barueri"},
+    )
+    assert result.status_code == 200, result.text
+    assert result.json()["status"] == FiscalDocumentState.AUTHORIZED.value
+    submit.assert_called_once()
+    query.assert_called_once()
+    validate_invoice.assert_called_once()
+    archive = web.get(
+        f"/v1/portal/documents/{identifier}/artifacts/authorized_xml",
+        params={"unit_id": UNIT, "environment": "homologation"},
+    )
+    assert archive.status_code == 200, archive.text
+    assert archive.content == b"<BarueriOfficialSynthetic>1001001</BarueriOfficialSynthetic>"
+    repeated = web.post(
+        "/v1/portal/operations/issueFiscalDocument",
+        json=command, headers={CSRF_HEADER: csrf, "Idempotency-Key": "issue-barueri"},
+    )
+    assert repeated.status_code == 200, repeated.text
+    submit.assert_called_once()
+    # A separately authenticated tenant-scope cannot retrieve this fiscal archive.
+    from kordena_fiscal.persistence.ports import PersistenceStateError as StateError
+    different_tenant = ExecutionScope(
+        "unrelated-tenant", UNIT, FiscalEnvironment.HOMOLOGATION, "probe", "fm-nfcore",
+    )
+    with pytest.raises((StateError, FiscalValidationError)):
+        application.load_sp4_original_rps(different_tenant, identifier)

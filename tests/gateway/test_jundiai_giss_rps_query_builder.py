@@ -16,6 +16,7 @@ from kordena_fiscal.gateway.sp4_municipal_canonical import (
 )
 
 _TYPES = "{http://www.giss.com.br/tipos-v2_04.xsd}"
+_DOCUMENT = "{http://www.giss.com.br/consultar-nfse-rps-envio-v2_04.xsd}"
 
 
 def _original() -> Sp4OriginalRps:
@@ -39,11 +40,11 @@ def test_query_by_original_rps_builds_giss_2_04_wire_xml() -> None:
     )
     assert operation.method == "ConsultarNfsePorRps"
     root = _validate_xml_shape(operation.signed_xml, operation.method)
-    assert root.find(f"{_TYPES}IdentificacaoRps/{_TYPES}Numero").text == "42"
-    assert root.find(f"{_TYPES}IdentificacaoRps/{_TYPES}Serie").text == "NF"
-    assert root.find(f"{_TYPES}IdentificacaoRps/{_TYPES}Tipo").text == "1"
-    assert root.find(f"{_TYPES}Prestador/{_TYPES}InscricaoMunicipal").text == "1234567"
-    assert root.find(f"{_TYPES}Prestador/{_TYPES}CpfCnpj/{_TYPES}Cnpj").text == (
+    assert root.find(f"{_DOCUMENT}IdentificacaoRps/{_TYPES}Numero").text == "42"
+    assert root.find(f"{_DOCUMENT}IdentificacaoRps/{_TYPES}Serie").text == "NF"
+    assert root.find(f"{_DOCUMENT}IdentificacaoRps/{_TYPES}Tipo").text == "1"
+    assert root.find(f"{_DOCUMENT}Prestador/{_TYPES}InscricaoMunicipal").text == "1234567"
+    assert root.find(f"{_DOCUMENT}Prestador/{_TYPES}CpfCnpj/{_TYPES}Cnpj").text == (
         source.issuer_cnpj.value
     )
     assert etree.QName(root).localname == "ConsultarNfseRpsEnvio"

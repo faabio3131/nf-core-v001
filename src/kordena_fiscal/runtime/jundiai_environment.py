@@ -229,6 +229,7 @@ class _Issuer:
             if row["rtc"] is not None and set(row["rtc"]) != {
                 "operation_indicator", "cst", "classification", "fin_nfse",
                 "ind_dest", "incidence_ibge", "taxable_base", "ind_final",
+                "government_reduction_percent",
             }:
                 raise ValueError
         except (TypeError, ValueError, InvalidOperation, FiscalValidationError):
@@ -471,6 +472,9 @@ class JundiaiReviewedStartup:
                 rtc_incidence_ibge=rtc["incidence_ibge"] if rtc else None,
                 rtc_taxable_base=Decimal(rtc["taxable_base"]) if rtc else None,
                 rtc_ind_final=rtc["ind_final"] if rtc else None,
+                rtc_government_reduction_percent=(
+                    Decimal(rtc["government_reduction_percent"]) if rtc else None
+                ),
             )
 
         def build_operation(

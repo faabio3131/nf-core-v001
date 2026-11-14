@@ -80,6 +80,7 @@ class JundiaiGissTaxFields:
     rtc_incidence_ibge: str | None = None
     rtc_taxable_base: Decimal | None = None
     rtc_ind_final: str | None = None
+    rtc_government_reduction_percent: Decimal | None = None
 
 
 def _label(value: str, name: str, limit: int = 256) -> str:
@@ -169,6 +170,7 @@ def _tax_fields(fields: JundiaiGissTaxFields) -> None:
         fields.operation_indicator, fields.rtc_cst, fields.rtc_classification,
         fields.rtc_fin_nfse, fields.rtc_ind_dest,
         fields.rtc_incidence_ibge, fields.rtc_taxable_base, fields.rtc_ind_final,
+        fields.rtc_government_reduction_percent,
     )
     if any(x is not None for x in indicators):
         if fields.national_service_code is None:
@@ -182,6 +184,7 @@ def _tax_fields(fields: JundiaiGissTaxFields) -> None:
         assert fields.rtc_ind_dest is not None
         assert fields.rtc_incidence_ibge is not None
         assert fields.rtc_taxable_base is not None
+        assert fields.rtc_government_reduction_percent is not None
         if fields.rtc_fin_nfse not in ("0", "1") or fields.rtc_ind_dest not in ("0", "1"):
             raise JundiaiGissIssueError("Invalid GissOnline 2026 RTC operation type")
         if fields.rtc_ind_final is not None and fields.rtc_ind_final not in ("0", "1"):
@@ -189,6 +192,10 @@ def _tax_fields(fields: JundiaiGissTaxFields) -> None:
         if len(_digits(fields.rtc_incidence_ibge, "IBS locality", 7)) != 7:
             raise JundiaiGissIssueError("GissOnline IBSCBS incidence locality missing")
         _decimal(fields.rtc_taxable_base, "IBS/CBS taxable base")
+        gov_reduction = fields.rtc_government_reduction_percent
+        _decimal(gov_reduction, "IBS/CBS government reduction percent", 2)
+        if gov_reduction > 100:
+            raise JundiaiGissIssueError("GissOnline government reduction percent out of range")
         _digits(fields.operation_indicator, "INDOP", 12)
         _digits(fields.rtc_cst, "IBS/CBS CST", 3)
         _digits(fields.rtc_classification, "IBS/CBS class", 6)
@@ -280,6 +287,7 @@ def build_jundiai_giss_issue_xml(
         assert fields.rtc_classification is not None
         assert fields.rtc_incidence_ibge is not None
         assert fields.rtc_taxable_base is not None
+        assert fields.rtc_government_reduction_percent is not None
         ibscbs = _part(amounts, "IBSCBS")
         _tag(ibscbs, "finNFSe", fields.rtc_fin_nfse)
         if fields.rtc_ind_final is not None:
@@ -292,6 +300,12 @@ def build_jundiai_giss_issue_xml(
         _tag(g, "CST", fields.rtc_cst)
         _tag(g, "cClassTrib", fields.rtc_classification)
         _tag(rtc_values, "cLocalidadeIncid", fields.rtc_incidence_ibge)
+        # The published GissOnline XSD requires pRedutor before optional vBC.
+        # Obtain this percentage from reviewed taxpayer policy, never assume zero.
+        _tag(rtc_values, "pRedutor", _decimal(
+            fields.rtc_government_reduction_percent,
+            "IBS/CBS government reduction percent", 2,
+        ))
         _tag(rtc_values, "vBC", _decimal(fields.rtc_taxable_base, "IBS/CBS taxable base"))
     _tag(srv, "IssRetido", "1" if service.iss_withheld else "2")
     _tag(srv, "ItemListaServico", fields.item_lista_servico)
