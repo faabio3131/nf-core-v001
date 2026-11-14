@@ -27,13 +27,16 @@ from lxml import etree
 from kordena_fiscal.application.service import FiscalApplicationService
 from kordena_fiscal.domain import Cnpj, ExecutionScope, FiscalAddress, FiscalValidationError
 from kordena_fiscal.gateway.jundiai_giss_homologation import (
-    JundiaiGissWsdlContract, JundiaiSignedOperation,
+    JundiaiGissWsdlContract,
+    JundiaiSignedOperation,
 )
 from kordena_fiscal.gateway.jundiai_giss_issue_builder import (
-    JundiaiGissRecipient, JundiaiGissTaxFields,
+    JundiaiGissRecipient,
+    JundiaiGissTaxFields,
 )
 from kordena_fiscal.gateway.sp4_municipal_canonical import (
-    Sp4OriginalRps, Sp4VerifiedInvoice,
+    Sp4OriginalRps,
+    Sp4VerifiedInvoice,
 )
 from kordena_fiscal.issuance.nfe_nfse import NfseAuthorizationRequest
 from kordena_fiscal.signing.nfse_xmldsig import append_nfse_signature
@@ -43,7 +46,8 @@ from kordena_fiscal.xml.schema import SchemaResource, SchemaSet, XmlSchemaValida
 
 from .config import RuntimeConfigurationError
 from .jundiai_operational_composition import (
-    JundiaiTrustedRuntimePorts, build_jundiai_trusted_transport,
+    JundiaiTrustedRuntimePorts,
+    build_jundiai_trusted_transport,
 )
 from .sp4_municipal_request_factories import build_jundiai_giss_issue_request_factory
 
