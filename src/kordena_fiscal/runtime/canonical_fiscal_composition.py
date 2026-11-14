@@ -85,6 +85,7 @@ from .barueri_cancel_handlers import build_barueri_event_handlers
 from .barueri_operational_composition import BarueriTrustedRuntimePorts
 from .cajamar_operational_composition import CajamarTrustedRuntimePorts
 from .fiscal_runtime import FiscalOperationHandler, PreflightFiscalOperationHandler
+from .jundiai_cancel_handlers import build_jundiai_event_handlers
 from .jundiai_operational_composition import JundiaiTrustedRuntimePorts
 from .osasco_cancel_handlers import (
     build_osasco_cancel_handler,
@@ -691,6 +692,17 @@ def build_runtime_fiscal_handler_factory(
             ).items():
                 if operation in handlers:
                     raise ValueError("Duplicate Barueri event handler authority")
+                handlers[operation] = handler
+        if (
+            selected_jundiai_ports is not None
+            and selected_jundiai_ports.supports_events
+        ):
+            for operation, handler in build_jundiai_event_handlers(
+                application=application, reviewed=selected_jundiai_ports,
+                retention=retention,
+            ).items():
+                if operation in handlers:
+                    raise ValueError("Duplicate Jundiai fiscal event authority")
                 handlers[operation] = handler
         if active_osasco_cancel is not None:
             handlers["cancelOsascoNfse"] = build_osasco_cancel_handler(
