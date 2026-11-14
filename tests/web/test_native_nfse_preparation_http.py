@@ -2172,9 +2172,9 @@ def test_barueri_http_portal_issue_recover_and_authorized_xml(
     assert repeated.status_code == 200, repeated.text
     submit.assert_called_once()
     # A separately authenticated tenant-scope cannot retrieve this fiscal archive.
-    from kordena_fiscal.persistence.ports import PersistenceStateError as StateError
+    from kordena_fiscal.persistence.ports import PersistenceConflictError
     different_tenant = ExecutionScope(
         "unrelated-tenant", UNIT, FiscalEnvironment.HOMOLOGATION, "probe", "fm-nfcore",
     )
-    with pytest.raises((StateError, FiscalValidationError)):
+    with pytest.raises((PersistenceConflictError, PersistenceStateError, FiscalValidationError)):
         application.load_sp4_original_rps(different_tenant, identifier)
