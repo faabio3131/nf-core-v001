@@ -193,9 +193,9 @@ def _tax_fields(fields: JundiaiGissTaxFields) -> None:
             raise JundiaiGissIssueError("GissOnline IBSCBS incidence locality missing")
         _decimal(fields.rtc_taxable_base, "IBS/CBS taxable base")
         gov_reduction = fields.rtc_government_reduction_percent
-        if gov_reduction < 0 or gov_reduction > 100:
-            raise JundiaiGissIssueError("GissOnline government reduction percent out of range")
         _decimal(gov_reduction, "IBS/CBS government reduction percent", 2)
+        if gov_reduction > 100:
+            raise JundiaiGissIssueError("GissOnline government reduction percent out of range")
         _digits(fields.operation_indicator, "INDOP", 12)
         _digits(fields.rtc_cst, "IBS/CBS CST", 3)
         _digits(fields.rtc_classification, "IBS/CBS class", 6)
