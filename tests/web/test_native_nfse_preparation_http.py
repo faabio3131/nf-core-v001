@@ -2206,7 +2206,7 @@ def test_jundiai_http_portal_durable_rps_pending_recovery_archive_and_isolation(
         CSRF_HEADER: csrf, "Idempotency-Key": "jundiai-lookup-authorized",
     })
     assert second.status_code == 200, second.text
-    assert second.json()["status"] == FiscalDocumentState.AUTHORIZED.value
+    assert second.json().get("status") == FiscalDocumentState.AUTHORIZED.value, second.text
     assert len(submits) == 1
     assert len(queries) == 2
     verified.assert_called_once()
