@@ -1,0 +1,62 @@
+name: Audit official GissOnline Jundiai contracts
+
+on:
+  push:
+    branches:
+      - audit/jundiai-giss-official-20261114
+    paths:
+      - .github/workflows/jundiai-official-contracts.yml
+      - scripts/audit/jundiai_acquire_official_contracts.py
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  capture-official-evidence:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Checkout isolated audit branch
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install official RAR extractor
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends unar
+
+      - name: Download official source files and verify content and hashes
+        shell: bash
+        run: |
+          set -euo pipefail
+          python scripts/audit/jundiai_acquire_official_contracts.py
+
+      - name: Publish audit evidence (not municipal certification)
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jundiai-giss-official-contract-evidence
+          path: contracts/official/jundiai/giss_v2_04/
+          retention-days: 30
+
+      - name: Commit public XSD and source hashes ONLY to audit branch
+        if: success()
+        shell: bash
+        run: |
+          set -euo pipefail
+          git add contracts/official/jundiai/giss_v2_04/
+          if git diff --cached --quiet; then
+            echo "No official schema changes"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "audit(jundiai): pin public GissOnline schema bytes and provenance"
+          git push origin HEAD:audit/jundiai-giss-official-20261114
