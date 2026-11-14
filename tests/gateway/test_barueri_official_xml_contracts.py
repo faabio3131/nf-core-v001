@@ -5,6 +5,7 @@ No real certificate, SOAP request or municipal NFS-e is transmitted.
 """
 from __future__ import annotations
 
+import gzip
 import hashlib
 from pathlib import Path
 from unittest.mock import Mock
@@ -19,6 +20,8 @@ from kordena_fiscal.gateway import barueri_pmb004_homologation as barueri
 _ZIP = (Path(__file__).resolve().parents[2] /
         "contracts/official/barueri/XML_RPS_Schemas_V01.zip")
 _SHA256 = "3fb4b61f013e1c0a0d156913230643a2f4accb7486343854c7295c1a1dee9aa4"
+_WSDL_GZ = _ZIP.with_name("wsrps-homologacao.wsdl.gz")
+_WSDL_SHA256 = "37f7859c6b87d681b410d83c4b969f0f997d161cc548787e5b98dd3af9d58964"
 _NS = "http://www.barueri.sp.gov.br/nfe"
 _SOAP = "http://schemas.xmlsoap.org/soap/envelope/"
 _CASES = (
@@ -56,6 +59,35 @@ def _schema(method: str) -> etree.XMLSchema:
         content = archive.read(path)
     parser = etree.XMLParser(no_network=True, resolve_entities=False, load_dtd=False)
     return etree.XMLSchema(etree.fromstring(content, parser=parser))
+
+
+
+def _official_wsdl_actions() -> dict[str, str]:
+    """Verify the complete compressed original WSDL without network access."""
+    data = gzip.decompress(_WSDL_GZ.read_bytes())
+    assert hashlib.sha256(data).hexdigest() == _WSDL_SHA256
+    parser = etree.XMLParser(no_network=True, resolve_entities=False, load_dtd=False)
+    root = etree.fromstring(data, parser=parser)
+    wsdl = "http://schemas.xmlsoap.org/wsdl/"
+    soap = "http://schemas.xmlsoap.org/wsdl/soap/"
+    assert root.tag == f"{{{wsdl}}}definitions"
+    assert root.get("targetNamespace") == _NS
+    assert any(
+        node.get("location") == barueri.BARUERI_HOMOLOGATION_URL
+        for node in root.findall(f".//{{{soap}}}address")
+    )
+    actions: dict[str, str] = {}
+    for binding in root.findall(f"{{{wsdl}}}binding"):
+        if binding.find(f"{{{soap}}}binding") is None:
+            continue
+        for operation in binding.findall(f"{{{wsdl}}}operation"):
+            soap_op = operation.find(f"{{{soap}}}operation")
+            if soap_op is not None:
+                action = soap_op.get("soapAction")
+                assert action is not None
+                actions[operation.get("name") or ""] = action
+    assert set(actions) == {name for name, _fields in _CASES}
+    return actions
 
 
 def _inner(wire: bytes, method: str) -> etree._Element:
@@ -104,6 +136,7 @@ def test_actual_exchange_payload_validates_official_schema(
     assert len(captured) == 1
     wire, action = captured[0]
     assert action == f'"{_NS}/{method}"'
+    assert action.strip('"') == _official_wsdl_actions()[method]
     real_inner = _inner(wire, method)
     _schema(method).assertValid(real_inner)
     assert real_inner.tag == f"{{{_NS}}}{method}"

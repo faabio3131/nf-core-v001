@@ -6,7 +6,8 @@ engenharia **offline**, sem tráfego com a Prefeitura.
 - Arquivo: `XML_RPS_Schemas_V01.zip` (4.291 bytes, 4 XSD e 4 exemplos XML).
 - SHA-256: `3fb4b61f013e1c0a0d156913230643a2f4accb7486343854c7295c1a1dee9aa4`.
 - Fonte municipal declarada: https://www.barueri.sp.gov.br/nfe/Manuais/XML_RPS_Schemas_V01.zip
-- WSDL fornecido pelo proprietário: `wsrps-homologacao(1).wsdl` (11.218 bytes),
+- WSDL original fornecido pelo proprietário e arquivado em `wsrps-homologacao.wsdl.gz`
+  com gzip reprodutível (`mtime=0`; descompressão = 11.218 bytes),
   SHA-256 `37f7859c6b87d681b410d83c4b969f0f997d161cc548787e5b98dd3af9d58964`.
   Fonte informada: https://testeeiss.barueri.sp.gov.br/nfeservice/wsrps.asmx?wsdl
 - Namespace: `http://www.barueri.sp.gov.br/nfe`.
@@ -15,6 +16,7 @@ engenharia **offline**, sem tráfego com a Prefeitura.
 - Operações: `NFeLoteEnviarArquivo`, `NFeLoteStatusArquivo`,
   `NFeLoteListarArquivos`, `NFeLoteBaixarArquivo`.
 - Testes: `tests/gateway/test_barueri_official_xml_contracts.py`
+  também verifica WSDL descomprimido e SOAPActions;
   intercepta bytes de `BarueriPmb004HomologationTransport._send`
   e desserializa `MensagemXML` do envelope real para validar contra os
   XSDs originais do ZIP, com casos positivos e negativos.
