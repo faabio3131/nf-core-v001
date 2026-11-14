@@ -111,6 +111,7 @@ from .development_commercial_ingress import (
 from .development_fiscal_ingress import development_fiscal_ingress
 from .extrema_webiss_environment import build_extrema_webiss_exchange
 from .fiscal_runtime import FiscalOperationHandler
+from .jundiai_operational_composition import JundiaiTrustedRuntimePorts
 from .observability import (
     MetricsRegistry,
     RequestTimer,
@@ -262,12 +263,14 @@ def create_runtime_app(
     cajamar_runtime_ports: CajamarTrustedRuntimePorts | None = None,
     osasco_runtime_ports: OsascoTrustedRuntimePorts | None = None,
     barueri_runtime_ports: BarueriTrustedRuntimePorts | None = None,
+    jundiai_runtime_ports: JundiaiTrustedRuntimePorts | None = None,
     certificate_vault: EncryptedA1Vault | None = None,
     fiscal_dependency_probe: Callable[[], Mapping[str, bool]] | None = None,
 ) -> FastAPI:
     resolved = settings or RuntimeSettings.from_environ()
     if any(port is not None for port in (
         cajamar_runtime_ports, osasco_runtime_ports, barueri_runtime_ports,
+        jundiai_runtime_ports,
     )):
         # One and only one canonical handler factory. This opt-in path is for
         # operator-provisioned, independently validated GeisWeb dependencies.
@@ -289,6 +292,7 @@ def create_runtime_app(
             cajamar_runtime_ports=cajamar_runtime_ports,
             osasco_runtime_ports=osasco_runtime_ports,
             barueri_runtime_ports=barueri_runtime_ports,
+            jundiai_runtime_ports=jundiai_runtime_ports,
         )
     runtime_metrics = metrics or MetricsRegistry()
     runtime = RuntimeApi(
