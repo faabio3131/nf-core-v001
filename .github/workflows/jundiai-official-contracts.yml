@@ -8,6 +8,7 @@ on:
       - .github/workflows/jundiai-official-contracts.yml
       - scripts/audit/jundiai_acquire_official_contracts.py
       - scripts/audit/jundiai_verify_official_schemas.py
+      - scripts/audit/jundiai_test_xml_against_official.py
   workflow_dispatch:
 
 permissions:
@@ -44,6 +45,12 @@ jobs:
 
       - name: Compile captured official schemas and verify every SHA-256
         run: python scripts/audit/jundiai_verify_official_schemas.py
+
+      - name: Install NFCore development dependencies
+        run: python -m pip install -e ".[dev]"
+
+      - name: Validate actual serializer XML against official municipal XSD
+        run: python scripts/audit/jundiai_test_xml_against_official.py
 
       - name: Publish audit evidence (not municipal certification)
         if: always()
