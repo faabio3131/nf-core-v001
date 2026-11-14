@@ -484,7 +484,9 @@ def test_reviewed_tax_decision_is_immutable_in_archive_and_fingerprint() -> None
     # A valid-but-different normative decision must fail the immutable
     # fingerprint, not fail earlier due to mutually inconsistent ISS fields.
     altered["national_tax_treatment"]["normative_reference"] = "TAMPERED-DECISION"
-    with pytest.raises(FiscalValidationError, match="fingerprint"):
+    # The durable boundary intentionally masks internal fingerprint details
+    # with the same public error used for other invalid archived artifacts.
+    with pytest.raises(FiscalValidationError, match="invalid prepared NFS-e artifact"):
         decode_prepared_nfse(json.dumps(altered).encode(), scope=_scope())
 
 
