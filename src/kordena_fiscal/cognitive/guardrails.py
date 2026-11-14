@@ -53,15 +53,21 @@ class OutputGuard:
         # Only deterministic, trusted evidence may ground numeric fiscal claims.
         # The user's question and external untrusted provider messages are not
         # authority for codes, rates or monetary amounts.
-        corpus = "\n".join(
-            value for item in request.evidence if item.trusted
-            for value in item.data.values()
-        )
+        trusted_corpus_by_id = {
+            item.evidence_id: "\n".join(item.data.values())
+            for item in request.evidence if item.trusted
+        }
         accepted: list[AdviceSection] = []
         findings: list[str] = []
         for index, section in enumerate(sections):
             tag = f"section[{index}]"
-            reason = self._reject_reason(section, known_ids, corpus)
+            # A claim must be supported by its own cited, trusted evidence.
+            # Another unrelated fact in the request cannot launder a citation.
+            cited_corpus = "\n".join(
+                trusted_corpus_by_id.get(item_id, "")
+                for item_id in section.evidence_ids
+            )
+            reason = self._reject_reason(section, known_ids, cited_corpus)
             if reason is not None:
                 findings.append(f"{tag}:{reason}")
                 continue
