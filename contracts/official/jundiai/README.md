@@ -1,11 +1,16 @@
 # Jundiaí/SP — GissOnline V2 / ABRASF 2.04 — contratos oficiais
 
-**Estado em 14/11/2026: AQUISIÇÃO OFICIAL PENDENTE — NÃO CERTIFICADO.**
+**Estado em 14/11/2026: XSDs oficiais adquiridos e versionados (24/24); WSDL autenticado mTLS e CI integral do HEAD final ainda pendentes. Sem homologação municipal.**
 
 Esta pasta documenta a **fonte oficial**, a cadeia de custódia dos documentos e
-os critérios de aceite do contrato de integração. Não se encontra aqui um
-WSDL/XSD certificado. Não substituir o material original por arquivos
-sintéticos, de Ginfes, de terceiros ou de outra versão.
+os critérios de aceite do contrato de integração. O pacote original dos **24 XSDs**
+já está preservado em `giss_v2_04/xsd/Schemas_XSD-Servicos_Prestados/`, com
+integridade individual em `giss_v2_04/manifest.json` e compilação em
+`giss_v2_04/schema-validation.json`. O RAR oficial da fonte pública foi obtido
+por HTTPS e auditado (SHA-256 `c14a542de5fa2ce1a6a2b43da6e4eb0bebab12e6ebc850fe24dbdc8f6bb04356`).
+**O WSDL autenticado ainda NÃO foi obtido**, portanto não inventar SOAPActions,
+interfaces municipais nem equivalência de substituição. Não substituir schemas
+originais por versões sintéticas ou de outros provedores.
 
 ## Fontes primárias verificadas
 
@@ -23,9 +28,13 @@ O manual indica ABRASF 2.04 com extensões RTC, TLS 1.2 e seis métodos:
 `ConsultarNfseServicoPrestado`. Os quatro métodos integrados no adaptador
 não tornam os demais métodos do WSDL automaticamente implementados.
 
-**Atenção:** no momento, o acesso externo ao RAR não foi completado por esta
-sessão e o WSDL requer autenticação por certificado. Os arquivos, seus hashes
-e as assinaturas municipais reais não foram apresentados/verificados aqui.
+**Atenção:** o pacote XSD e seus hashes foram adquiridos e conferidos pela auditoria
+independente em `docs/audit/JUNDIAI_GISS_OFFICIAL_20261114.md` e seu workflow.
+O WSDL de homologação retornou HTTP 400 sem o certificado ICP-Brasil/mTLS.
+Não há SOAPActions reais capturados nem XML assinado emitido pelo município.
+O método de **substituição atômica** permanece não comprovado; o código atual
+implementa somente cancelamento verificado seguido de nova emissão, como
+processos separados, e não declara equivalência municipal.
 
 ## Coleta em ambiente autorizado
 
@@ -68,11 +77,14 @@ e as assinaturas municipais reais não foram apresentados/verificados aqui.
 
 ## Gates para entrega do Agente A ao Agente B
 
-- [ ] RAR oficial e WSDL autorizado integralmente obtidos, originados, hashados.
-- [ ] Arquivos XSD originais completos, incluindo `tipos-v2_04.xsd`.
-- [ ] Todos os imports/includes compilam sem rede, e os 6 roots usados estão válidos.
+- [x] RAR oficial obtido por HTTPS, 24 XSDs pinados e SHA-256 registrado.
+- [ ] WSDL autorizado mTLS integralmente obtido, verificado e hashado.
+- [x] Arquivos XSD originais completos, incluindo `tipos-v2_04.xsd`.
+- [x] 24 imports/includes compilados sem rede; emissão/consulta/cancelamento
+      verificados em cinco payloads de engenharia contra os XSDs originais.
 - [ ] SOAPActions reais do WSDL coincidem com as operações implementadas.
-- [ ] Exemplos reais de emissão/consulta/cancelamento/retorno validados nos XSD.
+- [ ] Exemplos assinados reais de emissão/consulta/cancelamento/retorno do fornecedor
+      (os cinco exemplos de engenharia auditados não são respostas municipais reais).
 - [ ] A1, contratos, regras municipais/RTC e certificado de assinatura municipal
       conferidos nos gates do runtime, com segredos fora do Git.
 - [ ] CI dos testes de contrato aprovada no HEAD exato.
@@ -82,6 +94,6 @@ e as assinaturas municipais reais não foram apresentados/verificados aqui.
 interna; homologação externa real: separada. Nenhuma aprovação fiscal municipal
 ou prontidão comercial implícita.
 
-**Proibição de mascaramento:** um relatório emitido com XSD sintético é apenas
-teste da ferramenta, nunca prova de origem oficial. A ausência dos bytes
-oficiais mantém a pendência aberta, ainda que a CI esteja verde.
+**Proibição de mascaramento:** os XSDs deste pacote são oficiais e hash-pinned,
+mas uma CI verde não comprova WSDL/SOAPAction via mTLS, resposta real de Jundiaí,
+certificação de assinatura municipal, homologação externa ou substituição atômica.
