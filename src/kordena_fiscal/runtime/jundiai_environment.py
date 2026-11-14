@@ -13,7 +13,7 @@ from collections.abc import Callable, Mapping
 from copy import deepcopy
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from typing import Any
 
@@ -225,7 +225,7 @@ class _Issuer:
                 "ind_dest", "incidence_ibge", "taxable_base", "ind_final",
             }:
                 raise ValueError
-        except (TypeError, ValueError, FiscalValidationError):
+        except (TypeError, ValueError, InvalidOperation, FiscalValidationError):
             raise RuntimeConfigurationError("Invalid Jundiai issuer fiscal policy") from None
         return cls(**row)
 
@@ -513,35 +513,48 @@ class JundiaiReviewedStartup:
                 certificate=self.municipal_signer, count=1,
             )
 
+        def validate_transport_xml(raw: bytes, xsd_sha: str, wsdl_sha: str) -> None:
+            """Match the exact pinned official XML root and transport hashes."""
+            if xsd_sha != self.xsd_package_sha256 or wsdl_sha != self.wsdl_sha256:
+                raise FiscalValidationError("Unpinned Jundiai fiscal transport contract")
+            try:
+                root = etree.fromstring(raw, parser=_parser())
+            except etree.XMLSyntaxError:
+                raise FiscalValidationError("Malformed Jundiai transport XML") from None
+            by_root = {
+                "EnviarLoteRpsEnvio": "RecepcionarLoteRps",
+                "ConsultarNfseRpsEnvio": "ConsultarNfsePorRps",
+                "CancelarNfseEnvio": "CancelarNfse",
+            }
+            operation = by_root.get(etree.QName(root).localname)
+            if operation is None:
+                raise FiscalValidationError("Unexpected Jundiai fiscal XML operation")
+            validate_xml(raw, operation)
+
+        def source_identity(source: Sp4OriginalRps, raw: bytes) -> None:
+            try:
+                root = etree.fromstring(raw, parser=_parser())
+            except etree.XMLSyntaxError:
+                raise FiscalValidationError("Malformed Jundiai signed RPS XML") from None
+            method = {
+                "EnviarLoteRpsEnvio": "RecepcionarLoteRps",
+                "ConsultarNfseRpsEnvio": "ConsultarNfsePorRps",
+            }.get(etree.QName(root).localname)
+            if method is None:
+                raise FiscalValidationError("Unrecognized Jundiai RPS method")
+            verify(source.scope, source.issuer_cnpj, raw, method)
+
         transport = build_jundiai_trusted_transport(
             application=application, vault=vault,
             contract_for_method=lambda method: self.contracts[method],
-            validate_signed_xml=lambda raw, xsd_sha, wsdl_sha: (
-                validate_xml(
-                    raw,
-                    "RecepcionarLoteRps" if (
-                        etree.QName(etree.fromstring(raw, parser=_parser())).localname
-                        == "EnviarLoteRpsEnvio"
-                    ) else "ConsultarNfsePorRps",
-                ) if (xsd_sha == self.xsd_package_sha256
-                      and wsdl_sha == self.wsdl_sha256)
-                else (_ for _ in ()).throw(
-                    FiscalValidationError("Unpinned Jundiai fiscal contract")
-                )
-            ),
+            validate_signed_xml=validate_transport_xml,
         )
         def fiscal_policy(request: NfseAuthorizationRequest) -> None:
             review(request)
 
         return JundiaiTrustedRuntimePorts(
             transport=transport, build_signed_operation=build_operation,
-            verify_signed_rps_identity=lambda source, raw: verify(
-                source.scope, source.issuer_cnpj, raw,
-                "RecepcionarLoteRps" if (
-                    etree.QName(etree.fromstring(raw, parser=_parser())).localname
-                    == "EnviarLoteRpsEnvio"
-                ) else "ConsultarNfsePorRps",
-            ),
+            verify_signed_rps_identity=source_identity,
             fiscal_issuer_policy=fiscal_policy,
             validate_prepared_rps=source_check,
             verify_official_invoice_xml=invoice_check,
