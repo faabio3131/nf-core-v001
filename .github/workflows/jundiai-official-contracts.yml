@@ -12,6 +12,7 @@ on:
       - src/kordena_fiscal/gateway/jundiai_giss_request_builder.py
       - src/kordena_fiscal/gateway/jundiai_giss_rps_query_builder.py
       - tests/gateway/test_jundiai_giss_rps_query_builder.py
+      - tests/web/test_native_nfse_preparation_http.py
   workflow_dispatch:
 
 permissions:
@@ -59,8 +60,12 @@ jobs:
         run: |
           python -m pytest -q tests/gateway/test_jundiai_giss_issue_builder.py tests/gateway/test_jundiai_giss_rps_query_builder.py tests/gateway/test_jundiai_giss_cancellation_builder.py
 
+      - name: Authenticated HTTP/DB Jundiai journey through canonical Portal
+        run: |
+          python -m pytest -q tests/web/test_native_nfse_preparation_http.py -k "jundiai_http_portal_durable_rps_pending_recovery_archive_and_isolation"
+
       - name: Ruff targeted Jundiai sources and tests
-        run: ruff check src/kordena_fiscal/gateway/jundiai_giss_rps_query_builder.py tests/gateway/test_jundiai_giss_rps_query_builder.py
+        run: ruff check src/kordena_fiscal/gateway/jundiai_giss_rps_query_builder.py tests/gateway/test_jundiai_giss_rps_query_builder.py tests/web/test_native_nfse_preparation_http.py
 
       - name: Publish audit evidence (not municipal certification)
         if: always()
