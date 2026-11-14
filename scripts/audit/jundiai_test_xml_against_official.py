@@ -8,18 +8,18 @@ from __future__ import annotations
 
 import hashlib
 import json
+import runpy
 from dataclasses import replace
 from decimal import Decimal
 from pathlib import Path
-import runpy
 
 from lxml import etree
 
+from kordena_fiscal.domain import TaxRegimeCode
 from kordena_fiscal.gateway.jundiai_giss_cancellation_builder import build_jundiai_cancel_xml
 from kordena_fiscal.gateway.jundiai_giss_issue_builder import build_jundiai_giss_issue_xml
-from kordena_fiscal.gateway.jundiai_giss_rps_query_builder import build_jundiai_rps_query
 from kordena_fiscal.gateway.jundiai_giss_request_builder import build_jundiai_original_rps_query_xml
-from kordena_fiscal.domain import TaxRegimeCode
+from kordena_fiscal.gateway.jundiai_giss_rps_query_builder import build_jundiai_rps_query
 
 ROOT = Path("contracts/official/jundiai/giss_v2_04")
 MANIFEST = ROOT / "manifest.json"
