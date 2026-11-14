@@ -12,6 +12,10 @@ from typing import Any
 from kordena_fiscal.application.service import FiscalApplicationService
 from kordena_fiscal.archive import RetentionPolicyMetadata
 from kordena_fiscal.domain import ExecutionScope, FiscalValidationError
+from kordena_fiscal.persistence.ports import (
+    PersistenceConflictError,
+    PersistenceStateError,
+)
 
 from .barueri_operational_composition import BarueriTrustedRuntimePorts
 from .fiscal_runtime import FiscalOperationHandler, PreflightFiscalOperationHandler
@@ -45,6 +49,21 @@ def build_barueri_event_handlers(
     prepare_event = reviewed.prepare_cancellation_event
     assert decoder is not None and prepare_event is not None
 
+    def approved_original(
+        scope: ExecutionScope, document_id: str, replacement_id: str | None = None,
+    ) -> None:
+        try:
+            application.preflight_barueri_nfse_cancellation(
+                scope=scope, document_id=document_id,
+                replacement_id=replacement_id, decode_official_invoice=decoder,
+            )
+        except (PersistenceStateError, PersistenceConflictError):
+            # A duplicate, stale, cross-unit or already finalized event is
+            # a rejected user request; it must not surface as an HTTP 500.
+            raise FiscalValidationError(
+                "Barueri event requires an authorized original and current scope"
+            ) from None
+
     def check(
         scope: ExecutionScope, payload: Mapping[str, Any], key: str | None,
         *, replacement: bool,
@@ -77,10 +96,7 @@ def build_barueri_event_handlers(
                 "1", "2", "3", "4", "5", "9",
             ):
                 raise FiscalValidationError("Barueri v4.4 justification code required")
-            application.preflight_barueri_nfse_cancellation(
-                scope=scope, document_id=original_id,
-                replacement_id=replacement_id, decode_official_invoice=decoder,
-            )
+            approved_original(scope, original_id, replacement_id)
         else:
             document_id = payload.get("document_id")
             if (
@@ -88,10 +104,7 @@ def build_barueri_event_handlers(
                 or payload.get("reason_code") not in ("01", "02")
             ):
                 raise FiscalValidationError("Barueri cancellation reason code invalid")
-            application.preflight_barueri_nfse_cancellation(
-                scope=scope, document_id=document_id,
-                decode_official_invoice=decoder,
-            )
+            approved_original(scope, document_id)
 
     def cancel_preflight(
         scope: ExecutionScope, payload: Mapping[str, Any], key: str | None,
