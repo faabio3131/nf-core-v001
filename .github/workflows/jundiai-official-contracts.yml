@@ -72,6 +72,15 @@ jobs:
       - name: Ruff targeted Jundiai sources and tests
         run: ruff check src/kordena_fiscal/web/fiscal_intent_recovery.py src/kordena_fiscal/application/service.py src/kordena_fiscal/gateway/jundiai_giss_rps_query_builder.py src/kordena_fiscal/gateway/jundiai_giss_issue_builder.py src/kordena_fiscal/runtime/jundiai_environment.py tests/gateway/test_jundiai_giss_issue_builder.py tests/gateway/test_jundiai_giss_rps_query_builder.py tests/web/test_native_nfse_preparation_http.py
 
+      - name: Full backend Ruff regression
+        run: ruff check .
+
+      - name: Full backend Mypy regression
+        run: mypy
+
+      - name: Full backend Pytest regression
+        run: pytest
+
       - name: Publish audit evidence (not municipal certification)
         if: always()
         uses: actions/upload-artifact@v4
