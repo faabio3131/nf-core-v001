@@ -34,7 +34,8 @@ def _sandbox(tmp_path: Path) -> tuple[dict[str, str], Path]:
     )
     (driver / "mock.sh").write_text(
         '#!/bin/sh\n'
-        'printf "driver:%s\\n" "$1" >> "$NFCORE_TEST_AUDIT"\n',
+        'printf "driver:%s\\n" "$1" >> "$NFCORE_TEST_AUDIT"\n'
+        'if [ "$1" = "${SIMULATE_FAIL_DRIVER_ACTION:-}" ]; then exit 7; fi\n',
         encoding="utf-8",
     )
     (bin_path / "python").chmod(0o755)
@@ -74,6 +75,12 @@ def test_production_promotion_is_code_only(tmp_path: Path) -> None:
     assert "--apply" not in log
     assert "driver:deploy" in log
     assert "driver:rollback" not in log
+    assert "driver:prepare-rollback" in log
+    assert "driver:backup" in log
+    assert "driver:verify-worker" in log
+    assert log.index("driver:prepare-rollback") < log.index("driver:backup")
+    assert log.index("driver:backup") < log.index("driver:deploy")
+    assert log.index("driver:deploy") < log.index("driver:verify-worker")
 
 
 def test_schema_drift_prevents_any_deploy(tmp_path: Path) -> None:
@@ -119,4 +126,53 @@ def test_even_legacy_implicit_schema_flag_never_applies_ddl(
     assert result.returncode == 0
     log = audit.read_text(encoding="utf-8")
     assert "--assert-current-production" in log
+    assert "--apply" not in log
+
+
+@pytest.mark.parametrize("action", ["prepare-rollback", "backup"])
+def test_unproven_rollback_or_backup_aborts_before_deploy(
+    tmp_path: Path, action: str,
+) -> None:
+    env, audit = _sandbox(tmp_path)
+    env["SIMULATE_FAIL_DRIVER_ACTION"] = action
+    result = _run(tmp_path, env)
+    assert result.returncode == 42
+    log = audit.read_text(encoding="utf-8")
+    assert "driver:" + action in log
+    assert "driver:deploy" not in log
+    assert "driver:verify-worker" not in log
+    assert "driver:rollback\n" not in log
+    assert "--apply" not in log
+    if action == "prepare-rollback":
+        assert "driver:backup" not in log
+
+
+@pytest.mark.parametrize("action", ["deploy", "verify-worker"])
+def test_failed_deploy_or_worker_triggers_provider_rollback(
+    tmp_path: Path, action: str,
+) -> None:
+    env, audit = _sandbox(tmp_path)
+    env["SIMULATE_FAIL_DRIVER_ACTION"] = action
+    result = _run(tmp_path, env)
+    assert result.returncode == 1
+    log = audit.read_text(encoding="utf-8")
+    assert "driver:prepare-rollback" in log
+    assert "driver:backup" in log
+    assert "driver:deploy" in log
+    assert "driver:rollback" in log
+    assert "--apply" not in log
+    if action == "deploy":
+        assert "driver:verify-worker" not in log
+    else:
+        assert "driver:verify-worker" in log
+
+
+def test_rollback_failure_fails_with_critical_exit_code(tmp_path: Path) -> None:
+    env, audit = _sandbox(tmp_path)
+    env["SIMULATE_SMOKE_CODE"] = "1"
+    env["SIMULATE_FAIL_DRIVER_ACTION"] = "rollback"
+    result = _run(tmp_path, env)
+    assert result.returncode == 2
+    log = audit.read_text(encoding="utf-8")
+    assert "driver:rollback" in log
     assert "--apply" not in log
