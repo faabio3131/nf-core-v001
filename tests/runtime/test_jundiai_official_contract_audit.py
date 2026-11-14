@@ -31,9 +31,11 @@ def _fake_wsdl() -> bytes:
         f'<wsdl:operation name="{op}">'
         f'<soap:operation soapAction="http://giss.test/{op}" />'
         "</wsdl:operation>"
-        for op in sorted(set(_EXPECTED) - {
-            "ConsultarNfseRpsResposta", "CancelarNfseResposta",
-        })
+        for op in sorted(
+            (set(_EXPECTED) - {
+                "ConsultarNfseRpsResposta", "CancelarNfseResposta",
+            }) | {"ConsultarNfsePorFaixa", "ConsultarNfseServicoPrestado"}
+        )
     )
     return (
         '<wsdl:definitions xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/" '
@@ -42,7 +44,11 @@ def _fake_wsdl() -> bytes:
         '<wsdl:binding name="GissService">'
         '<soap:binding style="document" '
         'transport="http://schemas.xmlsoap.org/soap/http" />'
-        f"{binding}</wsdl:binding></wsdl:definitions>"
+        f"{binding}</wsdl:binding>"
+        '<wsdl:service name="GissService"><wsdl:port name="GissPort">'
+        '<soap:address location="'
+        'https://v2-ws-homologacao.giss.com.br/service-ws/nf/nfse-ws" />'
+        '</wsdl:port></wsdl:service></wsdl:definitions>'
     ).encode()
 
 
