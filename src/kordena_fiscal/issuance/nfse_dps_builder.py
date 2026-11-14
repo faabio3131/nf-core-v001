@@ -10,8 +10,8 @@ cryptography of its own and never reads or writes the A1 vault.
 
 DPS series and serial MUST be reserved by the canonical durable fiscal
 Unit of Work before calling this builder. Neither hashes nor MAX+1 can
-allocate fiscal numbers. The tax regime ``regApTribSN`` default for Simples
-sublimit is still provisional and requires explicit rules governance.
+allocate fiscal numbers. Special ISS regimes and Simples sublimit assessment
+require an effective-dated reviewed treatment, never a provisional fallback.
 """
 from __future__ import annotations
 
@@ -169,14 +169,21 @@ def build_signed_dps(
     _child(end, "xBairro", issuer.address.district.strip())
     reg_trib = etree.SubElement(prest, f"{{{_NFSE_NS}}}regTrib")
     _child(reg_trib, "opSimpNac", op_simp_nac)
-    if issuer.tax_regime is TaxRegimeCode.SIMPLES_NACIONAL_EXCESS_SUBLIMIT:
-        # PROVISIONAL default: once a Simples Nacional sublimit is exceeded,
-        # apportion both federal and municipal taxes outside SN per each
-        # tax's own legislation (regApTribSN=3). FiscalProfile does not yet
-        # carry an explicit regApTribSN signal to pick 1/2/3 with certainty;
-        # revisit with the owner before relying on this for real submission.
-        _child(reg_trib, "regApTribSN", "3")
-    _child(reg_trib, "regEspTrib", "0")  # Nenhum; FiscalProfile models no special regime today
+    treatment = document.national_tax_treatment
+    if issuer.tax_regime is TaxRegimeCode.SIMPLES_NACIONAL_EXCESS_SUBLIMIT and (
+        treatment is None or treatment.simples_assessment_code is None
+    ):
+        raise FiscalValidationError(
+            "Simples excess sublimit requires a reviewed regApTribSN decision"
+        )
+    if treatment is not None and treatment.simples_assessment_code is not None:
+        _child(reg_trib, "regApTribSN", treatment.simples_assessment_code)
+    # For an ordinary profile without a special fiscal decision, '0' is
+    # the explicit official "Nenhum" regime. Nonzero regimes can only come
+    # from the reviewed document decision, versioned with competence.
+    _child(reg_trib, "regEspTrib", (
+        treatment.special_regime_code if treatment is not None else "0"
+    ))
 
     # Toma is placed after prest and before serv under the official 1.01 XSD.
     # The source reference is NOT a tax identity and is never substituted here.
@@ -230,7 +237,16 @@ def build_signed_dps(
         _child(ded_red, "vDR", _money(service.deduction_amount.amount))
     trib = etree.SubElement(valores, f"{{{_NFSE_NS}}}trib")
     trib_mun = etree.SubElement(trib, f"{{{_NFSE_NS}}}tribMun")
-    _child(trib_mun, "tribISSQN", "1")  # Operacao tributavel; domain models no exemption flag yet
+    iss_taxation = treatment.iss_taxation_code if treatment is not None else "1"
+    _child(trib_mun, "tribISSQN", iss_taxation)
+    if treatment is not None and iss_taxation == "3":
+        if treatment.result_country_code is None:
+            raise FiscalValidationError("Exported ISS service requires country")
+        _child(trib_mun, "cPaisResult", treatment.result_country_code)
+    if treatment is not None and iss_taxation == "2":
+        if treatment.immunity_type_code is None:
+            raise FiscalValidationError("Immune ISS service requires immunity type")
+        _child(trib_mun, "tpImunidade", treatment.immunity_type_code)
     taxable = service.taxable_amount.amount
     iss_amount = service.iss_amount.amount
     # XSD 1.01 changed TCTribMunicipal field order: tpRetISSQN before pAliq.

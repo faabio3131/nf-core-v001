@@ -52,6 +52,7 @@ from kordena_fiscal.gateway.nfse_nacional_homologation import (
 from kordena_fiscal.issuance.nfe_nfse import (
     NfseAuthorizationRequest,
     NfseCanonicalDocument,
+    NfseNationalTaxTreatment,
     NfseServiceLine,
 )
 from kordena_fiscal.issuance.nfse_dps_builder import build_signed_dps
@@ -223,11 +224,24 @@ def _mg_request(
             jurisdiction=municipality,
         ),
     )
+    treatment = (
+        NfseNationalTaxTreatment(
+            iss_taxation_code="1",
+            special_regime_code="0",
+            simples_assessment_code="2",
+            normative_reference="Synthetic reviewed sublimit case: test-only",
+            rule_version=1,
+            effective_from=date(2026, 1, 1),
+        )
+        if tax_regime is TaxRegimeCode.SIMPLES_NACIONAL_EXCESS_SUBLIMIT
+        else None
+    )
     document = replace(
         base.document,
         issuer=issuer,
         service_jurisdiction=municipality,
         competence_date=competence_date or base.document.competence_date,
+        national_tax_treatment=treatment,
     )
     return NfseAuthorizationRequest.build(document)
 

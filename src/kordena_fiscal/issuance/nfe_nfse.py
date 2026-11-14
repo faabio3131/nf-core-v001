@@ -23,6 +23,7 @@ from kordena_fiscal.domain import (
     FiscalValidationError,
     Money,
     SourceReference,
+    TaxRegimeCode,
 )
 from kordena_fiscal.gateway import (
     AuthorizationRequest,
@@ -294,6 +295,61 @@ class NfseServiceTaker:
 
 
 @dataclass(frozen=True, slots=True)
+class NfseNationalTaxTreatment:
+    """Reviewed National DPS 1.01 fiscal treatment for one effective period.
+
+    These codes are taken from the pinned official TSRegEspTrib, TSTribISSQN
+    and TSRegimeApuracaoSimpNac tables. Browser input is not their authority;
+    the caller must supply an approved, effective-dated domain decision.
+    """
+
+    iss_taxation_code: str
+    special_regime_code: str
+    normative_reference: str
+    rule_version: int
+    effective_from: date
+    effective_to: date | None = None
+    simples_assessment_code: str | None = None
+    result_country_code: str | None = None
+    immunity_type_code: str | None = None
+
+    def __post_init__(self) -> None:
+        if self.iss_taxation_code not in {"1", "2", "3", "4"}:
+            raise FiscalValidationError("National ISSQN taxation requires official code 1..4")
+        if self.special_regime_code not in {"0", "1", "2", "3", "4", "5", "6", "9"}:
+            raise FiscalValidationError("National NFS-e special regime code is not official")
+        if self.simples_assessment_code not in {None, "1", "2", "3"}:
+            raise FiscalValidationError("National Simples assessment requires code 1..3")
+        if type(self.effective_from) is not date:
+            raise FiscalValidationError("National tax decision requires effective_from date")
+        if self.effective_to is not None and (
+            type(self.effective_to) is not date or self.effective_to <= self.effective_from
+        ):
+            raise FiscalValidationError("National tax decision effective_to is invalid")
+        if type(self.rule_version) is not int or self.rule_version < 1:
+            raise FiscalValidationError("National tax decision rule_version must be >= 1")
+        object.__setattr__(
+            self, "normative_reference",
+            _required(self.normative_reference, "tax_treatment.normative_reference", 512),
+        )
+        if self.iss_taxation_code == "3":
+            country = self.result_country_code
+            if (
+                not isinstance(country, str) or len(country) != 2
+                or not country.isascii() or not country.isalpha()
+                or country != country.upper() or country == "BR"
+            ):
+                raise FiscalValidationError("Exported service requires reviewed ISO result country")
+        elif self.result_country_code is not None:
+            raise FiscalValidationError("Result country is only valid for exported services")
+        if self.iss_taxation_code == "2":
+            if self.immunity_type_code not in {"0", "1", "2", "3", "4", "5"}:
+                raise FiscalValidationError("ISS immunity requires official reviewed immunity type")
+        elif self.immunity_type_code is not None:
+            raise FiscalValidationError("Immunity type is only valid for immune services")
+
+
+@dataclass(frozen=True, slots=True)
 class NfseCanonicalDocument:
     """Canonical NFS-e service snapshot kept separate from merchandise-line semantics."""
 
@@ -310,6 +366,7 @@ class NfseCanonicalDocument:
     service_taker: NfseServiceTaker | None = None
     dps_series: int = 1
     dps_number: int | None = None
+    national_tax_treatment: NfseNationalTaxTreatment | None = None
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "document_id", _required(self.document_id, "document_id", 128))
@@ -344,6 +401,31 @@ class NfseCanonicalDocument:
         )
         if self.service_taker is not None and not isinstance(self.service_taker, NfseServiceTaker):
             raise FiscalValidationError("service_taker must be NfseServiceTaker")
+        treatment = self.national_tax_treatment
+        if treatment is not None:
+            if not isinstance(treatment, NfseNationalTaxTreatment):
+                raise FiscalValidationError("national_tax_treatment must be a reviewed decision")
+            if self.competence_date < treatment.effective_from or (
+                treatment.effective_to is not None
+                and self.competence_date >= treatment.effective_to
+            ):
+                raise FiscalValidationError(
+                    "National tax treatment is not effective for competence"
+                )
+            if (
+                treatment.simples_assessment_code is not None
+                and self.issuer.tax_regime not in {
+                    TaxRegimeCode.SIMPLES_NACIONAL,
+                    TaxRegimeCode.SIMPLES_NACIONAL_EXCESS_SUBLIMIT,
+                }
+            ):
+                raise FiscalValidationError("Simples assessment conflicts with issuer tax regime")
+            if treatment.iss_taxation_code != "1" and any(
+                line.iss_amount.amount > 0 or line.iss_withheld for line in self.services
+            ):
+                raise FiscalValidationError(
+                    "Non-taxable ISS treatment cannot charge or withhold ISS"
+                )
         if not isinstance(self.schema_version, int) or isinstance(self.schema_version, bool):
             raise FiscalValidationError("schema_version must be an integer")
         if self.schema_version < 1:
@@ -437,6 +519,21 @@ def build_nfse_request_fingerprint(document: NfseCanonicalDocument) -> str:
             for line in document.services
         ],
     }
+    if document.national_tax_treatment is not None:
+        treatment = document.national_tax_treatment
+        payload["national_tax_treatment"] = {
+            "iss_taxation_code": treatment.iss_taxation_code,
+            "special_regime_code": treatment.special_regime_code,
+            "simples_assessment_code": treatment.simples_assessment_code,
+            "result_country_code": treatment.result_country_code,
+            "immunity_type_code": treatment.immunity_type_code,
+            "normative_reference": treatment.normative_reference,
+            "rule_version": treatment.rule_version,
+            "effective_from": treatment.effective_from.isoformat(),
+            "effective_to": (
+                treatment.effective_to.isoformat() if treatment.effective_to else None
+            ),
+        }
     if document.service_taker is not None:
         taker = document.service_taker
         address = taker.address

@@ -1,8 +1,9 @@
 """Unit tests for the National NFS-e DPS builder (build_signed_dps)."""
 from __future__ import annotations
 
+import json
 from dataclasses import replace
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
 
 import pytest
@@ -31,6 +32,7 @@ from kordena_fiscal.domain.profile import MunicipalRegistration
 from kordena_fiscal.issuance.nfe_nfse import (
     NfseAuthorizationRequest,
     NfseCanonicalDocument,
+    NfseNationalTaxTreatment,
     NfseServiceLine,
 )
 from kordena_fiscal.issuance.nfse_dps_builder import build_signed_dps
@@ -88,7 +90,10 @@ def _service(**overrides) -> NfseServiceLine:
     return NfseServiceLine(**base)
 
 
-def _document(*, issuer: FiscalProfile | None = None, services=None) -> NfseCanonicalDocument:
+def _document(
+    *, issuer: FiscalProfile | None = None, services=None,
+    tax_treatment: NfseNationalTaxTreatment | None = None,
+) -> NfseCanonicalDocument:
     return NfseCanonicalDocument(
         document_id="nfse-dps-doc-1",
         scope=_scope(),
@@ -101,6 +106,7 @@ def _document(*, issuer: FiscalProfile | None = None, services=None) -> NfseCano
         service_taker_reference="taker-ref-1",
         # Standalone builder fixture models an already-UoW-reserved number.
         dps_number=1,
+        national_tax_treatment=tax_treatment,
     )
 
 
@@ -224,7 +230,16 @@ def test_build_signed_dps_rejects_alphanumeric_cnpj() -> None:
 def test_build_signed_dps_translates_tax_regime_to_op_simp_nac(
     tax_regime: TaxRegimeCode, expected_op_simp_nac: str,
 ) -> None:
-    document = _document(issuer=_issuer(tax_regime=tax_regime))
+    treatment = (
+        NfseNationalTaxTreatment(
+            iss_taxation_code="1", special_regime_code="0",
+            simples_assessment_code="3",
+            normative_reference="Reviewed synthetic Simples sublimit decision",
+            rule_version=2, effective_from=date(2026, 1, 1),
+        )
+        if tax_regime is TaxRegimeCode.SIMPLES_NACIONAL_EXCESS_SUBLIMIT else None
+    )
+    document = _document(issuer=_issuer(tax_regime=tax_regime), tax_treatment=treatment)
     signed = build_signed_dps(_request(document), _certificate())
     root = etree.fromstring(signed)
     reg_trib = root.find(
@@ -379,3 +394,121 @@ def test_tomador_changes_request_fingerprint_and_protects_idempotency() -> None:
         ),
     )
     assert _request(original).request_fingerprint != _request(amended).request_fingerprint
+
+
+def test_national_sublimit_fails_closed_without_reviewed_assessment() -> None:
+    unreviewed = _document(
+        issuer=_issuer(tax_regime=TaxRegimeCode.SIMPLES_NACIONAL_EXCESS_SUBLIMIT)
+    )
+    with pytest.raises(FiscalValidationError, match="reviewed regApTribSN"):
+        build_signed_dps(_request(unreviewed), _certificate())
+
+
+@pytest.mark.parametrize(
+    ("iss_taxation", "result_country", "immunity_type", "expected_element"),
+    [
+        ("1", None, None, None),
+        ("2", None, "1", "tpImunidade"),
+        ("3", "US", None, "cPaisResult"),
+        ("4", None, None, None),
+    ],
+)
+def test_reviewed_national_iss_treatments_are_xsd101_valid(
+    iss_taxation: str, result_country: str | None,
+    immunity_type: str | None, expected_element: str | None,
+) -> None:
+    decision = NfseNationalTaxTreatment(
+        iss_taxation_code=iss_taxation, special_regime_code="0",
+        result_country_code=result_country, immunity_type_code=immunity_type,
+        normative_reference="Pinned National DPS 1.01 + approved fiscal classification",
+        rule_version=3, effective_from=date(2026, 1, 1),
+    )
+    line = _service(
+        iss_amount=Money(Decimal("3.00" if iss_taxation == "1" else "0.00")),
+    )
+    doc = _document(services=(line,), tax_treatment=decision)
+    xml = build_signed_dps(_request(doc), _certificate())
+    national_dps_validator("1.01").validate_document(xml)
+    root = etree.fromstring(xml)
+    tax = root.find(
+        f"{{{_NFSE_NS}}}infDPS/{{{_NFSE_NS}}}valores/"
+        f"{{{_NFSE_NS}}}trib/{{{_NFSE_NS}}}tribMun"
+    )
+    assert tax is not None
+    assert tax.findtext(f"{{{_NFSE_NS}}}tribISSQN") == iss_taxation
+    if expected_element is not None:
+        assert tax.findtext(f"{{{_NFSE_NS}}}{expected_element}") == (
+            result_country if iss_taxation == "3" else immunity_type
+        )
+
+
+def test_reviewed_special_regime_and_sublimit_are_not_guessed() -> None:
+    decision = NfseNationalTaxTreatment(
+        iss_taxation_code="1", special_regime_code="4",
+        simples_assessment_code="2", rule_version=5,
+        effective_from=date(2026, 1, 1),
+        normative_reference="Reviewed special regime and SN sublimit",
+    )
+    doc = _document(
+        issuer=_issuer(tax_regime=TaxRegimeCode.SIMPLES_NACIONAL_EXCESS_SUBLIMIT),
+        tax_treatment=decision,
+    )
+    xml = build_signed_dps(_request(doc), _certificate())
+    national_dps_validator("1.01").validate_document(xml)
+    reg = etree.fromstring(xml).find(
+        f"{{{_NFSE_NS}}}infDPS/{{{_NFSE_NS}}}prest/{{{_NFSE_NS}}}regTrib"
+    )
+    assert reg is not None
+    assert reg.findtext(f"{{{_NFSE_NS}}}regEspTrib") == "4"
+    assert reg.findtext(f"{{{_NFSE_NS}}}regApTribSN") == "2"
+
+
+def test_reviewed_tax_decision_is_immutable_in_archive_and_fingerprint() -> None:
+    from kordena_fiscal.issuance.nfse_archive import (
+        decode_prepared_nfse,
+        encode_prepared_nfse,
+    )
+    decision = NfseNationalTaxTreatment(
+        iss_taxation_code="3", special_regime_code="0",
+        result_country_code="US", normative_reference="Reviewed export classification",
+        rule_version=4, effective_from=date(2026, 1, 1),
+    )
+    request = _request(_document(
+        services=(_service(iss_amount=Money.zero()),), tax_treatment=decision,
+    ))
+    encoded = encode_prepared_nfse(request)
+    decoded = decode_prepared_nfse(encoded, scope=_scope())
+    assert decoded.request_fingerprint == request.request_fingerprint
+    assert decoded.document.national_tax_treatment == decision
+    altered = json.loads(encoded)
+    # A valid-but-different normative decision must fail the immutable
+    # fingerprint, not fail earlier due to mutually inconsistent ISS fields.
+    altered["national_tax_treatment"]["normative_reference"] = "TAMPERED-DECISION"
+    # The durable boundary intentionally masks internal fingerprint details
+    # with the same public error used for other invalid archived artifacts.
+    with pytest.raises(FiscalValidationError, match="invalid prepared NFS-e artifact"):
+        decode_prepared_nfse(json.dumps(altered).encode(), scope=_scope())
+
+
+def test_reviewed_tax_decision_rejects_conflicts_and_stale_competence() -> None:
+    with pytest.raises(FiscalValidationError, match="only valid"):
+        NfseNationalTaxTreatment(
+            iss_taxation_code="1", special_regime_code="0", result_country_code="US",
+            normative_reference="reviewed", rule_version=1,
+            effective_from=date(2026, 1, 1),
+        )
+    future = NfseNationalTaxTreatment(
+        iss_taxation_code="1", special_regime_code="0", normative_reference="reviewed",
+        rule_version=1, effective_from=date(2027, 1, 1),
+    )
+    with pytest.raises(FiscalValidationError, match="not effective"):
+        _document(tax_treatment=future)
+    non_taxable = NfseNationalTaxTreatment(
+        iss_taxation_code="2", special_regime_code="0", immunity_type_code="1",
+        normative_reference="reviewed", rule_version=1,
+        effective_from=date(2026, 1, 1),
+    )
+    with pytest.raises(FiscalValidationError, match="cannot charge"):
+        _document(tax_treatment=non_taxable)
+
+

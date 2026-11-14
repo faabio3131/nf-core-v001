@@ -28,6 +28,7 @@ from .nfe_nfse import (
     NfseAuthorizationRequest,
     NfseCanonicalDocument,
     NfseForeignAddress,
+    NfseNationalTaxTreatment,
     NfseServiceLine,
     NfseServiceTaker,
 )
@@ -141,6 +142,24 @@ def encode_prepared_nfse(request: NfseAuthorizationRequest) -> bytes:
             ),
         },
         "schema_version": document.schema_version,
+        "national_tax_treatment": (
+            None if document.national_tax_treatment is None else {
+                "iss_taxation_code": document.national_tax_treatment.iss_taxation_code,
+                "special_regime_code": document.national_tax_treatment.special_regime_code,
+                "simples_assessment_code": (
+                    document.national_tax_treatment.simples_assessment_code
+                ),
+                "result_country_code": document.national_tax_treatment.result_country_code,
+                "immunity_type_code": document.national_tax_treatment.immunity_type_code,
+                "normative_reference": document.national_tax_treatment.normative_reference,
+                "rule_version": document.national_tax_treatment.rule_version,
+                "effective_from": document.national_tax_treatment.effective_from.isoformat(),
+                "effective_to": (
+                    document.national_tax_treatment.effective_to.isoformat()
+                    if document.national_tax_treatment.effective_to else None
+                ),
+            }
+        ),
         "dps_series": document.dps_series,
         "dps_number": document.dps_number,
         "idempotency_key": request.idempotency_key.value,
@@ -311,6 +330,39 @@ def decode_prepared_nfse(content: bytes, *, scope: ExecutionScope) -> NfseAuthor
                 nif=nif,
                 no_nif_reason=no_nif_reason,
             )
+        treatment = None
+        if root.get("national_tax_treatment") is not None:
+            decision = _mapping(root["national_tax_treatment"], "national_tax_treatment")
+            treatment = NfseNationalTaxTreatment(
+                iss_taxation_code=_text(
+                    decision["iss_taxation_code"], "tax_treatment.iss_taxation_code"
+                ),
+                special_regime_code=_text(
+                    decision["special_regime_code"], "tax_treatment.special_regime_code"
+                ),
+                normative_reference=_text(
+                    decision["normative_reference"], "tax_treatment.normative_reference"
+                ),
+                rule_version=decision["rule_version"],
+                effective_from=date.fromisoformat(_text(
+                    decision["effective_from"], "tax_treatment.effective_from"
+                )),
+                effective_to=(
+                    date.fromisoformat(_text(
+                        decision["effective_to"], "tax_treatment.effective_to"
+                    )) if decision.get("effective_to") is not None else None
+                ),
+                simples_assessment_code=_optional_text(
+                    decision.get("simples_assessment_code"),
+                    "tax_treatment.simples_assessment_code",
+                ),
+                result_country_code=_optional_text(
+                    decision.get("result_country_code"), "tax_treatment.result_country_code",
+                ),
+                immunity_type_code=_optional_text(
+                    decision.get("immunity_type_code"), "tax_treatment.immunity_type_code",
+                ),
+            )
         document = NfseCanonicalDocument(
             document_id=_text(root["document_id"], "document_id"),
             scope=scope,
@@ -333,6 +385,7 @@ def decode_prepared_nfse(content: bytes, *, scope: ExecutionScope) -> NfseAuthor
             service_taker=taker,
             dps_series=root.get("dps_series", 1),
             dps_number=root.get("dps_number"),
+            national_tax_treatment=treatment,
         )
         request = NfseAuthorizationRequest.build(document)
         if request.idempotency_key.value != _text(root["idempotency_key"], "idempotency_key"):
