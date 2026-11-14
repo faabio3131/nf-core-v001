@@ -68,14 +68,14 @@ def _reply(inner: str) -> bytes:
     return (
         f'<CancelarNfseResposta xmlns="{_CANCEL}" xmlns:t="{_TYPES}">'
         f"{inner}</CancelarNfseResposta>"
-    ).encode("utf-8")
+    ).encode()
 
 
 def _query(inner: str) -> bytes:
     return (
         f'<ConsultarNfseRpsResposta xmlns="{_QUERY}" xmlns:t="{_TYPES}">'
         f"{inner}</ConsultarNfseRpsResposta>"
-    ).encode("utf-8")
+    ).encode()
 
 
 def _receipt(method: str, xml: bytes) -> JundiaiGissReceipt:
