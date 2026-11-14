@@ -26,6 +26,11 @@ from lxml import etree
 
 from kordena_fiscal.application.service import FiscalApplicationService
 from kordena_fiscal.domain import Cnpj, ExecutionScope, FiscalAddress, FiscalValidationError
+from kordena_fiscal.gateway.jundiai_giss_cancellation_builder import prepare_jundiai_cancel
+from kordena_fiscal.gateway.jundiai_giss_cancellation_result import (
+    JundiaiGissCancellationDecision,
+    verify_jundiai_cancel_reply,
+)
 from kordena_fiscal.gateway.jundiai_giss_homologation import (
     JundiaiGissWsdlContract,
     JundiaiSignedOperation,
@@ -552,12 +557,62 @@ class JundiaiReviewedStartup:
         def fiscal_policy(request: NfseAuthorizationRequest) -> None:
             review(request)
 
+        def validate_official_cancel(raw: bytes) -> None:
+            validate_xml(raw, "CancelarNfseResposta")
+            root = etree.fromstring(raw, parser=_parser())
+            verified = [
+                n for n in root.iter()
+                if isinstance(n.tag, str)
+                and etree.QName(n).localname == "NfseCancelamento"
+            ]
+            if len(verified) > 1:
+                raise FiscalValidationError("Ambiguous Giss municipal cancellation proof")
+            if verified:
+                _verify_signature(
+                    etree.tostring(verified[0], encoding="utf-8"),
+                    certificate=self.municipal_signer, count=1,
+                )
+
+        def verified_cancel(
+            request: NfseAuthorizationRequest, source: Sp4OriginalRps,
+            invoice: Sp4VerifiedInvoice, reason_code: str,
+        ) -> JundiaiGissCancellationDecision:
+            if (
+                source.issuer_cnpj != request.document.issuer.cnpj
+                or source.issuer_ibge != "3525904"
+                or invoice.issuer_cnpj != source.issuer_cnpj
+                or invoice.invoice_number != invoice.invoice_reference
+                or source.scope.identity_partition_key
+                != request.document.scope.identity_partition_key
+            ):
+                raise FiscalValidationError("Invalid original Jundiai approved cancellation")
+            policy = review(request)
+            scope, issuer = source.scope, source.issuer_cnpj
+            payload = prepare_jundiai_cancel(
+                source=source, issued=invoice,
+                regime=request.document.issuer.tax_regime,
+                cancel_code=reason_code,
+                signature_reference_id="GissCancel" + invoice.invoice_number,
+                municipal_registration=policy.municipal_registration,
+                human_approved=True,
+                sign_document=lambda raw: sign(scope, issuer, raw, "CancelarNfse"),
+                validate_signed_request=lambda raw: verify(
+                    scope, issuer, raw, "CancelarNfse",
+                ),
+            )
+            result = transport.invoke(payload)
+            return verify_jundiai_cancel_reply(
+                receipt=result, source=source, issued=invoice,
+                code=reason_code, validate_official_response=validate_official_cancel,
+            )
+
         return JundiaiTrustedRuntimePorts(
             transport=transport, build_signed_operation=build_operation,
             verify_signed_rps_identity=source_identity,
             fiscal_issuer_policy=fiscal_policy,
             validate_prepared_rps=source_check,
             verify_official_invoice_xml=invoice_check,
+            submit_verified_cancel=verified_cancel,
         )
 
 
