@@ -14,6 +14,7 @@ on:
       - src/kordena_fiscal/gateway/jundiai_giss_issue_builder.py
       - src/kordena_fiscal/runtime/jundiai_environment.py
       - src/kordena_fiscal/application/service.py
+      - src/kordena_fiscal/web/fiscal_intent_recovery.py
       - tests/gateway/test_jundiai_giss_issue_builder.py
       - tests/gateway/test_jundiai_giss_rps_query_builder.py
       - tests/web/test_native_nfse_preparation_http.py
@@ -69,7 +70,7 @@ jobs:
           python -m pytest -q tests/web/test_native_nfse_preparation_http.py -k "jundiai_http_portal_durable_rps_pending_recovery_archive_and_isolation"
 
       - name: Ruff targeted Jundiai sources and tests
-        run: ruff check src/kordena_fiscal/application/service.py src/kordena_fiscal/gateway/jundiai_giss_rps_query_builder.py src/kordena_fiscal/gateway/jundiai_giss_issue_builder.py src/kordena_fiscal/runtime/jundiai_environment.py tests/gateway/test_jundiai_giss_issue_builder.py tests/gateway/test_jundiai_giss_rps_query_builder.py tests/web/test_native_nfse_preparation_http.py
+        run: ruff check src/kordena_fiscal/web/fiscal_intent_recovery.py src/kordena_fiscal/application/service.py src/kordena_fiscal/gateway/jundiai_giss_rps_query_builder.py src/kordena_fiscal/gateway/jundiai_giss_issue_builder.py src/kordena_fiscal/runtime/jundiai_environment.py tests/gateway/test_jundiai_giss_issue_builder.py tests/gateway/test_jundiai_giss_rps_query_builder.py tests/web/test_native_nfse_preparation_http.py
 
       - name: Publish audit evidence (not municipal certification)
         if: always()
