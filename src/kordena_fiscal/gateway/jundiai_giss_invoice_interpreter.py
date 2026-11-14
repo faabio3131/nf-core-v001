@@ -140,6 +140,18 @@ def _candidate_from_giss(
     )
 
 
+def decode_jundiai_archived_invoice(
+    archived_xml: bytes, original: Sp4OriginalRps,
+) -> Sp4VerifiedInvoice:
+    """Reconstruct the issued note from its hash-verified official archive."""
+    candidate = _candidate_from_giss(archived_xml, original)
+    if candidate is None:
+        raise Sp4CanonicalMunicipalError(
+            "Jundiai archived original has no verified municipal NFS-e"
+        )
+    return candidate
+
+
 def interpret_jundiai_giss_result(
     receipt: JundiaiGissReceipt,
     request: NfseAuthorizationRequest,
