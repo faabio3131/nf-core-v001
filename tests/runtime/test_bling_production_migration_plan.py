@@ -67,7 +67,7 @@ def setup(monkeypatch: pytest.MonkeyPatch):
     # The tested subject is the read-only guard, not global migration metadata.
     # Keep the policy validation itself covered by the canonical CI check.
     # The database factory below is a fake and has no class-level version fields.
-    monkeypatch.setattr(guard, "validate_policy", lambda: tuple(range(1, 22)))
+    monkeypatch.setattr(guard, "validate_policy", lambda: tuple(range(1, 23)))
     monkeypatch.setenv("NFCORE_ENVIRONMENT", "production")
     monkeypatch.setenv("DATABASE_URL", "postgresql://synthetic.invalid/nfcore")
     monkeypatch.delenv("RAILWAY_SERVICE_ID", raising=False)
@@ -87,8 +87,10 @@ def setup(monkeypatch: pytest.MonkeyPatch):
 @pytest.mark.parametrize(
     ("installed", "pending", "requires_bling"),
     [
-        (tuple(range(1, 20)), "20,21", False),
-        (tuple(range(1, 22)), "NONE", True),
+        (tuple(range(1, 20)), "20,21,22", False),
+        (tuple(range(1, 22)), "22", True),
+        ((*range(1, 20), 22), "20,21", False),
+        (tuple(range(1, 23)), "NONE", True),
     ],
 )
 def test_plan_accepts_only_certified_boundaries_without_writes(
@@ -114,7 +116,8 @@ def test_plan_accepts_only_certified_boundaries_without_writes(
         tuple(range(1, 19)),
         tuple(range(1, 21)),  # partial migration 20 is NEVER a ready baseline
         (1, *range(3, 20)),
-        tuple(range(1, 23)),
+        tuple(range(1, 24)),
+        (*range(1, 21), 22),  # partial Bling 20 with DPS 22 is not ready
     ],
 )
 def test_plan_rejects_drift_and_partial_schema_before_catalog_access(
@@ -180,7 +183,8 @@ def test_plan_refuses_unexpected_migration_policy(
 
 @pytest.mark.parametrize(
     "installed",
-    [(), tuple(range(1, 19)), tuple(range(1, 21)), (1, *range(3, 22))],
+    [(), tuple(range(1, 19)), tuple(range(1, 21)),
+     (*range(1, 21), 22), (1, *range(3, 23))],
 )
 def test_approved_production_apply_never_repairs_partial_or_drifted_schema(
     setup, monkeypatch: pytest.MonkeyPatch, installed: tuple[int, ...],

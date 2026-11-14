@@ -13,6 +13,9 @@ parse_audit_request "nfcore-audit $sha $digest"
 parse_audit_request "nfcore-gsm-audit $sha $digest"
 [[ "$AUDIT_PRODUCTION_SHA" == "$sha" && "$AUDIT_SCRIPT_SHA256" == "$digest" ]]
 [[ "$AUDIT_KIND" == "gsm" ]]
+parse_audit_request "nfcore-a1-audit $sha $digest"
+[[ "$AUDIT_PRODUCTION_SHA" == "$sha" && "$AUDIT_SCRIPT_SHA256" == "$digest" ]]
+[[ "$AUDIT_KIND" == "a1" ]]
 
 for invalid in \
     "" \
@@ -34,7 +37,10 @@ for invalid in \
     "nfcore-gsm-audit $sha" \
     "nfcore-gsm-audit $sha $digest extra" \
     "nfcore-gsm-audit $sha $digest;id" \
-    "nfcore-other-audit $sha $digest"; do
+    "nfcore-other-audit $sha $digest" \
+    "nfcore-a1-audit $sha" \
+    "nfcore-a1-audit $sha $digest;id" \
+    "nfcore-a1-audit $sha $digest extra"; do
   if parse_audit_request "$invalid"; then
     echo 'FAIL: accepted invalid GSM audit command' >&2
     exit 1
@@ -60,6 +66,16 @@ grep -Fq "github.ref_protected == true" "$gsm_workflow"
 grep -Fq "github.ref == 'refs/heads/main'" "$gsm_workflow"
 grep -Fq 'nfcore-gsm-audit $REQUESTED_SHA $script_digest' "$gsm_workflow"
 grep -Fq 'worker-readonly-preflight.py' "$gsm_workflow"
+a1_workflow="$here/../../.github/workflows/contabo-a1-readonly-host-audit.yml"
+grep -Fq "github.ref_protected == true" "$a1_workflow"
+grep -Fq "github.ref == 'refs/heads/main'" "$a1_workflow"
+grep -Fq 'nfcore-a1-audit $REQUESTED_SHA $digest' "$a1_workflow"
+grep -Fq 'audit-a1-vault-readonly.py' "$a1_workflow"
+grep -Fq 'environment: nfcore-contabo-audit' "$a1_workflow"
+if grep -Eq '^[[:space:]]+pull_request:' "$a1_workflow"; then
+  echo 'FAIL: A1 SSH audit must not execute on pull_request' >&2
+  exit 1
+fi
 if grep -Eq '^[[:space:]]+pull_request:' "$gsm_workflow"; then
   echo 'FAIL: GSM SSH audit must never execute on pull_request' >&2
   exit 1

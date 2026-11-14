@@ -49,6 +49,35 @@ def test_unchecked_item_fails() -> None:
     assert any("sem marcar" in p for p in problems)
 
 
+def test_external_blocked_with_reason_does_not_block() -> None:
+    body = GOOD_BODY + (
+        "\n- [ ] EXTERNAL_BLOCKED: falta o A1 real; "
+        "o proprietário fornece pelo cofre.\n"
+    )
+    assert _load().check_body(body) == []
+
+
+def test_external_blocked_without_reason_fails() -> None:
+    body = GOOD_BODY + "\n- [ ] EXTERNAL_BLOCKED\n"
+    problems = _load().check_body(body)
+    assert any("sem motivo" in p for p in problems)
+
+
+def test_external_blocked_short_reason_fails() -> None:
+    body = GOOD_BODY + "\n- [ ] EXTERNAL_BLOCKED: depois\n"
+    problems = _load().check_body(body)
+    assert any("sem motivo" in p for p in problems)
+
+
+def test_internal_item_still_fails_next_to_external() -> None:
+    body = GOOD_BODY + (
+        "\n- [ ] EXTERNAL_BLOCKED: falta o A1 real do proprietário.\n"
+        "- [ ] Escrever o teste que ainda não existe.\n"
+    )
+    problems = _load().check_body(body)
+    assert any("interno(s)" in p for p in problems)
+
+
 def test_missing_evidence_statement_fails() -> None:
     body = (
         "Descrição longa sem declarar a prova real do fluxo. " * 8

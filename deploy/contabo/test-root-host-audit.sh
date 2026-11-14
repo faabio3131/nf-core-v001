@@ -44,8 +44,13 @@ parse_root_audit_request < <(printf '%s %s\n' "$sha" "$digest")
 parse_root_audit_request < <(printf 'gsm %s %s\n' "$sha" "$digest")
 [[ "$ROOT_AUDIT_SHA" == "$sha" && "$ROOT_AUDIT_DIGEST" == "$digest" ]]
 [[ "$ROOT_AUDIT_KIND" == "gsm" ]]
+parse_root_audit_request < <(printf 'a1 %s %s\n' "$sha" "$digest")
+[[ "$ROOT_AUDIT_SHA" == "$sha" && "$ROOT_AUDIT_DIGEST" == "$digest" ]]
+[[ "$ROOT_AUDIT_KIND" == "a1" ]]
 grep -Fq 'ROOT_AUDIT_SCRIPT=$GSM_AUDIT_SCRIPT' "$here/root-host-audit.sh"
 grep -Fq '/usr/bin/python3 -I "$ROOT_AUDIT_SCRIPT"' "$here/root-host-audit.sh"
+grep -Fq 'ROOT_AUDIT_SCRIPT=$A1_AUDIT_SCRIPT' "$here/root-host-audit.sh"
+grep -Fq -- '--expected-production-sha "$ROOT_AUDIT_SHA"' "$here/root-host-audit.sh"
 
 for invalid in \
   "not-an-audit" \
@@ -75,7 +80,10 @@ for invalid in \
   "gsm $sha $digest extra" \
   "gsm $sha $digest;id" \
   "other $sha $digest" \
-  "gsm $sha ${digest:0:63}"; do
+  "gsm $sha ${digest:0:63}" \
+  "a1 $sha $digest;id" \
+  "a1 $sha $digest extra" \
+  "a1 ${sha^^} $digest"; do
   if parse_root_audit_request < <(printf '%s\n' "$invalid"); then
     echo 'FAIL: invalid privileged GSM request accepted' >&2
     exit 1

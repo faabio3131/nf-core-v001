@@ -1,3 +1,14 @@
+# DIRETRIZ SUPERVENIENTE — REORDENAÇÃO SP-22 POR GRUPO DE ENGENHARIA (13/11/2026)
+
+> **Decisão vigente do proprietário em 13/11/2026 — complementa, sem revogar, a diretriz de 12/11 abaixo. Detalhe completo em `docs/NFCORE_SP22_REORDENACAO_GRUPOS_ENGENHARIA_2026-11-13.md`.**
+
+1. **A onda atual não é interrompida.** Cajamar (piloto, PR #463), Osasco, Barueri e Jundiaí seguem na ordem já vigente (banner 12/11 abaixo). **Santana de Parnaíba (Smarapd, sistema próprio) entra nesta mesma onda**, por decisão do proprietário, já que é trabalho isolado do mesmo tipo de Osasco/Barueri.
+2. **Depois que essa onda fechar**, a ordem dos 22 municípios de SP passa a ser por **reaproveitamento de bloco de engenharia**, não mais só por ranking comercial: **Grupo 2 (NFS-e Nacional exclusivo: Salto confirmado, Louveira indício) → Grupo 1 (família GINFES/GISS Online: Guarulhos, Santos, São Caetano, Suzano, Jundiaí já confirmados + Guarujá e Itu novos candidatos desta pesquisa) → Grupo 3 (DSF: Campinas, Sorocaba) → Grupo 5 (provedor ainda não identificado: Itapevi, Jandira, Mairiporã, Arujá, Monte Mor — resolver com contato direto na prefeitura antes de sequenciar) → Grupo 4 (isolados/próprios, sem reaproveitamento: Barueri, Osasco, Santana de Parnaíba, São Paulo capital, São Vicente)**.
+3. **Motivo:** maximizar quantos municípios ficam operacionais por bloco de código escrito — um provedor compartilhado por várias cidades rende mais cobertura por unidade de esforço do que construir sistemas isolados um a um. Os sistemas sem reaproveitamento (Grupo 4) ficam por último porque cada um é custo fixo dedicado a uma única cidade, como Cajamar já demonstrou (3 dias só para aquela cidade).
+4. **Isto é só ordem de execução.** Não altera nenhum estado `INTERNAL_COMPLETE`/`NOT_CERTIFIED`/`EXTERNAL_BLOCKED`, não toca na matriz JSON da PR #446 (ainda Draft, aberta separadamente), não autoriza merge, deploy, credencial real ou homologação.
+
+---
+
 # DIRETRIZ SUPERVENIENTE — PRIORIDADE E GOVERNANÇA (12/11/2026)
 
 > **Decisão vigente do proprietário em 12/11/2026 — esta diretriz substitui a ordem sequencial do Centro-Oeste descrita abaixo, sem apagar o histórico.**

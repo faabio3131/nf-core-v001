@@ -306,11 +306,12 @@ def _assert_cakto_current(database: PostgresFiscalDatabase) -> None:
 
 
 def plan_production_bling() -> None:
-    """Report a safe 19 -> 21 plan; NEVER apply Bling migrations or enable it.
+    """Read-only Bling + DPS v22 plan; never apply migrations or enable it.
 
-    The production baseline may have 19 or 21 full migrations. A partial
-    migration 20, gaps, unknown versions, missing tables, or Cakto drift
-    fail closed before a human considers a separately authorized apply.
+    Certified boundaries are fiscal 1..19, 1..21, 1..19+22 and 1..22.
+    Bling 20/21 and DPS 22 are optional, independently governed migrations;
+    partial Bling 20, gaps, drift, missing tables and Cakto mismatch fail
+    closed before any separately authorized schema change.
     """
     expected = validate_policy()
     if os.getenv("NFCORE_ENVIRONMENT") != "production":
@@ -321,18 +322,23 @@ def plan_production_bling() -> None:
     if not dsn:
         raise RuntimeError("Bling production plan requires DATABASE_URL")
     baseline = tuple(range(1, COGNITIVE_QUOTA_VERSION + 1))
-    if expected != tuple(range(1, BLING_WORKER_POLICY_VERSION + 1)):
+    bling_ready = tuple(range(1, BLING_WORKER_POLICY_VERSION + 1))
+    nfse_baseline = (*baseline, NFSE_DPS_NUMBERING_VERSION)
+    nfse_bling = (*bling_ready, NFSE_DPS_NUMBERING_VERSION)
+    if expected != tuple(range(1, NFSE_DPS_NUMBERING_VERSION + 1)):
         raise RuntimeError("Bling production migration policy changed unexpectedly")
     database = PostgresFiscalDatabase(dsn)
     try:
         installed = database.applied_migrations()
-        if installed not in (baseline, expected):
+        if installed not in (baseline, bling_ready, nfse_baseline, nfse_bling):
             raise RuntimeError("Bling production migration plan blocked: drift or partial schema")
-        database.require_current_schema(require_bling=installed == expected)
+        database.require_current_schema(
+            require_bling=installed in (bling_ready, nfse_bling)
+        )
         _assert_cakto_current(database)
     finally:
         database.close()
-    pending = expected[len(installed):]
+    pending = tuple(version for version in expected if version not in installed)
     print(
         "Bling production migration plan: PASS READ_ONLY "
         f"installed={','.join(map(str, installed))} "
@@ -402,16 +408,20 @@ def apply() -> None:
         before = database.applied_migrations()
         enable_bling = os.getenv("NFCORE_BLING_INSTALLATIONS_ENABLED") == "true"
         if environment == "production" and enable_bling:
-            # Production Bling is a *controlled 19->21 migration only*.
-            # Never allow a gap, a partial 20, Cakto drift or an unknown DB
-            # to be silently repaired by the generalized initialize() path.
+            # The 20/21 Bling pair and 22 DPS numbering may be independently
+            # installed. Never let generic initialize repair a partial 20
+            # or unexpected sequence even with an approval environment flag.
             baseline = tuple(range(1, COGNITIVE_QUOTA_VERSION + 1))
-            full = tuple(range(1, BLING_WORKER_POLICY_VERSION + 1))
-            if before not in (baseline, full):
+            bling_ready = tuple(range(1, BLING_WORKER_POLICY_VERSION + 1))
+            nfse_baseline = (*baseline, NFSE_DPS_NUMBERING_VERSION)
+            nfse_bling = (*bling_ready, NFSE_DPS_NUMBERING_VERSION)
+            if before not in (baseline, bling_ready, nfse_baseline, nfse_bling):
                 raise RuntimeError(
                     "Bling production migration blocked: partial or drifted schema"
                 )
-            database.require_current_schema(require_bling=before == full)
+            database.require_current_schema(
+                require_bling=before in (bling_ready, nfse_bling)
+            )
             _assert_cakto_current(database)
         applied = database.initialize(enable_bling=enable_bling)
         after = database.require_current_schema(require_bling=enable_bling)

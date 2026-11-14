@@ -2,7 +2,7 @@ name: Deploy Contabo (config e teste)
 
 on:
   pull_request:
-    paths: ["deploy/contabo/**", ".github/workflows/deploy-contabo-check.yml", ".github/workflows/contabo-readonly-host-audit.yml", ".github/workflows/contabo-gsm-readonly-host-audit.yml"]
+    paths: ["deploy/contabo/**", ".github/workflows/deploy-contabo-check.yml", ".github/workflows/contabo-readonly-host-audit.yml", ".github/workflows/contabo-gsm-readonly-host-audit.yml", ".github/workflows/contabo-a1-readonly-host-audit.yml"]
   push:
     branches: [main]
     paths: ["deploy/contabo/**"]
@@ -33,7 +33,9 @@ jobs:
       - name: Classificacao separada do canal SSH e readiness Bling
         run: bash deploy/contabo/test-readonly-host-audit-classification.sh
       - name: Validar comando SSH restrito sem host/segredos
-        run: bash deploy/contabo/test-host-audit-command.sh
+        run: |
+          bash deploy/contabo/test-host-audit-command.sh
+          python3 -m py_compile deploy/contabo/audit-a1-vault-readonly.py
       - name: Validar chain of trust e privilegio Docker restrito
         run: bash deploy/contabo/test-root-host-audit.sh
       - name: Testar bootstrap administrativo limitado do GSM sem VPS

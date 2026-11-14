@@ -36,6 +36,15 @@ services:
       NFCORE_SECRET_BACKEND: external
       NFCORE_REQUIRE_HTTPS: "true"
       DATABASE_URL: postgresql://nfcore:${POSTGRES_PASSWORD}@nfcore-db:5432/nfcore
+    # Same single A1 Vault as the live Contabo host, audited 2026-11-13.
+    # Never create a new directory silently or move existing encrypted files.
+    volumes:
+      - type: bind
+        source: /var/lib/nfcore/vault
+        target: /var/lib/nfcore/vault
+        read_only: false
+        bind:
+          create_host_path: false
     depends_on:
       nfcore-db:
         condition: service_healthy
