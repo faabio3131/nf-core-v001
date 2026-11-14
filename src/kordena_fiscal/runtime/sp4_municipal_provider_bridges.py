@@ -36,6 +36,14 @@ from kordena_fiscal.gateway.cajamar_geisweb_homologation import (
 from kordena_fiscal.gateway.cajamar_geisweb_invoice_interpreter import (
     interpret_cajamar_geisweb_result,
 )
+from kordena_fiscal.gateway.jundiai_giss_homologation import (
+    JundiaiGissHomologationTransport,
+    JundiaiGissReceipt,
+    JundiaiSignedOperation,
+)
+from kordena_fiscal.gateway.jundiai_giss_invoice_interpreter import (
+    interpret_jundiai_giss_result,
+)
 from kordena_fiscal.gateway.osasco_rtc_homologation import (
     OsascoOperationReceipt,
     OsascoPreparedOperation,
@@ -382,6 +390,89 @@ def build_osasco_reviewed_ports(
         lambda req, original: invoke(req, original, "ConsultarNotaCompleta"),
     )
 
+
+def build_jundiai_reviewed_ports(
+    *, authority: Sp4BridgeAuthority,
+    transport: JundiaiGissHomologationTransport,
+    build_signed_operation: Callable[
+        [NfseAuthorizationRequest, Sp4OriginalRps, str], JundiaiSignedOperation
+    ],
+    verify_signed_rps_identity: Callable[[Sp4OriginalRps, bytes], None],
+    interpret_official_result: Callable[
+        [JundiaiGissReceipt, NfseAuthorizationRequest, Sp4OriginalRps],
+        Sp4ProviderOutcome,
+    ] = interpret_jundiai_giss_result,
+) -> Sp4ReviewedMunicipalPorts:
+    if not isinstance(transport, JundiaiGissHomologationTransport) or not all(
+        callable(x) for x in (
+            build_signed_operation, verify_signed_rps_identity,
+            interpret_official_result,
+        )
+    ):
+        raise Sp4CanonicalMunicipalError("Jundiai Giss provider adapter incomplete")
+
+    def invoke(
+        req: NfseAuthorizationRequest, original: Sp4OriginalRps, method: str,
+    ) -> Sp4ProviderOutcome:
+        operation = _validate_prepared_link(
+            req, original, build_signed_operation(req, original, method),
+            expected_type=JundiaiSignedOperation, expected_method=method,
+        )
+        try:
+            root = etree.fromstring(
+                operation.signed_xml,
+                parser=etree.XMLParser(
+                    no_network=True, resolve_entities=False, load_dtd=False,
+                ),
+            )
+        except etree.XMLSyntaxError:
+            raise Sp4CanonicalMunicipalError("Giss 2.04 prepared XML malformed") from None
+        expected_root = (
+            "EnviarLoteRpsEnvio" if method == "RecepcionarLoteRps"
+            else "ConsultarNfseRpsEnvio"
+        )
+        ns = "{http://www.giss.com.br/tipos-v2_04.xsd}"
+        # The lot's nested Rps/IdentificacaoRps is a complex *type*.
+        # The direct query-level IdentificacaoRps is in the REQUEST namespace.
+        identifier_ns = (
+            ns if method == "RecepcionarLoteRps"
+            else "{http://www.giss.com.br/consultar-nfse-rps-envio-v2_04.xsd}"
+        )
+        rps_numbers = root.findall(f".//{identifier_ns}IdentificacaoRps/{ns}Numero")
+        rps_series = root.findall(f".//{identifier_ns}IdentificacaoRps/{ns}Serie")
+        if (
+            etree.QName(root).localname != expected_root
+            or bool(getattr(root.getroottree().docinfo, "doctype", ""))
+            or len(rps_numbers) != 1
+            or len(rps_series) != 1
+            or (rps_numbers[0].text or "").strip() != original.rps_number
+            or (rps_series[0].text or "").strip() != original.rps_series
+        ):
+            raise Sp4CanonicalMunicipalError(
+                "Jundiai signed Giss document differs from persisted original RPS"
+            )
+        if method == "RecepcionarLoteRps":
+            lot = [
+                child for child in root.iter()
+                if etree.QName(child).localname == "NumeroLote"
+            ]
+            if (
+                original.municipal_batch_id is None
+                or len(original.municipal_batch_id) > 15
+                or len(lot) != 1
+                or (lot[0].text or "").strip() != original.municipal_batch_id
+            ):
+                raise Sp4CanonicalMunicipalError(
+                    "Jundiai signed Giss batch differs from original persisted lot"
+                )
+        verify_signed_rps_identity(original, operation.signed_xml)
+        receipt = transport.invoke(operation)
+        return _verified_outcome(interpret_official_result(receipt, req, original))
+
+    return authority.wrap(
+        lambda req, original: invoke(req, original, "RecepcionarLoteRps"),
+        lambda req, original: invoke(req, original, "ConsultarNfsePorRps"),
+    )
 
 def _validated_barueri_export(
     batch: BarueriRpsBatch, receipt: BarueriReceipt,
