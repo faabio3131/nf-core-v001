@@ -291,7 +291,7 @@ def _build_soap(method: str, fields: tuple[tuple[str, str], ...]) -> tuple[bytes
         raise BarueriContractError("Unsupported Barueri SOAP operation")
     # Barueri XML_RPS_Schemas_V01 requires qualified elements in MensagemXML.
     # This is the actual payload serialized by _send, not a test-only fixture.
-    message = etree.Element(f"{{{_NS}}}{method}", nsmap={None: _NS})
+    message = etree.Element(f"{{{_NS}}}{method}", nsmap={"b": _NS})
     for name, value in fields:
         _tag(message, f"{{{_NS}}}{name}", value)
     root = etree.Element(f"{{{_SOAP}}}Envelope", nsmap={"soap": _SOAP})
