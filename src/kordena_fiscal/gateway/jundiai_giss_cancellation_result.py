@@ -216,8 +216,8 @@ def verify_jundiai_cancel_query(
         "Cnpj": source.issuer_cnpj.value,
         "CodigoMunicipio": source.issuer_ibge,
     }
-    for field, expected in checks.items():
-        node = _sole_descendant(confirmation, field)
+    for field_name, expected in checks.items():
+        node = _sole_descendant(confirmation, field_name)
         if node is None or node.text is None or node.text.strip() != expected:
             raise JundiaiGissCancelResultError(
                 "Giss cancellation query differs from original authorized invoice"
