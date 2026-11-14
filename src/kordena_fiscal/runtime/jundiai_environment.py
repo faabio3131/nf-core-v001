@@ -132,29 +132,30 @@ def _verify_signature(
         if len(targets) != 1:
             raise FiscalValidationError("Jundiai XMLDSig target missing or duplicated")
         transforms = reference.find(_DS + "Transforms")
+        canonical_method = signed_info.find(_DS + "CanonicalizationMethod")
+        signature_method = signed_info.find(_DS + "SignatureMethod")
+        digest_method = reference.find(_DS + "DigestMethod")
         if (
-            signed_info.find(_DS + "CanonicalizationMethod") is None
-            or signed_info.find(_DS + "CanonicalizationMethod").get("Algorithm") != _C14N
-            or signed_info.find(_DS + "SignatureMethod") is None
-            or signed_info.find(_DS + "SignatureMethod").get("Algorithm")
+            canonical_method is None or canonical_method.get("Algorithm") != _C14N
+            or signature_method is None
+            or signature_method.get("Algorithm")
             != "http://www.w3.org/2000/09/xmldsig#rsa-sha1"
             or transforms is None
             or [x.get("Algorithm") for x in transforms] != [
                 "http://www.w3.org/2000/09/xmldsig#enveloped-signature",
                 _C14N,
             ]
-            or reference.find(_DS + "DigestMethod") is None
-            or reference.find(_DS + "DigestMethod").get("Algorithm")
+            or digest_method is None
+            or digest_method.get("Algorithm")
             != "http://www.w3.org/2000/09/xmldsig#sha1"
         ):
             raise FiscalValidationError("Unapproved GissOnline 2.04 XMLDSig algorithm")
         # A signature outside the signed node does not alter its digest.
         target = deepcopy(targets[0])
         for nested in target.findall(".//" + _DS + "Signature"):
-            if nested.getparent() is not None and (
-                nested.findtext(_DS + "SignatureValue") == value
-            ):
-                nested.getparent().remove(nested)
+            parent = nested.getparent()
+            if parent is not None and nested.findtext(_DS + "SignatureValue") == value:
+                parent.remove(nested)
         digest = base64.b64encode(hashlib.sha1(
             etree.tostring(target, method="c14n", exclusive=False),
         ).digest()).decode("ascii")
@@ -529,6 +530,9 @@ class JundiaiReviewedStartup:
                 )
             ),
         )
+        def fiscal_policy(request: NfseAuthorizationRequest) -> None:
+            review(request)
+
         return JundiaiTrustedRuntimePorts(
             transport=transport, build_signed_operation=build_operation,
             verify_signed_rps_identity=lambda source, raw: verify(
@@ -538,7 +542,7 @@ class JundiaiReviewedStartup:
                     == "EnviarLoteRpsEnvio"
                 ) else "ConsultarNfsePorRps",
             ),
-            fiscal_issuer_policy=lambda req: review(req),
+            fiscal_issuer_policy=fiscal_policy,
             validate_prepared_rps=source_check,
             verify_official_invoice_xml=invoice_check,
         )
