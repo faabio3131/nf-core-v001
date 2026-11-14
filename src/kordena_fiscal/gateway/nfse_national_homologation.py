@@ -206,9 +206,16 @@ class NfseNationalHomologationTransport:
     def submit_signed_dps(self, signed_dps_xml: bytes) -> dict[str, str]:
         """Send only homologation DPS, without changing business authorization."""
         body = build_nfse_dps_request(signed_dps_xml)
-        return parse_nfse_homologation_response(
-            self._exchange(body, build_fiscal_tls_context(self._certificate), self._timeout)
+        response = self._exchange(
+            body, build_fiscal_tls_context(self._certificate), self._timeout
         )
+        parsed = parse_nfse_homologation_response(response)
+        # This legacy transport also returns "authorized"; check the exact
+        # signed NFS-e bytes before allowing that projection.
+        from kordena_fiscal.gateway.nfse_national_query import _validate_official_nfse
+
+        _validate_official_nfse(response, parsed["chaveAcesso"])
+        return parsed
 
     def sign_and_submit_dps(self, unsigned_dps_xml: bytes) -> dict[str, str]:
         """Use the same scoped A1 identity for XMLDSig and the mTLS handshake."""

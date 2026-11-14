@@ -158,7 +158,11 @@ class NfseNacionalHomologationGateway:
                 raise OfficialNfseTransportError("NFS-e access key mismatch")
             status = AuthorizationStatus.AUTHORIZED
             invoice_reference = key
-            authorized_xml = parsed["xml"].encode("utf-8")
+            # Reuse the exact canonical GET validator. Even a direct POST
+            # response must have a valid signed receipt before AUTHORIZED.
+            from kordena_fiscal.gateway.nfse_national_query import _validate_official_nfse
+
+            authorized_xml = _validate_official_nfse(response, key)
         else:
             rejections = parse_national_nfse_rejections(result)
             if rejections:
