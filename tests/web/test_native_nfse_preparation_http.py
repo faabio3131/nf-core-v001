@@ -99,7 +99,6 @@ from kordena_fiscal.runtime.osasco_operational_composition import (
     OsascoTrustedRuntimePorts,
 )
 from kordena_fiscal.runtime.provider_operation_wiring import build_provider_operation_handlers
-from kordena_fiscal.signing.nfse_xmldsig import append_nfse_signature
 from kordena_fiscal.runtime.sp4_municipal_canonical_composition import (
     Sp4ReviewedMunicipalPorts,
 )
@@ -114,6 +113,7 @@ from kordena_fiscal.security.human_identity import (
     PortalRole,
     ScryptPasswordHasher,
 )
+from kordena_fiscal.signing.nfse_xmldsig import append_nfse_signature
 from kordena_fiscal.vault import EphemeralCertificateMaterial
 from kordena_fiscal.vault.contracts import EphemeralProviderCredentialsMaterial
 from kordena_fiscal.web import create_app
