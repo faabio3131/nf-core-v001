@@ -2228,3 +2228,9 @@ def test_jundiai_http_portal_durable_rps_pending_recovery_archive_and_isolation(
     })
     assert replay.status_code == 200, replay.text
     assert len(submits) == 1, "replay cannot trigger a duplicate municipal POST"
+    second_key_same_invoice = web.post(issue_url, json=body, headers={
+        CSRF_HEADER: csrf, "Idempotency-Key": "different-key-same-issued-rps",
+    })
+    assert second_key_same_invoice.status_code == 200, second_key_same_invoice.text
+    assert second_key_same_invoice.json()["replay"] is True
+    assert len(submits) == 1, "a second issue key must not retransmit the same RPS"
