@@ -112,6 +112,50 @@ def test_request_validation() -> None:
         make_request().request_id = "x"  # type: ignore[misc]
 
 
+def test_guard_question_cannot_authorize_invented_fiscal_code() -> None:
+    request = make_request(question="Por que houve a rejeição 999?")
+    response = ProviderSection(
+        SectionKind.HYPOTHESIS, "A rejeição 999 indica divergência.", ("rej-1",)
+    )
+    result = OutputGuard().validate((response,), request)
+    assert result.accepted == ()
+    assert "ungrounded_code" in result.findings[0]
+
+
+def test_guard_untrusted_provider_message_cannot_ground_code() -> None:
+    request = make_request(evidence=rejection_evidence(message="Rejeição 999"))
+    response = ProviderSection(
+        SectionKind.HYPOTHESIS, "A rejeição 999 é fiscal.", ("msg-1",)
+    )
+    result = OutputGuard().validate((response,), request)
+    assert result.accepted == ()
+    assert "ungrounded_code" in result.findings[0]
+
+
+def test_guard_numeric_code_requires_exact_evidence_token() -> None:
+    request = make_request(evidence=rejection_evidence(code="2040"))
+    response = ProviderSection(
+        SectionKind.HYPOTHESIS, "Pode ser a rejeição 204.", ("rej-1",)
+    )
+    result = OutputGuard().validate((response,), request)
+    assert result.accepted == ()
+    assert "ungrounded_code" in result.findings[0]
+
+
+def test_guard_monetary_amount_requires_exact_numeric_value() -> None:
+    original = rejection_evidence()
+    trusted = dataclasses.replace(
+        original[0], data={"code": "204", "amount": "R$ 120,00"}
+    )
+    request = make_request(evidence=(trusted,) + original[1:])
+    response = ProviderSection(
+        SectionKind.HYPOTHESIS, "Há uma diferença de R$ 12.", ("rej-1",)
+    )
+    result = OutputGuard().validate((response,), request)
+    assert result.accepted == ()
+    assert "ungrounded_amount" in result.findings[0]
+
+
 def test_guard_blocks_percentages_and_amounts_absent_from_evidence() -> None:
     for text in ("A alíquota é 18%.", "O valor correto seria R$ 1.234,56."):
         result = OutputGuard().validate(
