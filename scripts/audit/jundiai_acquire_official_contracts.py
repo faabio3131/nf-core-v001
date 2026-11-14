@@ -28,6 +28,15 @@ PUBLIC = {
     "referencia-conceitual-abrasf-2.04.pdf": BASE
         + "NFS-e_Manual_de_Orienta%C3%A7%C3%A3o_do_Contribuinte_-_2.04.pdf",
 }
+# Baseline downloaded on 2026-11-14 from the official portal, not generated
+# from simulator fixtures. Unexpected upstream changes require human review.
+EXPECTED_SOURCE_SHA256 = {
+    "schemas-servicos-prestados.rar": "c14a542de5fa2ce1a6a2b43da6e4eb0bebab12e6ebc850fe24dbdc8f6bb04356",
+    "manual-servicos-prestados-v1.8.pdf": "cdf8095944bbe0308d7df11a9632da78cba85b1daa3973dfdd51a86f9b4b58fd",
+    "manual-servicos-prestados-retorno-v1.0.pdf": "8becda8d0a97a34fe938baef6709dd8bee7867c40cc4defc54b775d670fd0db1",
+    "referencia-conceitual-abrasf-2.04.pdf": "d6ac7c1237a9064042df63bb7af2b539676f8b3589bdfb3fea8378a1b2f10bb9",
+}
+
 WSDL = {
     "production": "https://ws-jundiai.giss.com.br/service-ws/nf/nfse-ws?wsdl",
     "homologation": "https://v2-ws-homologacao.giss.com.br/service-ws/nf/nfse-ws?wsdl",
@@ -147,8 +156,11 @@ def main() -> None:
                 raise ValueError(f"{name}: official PDF signature missing")
             if name.endswith(".rar") and not raw.startswith(b"Rar!\x1a\x07"):
                 raise ValueError("Official schema download is not a RAR archive")
+            digest = sha(raw)
+            if digest != EXPECTED_SOURCE_SHA256[name]:
+                raise ValueError("Official source drift requires independent review: " + name)
             (tmp / name).write_bytes(raw)
-            sources[name] = {"url": url, "sha256": sha(raw),
+            sources[name] = {"url": url, "sha256": digest,
                              "size_bytes": len(raw),
                              "redistributed_in_git": False}
         extracted = ROOT / "xsd"
