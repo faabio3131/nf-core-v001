@@ -29,6 +29,7 @@ from kordena_fiscal.domain import Cnpj, ExecutionScope, FiscalAddress, FiscalVal
 from kordena_fiscal.gateway.jundiai_giss_cancellation_builder import prepare_jundiai_cancel
 from kordena_fiscal.gateway.jundiai_giss_cancellation_result import (
     JundiaiGissCancellationDecision,
+    verify_jundiai_cancel_query,
     verify_jundiai_cancel_reply,
 )
 from kordena_fiscal.gateway.jundiai_giss_homologation import (
@@ -606,6 +607,33 @@ class JundiaiReviewedStartup:
                 code=reason_code, validate_official_response=validate_official_cancel,
             )
 
+        def query_verified_cancel(
+            request: NfseAuthorizationRequest, source: Sp4OriginalRps,
+            invoice: Sp4VerifiedInvoice,
+        ) -> JundiaiGissCancellationDecision:
+            if (
+                request.document.issuer.cnpj != source.issuer_cnpj
+                or invoice.issuer_cnpj != source.issuer_cnpj
+                or invoice.issuer_ibge != "3525904"
+            ):
+                raise FiscalValidationError("Jundiai cancellation recovery scope differs")
+            prepared = build_operation(request, source, "ConsultarNfsePorRps")
+            result = transport.invoke(prepared)
+
+            def check_query(raw: bytes) -> None:
+                validate_xml(raw, "ConsultarNfseRpsResposta")
+
+            def check_cancel_note(raw: bytes) -> None:
+                _verify_signature(
+                    raw, certificate=self.municipal_signer, count=1,
+                )
+
+            return verify_jundiai_cancel_query(
+                receipt=result, source=source, issued=invoice,
+                validate_official_query=check_query,
+                verify_cancelled_note=check_cancel_note,
+            )
+
         return JundiaiTrustedRuntimePorts(
             transport=transport, build_signed_operation=build_operation,
             verify_signed_rps_identity=source_identity,
@@ -613,6 +641,7 @@ class JundiaiReviewedStartup:
             validate_prepared_rps=source_check,
             verify_official_invoice_xml=invoice_check,
             submit_verified_cancel=verified_cancel,
+            query_verified_cancel=query_verified_cancel,
         )
 
 
