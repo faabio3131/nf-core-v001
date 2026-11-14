@@ -7,8 +7,8 @@ from kordena_fiscal.cognitive import (
     AdviceStatus,
     Capability,
     CircuitBreaker,
-    SectionKind,
     CognitiveAdviceService,
+    SectionKind,
     default_baselines,
 )
 from kordena_fiscal.cognitive.ports import (
