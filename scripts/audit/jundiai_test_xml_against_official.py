@@ -88,6 +88,7 @@ def main() -> None:
         rtc_classification="000001", rtc_fin_nfse="0",
         rtc_ind_dest="0", rtc_incidence_ibge="3525904",
         rtc_taxable_base=Decimal("145.00"), rtc_ind_final="0",
+        rtc_government_reduction_percent=Decimal("0.00"),
     )
     rtc_xml = build_jundiai_giss_issue_xml(
         request=request, original=original, fields=rtc_fields,
