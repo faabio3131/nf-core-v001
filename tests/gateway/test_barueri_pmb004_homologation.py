@@ -1,6 +1,7 @@
 """Offline Barueri PMB004 contract checks: no public WebService used."""
 from __future__ import annotations
 
+import base64
 from datetime import date
 from unittest.mock import Mock
 
@@ -240,3 +241,33 @@ def test_barueri_listing_uses_actual_submission_day_not_service_competence(
     assert fields["DataEnvioArq"] == "2026-11-13"
     assert fields["SituacaoArq"] == "1"
     assert send.call_args.kwargs["method"] == "NFeLoteListarArquivos"
+
+
+def test_official_base64_return_must_not_be_truncated_to_metadata_limit() -> None:
+    """Real municipal TXT is multi-kilobyte Base64, unlike short SOAP metadata."""
+    document = b"1" + b"X" * 4000
+    original = _receipt("NFeLoteBaixarArquivo")
+    marker = b"</b:NFeLoteBaixarArquivoResult>"
+    assert original.count(marker) == 1
+    payload = original.replace(
+        marker,
+        b"<b:ArquivoRPSBase64>" + base64.b64encode(document)
+        + b"</b:ArquivoRPSBase64>" + marker,
+    )
+    result = _parse_reply(payload, "NFeLoteBaixarArquivo")
+    assert result.downloaded_file == document
+    assert result.document_authorized is False
+
+
+def test_official_return_metadata_limits_remain_short() -> None:
+    original = _receipt("NFeLoteBaixarArquivo")
+    with pytest.raises(BarueriContractError, match="exceeds limit"):
+        _parse_reply(
+            original.replace(
+                b"<b:ProtocoloRemessa>1234567</b:ProtocoloRemessa>",
+                b"<b:ProtocoloRemessa>" + b"A" * 270
+                + b"</b:ProtocoloRemessa>",
+            ),
+            "NFeLoteBaixarArquivo",
+        )
+
