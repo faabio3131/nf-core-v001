@@ -8,6 +8,8 @@ from __future__ import annotations
 
 import hashlib
 import json
+from dataclasses import replace
+from decimal import Decimal
 from pathlib import Path
 import runpy
 
@@ -16,6 +18,7 @@ from lxml import etree
 from kordena_fiscal.gateway.jundiai_giss_cancellation_builder import build_jundiai_cancel_xml
 from kordena_fiscal.gateway.jundiai_giss_issue_builder import build_jundiai_giss_issue_xml
 from kordena_fiscal.gateway.jundiai_giss_rps_query_builder import build_jundiai_rps_query
+from kordena_fiscal.gateway.jundiai_giss_request_builder import build_jundiai_original_rps_query_xml
 from kordena_fiscal.domain import TaxRegimeCode
 
 ROOT = Path("contracts/official/jundiai/giss_v2_04")
@@ -80,6 +83,20 @@ def main() -> None:
         real_schema(manifest, "enviar-lote-rps-envio-v2_04.xsd"),
     ))
 
+    rtc_fields = replace(
+        fields, operation_indicator="050101", rtc_cst="000",
+        rtc_classification="000001", rtc_fin_nfse="0",
+        rtc_ind_dest="0", rtc_incidence_ibge="3525904",
+        rtc_taxable_base=Decimal("145.00"), rtc_ind_final="0",
+    )
+    rtc_xml = build_jundiai_giss_issue_xml(
+        request=request, original=original, fields=rtc_fields,
+    )
+    result.append(audit_case(
+        "RECEPCIONAR_LOTE_RPS_RTC_2026", rtc_xml,
+        real_schema(manifest, "enviar-lote-rps-envio-v2_04.xsd"),
+    ))
+
     cancellation = build_jundiai_cancel_xml(**cancel["_fields"]())
     result.append(audit_case(
         "CANCELAR_NFSE", cancellation,
@@ -92,6 +109,13 @@ def main() -> None:
     )
     result.append(audit_case(
         "CONSULTAR_NFSE_POR_RPS", rps_query.signed_xml,
+        real_schema(manifest, "consultar-nfse-rps-envio-v2_04.xsd"),
+    ))
+    alternate_query_xml = build_jundiai_original_rps_query_xml(
+        original=qsource, municipal_registration="1234567",
+    )
+    result.append(audit_case(
+        "CONSULTAR_NFSE_RPS_ALTERNATE_BUILDER", alternate_query_xml,
         real_schema(manifest, "consultar-nfse-rps-envio-v2_04.xsd"),
     ))
     good = sum(1 for item in result if item["official_xsd_valid"])
