@@ -85,6 +85,7 @@ from .barueri_cancel_handlers import build_barueri_event_handlers
 from .barueri_operational_composition import BarueriTrustedRuntimePorts
 from .cajamar_operational_composition import CajamarTrustedRuntimePorts
 from .fiscal_runtime import FiscalOperationHandler, PreflightFiscalOperationHandler
+from .jundiai_operational_composition import JundiaiTrustedRuntimePorts
 from .osasco_cancel_handlers import (
     build_osasco_cancel_handler,
     build_osasco_substitution_handler,
@@ -386,6 +387,10 @@ def build_runtime_fiscal_handler_factory(
     barueri_port_builder: Callable[
         [FiscalApplicationService], BarueriTrustedRuntimePorts
     ] | None = None,
+    jundiai_runtime_ports: JundiaiTrustedRuntimePorts | None = None,
+    jundiai_port_builder: Callable[
+        [FiscalApplicationService], JundiaiTrustedRuntimePorts
+    ] | None = None,
 ) -> Any:
     """Register all four canonical operations without granting fiscal readiness.
 
@@ -460,6 +465,15 @@ def build_runtime_fiscal_handler_factory(
         and (not callable(barueri_port_builder) or nfse_gateway is not None)
     ):
         raise ValueError("Conflicting reviewed Barueri municipal fiscal authorities")
+    if (
+        jundiai_runtime_ports is not None
+        and (not isinstance(jundiai_runtime_ports, JundiaiTrustedRuntimePorts)
+             or jundiai_port_builder is not None or nfse_gateway is not None)
+    ) or (
+        jundiai_port_builder is not None
+        and (not callable(jundiai_port_builder) or nfse_gateway is not None)
+    ):
+        raise ValueError("Conflicting reviewed Jundiai municipal fiscal authorities")
     if webiss_extrema_exchange is not None or webiss_service_preaudit is not None:
         if (
             nfse_gateway is not None
@@ -535,6 +549,19 @@ def build_runtime_fiscal_handler_factory(
             active_municipalities = {
                 **(active_municipalities or {}),
                 "barueri-pmb004-homologation": selected_barueri_ports.attach(application),
+            }
+        selected_jundiai_ports = (
+            jundiai_port_builder(application)
+            if jundiai_port_builder is not None else jundiai_runtime_ports
+        )
+        if selected_jundiai_ports is not None:
+            if not isinstance(selected_jundiai_ports, JundiaiTrustedRuntimePorts):
+                raise ValueError("Jundiai operator provisioning returned invalid ports")
+            if active_municipalities and "jundiai-giss-v2-homologation" in active_municipalities:
+                raise ValueError("Duplicate Jundiai provider authority")
+            active_municipalities = {
+                **(active_municipalities or {}),
+                "jundiai-giss-v2-homologation": selected_jundiai_ports.attach(application),
             }
         gateway = selected_operations or UnprovisionedFiscalGateway()
         if operations_gateway is None and certificate_vault is not None:
