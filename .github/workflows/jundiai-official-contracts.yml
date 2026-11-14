@@ -9,6 +9,8 @@ on:
       - scripts/audit/jundiai_acquire_official_contracts.py
       - scripts/audit/jundiai_verify_official_schemas.py
       - scripts/audit/jundiai_test_xml_against_official.py
+      - src/kordena_fiscal/gateway/jundiai_giss_rps_query_builder.py
+      - tests/gateway/test_jundiai_giss_rps_query_builder.py
   workflow_dispatch:
 
 permissions:
@@ -51,6 +53,13 @@ jobs:
 
       - name: Validate actual serializer XML against official municipal XSD
         run: python scripts/audit/jundiai_test_xml_against_official.py
+
+      - name: Regressions for Jundiai RPS, issuance and cancellation
+        run: |
+          python -m pytest -q tests/gateway/test_jundiai_giss_issue_builder.py tests/gateway/test_jundiai_giss_rps_query_builder.py tests/gateway/test_jundiai_giss_cancellation_builder.py
+
+      - name: Ruff targeted Jundiai sources and tests
+        run: ruff check src/kordena_fiscal/gateway/jundiai_giss_rps_query_builder.py tests/gateway/test_jundiai_giss_rps_query_builder.py
 
       - name: Publish audit evidence (not municipal certification)
         if: always()
