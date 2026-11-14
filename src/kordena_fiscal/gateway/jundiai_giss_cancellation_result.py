@@ -143,3 +143,85 @@ def verify_jundiai_cancel_reply(
     return JundiaiGissCancellationDecision(
         confirmed=None, response_xml=raw,
     )
+
+def verify_jundiai_cancel_query(
+    *, receipt: JundiaiGissReceipt, source: Sp4OriginalRps,
+    issued: Sp4VerifiedInvoice,
+    validate_official_query: Callable[[bytes], None],
+    verify_cancelled_note: Callable[[bytes], None],
+) -> JundiaiGissCancellationDecision:
+    """Read-only original RPS query can finalize a prior uncertain cancellation.
+
+    The provider may return an active invoice while a cancellation is still
+    pending. An active invoice is NOT proof of rejection and never enables a
+    retry. A signed, source-correlated NfseCancelamento is confirmation.
+    """
+    if (
+        not isinstance(receipt, JundiaiGissReceipt)
+        or receipt.method != "ConsultarNfsePorRps"
+        or not isinstance(source, Sp4OriginalRps)
+        or not isinstance(issued, Sp4VerifiedInvoice)
+        or source.issuer_ibge != "3525904"
+        or issued.issuer_ibge != source.issuer_ibge
+        or issued.issuer_cnpj != source.issuer_cnpj
+        or issued.rps_number != source.rps_number
+        or issued.rps_series != source.rps_series
+        or not callable(validate_official_query)
+        or not callable(verify_cancelled_note)
+    ):
+        raise JundiaiGissCancelResultError("Untrusted Jundiai cancellation recovery")
+    raw = receipt.official_response_xml
+    if not raw:
+        return JundiaiGissCancellationDecision(
+            confirmed=None, response_xml=receipt.response_xml,
+        )
+    validate_official_query(raw)
+    try:
+        root = etree.fromstring(
+            raw, parser=etree.XMLParser(
+                resolve_entities=False, load_dtd=False,
+                no_network=True, huge_tree=False,
+            ),
+        )
+    except etree.XMLSyntaxError:
+        raise JundiaiGissCancelResultError(
+            "Invalid Giss original RPS cancellation consultation"
+        ) from None
+    if (
+        root.tag != "{http://www.giss.com.br/consultar-nfse-rps-resposta-v2_04.xsd}"
+        "ConsultarNfseRpsResposta"
+        or bool(getattr(root.getroottree().docinfo, "doctype", ""))
+    ):
+        raise JundiaiGissCancelResultError("Wrong original Giss RPS status XML")
+    note = _sole_descendant(root, "CompNfse", required=False)
+    if note is None:
+        return JundiaiGissCancellationDecision(
+            confirmed=None, response_xml=raw,
+        )
+    cancellation = _sole_descendant(note, "NfseCancelamento", required=False)
+    if cancellation is None:
+        return JundiaiGissCancellationDecision(
+            confirmed=None, response_xml=raw,
+        )
+    if etree.QName(cancellation).namespace != _TYPES:
+        raise JundiaiGissCancelResultError("Wrong official cancellation namespace")
+    # The reviewer verifies the municipality's signature, pinned XSD and
+    # taxpayer identity independently of the transport's SOAP 200.
+    verify_cancelled_note(etree.tostring(cancellation, encoding="utf-8"))
+    confirmation = _sole_descendant(cancellation, "Confirmacao")
+    assert confirmation is not None
+    _sole_descendant(confirmation, "DataHora")
+    checks = {
+        "Numero": issued.invoice_number,
+        "Cnpj": source.issuer_cnpj.value,
+        "CodigoMunicipio": source.issuer_ibge,
+    }
+    for field, expected in checks.items():
+        node = _sole_descendant(confirmation, field)
+        if node is None or node.text is None or node.text.strip() != expected:
+            raise JundiaiGissCancelResultError(
+                "Giss cancellation query differs from original authorized invoice"
+            )
+    return JundiaiGissCancellationDecision(
+        confirmed=True, response_xml=raw,
+    )
