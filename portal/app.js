@@ -645,7 +645,8 @@ function appendCajamarCancellation(article) {
 function appendBarueriFiscalEvent(article, operation) {
   const available = bootstrapState?.projection.configured_fiscal_operations;
   if (!bootstrapState?.permissions.includes("document.cancel")
-    || !bootstrapState?.permissions.includes("document.issue")
+    || (operation === "substituteBarueriNfse"
+        && !bootstrapState?.permissions.includes("document.issue"))
     || !Array.isArray(available) || !available.includes(operation)) return;
   const substitute = operation === "substituteBarueriNfse";
   const form = document.createElement("form");
@@ -790,8 +791,6 @@ function appendBarueriEventReconciliation(article) {
   const status = document.createElement("p");
   status.setAttribute("role", "status"); status.setAttribute("aria-live", "polite");
   form.append(title, help, label, submit, status); article.append(form);
-  /** @type {{fingerprint:string,key:string}|null} */
-  let attempt = null;
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
     if (!form.reportValidity()) return;
@@ -803,16 +802,15 @@ function appendBarueriEventReconciliation(article) {
       unit_id: selectedFiscalUnit, environment: selectedFiscalEnvironment,
       document_id: original.value.trim(),
     };
-    const fingerprint = JSON.stringify(payload);
-    if (!attempt || attempt.fingerprint !== fingerprint) {
-      attempt = {fingerprint, key: crypto.randomUUID()};
-    }
+    // A new key permits another READ-ONLY status refresh when a previous
+    // consultation returned pending. It never submits another municipal event.
+    const queryKey = crypto.randomUUID();
     submit.disabled = true;
     status.textContent = "Consultando status, retorno e comprovante fiscal vinculado ao RPS...";
     try {
       const outcome = await api("/v1/portal/operations/reconcileBarueriNfseCancellation", {
         method: "POST",
-        headers: {"X-CSRF-Token": csrfToken(), "Idempotency-Key": attempt.key},
+        headers: {"X-CSRF-Token": csrfToken(), "Idempotency-Key": queryKey},
         body: JSON.stringify(payload),
       });
       status.textContent = outcome.official_fiscal_confirmation
