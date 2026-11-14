@@ -6,7 +6,6 @@ No real certificate, SOAP request or municipal NFS-e is transmitted.
 from __future__ import annotations
 
 import hashlib
-from datetime import date
 from pathlib import Path
 from unittest.mock import Mock
 from zipfile import ZipFile
@@ -89,7 +88,7 @@ def test_actual_exchange_payload_validates_official_schema(
             "<b:ListaMensagemRetorno><b:Codigo>OK200</b:Codigo>"
             "</b:ListaMensagemRetorno>"
             f"</b:{method}Result></b:{method}Response></soap:Body></soap:Envelope>"
-        ).encode("utf-8")
+        ).encode()
 
     adapter = barueri.BarueriPmb004HomologationTransport(
         provider_resolver=resolver,
