@@ -76,6 +76,7 @@ _TAKER_ADDRESS_FIELDS = frozenset({
 _BARUERI_PROVIDER = "barueri-pmb004-homologation"
 _CAJAMAR_PROVIDER = "cajamar-geisweb-homologation"
 _OSASCO_PROVIDER = "osasco-rtc-homologation"
+_JUNDIAI_PROVIDER = "jundiai-giss-v2-homologation"
 _CENTS = re.compile(r"(?:0|[1-9][0-9]{0,8})\.[0-9]{2}\Z")
 _TAKER = re.compile(r"(?:[0-9]{11}|[0-9]{14})\Z")
 _DIGITS_6 = re.compile(r"[0-9]{6}\Z")
@@ -207,13 +208,18 @@ def prepare_native_nfse(
         municipal_barueri = provider == _BARUERI_PROVIDER
         municipal_cajamar = provider == _CAJAMAR_PROVIDER
         municipal_osasco = provider == _OSASCO_PROVIDER
-        municipal_sp = municipal_barueri or municipal_cajamar or municipal_osasco
+        municipal_jundiai = provider == _JUNDIAI_PROVIDER
+        municipal_sp = (
+            municipal_barueri or municipal_cajamar
+            or municipal_osasco or municipal_jundiai
+        )
         if provider != NACIONAL_HOMOLOGATION_PROVIDER_ID and not municipal_sp:
             raise FiscalValidationError("Configured NFS-e provider is not supported")
         if municipal_sp:
             expected_city = (
                 "3505708" if municipal_barueri else
-                "3509205" if municipal_cajamar else "3534401"
+                "3509205" if municipal_cajamar else
+                "3534401" if municipal_osasco else "3525904"
             )
             if (
                 profile.address.jurisdiction.state_code != "SP"
