@@ -49,14 +49,14 @@ def build_jundiai_rps_query(
         f"{{{_DOCUMENT}}}ConsultarNfseRpsEnvio",
         nsmap={"g": _DOCUMENT, "t": _TYPES},
     )
-    identification = etree.SubElement(root, f"{{{_TYPES}}}IdentificacaoRps")
+    identification = etree.SubElement(root, f"{{{_DOCUMENT}}}IdentificacaoRps")
     for tag, value in (
         ("Numero", original.rps_number),
         ("Serie", original.rps_series),
         ("Tipo", str(rps_type)),
     ):
         etree.SubElement(identification, f"{{{_TYPES}}}{tag}").text = value
-    issuer = etree.SubElement(root, f"{{{_TYPES}}}Prestador")
+    issuer = etree.SubElement(root, f"{{{_DOCUMENT}}}Prestador")
     cnpj = etree.SubElement(issuer, f"{{{_TYPES}}}CpfCnpj")
     etree.SubElement(cnpj, f"{{{_TYPES}}}Cnpj").text = original.issuer_cnpj.value
     etree.SubElement(issuer, f"{{{_TYPES}}}InscricaoMunicipal").text = (
