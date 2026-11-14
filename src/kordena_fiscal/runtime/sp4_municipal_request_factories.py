@@ -21,6 +21,14 @@ from kordena_fiscal.gateway.cajamar_geisweb_issue_builder import (
 from kordena_fiscal.gateway.cajamar_geisweb_request_builder import (
     prepare_cajamar_original_lot_query,
 )
+from kordena_fiscal.gateway.jundiai_giss_homologation import JundiaiSignedOperation
+from kordena_fiscal.gateway.jundiai_giss_issue_builder import (
+    JundiaiGissTaxFields,
+    prepare_jundiai_giss_signed_issue,
+)
+from kordena_fiscal.gateway.jundiai_giss_request_builder import (
+    prepare_jundiai_original_rps_query,
+)
 from kordena_fiscal.gateway.osasco_rtc_homologation import OsascoPreparedOperation
 from kordena_fiscal.gateway.osasco_rtc_issue_builder import (
     OsascoRtcTaxFields,
@@ -160,6 +168,84 @@ def build_barueri_pmb004_issue_remittance_factory(
             municipal_registration=resolve_municipal_registration(
                 source.scope, source.issuer_cnpj.value,
             ),
+        )
+
+    return prepare
+
+
+def build_jundiai_giss_issue_request_factory(
+    *,
+    resolve_issue_fields: Callable[
+        [NfseAuthorizationRequest, Sp4OriginalRps], JundiaiGissTaxFields
+    ],
+    resolve_municipal_registration: Callable[[ExecutionScope, str], str],
+    sign_issue: Callable[[bytes], bytes],
+    validate_signed_issue: Callable[[bytes], None],
+    sign_rps_query: Callable[[bytes], bytes],
+    validate_signed_query: Callable[[bytes], None],
+) -> Callable[
+    [NfseAuthorizationRequest, Sp4OriginalRps, str], JundiaiSignedOperation
+]:
+    """Compose Giss 2.04 batch emission and nonmutating original-RPS recovery.
+
+    Separate reviewed signer/XSD ports preserve the canonical fiscal engine's
+    authority over two-node XMLDSig and the fiscal taxpayer classification.
+    """
+    if not all(callable(x) for x in (
+        resolve_issue_fields, resolve_municipal_registration, sign_issue,
+        validate_signed_issue, sign_rps_query, validate_signed_query,
+    )):
+        raise Sp4CanonicalMunicipalError("Jundiai fiscal issue ports unavailable")
+
+    def issue(
+        request: NfseAuthorizationRequest, source: Sp4OriginalRps,
+    ) -> JundiaiSignedOperation:
+        return prepare_jundiai_giss_signed_issue(
+            request=request, original=source,
+            fields=resolve_issue_fields(request, source),
+            sign_xml=sign_issue, validate_signed_xml=validate_signed_issue,
+        )
+
+    return build_jundiai_reviewed_request_factory(
+        build_signed_issue=issue,
+        resolve_municipal_registration=resolve_municipal_registration,
+        sign_rps_query=sign_rps_query,
+        validate_signed_query=validate_signed_query,
+    )
+
+def build_jundiai_reviewed_request_factory(
+    *,
+    build_signed_issue: Callable[
+        [NfseAuthorizationRequest, Sp4OriginalRps], JundiaiSignedOperation
+    ],
+    resolve_municipal_registration: Callable[[ExecutionScope, str], str],
+    sign_rps_query: Callable[[bytes], bytes],
+    validate_signed_query: Callable[[bytes], None],
+) -> Callable[
+    [NfseAuthorizationRequest, Sp4OriginalRps, str], JundiaiSignedOperation
+]:
+    """Compose Giss 2.04 issuer-scoped RPS query and existing issue builder."""
+    if not all(callable(x) for x in (
+        build_signed_issue, resolve_municipal_registration,
+        sign_rps_query, validate_signed_query,
+    )):
+        raise Sp4CanonicalMunicipalError("Jundiai builder ports unavailable")
+
+    def prepare(
+        request: NfseAuthorizationRequest, source: Sp4OriginalRps, method: str,
+    ) -> JundiaiSignedOperation:
+        if method == "RecepcionarLoteRps":
+            return build_signed_issue(request, source)
+        if method != "ConsultarNfsePorRps":
+            raise Sp4CanonicalMunicipalError("Unsupported Jundiai issuance/recovery method")
+        municipal_registration = resolve_municipal_registration(
+            source.scope, source.issuer_cnpj.value,
+        )
+        return prepare_jundiai_original_rps_query(
+            original=source, regime=request.document.issuer.tax_regime,
+            municipal_registration=municipal_registration,
+            sign_document=sign_rps_query,
+            validate_signed_request=validate_signed_query,
         )
 
     return prepare
