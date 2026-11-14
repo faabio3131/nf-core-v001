@@ -2154,8 +2154,7 @@ def test_jundiai_http_portal_durable_rps_pending_recovery_archive_and_isolation(
         "source_id": "jundiai-http-verified-2026",
     }
 
-    with patch("kordena_fiscal.web.native_nfse_preparation._error", side_effect=AssertionError("Diagnostic: root fiscal error")):
-        prepared = _post(web, original_payload, "jundiai-prepare")
+    prepared = _post(web, original_payload, "jundiai-prepare")
     assert prepared.status_code == 200, prepared.text
     assert prepared.json()["numbering_authority"] == "municipal_rps_durable"
     identifier = prepared.json()["document_id"]
