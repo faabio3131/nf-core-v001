@@ -1879,7 +1879,7 @@ def test_barueri_api_entrypoint_portal_issue_reconcile_cancel_replay_and_archive
         assert isinstance(inner_text, str)
         fields = etree.fromstring(inner_text.encode())
         if method == "NFeLoteEnviarArquivo":
-            encoded = fields.findtext("ArquivoRPSBase64")
+            encoded = fields.findtext("{http://www.barueri.sp.gov.br/nfe}ArquivoRPSBase64")
             assert encoded
             sent.append(base64.b64decode(encoded, validate=True))
         assert sent
