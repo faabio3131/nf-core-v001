@@ -481,8 +481,9 @@ def test_reviewed_tax_decision_is_immutable_in_archive_and_fingerprint() -> None
     assert decoded.request_fingerprint == request.request_fingerprint
     assert decoded.document.national_tax_treatment == decision
     altered = json.loads(encoded)
-    altered["national_tax_treatment"]["iss_taxation_code"] = "4"
-    altered["national_tax_treatment"]["result_country_code"] = None
+    # A valid-but-different normative decision must fail the immutable
+    # fingerprint, not fail earlier due to mutually inconsistent ISS fields.
+    altered["national_tax_treatment"]["normative_reference"] = "TAMPERED-DECISION"
     with pytest.raises(FiscalValidationError, match="fingerprint"):
         decode_prepared_nfse(json.dumps(altered).encode(), scope=_scope())
 
