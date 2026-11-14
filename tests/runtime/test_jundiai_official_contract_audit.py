@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 import hashlib
+import json
+import shutil
 from pathlib import Path
 from runpy import run_path
 
@@ -20,6 +22,7 @@ _audit_tool = run_path(
 _EXPECTED = _audit_tool["_EXPECTED"]
 ContractAuditError = _audit_tool["ContractAuditError"]
 _schema_resources = _audit_tool["_schema_resources"]
+_verify_pinned_manifest = _audit_tool["_verify_pinned_manifest"]
 _wsdl_bindings = _audit_tool["_wsdl_bindings"]
 audit = _audit_tool["audit"]
 
@@ -153,3 +156,38 @@ def test_vendor_substitution_schema_does_not_license_unverified_soap_operation()
     ) is not None
     # SOAP exposure requires an independently authenticated mTLS WSDL.
     assert "SubstituirNfse" not in gateway._OPERATION_MAP
+
+
+def test_official_pinned_manifest_detects_individual_schema_tampering(
+    tmp_path: Path,
+) -> None:
+    """Full 24-file vendor package: same bytes and checksums; no synthetic XSD."""
+    source = (
+        Path(__file__).resolve().parents[2]
+        / "contracts/official/jundiai/giss_v2_04"
+    )
+    source_schemas = source / "xsd/Schemas_XSD-Servicos_Prestados"
+    manifest_path = source / "manifest.json"
+    actual_manifest_sha = _verify_pinned_manifest(source_schemas, manifest_path)
+    assert actual_manifest_sha == hashlib.sha256(manifest_path.read_bytes()).hexdigest()
+    spec = json.loads(manifest_path.read_text(encoding="utf-8"))
+    assert len(spec["schemas"]) == 24
+
+    candidate = tmp_path / "giss_v2_04"
+    target_schemas = candidate / "xsd/Schemas_XSD-Servicos_Prestados"
+    shutil.copytree(source_schemas, target_schemas)
+    target_manifest = candidate / "manifest.json"
+    target_manifest.write_bytes(manifest_path.read_bytes())
+    assert _verify_pinned_manifest(target_schemas, target_manifest) == actual_manifest_sha
+
+    filename = spec["schemas"][0]["path"]
+    xsd = candidate / filename
+    xsd.write_bytes(xsd.read_bytes() + b" ")
+    with pytest.raises(ContractAuditError, match="checksum mismatch"):
+        _verify_pinned_manifest(target_schemas, target_manifest)
+
+    shutil.copyfile(source / filename, xsd)
+    spec["schemas"][0]["sha256"] = "0" * 64
+    target_manifest.write_text(json.dumps(spec), encoding="utf-8")
+    with pytest.raises(ContractAuditError, match="checksum mismatch"):
+        _verify_pinned_manifest(target_schemas, target_manifest)
