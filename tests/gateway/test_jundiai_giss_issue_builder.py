@@ -175,6 +175,7 @@ def test_giss_2026_reviewed_ibs_cbs_group_is_not_silently_dropped() -> None:
         rtc_classification="000001", rtc_fin_nfse="0",
         rtc_ind_dest="0", rtc_incidence_ibge="3525904",
         rtc_taxable_base=Decimal("145.00"), rtc_ind_final="0",
+        rtc_government_reduction_percent=Decimal("0.00"),
     )
     xml = build_jundiai_giss_issue_xml(
         request=_request(original), original=original, fields=fields,
@@ -187,6 +188,7 @@ def test_giss_2026_reviewed_ibs_cbs_group_is_not_silently_dropped() -> None:
     assert rtc.findtext(
         ".//" + _TYPES + "gIBSCBS/" + _TYPES + "cClassTrib"
     ) == "000001"
+    assert rtc.findtext(".//" + _TYPES + "pRedutor") == "0.00"
     assert rtc.findtext(".//" + _TYPES + "vBC") == "145.00"
 
 
@@ -198,6 +200,7 @@ def test_giss_2026_rtc_rejects_incomplete_base_and_mismatched_classification() -
         rtc_classification="000001", rtc_fin_nfse="0",
         rtc_ind_dest="0", rtc_incidence_ibge="3525904",
         rtc_taxable_base=Decimal("145.00"),
+        rtc_government_reduction_percent=Decimal("0.00"),
     )
     for candidate in (
         replace(fields, rtc_taxable_base=None),
@@ -297,8 +300,27 @@ def test_2026_rtc_cannot_be_prepared_without_correlated_nbs() -> None:
         rtc_classification="000001", rtc_fin_nfse="0",
         rtc_ind_dest="0", rtc_incidence_ibge="3525904",
         rtc_taxable_base=Decimal("145.00"), rtc_ind_final="0",
+        rtc_government_reduction_percent=Decimal("0.00"),
     )
     with pytest.raises(JundiaiGissIssueError, match="requires NBS"):
         build_jundiai_giss_issue_xml(
             request=_request(original), original=original, fields=fields,
         )
+
+
+def test_giss_rtc_requires_explicit_reviewed_government_reduction_percent() -> None:
+    original = _original()
+    fields = replace(
+        _fields(),
+        operation_indicator="050101", rtc_cst="000",
+        rtc_classification="000001", rtc_fin_nfse="0",
+        rtc_ind_dest="0", rtc_incidence_ibge="3525904",
+        rtc_taxable_base=Decimal("145.00"), rtc_ind_final="0",
+        rtc_government_reduction_percent=Decimal("0.00"),
+    )
+    for invalid in (None, Decimal("-0.01"), Decimal("100.01")):
+        with pytest.raises(JundiaiGissIssueError):
+            build_jundiai_giss_issue_xml(
+                request=_request(original), original=original,
+                fields=replace(fields, rtc_government_reduction_percent=invalid),
+            )
