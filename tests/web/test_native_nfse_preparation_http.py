@@ -2247,7 +2247,7 @@ def test_barueri_http_portal_issue_recover_and_authorized_xml(
     application = FiscalApplicationService(db)
     submit = Mock(return_value=Sp4ProviderOutcome(
         status=AuthorizationStatus.PENDING,
-        provider_request_id="PROTOCOL-BARUERI-01",
+        provider_request_id="BARUERI01",
     ))
     validate_invoice = Mock()
 
