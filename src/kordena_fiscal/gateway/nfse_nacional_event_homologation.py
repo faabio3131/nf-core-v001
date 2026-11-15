@@ -20,14 +20,12 @@ import ssl
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
-from zoneinfo import ZoneInfo
-
 from urllib.error import HTTPError, URLError
 from urllib.request import HTTPSHandler, Request, build_opener
+from zoneinfo import ZoneInfo
 
 from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.hazmat.primitives.serialization import pkcs12
-
 from lxml import etree
 
 from kordena_fiscal.domain import (
@@ -49,9 +47,9 @@ from kordena_fiscal.gateway.nfse_national_receipt import _verify_nfse_receipt_si
 from kordena_fiscal.gateway.provider import ProviderSelectionResolver
 from kordena_fiscal.issuance.nfe_nfse import NfseAuthorizationRequest
 from kordena_fiscal.signing.nfse_xmldsig import append_nfse_signature
-from kordena_fiscal.xml.nfse_nacional_schema import national_event_validator
 from kordena_fiscal.vault import EphemeralCertificateMaterial
 from kordena_fiscal.vault.a1_preflight import validate_a1_for_issuer
+from kordena_fiscal.xml.nfse_nacional_schema import national_event_validator
 
 _NS = "http://www.sped.fazenda.gov.br/nfse"
 _DS = "http://www.w3.org/2000/09/xmldsig#"
