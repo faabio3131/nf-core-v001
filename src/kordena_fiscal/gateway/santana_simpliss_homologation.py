@@ -29,8 +29,15 @@ from kordena_fiscal.gateway.authorization import (
 )
 from kordena_fiscal.gateway.fiscal_tls import RejectFiscalRedirects, build_fiscal_tls_context
 from kordena_fiscal.gateway.nfse_nacional_homologation import encode_signed_dps
+from kordena_fiscal.gateway.nfse_nacional_event_homologation import (
+    NationalNfseCancellationReceipt,
+)
 from kordena_fiscal.gateway.nfse_national_query import _validate_official_nfse
 from kordena_fiscal.gateway.provider import ProviderSelectionResolver
+from kordena_fiscal.gateway.santana_simpliss_substitution import (
+    SantanaSubstitutionReview,
+    build_santana_signed_replacement_dps,
+)
 from kordena_fiscal.issuance.nfe_nfse import (
     NfseAuthorizationRequest,
     NfseAuthorizationResult,
@@ -172,6 +179,9 @@ class SantanaSimplissHomologationGateway:
         resolve_known_key: Callable[[NfseAuthorizationRequest], str | None] | None = None,
         exchange: Callable[[str, str, bytes | None, ssl.SSLContext, float], bytes] | None = None,
         timeout_seconds: float = 15,
+        submit_event: Callable[[
+            NfseAuthorizationRequest, str, str, str, str, datetime,
+        ], NationalNfseCancellationReceipt] | None = None,
     ) -> None:
         if (
             not isinstance(endpoint, SantanaSimplissEndpoint)
@@ -180,6 +190,7 @@ class SantanaSimplissHomologationGateway:
             or not callable(build_signed_dps)
             or not callable(preaudit)
             or (resolve_known_key is not None and not callable(resolve_known_key))
+            or (submit_event is not None and not callable(submit_event))
             or not 0 < timeout_seconds <= 30
         ):
             raise SantanaSimplissError("Incomplete reviewed Santana fiscal authority")
@@ -191,6 +202,7 @@ class SantanaSimplissHomologationGateway:
         self._known_key = resolve_known_key
         self._exchange = exchange or _https_exchange
         self._timeout = timeout_seconds
+        self._submit_event = submit_event
 
     def _review(
         self, request: NfseAuthorizationRequest, operation: str,
@@ -293,3 +305,52 @@ class SantanaSimplissHomologationGateway:
         ):
             raise SantanaSimplissError("Santana query did not confirm the original invoice")
         return result
+
+    @property
+    def supports_events(self) -> bool:
+        return self._submit_event is not None
+
+    def submit_cancellation(
+        self, request: NfseAuthorizationRequest, key: str,
+        reason_code: str, reason_description: str,
+        approval_reference: str, occurred_at: datetime,
+    ) -> NationalNfseCancellationReceipt:
+        if self._submit_event is None:
+            raise SantanaSimplissError("Santana reviewed event authority missing")
+        return self._submit_event(
+            request, key, reason_code, reason_description,
+            approval_reference, occurred_at,
+        )
+
+    def prepare_substitution(
+        self, request: NfseAuthorizationRequest, *,
+        review: SantanaSubstitutionReview,
+        verify_original: Callable[
+            [NfseAuthorizationRequest, SantanaSubstitutionReview], None
+        ],
+    ) -> bytes:
+        """Build official replacement DPS before any durable transmission claim."""
+        material, cnpj = self._review(request, "authorize")
+        signed = build_santana_signed_replacement_dps(
+            request, material, review=review, verify_original=verify_original,
+        )
+        return encode_signed_dps(
+            signed, issuer_cnpj=cnpj,
+            issuer_municipality_ibge=SANTANA_IBGE,
+        )
+
+    def submit_substitution(
+        self, request: NfseAuthorizationRequest, prepared_envelope: bytes,
+    ) -> NfseAuthorizationResult:
+        """Send only a previously signed/reviewed substitution once."""
+        if (
+            not isinstance(prepared_envelope, bytes)
+            or not 0 < len(prepared_envelope) <= _MAX_RESPONSE
+        ):
+            raise SantanaSimplissError("Santana prepared replacement envelope invalid")
+        material, _ = self._review(request, "authorize")
+        raw = self._exchange(
+            "POST", self._endpoint.issue_url, prepared_envelope,
+            build_fiscal_tls_context(material), self._timeout,
+        )
+        return self._result(request, raw)
