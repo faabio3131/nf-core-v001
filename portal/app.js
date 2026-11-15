@@ -476,6 +476,95 @@ function appendNativeNfsePreparation(article) {
   });
 }
 
+/** National 101101 events use the same authenticated fiscal Portal and provider. */
+/** @param {HTMLElement} article */
+function appendNationalNfseCancellation(article) {
+  const ops = bootstrapState?.projection.configured_fiscal_operations;
+  if (!bootstrapState?.permissions.includes("document.cancel")
+    || !Array.isArray(ops) || !ops.includes("cancelNationalNfse")
+    || selectedFiscalEnvironment !== "homologation") return;
+  const form = document.createElement("form");
+  form.id = "national-nfse-cancellation";
+  form.className = "panel-form";
+  const heading = document.createElement("h3");
+  heading.textContent = "Cancelar NFS-e Nacional — evento oficial 101101";
+  const hint = document.createElement("p");
+  hint.className = "empty-state";
+  hint.textContent = "A nota original deve estar autorizada e possuir XML fiscal assinado. A ação registra autorização humana, reivindica o cancelamento em banco e envia apenas um evento assinado. Resposta incerta exige consulta oficial, nunca novo POST.";
+  const referenceLabel = document.createElement("label");
+  referenceLabel.textContent = "ID do documento autorizado no NFCore";
+  const reference = document.createElement("input");
+  reference.type = "text"; reference.required = true;
+  reference.maxLength = 128; reference.autocomplete = "off";
+  referenceLabel.append(reference);
+  const codeLabel = document.createElement("label");
+  codeLabel.textContent = "Motivo fiscal oficial";
+  const code = document.createElement("select");
+  for (const [value, label] of [
+    ["1", "1 — Erro na emissão"],
+    ["2", "2 — Serviço não prestado"],
+    ["9", "9 — Outros"],
+  ]) {
+    const option = document.createElement("option");
+    option.value = value; option.textContent = label; code.append(option);
+  }
+  codeLabel.append(code);
+  const descriptionLabel = document.createElement("label");
+  descriptionLabel.textContent = "Justificativa (15–255 caracteres)";
+  const description = document.createElement("textarea");
+  description.minLength = 15; description.maxLength = 255;
+  description.required = true; descriptionLabel.append(description);
+  const approveLabel = document.createElement("label");
+  const approve = document.createElement("input");
+  approve.type = "checkbox"; approve.required = true;
+  approveLabel.append(approve, document.createTextNode(
+    " Confirmo a decisão humana de cancelar a NFS-e original no ambiente autorizado."
+  ));
+  const button = document.createElement("button");
+  button.type = "submit"; button.className = "primary";
+  button.textContent = "Registrar e transmitir cancelamento 101101";
+  const result = document.createElement("p");
+  result.id = "national-nfse-cancellation-result";
+  result.setAttribute("role", "status");
+  result.setAttribute("aria-live", "polite");
+  form.append(
+    heading, hint, referenceLabel, codeLabel,
+    descriptionLabel, approveLabel, button, result,
+  );
+  article.append(form);
+  let submitted = false;
+  form.addEventListener("submit", async event => {
+    event.preventDefault();
+    if (submitted || !form.reportValidity()) return;
+    if (!selectedFiscalUnit || selectedFiscalEnvironment !== "homologation") {
+      result.textContent = "Selecione uma unidade fiscal autorizada."; return;
+    }
+    const payload = {
+      unit_id: selectedFiscalUnit, environment: "homologation",
+      document_id: reference.value.trim(), human_approval: approve.checked,
+      reason_code: code.value, reason_description: description.value.trim(),
+    };
+    submitted = true;
+    button.disabled = true;
+    result.textContent = "Registrando decisão e verificando evento oficial assinado...";
+    try {
+      const response = await api("/v1/portal/operations/cancelNationalNfse", {
+        method: "POST",
+        headers: {
+          "X-CSRF-Token": csrfToken(), "Idempotency-Key": crypto.randomUUID(),
+        },
+        body: JSON.stringify(payload),
+      });
+      result.textContent = response.official_fiscal_confirmation
+        ? "Cancelamento confirmado pelo evento oficial assinado. Evidência arquivada."
+        : "Cancelamento ainda não confirmado. Consulte antes de qualquer nova ação.";
+    } catch (error) {
+      result.textContent = (error instanceof Error ? error.message : "Evento não confirmado")
+        + " Não reenvie. Reabra o documento e reconcilie o status oficial.";
+    }
+  });
+}
+
 /** @param {HTMLElement} article */
 function appendExtremaNfsePreparation(article) {
   if (!bootstrapState?.permissions.includes("configuration.write")
@@ -2958,6 +3047,7 @@ async function renderSurface(viewId) {
     if (viewId === "errors" || viewId === "reconciliation") appendCognitiveAdvisor(article, viewId);
     if (["inutilizations", "documents", "issuances", "reconciliation"].includes(viewId)) await appendFiscalRecovery(article);
     if (viewId === "issuances") appendNativeNfsePreparation(article);
+    if (viewId === "issuances") appendNationalNfseCancellation(article);
     if (viewId === "issuances") appendExtremaNfsePreparation(article);
     if (viewId === "issuances") appendExtremaCancellation(article);
     if (viewId === "issuances") appendCajamarCancellation(article);
