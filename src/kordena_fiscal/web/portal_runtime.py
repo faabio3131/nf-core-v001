@@ -743,7 +743,11 @@ class DurableHumanPortalExecutor:
         if not idempotency_key or not idempotency_key.strip():
             raise _portal_error(400, "MISSING_IDEMPOTENCY_KEY", "Idempotency key is required")
         scope = recovery.scope(authority, payload)
-        if operation_id in {"cancelCajamarNfse", "cancelOsascoNfse", "substituteOsascoNfse"}:
+        if operation_id in {
+            "cancelCajamarNfse", "cancelOsascoNfse", "substituteOsascoNfse",
+            "cancelBarueriNfse", "substituteBarueriNfse",
+            "cancelJundiaiNfse", "substituteJundiaiNfse",
+        }:
             # Replay an already-scoped T07 claim without asking the gateway
             # to preflight a note that was successfully cancelled earlier.
             # The exact account, key, payload and session epoch are checked.
@@ -861,7 +865,8 @@ class DurableHumanPortalExecutor:
             )
         if operation_id in {
             "substituteExtremaNfse", "reviewCajamarSubstitution",
-            "substituteOsascoNfse",
+            "substituteOsascoNfse", "substituteBarueriNfse",
+            "substituteJundiaiNfse",
         }:
             try:
                 unit = payload.get("unit_id")
@@ -897,6 +902,8 @@ class DurableHumanPortalExecutor:
                 # All other existing fiscal operations retain their contracts.
                 if operation_id not in {
                     "cancelCajamarNfse", "cancelOsascoNfse", "substituteOsascoNfse",
+                    "cancelBarueriNfse", "substituteBarueriNfse",
+                    "cancelJundiaiNfse", "substituteJundiaiNfse",
                 }:
                     raise
                 raise _portal_error(

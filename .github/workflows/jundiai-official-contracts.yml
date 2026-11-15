@@ -1,0 +1,105 @@
+name: Audit official GissOnline Jundiai contracts
+
+on:
+  push:
+    branches:
+      - audit/jundiai-giss-official-20261114
+    paths:
+      - .github/workflows/jundiai-official-contracts.yml
+      - scripts/audit/jundiai_acquire_official_contracts.py
+      - scripts/audit/jundiai_verify_official_schemas.py
+      - scripts/audit/jundiai_test_xml_against_official.py
+      - src/kordena_fiscal/gateway/jundiai_giss_request_builder.py
+      - src/kordena_fiscal/gateway/jundiai_giss_rps_query_builder.py
+      - src/kordena_fiscal/gateway/jundiai_giss_issue_builder.py
+      - src/kordena_fiscal/runtime/jundiai_environment.py
+      - src/kordena_fiscal/application/service.py
+      - src/kordena_fiscal/web/fiscal_intent_recovery.py
+      - tests/gateway/test_jundiai_giss_issue_builder.py
+      - tests/gateway/test_jundiai_giss_rps_query_builder.py
+      - tests/web/test_native_nfse_preparation_http.py
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  capture-official-evidence:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Checkout isolated audit branch
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install official RAR extractor
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends unar
+
+      - name: Download official source files and verify content and hashes
+        shell: bash
+        run: |
+          set -euo pipefail
+          python scripts/audit/jundiai_acquire_official_contracts.py
+
+      - name: Install XSD compiler
+        run: python -m pip install lxml==5.4.0
+
+      - name: Compile captured official schemas and verify every SHA-256
+        run: python scripts/audit/jundiai_verify_official_schemas.py
+
+      - name: Install NFCore development dependencies
+        run: python -m pip install -e ".[dev]"
+
+      - name: Validate actual serializer XML against official municipal XSD
+        run: python scripts/audit/jundiai_test_xml_against_official.py
+
+      - name: Regressions for Jundiai RPS, issuance and cancellation
+        run: |
+          python -m pytest -q tests/gateway/test_jundiai_giss_issue_builder.py tests/gateway/test_jundiai_giss_rps_query_builder.py tests/gateway/test_jundiai_giss_cancellation_builder.py
+
+      - name: Authenticated HTTP/DB Jundiai journey through canonical Portal
+        run: |
+          python -m pytest -q tests/web/test_native_nfse_preparation_http.py -k "jundiai_http_portal_durable_rps_pending_recovery_archive_and_isolation"
+
+      - name: Ruff targeted Jundiai sources and tests
+        run: ruff check src/kordena_fiscal/web/fiscal_intent_recovery.py src/kordena_fiscal/application/service.py src/kordena_fiscal/gateway/jundiai_giss_rps_query_builder.py src/kordena_fiscal/gateway/jundiai_giss_issue_builder.py src/kordena_fiscal/runtime/jundiai_environment.py tests/gateway/test_jundiai_giss_issue_builder.py tests/gateway/test_jundiai_giss_rps_query_builder.py tests/web/test_native_nfse_preparation_http.py
+
+      - name: Full backend Ruff regression
+        run: ruff check .
+
+      - name: Full backend Mypy regression
+        run: mypy
+
+      - name: Full backend Pytest regression
+        run: pytest
+
+      - name: Publish audit evidence (not municipal certification)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jundiai-giss-official-contract-evidence
+          path: contracts/official/jundiai/giss_v2_04/
+          retention-days: 30
+
+      - name: Commit public XSD and source hashes ONLY to audit branch
+        if: success()
+        shell: bash
+        run: |
+          set -euo pipefail
+          git add contracts/official/jundiai/giss_v2_04/
+          if git diff --cached --quiet; then
+            echo "No official schema changes"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "audit(jundiai): pin public GissOnline schema bytes and provenance"
+          git push origin HEAD:audit/jundiai-giss-official-20261114

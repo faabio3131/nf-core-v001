@@ -81,8 +81,12 @@ from kordena_fiscal.vault import EphemeralCertificateMaterial
 from kordena_fiscal.vault.encrypted_a1 import EncryptedA1Vault
 from kordena_fiscal.xml import NfeAccessKey
 
+from .barueri_cancel_handlers import build_barueri_event_handlers
+from .barueri_operational_composition import BarueriTrustedRuntimePorts
 from .cajamar_operational_composition import CajamarTrustedRuntimePorts
 from .fiscal_runtime import FiscalOperationHandler, PreflightFiscalOperationHandler
+from .jundiai_cancel_handlers import build_jundiai_event_handlers
+from .jundiai_operational_composition import JundiaiTrustedRuntimePorts
 from .osasco_cancel_handlers import (
     build_osasco_cancel_handler,
     build_osasco_substitution_handler,
@@ -380,6 +384,14 @@ def build_runtime_fiscal_handler_factory(
     osasco_port_builder: Callable[
         [FiscalApplicationService], OsascoTrustedRuntimePorts
     ] | None = None,
+    barueri_runtime_ports: BarueriTrustedRuntimePorts | None = None,
+    barueri_port_builder: Callable[
+        [FiscalApplicationService], BarueriTrustedRuntimePorts
+    ] | None = None,
+    jundiai_runtime_ports: JundiaiTrustedRuntimePorts | None = None,
+    jundiai_port_builder: Callable[
+        [FiscalApplicationService], JundiaiTrustedRuntimePorts
+    ] | None = None,
 ) -> Any:
     """Register all four canonical operations without granting fiscal readiness.
 
@@ -444,6 +456,25 @@ def build_runtime_fiscal_handler_factory(
         and (not callable(osasco_port_builder) or nfse_gateway is not None)
     ):
         raise ValueError("Conflicting reviewed Osasco municipal fiscal authorities")
+    if (
+        barueri_runtime_ports is not None
+        and (not isinstance(barueri_runtime_ports, BarueriTrustedRuntimePorts)
+             or barueri_port_builder is not None
+             or nfse_gateway is not None)
+    ) or (
+        barueri_port_builder is not None
+        and (not callable(barueri_port_builder) or nfse_gateway is not None)
+    ):
+        raise ValueError("Conflicting reviewed Barueri municipal fiscal authorities")
+    if (
+        jundiai_runtime_ports is not None
+        and (not isinstance(jundiai_runtime_ports, JundiaiTrustedRuntimePorts)
+             or jundiai_port_builder is not None or nfse_gateway is not None)
+    ) or (
+        jundiai_port_builder is not None
+        and (not callable(jundiai_port_builder) or nfse_gateway is not None)
+    ):
+        raise ValueError("Conflicting reviewed Jundiai municipal fiscal authorities")
     if webiss_extrema_exchange is not None or webiss_service_preaudit is not None:
         if (
             nfse_gateway is not None
@@ -507,6 +538,32 @@ def build_runtime_fiscal_handler_factory(
             active_osasco_substitute = selected_osasco_ports.attach_verified_cancellation(
                 application, cancel_type="S",
             )
+        selected_barueri_ports = (
+            barueri_port_builder(application)
+            if barueri_port_builder is not None else barueri_runtime_ports
+        )
+        if selected_barueri_ports is not None:
+            if not isinstance(selected_barueri_ports, BarueriTrustedRuntimePorts):
+                raise ValueError("Barueri operator provisioning returned invalid ports")
+            if active_municipalities and "barueri-pmb004-homologation" in active_municipalities:
+                raise ValueError("Duplicate Barueri provider authority")
+            active_municipalities = {
+                **(active_municipalities or {}),
+                "barueri-pmb004-homologation": selected_barueri_ports.attach(application),
+            }
+        selected_jundiai_ports = (
+            jundiai_port_builder(application)
+            if jundiai_port_builder is not None else jundiai_runtime_ports
+        )
+        if selected_jundiai_ports is not None:
+            if not isinstance(selected_jundiai_ports, JundiaiTrustedRuntimePorts):
+                raise ValueError("Jundiai operator provisioning returned invalid ports")
+            if active_municipalities and "jundiai-giss-v2-homologation" in active_municipalities:
+                raise ValueError("Duplicate Jundiai provider authority")
+            active_municipalities = {
+                **(active_municipalities or {}),
+                "jundiai-giss-v2-homologation": selected_jundiai_ports.attach(application),
+            }
         gateway = selected_operations or UnprovisionedFiscalGateway()
         if operations_gateway is None and certificate_vault is not None:
             vault = certificate_vault
@@ -625,6 +682,28 @@ def build_runtime_fiscal_handler_factory(
             prepared_nfse_query_client=nfse_query_client,
             archive_retention=retention,
         )
+        if (
+            selected_barueri_ports is not None
+            and selected_barueri_ports.supports_events
+        ):
+            for operation, handler in build_barueri_event_handlers(
+                application=application, reviewed=selected_barueri_ports,
+                retention=retention,
+            ).items():
+                if operation in handlers:
+                    raise ValueError("Duplicate Barueri event handler authority")
+                handlers[operation] = handler
+        if (
+            selected_jundiai_ports is not None
+            and selected_jundiai_ports.supports_events
+        ):
+            for operation, handler in build_jundiai_event_handlers(
+                application=application, reviewed=selected_jundiai_ports,
+                retention=retention,
+            ).items():
+                if operation in handlers:
+                    raise ValueError("Duplicate Jundiai fiscal event authority")
+                handlers[operation] = handler
         if active_osasco_cancel is not None:
             handlers["cancelOsascoNfse"] = build_osasco_cancel_handler(
                 application=application, verified_cancel=active_osasco_cancel,

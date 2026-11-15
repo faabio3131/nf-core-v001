@@ -248,3 +248,23 @@ test("A1 file validator accepts exported .pfx/.p12 instead of requiring a backsl
   assert.equal(acceptsA1File("certificado.pfx", 0), false);
   assert.equal(acceptsA1File("certificado.p12", 2 * 1024 * 1024 + 1), false);
 });
+
+
+test("Barueri PMB004 events are accessible through the same governed Portal", () => {
+  assert.match(script, /function appendBarueriFiscalEvent\(article, operation\)/);
+  assert.match(script, /function appendBarueriEventReconciliation\(article\)/);
+  for (const operation of [
+    "cancelBarueriNfse", "substituteBarueriNfse",
+    "reconcileBarueriNfseCancellation",
+  ]) {
+    assert.ok(script.includes(operation));
+  }
+  assert.match(script, /substitution_justification_code: reason\.value/);
+  assert.match(script, /human_approval: approved\.checked/);
+  assert.match(script, /Idempotency-Key": attempt\.key/);
+  assert.match(script, /No reenvie|Não retransmita|não reenvie/);
+  assert.match(script, /reconciliation\.execute/);
+  assert.match(script, /viewId === "issuances"\) appendBarueriFiscalEvent/);
+  assert.match(script, /appendBarueriEventReconciliation\(article\)/);
+  assert.doesNotMatch(script, /tenant_id:\s*selectedFiscalUnit/);
+});
