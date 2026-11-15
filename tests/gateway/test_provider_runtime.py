@@ -26,7 +26,6 @@ from kordena_fiscal.domain import (
     ExecutionScope,
     FiscalDocumentKind,
     FiscalEnvironment,
-    FiscalValidationError,
 )
 from kordena_fiscal.gateway import (
     ConfiguredProviderAdapter,
@@ -526,7 +525,7 @@ class _November2026Clock:
 
 @pytest.mark.parametrize("kind", (FiscalDocumentKind.NFE, FiscalDocumentKind.NFCE))
 @pytest.mark.parametrize("municipality", ("3550308", "3509502"))
-def test_sp_obsolete_inutilization_blocked_before_secret_or_provider_io(
+def test_sp_transitional_inutilization_still_requires_governed_provider(
     tmp_path, kind: FiscalDocumentKind, municipality: str,
 ) -> None:
     database, vault, transport, _, adapter = _runtime(tmp_path)
@@ -535,7 +534,9 @@ def test_sp_obsolete_inutilization_blocked_before_secret_or_provider_io(
         readiness=_readiness(),
         clock=_November2026Clock(),
     )
-    with pytest.raises(FiscalValidationError, match="no longer applies"):
+    # Legal dispensation is not a blanket service denial. Without a governed
+    # operation-specific binding, dispatch must still fail before transport.
+    with pytest.raises(UnsupportedProviderError, match="explicit supported provider"):
         service.execute(
             _request(
                 kind=kind,

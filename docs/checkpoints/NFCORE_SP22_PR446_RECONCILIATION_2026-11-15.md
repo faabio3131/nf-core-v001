@@ -1,0 +1,43 @@
+# PR #446 vs #468 — reconciliation of SP-22 regression coverage (2026-11-15)
+
+This checkpoint records the source of the imported synthetic regression tests. It is not an external municipal homologation, a change to Contabo, a migration, or a release authorization.
+
+- Source #446: `d72ef9ff8c6a46cb01756b324b454e745e85fa68`; target #468: `e8fc2928ffbc82ae2124bee6a51766d1b435129e`.
+- Comparison of 82 changed paths in #446 against #468: 36 identical blobs; 32 newer/different blobs; 14 absent paths (3 historical checkpoints, 1 historical readiness JSON, 1 superseded national-query gateway, 9 tests).
+- This branch carries seven relevant independent test modules (five from PR #446 and two from PR #461) from #446 (SP-22 national eligibility, municipal canonical authorization, issuer preflight, reviewed runtime composition, SP4 provider routing, SP4 RPS request factories, and historical matrix integrity), plus the historical matrix JSON.
+- The old successful-authorization test under `test_sp_three_city_national_issuer_preflight.py` used unsigned synthetic NFS-e XML. It was deliberately omitted because the #468 canonical national POST/GET receipt validator now requires XMLDSig. It must not be used as evidence that unsigned invoices are accepted. The strict receipt tests are in the canonical national gateway suites.
+- `test_sp4_national_nfse_recovery.py` was NOT blindly copied: it imports `gateway.nfse_nacional_query`, an older alternate implementation absent from #468. The current signed national GET/POST pipeline must be used instead.
+- `test_sp_inutilization_direct_guard.py` was NOT blindly copied: it requires outright denial of inutilization from 2026-11-01, contrary to SEFAZ-SP's express transition allowance until March 2027. Do not hardcode an unjustified denial.
+- The #446 municipal readiness JSON is a **historical snapshot (2026-11-12) only**, with `is_runtime_authority=false`; it does not represent the evolving code readiness in #468 and cannot certify or de-certify a municipality by itself. The SP inutilization descriptor was corrected to reflect the explicit transition.
+- Historical documentation `NFCORE_SP22_ACCOUNTING_PRIORITY_2026-11-12.md`, `NFCORE_SP3_ACCOUNTING_PILOT_2026-11-13.md` and `NFCORE_SP4_ENGINEERING_ACCEPTANCE_2026-11-12.md` remains in #446 provenance, rather than copying stale statuses into the current #468 integration.
+- Preserve untouched the other agent's Santana #496, MG checkpoints #423/#440 and unrelated cognitive engine #486. Incorporation into #468 only after CI of this patch's HEAD and review, then re-certify #468 before a production-candidate sync.
+
+Official rule: [SEFAZ-SP NF-e portal](https://portal.fazenda.sp.gov.br/servicos/nfe/Paginas/Sobre.aspx) states inutilization is dispensed from 2026-11-01 but the web services remain operational until March 2027. [Receita Federal / Resolução CGSN 191/2026](https://www.gov.br/receitafederal/pt-br/assuntos/noticias/2026/agosto/simples-nacional-nfs-e-nacional-sera-obrigatoria-para-me-e-epp-a-partir-de-1o-de-novembro-de-2026) confirms National NFS-e for ME/EPP from 2026-11-01.
+
+## Further reconciliation of #461 and #466
+
+Two additional SP4 regression test files absent from #468 but available in #461 are carried in this candidate: `tests/issuance/test_sp4_original_rps_durability.py` (single durable original RPS/UoW, replay/tenant isolation) and `tests/runtime/test_sp4_production_composition.py` (reviewed provider installation). These are synthetic tests, not homologation.
+
+**Do not transplant** the legacy #466 `docs/operations/OSASCO_RTC_RUNTIME_PROVISIONING.md` verbatim. It describes `NFCORE_OSASCO_RTC_CONFIG_PATH`, but the current #468 `src/kordena_fiscal/runtime/osasco_environment.py` reads `NFCORE_OSASCO_WCF_CONFIG_PATH`, and expects `wsdl`/`schemas` or `official_xsd_package`, not the historical manifest groups. An operator runbook must be freshly derived from the current schema; the #466 document stays in the original PR's history for provenance. Its underlying Osasco codepaths are present in #468 and have evolved.
+
+## Compatibility proof from CI #43737904672
+
+The original #446 `tests/gateway/test_sp_three_city_national_issuer_preflight.py` imports `require_nfse_national_issuer_eligibility`, an API absent from the current `gateway/nfse_nacional_homologation.py`. The current gateway validates a **real `NfseAuthorizationRequest` with durably reserved `dps_number`** and delegates eligibility through the governed channel. Its old `Mock`-only fixtures are incompatible and must not bypass the new preflight. The test remains in #446 provenance; #468 already has canonical gateway signing/preflight suites, and this patch adds direct SP-22 eligibility scenarios separately.
+
+The #446 `tests/runtime/test_sp4_municipal_canonical_provider_routing.py` imports `_SP4_MUNICIPAL_PROVIDER_IBGE` and `_require_sp4_municipal_channel`, removed in the current `_GovernedNfseRouter`. The current router resolves **persisted provider bindings** using `FiscalApplicationService.resolve_configured_provider_id`; preserving the old helper as a test shim would reintroduce a parallel routing authority. This file stays in the #446 history; the restored SP4 canonical client and composition regression modules test the active implementation.
+
+## Material legal inconsistency found in #468 (must be corrected before merge)
+
+The #468 base still had the **revoked 2026-09-01 cutoff** in the São Paulo city *municipal legacy guard*, controlled by HTTP `as_of` rather than service competence; the same file's federal classifier already had 2026-11-01. This is a real inconsistent fiscal policy, not only a missing test. The audited #446 guard and its competence-based regression module were selectively incorporated into this candidate, preserving the existing `SP_ME_EPP_NATIONAL_MANDATORY_COMPETENCE` compatibility alias. Retroactive competences before November must not be rejected based solely on today's clock. No municipal route is positively approved by the negative guard. The static candidate catalog also updates Jundiaí to GISS Online and Osasco to its own RTC provider, rather than stale guess labels. Santana's provider is owned by the other agent and is NOT independently certified by this change.
+
+## 15/11 CI #43738240188 — noncompatible historical signatures reconciled
+
+The first long Pytest attempt on #499 identified **21 failures among 4,923 test outcomes** on the pre-legal-update SHA 0f21b904: one candidate GISS provider mismatch (fixed in the legal/catalog source update), and 20 tests relying on parameters removed or renamed in the canonical fiscal APIs. No production regressions were implied; these were copied historical tests incompatible with the current engine. For the canonical UoW, adapt `sp4_intent_builder` to `sp4_original_builder(numbered_request, reserved)`. For reviewed municipal client composition, inject the REQUIRED `canonical_rps_loader` instead of recreating a provider-local alternative. At top-level fiscal handler composition, use the existing keyword `sp4_reviewed_municipalities`; the conflict test uses the real `nfse_gateway` incompatibility. Re-run full CI and do not declare certification before all gates pass.
+
+## 2026-11-15 second verified SP inutilization defect
+
+During deeper review found the *active* pilot adapter guard `gateway/pilot_sp_jurisdiction.py` still rejected every NF-e/NFC-e inutilization operation with execution date >= 2026-11-01 despite official SEFAZ-SP transitional service availability until March 2027. This was not merely a stale test. Removed the unsourced hard denial and replaced tests with explicit permitted transitional calls (including midnight local boundary, 2027-03). The separate positive provider binding, homologation scope and official SEFAZ response remain mandatory for a real operation. This does not declare execution/homologation, or promise service availability beyond the official transition.
+
+## 15/11 release reconciliation after Santana #496
+
+Santana #496 was integrated into #468 at `fead2f08de43da1bf837a646bbd64d133551f9fe` after full CI SUCCESS on #496@48d9c911. The advisory Santana label is corrected from the historical SMARAPD candidate to reviewed Simpliss, without creating any provider authority. The 12/11 matrix remains immutable historical source for its municipal provider labels; the matrix regression no longer falsely equates historical candidates with the latest advisory catalog. Test fixtures have been corrected for the current canonical API. The four tests asserting obsolete blanket denial of SP inutilization were updated to expect the real governed provider binding prerequisite, not a false normative prohibition. Final CI must pass before merge.

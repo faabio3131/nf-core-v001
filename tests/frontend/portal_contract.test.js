@@ -268,3 +268,39 @@ test("Barueri PMB004 events are accessible through the same governed Portal", ()
   assert.match(script, /appendBarueriEventReconciliation\(article\)/);
   assert.doesNotMatch(script, /tenant_id:\s*selectedFiscalUnit/);
 });
+
+
+test("municipal SP5 event surfaces are discoverable in the authenticated portal", () => {
+  const operations = [
+    "cancelOsascoNfse", "substituteOsascoNfse",
+    "cancelSantanaNfse", "substituteSantanaNfse",
+    "reconcileSantanaNfseCancellation",
+    "reconcileSantanaNfseSubstitution",
+    "reconcileJundiaiNfseCancellation",
+  ];
+  for (const operation of operations) {
+    assert.ok(script.includes('appendReviewedMunicipalWebAction(article, "' + operation + '")'));
+    assert.ok(script.includes(operation + ": {"));
+  }
+  assert.match(script, /!configured\.includes\(operation\)/);
+  assert.match(script, /permissions\.includes\("document\.cancel"\)/);
+  assert.match(script, /permissions\.includes\("document\.issue"\)/);
+  assert.match(script, /permissions\.includes\("reconciliation\.execute"\)/);
+  assert.match(script, /selectedFiscalEnvironment !== "homologation"/);
+  assert.match(script, /headers: \{"X-CSRF-Token": csrfToken\(\), "Idempotency-Key": key\}/);
+  assert.match(script, /if \(!recovery\) attempted = true/);
+  assert.match(script, /if \(recovery\) submit\.disabled = false/);
+});
+
+test("municipal SP5 form payload fields match reviewed runtime contracts", () => {
+  assert.match(script, /reason: "cancellation_reason"/);
+  assert.match(script, /reason: "reason_description"/);
+  assert.match(script, /codes: \["1", "2", "9"\]/);
+  assert.match(script, /codes: \["01", "02", "03", "04", "05", "99"\]/);
+  assert.match(script, /"document_id", "ID da NFS-e original autorizada"/);
+  assert.match(script, /"original_id", "ID da NFS-e original autorizada"/);
+  assert.match(script, /"replacement_id", "ID da nova DPS previamente preparada"/);
+  assert.match(script, /if \(!recovery\) payload\.human_approval/);
+  assert.match(script, /"\/v1\/portal\/operations\/" \+ operation/);
+  assert.match(script, /NÃO retransmita/);
+});
