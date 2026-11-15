@@ -226,7 +226,7 @@ def test_validation_errors_and_not_configured() -> None:
             "unit_id": "unit-a",
             "question": "Como está o documento?",
             "subject_id": invalid_subject,
-        }, key=str(invalid_subject))
+        }, key="invalid-subject-test")
         assert bad.status_code == 400
         assert bad.json()["detail"]["code"] == "INVALID_SUBJECT"
     long_q = {"capability": "cognitive.answer_accountant_question", "unit_id": "unit-a",
