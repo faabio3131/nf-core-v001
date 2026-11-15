@@ -156,6 +156,32 @@ def test_reconciliation_pending_never_presumes_success() -> None:
     assert "Não presumir sucesso" in text and "doc-9" in text
 
 
+def test_foreign_scope_evidence_is_not_promoted_into_cognitive_facts() -> None:
+    suspicious = {
+        "errors": [
+            {"entry_id": "foreign-tenant", "unit_id": "unit-a",
+             "tenant_id": "another-tenant", "rejection_code": "204", "state": "rejected"},
+            {"entry_id": "foreign-unit", "unit_id": "unit-b",
+             "tenant_id": "tenant-authoritative", "rejection_code": "204", "state": "rejected"},
+        ],
+        "reconciliation": [
+            {"source_id": "foreign-tenant", "tenant_id": "another-tenant",
+             "unit_id": "unit-a", "status": "divergent"},
+        ],
+    }
+    web = client(Executor(suspicious))
+    for capability in (
+        "cognitive.explain_rejection",
+        "cognitive.explain_reconciliation",
+        "cognitive.answer_accountant_question",
+    ):
+        request = {"capability": capability, "unit_id": "unit-a",
+                   "question": "O que ocorreu?"}
+        response = post(web, request, key=capability)
+        assert response.status_code == 200
+        assert response.json()["status"] == "insufficient_basis"
+
+
 def test_accountant_question_cannot_borrow_evidence_from_another_subject() -> None:
     web = client(Executor(REJECTION_ROWS))
     request = {
