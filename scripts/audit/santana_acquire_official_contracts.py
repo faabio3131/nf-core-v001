@@ -13,10 +13,15 @@ import json
 import stat
 import xml.etree.ElementTree as ET
 import zipfile
+from http.cookiejar import CookieJar
 from pathlib import Path, PurePosixPath
 from urllib.parse import quote, urlparse
-from urllib.request import Request, urlopen
+from urllib.request import HTTPCookieProcessor, Request, build_opener
 
+LANDING = (
+    "https://santanadeparnaiba.simplissweb.com.br/contrib/app/nfse/"
+    "DocumentoIntegracaoNotaNacional/Index"
+)
 SOURCE = (
     "https://santanadeparnaiba.simplissweb.com.br/contrib/app/nfse/"
     "DocumentoIntegracaoNotaNacional/DownloadArquivo?nomeDocumento="
@@ -37,14 +42,46 @@ def digest(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
 
 
+_OPENER = build_opener(HTTPCookieProcessor(CookieJar()))
+_SESSION_READY = False
+
+
 def download(name: str) -> bytes:
+    global _SESSION_READY
+    if not _SESSION_READY:
+        landing = Request(LANDING, headers={
+            "User-Agent": "Mozilla/5.0 (compatible; NFCore-OfficialContractAudit/1.0)",
+            "Accept": "text/html",
+        })
+        with _OPENER.open(landing, timeout=35) as response:
+            html = response.read(2_097_153)
+            print(
+                "SIMPLISS_LANDING_STATUS=" + str(response.status),
+                "BYTES=" + str(len(html)),
+            )
+            if (
+                b"Manuais de Nota Fiscal" not in html
+                or len(html) > 2_097_152
+            ):
+                raise ValueError("Municipal official source page is unverified")
+        _SESSION_READY = True
     url = SOURCE + quote(name)
-    request = Request(url, headers={"User-Agent": "NFCore-Santana-Official-Audit/1.0"})
-    with urlopen(request, timeout=35) as response:
+    request = Request(url, headers={
+        "User-Agent": "Mozilla/5.0 (compatible; NFCore-OfficialContractAudit/1.0)",
+        "Referer": LANDING,
+        "Accept": "application/zip, application/pdf, application/vnd.openxmlformats-"
+                  "officedocument.spreadsheetml.sheet, */*",
+    })
+    with _OPENER.open(request, timeout=35) as response:
         final = urlparse(response.geturl())
         if final.scheme != "https" or final.hostname != "santanadeparnaiba.simplissweb.com.br":
             raise ValueError("Unexpected official redirect")
         data = response.read(MAX_DOWNLOAD + 1)
+        print(
+            "SIMPLISS_DOWNLOAD_STATUS=" + str(response.status),
+            "CONTENT_TYPE=" + str(response.headers.get("Content-Type")),
+            "BYTES=" + str(len(data)),
+        )
         if not data or len(data) > MAX_DOWNLOAD:
             raise ValueError("Official file size invalid")
         return data
