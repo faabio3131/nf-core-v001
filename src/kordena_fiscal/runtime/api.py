@@ -121,7 +121,6 @@ from .observability import (
     TraceContext,
 )
 from .osasco_environment import build_osasco_port_builder_from_environ
-from .santana_environment import build_santana_port_builder_from_environ
 from .osasco_gsm_bootstrap import build_osasco_gsm_secret_factory
 from .osasco_operational_composition import OsascoTrustedRuntimePorts
 from .otel_trace_sink import build_trace_sink
@@ -133,6 +132,7 @@ from .production_commercial_acquisition_env import (
 )
 from .production_gsm import production_api_verifier
 from .public_trial_abuse import PostgresPublicTrialAbuseGate
+from .santana_environment import build_santana_port_builder_from_environ
 from .secret_manager import SecretBindingAdministration
 from .security import configure_edge_security
 from .staging_commercial_ingress import staging_commercial_ingress

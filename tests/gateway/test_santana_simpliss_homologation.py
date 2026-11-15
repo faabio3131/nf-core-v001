@@ -24,8 +24,8 @@ from kordena_fiscal.domain import (
     StateRegistration,
     TaxRegimeCode,
 )
-from kordena_fiscal.gateway.authorization import AuthorizationStatus
 from kordena_fiscal.gateway import santana_simpliss_homologation as santana
+from kordena_fiscal.gateway.authorization import AuthorizationStatus
 from kordena_fiscal.issuance import (
     NfseAuthorizationRequest,
     NfseCanonicalDocument,
