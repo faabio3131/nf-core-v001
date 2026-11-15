@@ -33,8 +33,14 @@ def test_sp5_nfse_preparation_reuses_authenticated_scope_and_durable_serial() ->
     application = _source("src/kordena_fiscal/application/service.py")
     builder = _source("src/kordena_fiscal/issuance/nfse_dps_builder.py")
 
-    assert "authority.assert_permission(PortalPermission.DOCUMENT_ISSUE, unit_id=unit)" in preparer
-    assert "authority.assert_permission(PortalPermission.CONFIGURATION_WRITE, unit_id=unit)" in preparer
+    assert (
+        "authority.assert_permission(PortalPermission.DOCUMENT_ISSUE, unit_id=unit)"
+        in preparer
+    )
+    assert (
+        "authority.assert_permission(PortalPermission.CONFIGURATION_WRITE, unit_id=unit)"
+        in preparer
+    )
     assert "tenant_id=authority.tenant_id" in preparer
     assert "app = FiscalApplicationService(factory)" in preparer
     assert "app.prepare_nfse_authorization(" in preparer
@@ -57,5 +63,8 @@ def test_sp5_fitness_does_not_hide_nfce_manual_or_icp_trust_gaps() -> None:
     portal = _source("portal/app.js")
     receipt = _source("src/kordena_fiscal/gateway/nfse_national_receipt.py")
 
-    assert 'if (usesPreparedReference()) return {document_id: operationDocument.value.trim()}' in portal
+    assert (
+        'if (usesPreparedReference()) return {document_id: operationDocument.value.trim()}'
+        in portal
+    )
     assert "not ICP-Brasil path/revocation or official XSD" in receipt
