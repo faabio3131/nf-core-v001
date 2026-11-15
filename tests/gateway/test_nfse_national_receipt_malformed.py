@@ -35,6 +35,7 @@ def _envelope(gzip_bytes: bytes) -> bytes:
 
 _GZIP = gzip.compress(b"<untrusted/>", mtime=0)
 _CORRUPT_DEFLATE = b"\x1f\x8b\x08\x00\x00\x00\x00\x00\x00\x03" + b"\xff" * 40
+_DEEP_JSON = b"[" * 10_000 + b"]" * 10_000
 
 
 @pytest.mark.parametrize(
@@ -42,6 +43,7 @@ _CORRUPT_DEFLATE = b"\x1f\x8b\x08\x00\x00\x00\x00\x00\x00\x03" + b"\xff" * 40
     [
         b"\xff",  # invalid JSON UTF-8
         b"\xef\xbb\xbf\xff",  # malformed BOM/UTF-8
+        _DEEP_JSON,  # recursive JSON nesting must not escape as HTTP 500
         _envelope(_GZIP[:-8]),  # truncated trailer, raises EOFError in gzip
         _envelope(_GZIP[:12]),  # truncated payload
         _envelope(_CORRUPT_DEFLATE),  # invalid deflate, raises zlib.error
@@ -58,7 +60,7 @@ def test_common_receipt_verifier_sanitizes_malformed_provider_bytes(
 
 @pytest.mark.parametrize(
     "untrusted_response",
-    [_envelope(_GZIP[:-8]), _envelope(_GZIP[:12]), _envelope(_CORRUPT_DEFLATE)],
+    [_DEEP_JSON, _envelope(_GZIP[:-8]), _envelope(_GZIP[:12]), _envelope(_CORRUPT_DEFLATE)],
 )
 def test_direct_post_never_authorizes_corrupt_gzip(untrusted_response: bytes) -> None:
     with pytest.raises(
@@ -71,6 +73,7 @@ def test_direct_post_never_authorizes_corrupt_gzip(untrusted_response: bytes) ->
     "untrusted_response",
     [
         b"\xff",
+        _DEEP_JSON,
         _envelope(_GZIP[:-8]),
         _envelope(_GZIP[:12]),
         _envelope(_CORRUPT_DEFLATE),
