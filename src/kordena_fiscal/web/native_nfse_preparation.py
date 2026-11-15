@@ -69,6 +69,7 @@ _FIELDS = frozenset({
     "source_normative", "rule_version", "fiscal_review_approved",
 })
 _STRING_FIELDS = _FIELDS - {"iss_withheld", "rule_version", "fiscal_review_approved"}
+_NBS_FIELD = frozenset({"nbs_code"})
 _TAKER_ADDRESS_FIELDS = frozenset({
     "taker_street", "taker_number", "taker_neighborhood", "taker_city",
     "taker_state", "taker_municipality_ibge", "taker_postal_code",
@@ -83,6 +84,7 @@ _CENTS = re.compile(r"(?:0|[1-9][0-9]{0,8})\.[0-9]{2}\Z")
 _TAKER = re.compile(r"(?:[0-9]{11}|[0-9]{14})\Z")
 _DIGITS_6 = re.compile(r"[0-9]{6}\Z")
 _DIGITS_7 = re.compile(r"[0-9]{7}\Z")
+_DIGITS_9 = re.compile(r"[0-9]{9}\Z")
 
 
 def _error(status_code: int, code: str) -> HTTPException:
@@ -97,10 +99,14 @@ def prepare_native_nfse(
     key = (idempotency_key or "").strip()
     if (
         not isinstance(payload, Mapping)
-        or set(payload) not in (_FIELDS, _FIELDS | _TAKER_ADDRESS_FIELDS)
+        or set(payload) not in (
+            _FIELDS, _FIELDS | _TAKER_ADDRESS_FIELDS,
+            _FIELDS | _NBS_FIELD,
+            _FIELDS | _NBS_FIELD | _TAKER_ADDRESS_FIELDS,
+        )
         or any(
             type(payload.get(field)) is not str
-            for field in _STRING_FIELDS | (set(payload) & _TAKER_ADDRESS_FIELDS)
+            for field in _STRING_FIELDS | (set(payload) & (_TAKER_ADDRESS_FIELDS | _NBS_FIELD))
         )
         or type(payload.get("iss_withheld")) is not bool
         or type(payload.get("rule_version")) is not int
@@ -225,6 +231,10 @@ def prepare_native_nfse(
             or profile.address.jurisdiction.municipality_ibge_code != _SANTANA_IBGE
         ):
             raise FiscalValidationError("Santana Simpliss requires its exact issuer city")
+        if provider == _SANTANA_PROVIDER and not _DIGITS_9.fullmatch(
+            str(payload.get("nbs_code", ""))
+        ):
+            raise FiscalValidationError("Santana requires reviewed NBS 2.0 nine-digit code")
         if municipal_sp:
             expected_city = (
                 "3505708" if municipal_barueri else
@@ -267,6 +277,7 @@ def prepare_native_nfse(
             iss_amount=Money(iss), iss_withheld=payload["iss_withheld"],
             source_normative=payload["source_normative"].strip(),
             rule_version=payload["rule_version"],
+            nbs_code=payload.get("nbs_code"),
         )
         document = NfseCanonicalDocument(
             document_id=document_id, scope=scope, source=source,

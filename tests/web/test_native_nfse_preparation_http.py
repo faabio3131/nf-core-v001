@@ -2820,6 +2820,7 @@ def test_santana_http_cancellation_or_substitution_durable_single_dispatch(
         path=CanonicalFiscalOperationPath(application, handlers=handlers),
     ))
     fields = _payload() | _TAKER_ADDRESS | {
+        "nbs_code": "123456789",  # synthetic XSD fixture, not a tax classification
         "source_id": "santana-original-issuer-2026",
         "competence_date": "2026-11-12",
         "service_municipality_ibge": "3547304",

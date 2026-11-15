@@ -68,6 +68,7 @@ def _request(city: str = SANTANA_IBGE) -> NfseAuthorizationRequest:
     line = NfseServiceLine(
         line_number=1, municipal_service_code="0107",
         national_taxation_code="010701",
+        nbs_code="123456789",  # Only a synthetic XSD fixture, never a production NBS
         description="Servico sintetico fiscalmente revisado",
         gross_amount=Money(Decimal("100.00")),
         iss_amount=Money(Decimal("3.00")),
