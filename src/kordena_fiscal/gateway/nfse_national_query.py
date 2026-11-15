@@ -96,7 +96,8 @@ def _parse_key(raw: bytes, municipality: str) -> str:
 
 
 def _verify_nfse_receipt_signature(
-    root: etree._Element, info: etree._Element, identifier: str
+    root: etree._Element, info: etree._Element, identifier: str,
+    *, allow_nested_event_signature: bool = False,
 ) -> None:
     """Verify the official RSA-SHA256 enveloped signature over the exact NFS-e Id.
 
@@ -105,12 +106,30 @@ def _verify_nfse_receipt_signature(
     a separate release requirement; a self-signed synthetic test is not one.
     """
     signatures = root.findall(f"{{{_DS}}}Signature")
+    nested = [
+        node for node in root.findall(f".//{{{_DS}}}Signature")
+        if node not in signatures
+    ]
+    valid_nested = (
+        allow_nested_event_signature
+        and root.tag == "{http://www.sped.fazenda.gov.br/nfse}evento"
+        and len(nested) <= 1
+        and all(
+            node.getparent() is not None
+            and node.getparent().tag
+            == "{http://www.sped.fazenda.gov.br/nfse}pedRegEvento"
+            for node in nested
+        )
+    )
     if (
         len(signatures) != 1
         or len(root) != 2
         or root[0] is not info
         or root[1] is not signatures[0]
-        or len(root.findall(f".//{{{_DS}}}Signature")) != 1
+        or (
+            bool(nested)
+            if not allow_nested_event_signature else not valid_nested
+        )
         or sum(child.get("Id") == identifier for child in root.iter()) != 1
     ):
         raise OfficialNfseTransportError("Invalid national NFS-e receipt signature placement")

@@ -12,6 +12,7 @@ import gzip
 import json
 import ssl
 from collections.abc import Callable
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from zoneinfo import ZoneInfo
 
@@ -150,7 +151,20 @@ def validate_santana_event_xml(xml: bytes, *, kind: str) -> None:
     if root.tag != expected or info is None or info.get("Id") is None:
         raise SantanaSimplissError("Santana signed event structure is invalid")
     assert info.get("Id") is not None
-    _verify_nfse_receipt_signature(root, info, info.get("Id", ""))
+    _verify_nfse_receipt_signature(
+        root, info, info.get("Id", ""),
+        allow_nested_event_signature=kind == "response",
+    )
+    if kind == "response":
+        nested = info.find(_TAG + "pedRegEvento")
+        if nested is None:
+            raise SantanaSimplissError("Santana response lacks signed event request")
+        signed = nested.find("{http://www.w3.org/2000/09/xmldsig#}Signature")
+        if signed is not None:
+            inner = nested.find(_TAG + "infPedReg")
+            if inner is None or not inner.get("Id"):
+                raise SantanaSimplissError("Santana event has invalid nested signature")
+            _verify_nfse_receipt_signature(nested, inner, inner.get("Id", ""))
 
 
 def build_signed_santana_cancellation(
@@ -212,3 +226,85 @@ def build_signed_santana_cancellation(
         signed_event_xml=signed,
         event_sequence=1,
     )
+
+
+@dataclass(frozen=True, slots=True)
+class SantanaVerifiedEvent:
+    """Officially signed event returned by the municipal read-only GET."""
+    event_code: str
+    original_access_key: str
+    signed_event_xml: bytes
+    replacement_access_key: str | None = None
+
+
+def read_santana_official_events(
+    raw: bytes, *, original_key: str, issuer_cnpj: str,
+) -> tuple[SantanaVerifiedEvent, ...]:
+    """Read only verified official XML events; never infer cancellation from a key.
+
+    Simpliss 1.00 publishes GET /nfse/{key}/eventos as XML. Both one <evento>
+    and an <eventos> collection are decoded strictly. Unknown envelopes and
+    unsigned documents remain unconfirmed, not automatically retried.
+    """
+    if (
+        not isinstance(raw, bytes) or not 0 < len(raw) <= 4_194_304
+        or not isinstance(original_key, str)
+        or len(original_key) != 50 or not original_key.isascii()
+        or not original_key.isdecimal() or not original_key.startswith("35")
+        or not isinstance(issuer_cnpj, str)
+        or len(issuer_cnpj) != 14 or not issuer_cnpj.isascii()
+        or not issuer_cnpj.isdecimal()
+    ):
+        raise SantanaSimplissError("Invalid scoped Santana event recovery envelope")
+    parser = etree.XMLParser(
+        resolve_entities=False, no_network=True, load_dtd=False, huge_tree=False,
+    )
+    try:
+        root = etree.fromstring(raw, parser)
+    except etree.XMLSyntaxError:
+        raise SantanaSimplissError("Invalid official Santana event XML") from None
+    if getattr(root.getroottree().docinfo, "doctype", None):
+        raise SantanaSimplissError("Official event XML DTD is forbidden")
+    if root.tag == _TAG + "evento":
+        candidates = (root,)
+    elif root.tag == _TAG + "eventos" and not root.attrib and len(root) <= 64:
+        if any(node.tag != _TAG + "evento" for node in root):
+            raise SantanaSimplissError("Unexpected Santana event list child")
+        candidates = tuple(root)
+    else:
+        raise SantanaSimplissError("Unknown Simpliss GET events XML envelope")
+    results: list[SantanaVerifiedEvent] = []
+    for element in candidates:
+        document = etree.tostring(element, encoding="utf-8", xml_declaration=True)
+        validate_santana_event_xml(document, kind="response")
+        info = element.find(_TAG + "infEvento")
+        if info is None:
+            raise SantanaSimplissError("Missing official event identity")
+        original = info.find(_TAG + "pedRegEvento/" + _TAG + "infPedReg")
+        if (
+            original is None
+            or original.findtext(_TAG + "chNFSe") != original_key
+            or original.findtext(_TAG + "CNPJAutor") != issuer_cnpj
+            or original.findtext(_TAG + "tpAmb") != "2"
+        ):
+            raise SantanaSimplissError("Signed event not linked to the original issuer")
+        codes = [
+            code for code in ("101101", "105102")
+            if original.find(_TAG + "e" + code) is not None
+        ]
+        if len(codes) == 1:
+            code = codes[0]
+            replacement = original.findtext(
+                _TAG + "e105102/" + _TAG + "chSubstituta"
+            ) if code == "105102" else None
+            if replacement is not None and (
+                len(replacement) != 50 or not replacement.isascii()
+                or not replacement.isdecimal() or not replacement.startswith("35")
+            ):
+                raise SantanaSimplissError("Invalid official replacement reference")
+            results.append(SantanaVerifiedEvent(
+                code, original_key, document, replacement,
+            ))
+    if len({row.event_code for row in results}) != len(results):
+        raise SantanaSimplissError("Ambiguous duplicate official Santana fiscal events")
+    return tuple(results)

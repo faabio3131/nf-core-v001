@@ -46,6 +46,7 @@ from kordena_fiscal.xml.santana_simpliss_schema import santana_official_validato
 from kordena_fiscal.xml.schema import XmlSchemaValidationError
 
 if TYPE_CHECKING:
+    from kordena_fiscal.gateway.santana_simpliss_events import SantanaVerifiedEvent
     from kordena_fiscal.gateway.santana_simpliss_substitution import (
         SantanaSubstitutionReview,
     )
@@ -369,3 +370,30 @@ class SantanaSimplissHomologationGateway:
             build_fiscal_tls_context(material), self._timeout,
         )
         return self._result(request, raw)
+
+    def query_verified_event(
+        self, request: NfseAuthorizationRequest, *,
+        original_key: str, event_code: str,
+    ) -> SantanaVerifiedEvent | None:
+        """Read GET /nfse/{key}/eventos; never resend an uncertain POST."""
+        if event_code not in ("101101", "105102") or not _valid_key(original_key):
+            raise SantanaSimplissError("Unsupported Santana event recovery")
+        material, issuer = self._review(request, "cancel")
+        assert isinstance(original_key, str)
+        response = self._exchange(
+            "GET", self._endpoint.events_url(original_key), None,
+            build_fiscal_tls_context(material), self._timeout,
+        )
+        from kordena_fiscal.gateway.santana_simpliss_events import (
+            read_santana_official_events,
+        )
+
+        matches = [
+            result for result in read_santana_official_events(
+                response, original_key=original_key, issuer_cnpj=issuer,
+            )
+            if result.event_code == event_code
+        ]
+        if len(matches) > 1:
+            raise SantanaSimplissError("Ambiguous Santana cancellation event")
+        return matches[0] if matches else None
