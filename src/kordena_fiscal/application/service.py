@@ -1344,6 +1344,17 @@ class FiscalApplicationService:
             assert isinstance(gateway, NfseGatewayClient)
             result = gateway.authorize(request)
         if result.status is AuthorizationStatus.AUTHORIZED:
+            if (
+                isinstance(request, NfseAuthorizationRequest)
+                and request.document.national_substitution is not None
+                and (
+                    not isinstance(result, NfseAuthorizationResult)
+                    or result.authorized_xml is None
+                )
+            ):
+                raise PersistenceStateError(
+                    "National replacement requires signed authorized substitute XML"
+                )
             reference = (
                 result.protocol_reference
                 if isinstance(result, AuthorizationResult)
@@ -1647,6 +1658,13 @@ class FiscalApplicationService:
                 raise PersistenceConflictError("NFS-e transmission changed during provider query")
             if result.status is AuthorizationStatus.AUTHORIZED:
                 assert result.invoice_reference is not None
+                if (
+                    request.document.national_substitution is not None
+                    and result.authorized_xml is None
+                ):
+                    raise PersistenceStateError(
+                        "National replacement recovery needs signed official NFS-e"
+                    )
                 updated = self._state_machine.transition(
                     current,
                     FiscalDocumentState.AUTHORIZED,
@@ -1670,6 +1688,11 @@ class FiscalApplicationService:
                         archived_at=occurred_at,
                         retention=retention,
                     ))
+                if request.document.national_substitution is not None:
+                    self._complete_national_replacement_in_uow(
+                        uow=uow, prepared=request, authorized=True,
+                        occurred_at=occurred_at, retention=retention,
+                    )
                 current = updated
             elif result.status is AuthorizationStatus.REJECTED:
                 assert result.rejection_code is not None
@@ -1691,6 +1714,11 @@ class FiscalApplicationService:
                     occurred_at=occurred_at,
                     retention=retention,
                 ))
+                if request.document.national_substitution is not None:
+                    self._complete_national_replacement_in_uow(
+                        uow=uow, prepared=request, authorized=False,
+                        occurred_at=occurred_at, retention=retention,
+                    )
                 current = updated
             uow.archive.append(evidence)
             uow.commit()
