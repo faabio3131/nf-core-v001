@@ -80,24 +80,31 @@ _FOREIGN_ADDRESS_FIELDS = frozenset({
 })
 _FOREIGN_ID_FIELDS = frozenset({"taker_nif", "taker_no_nif_reason"})
 _COMMON_FIELDS = _FIELDS - {"taker_document"}
-_ALLOWED_PAYLOADS = frozenset({
+_NBS_FIELD = frozenset({"nbs_code"})
+_BASE_ALLOWED_PAYLOADS = frozenset({
     _FIELDS,
     _FIELDS | _TAKER_ADDRESS_FIELDS,
     _COMMON_FIELDS | _FOREIGN_ADDRESS_FIELDS | {"taker_nif"},
     _COMMON_FIELDS | _FOREIGN_ADDRESS_FIELDS | {"taker_no_nif_reason"},
 })
+_ALLOWED_PAYLOADS = _BASE_ALLOWED_PAYLOADS | frozenset(
+    fields | _NBS_FIELD for fields in _BASE_ALLOWED_PAYLOADS
+)
 _STRING_FIELDS = (
-    (_FIELDS | _TAKER_ADDRESS_FIELDS | _FOREIGN_ADDRESS_FIELDS | _FOREIGN_ID_FIELDS)
+    (_FIELDS | _TAKER_ADDRESS_FIELDS | _FOREIGN_ADDRESS_FIELDS | _FOREIGN_ID_FIELDS | _NBS_FIELD)
     - {"iss_withheld", "rule_version", "fiscal_review_approved"}
 )
 _BARUERI_PROVIDER = "barueri-pmb004-homologation"
 _CAJAMAR_PROVIDER = "cajamar-geisweb-homologation"
 _OSASCO_PROVIDER = "osasco-rtc-homologation"
 _JUNDIAI_PROVIDER = "jundiai-giss-v2-homologation"
+_SANTANA_PROVIDER = "santana-simpliss-v1-homologation"
+_SANTANA_IBGE = "3547304"
 _CENTS = re.compile(r"(?:0|[1-9][0-9]{0,8})\.[0-9]{2}\Z")
 _TAKER = re.compile(r"(?:[0-9]{11}|[0-9]{14})\Z")
 _DIGITS_6 = re.compile(r"[0-9]{6}\Z")
 _DIGITS_7 = re.compile(r"[0-9]{7}\Z")
+_DIGITS_9 = re.compile(r"[0-9]{9}\Z")
 
 
 def _error(status_code: int, code: str) -> HTTPException:
@@ -258,8 +265,20 @@ def prepare_native_nfse(
             municipal_barueri or municipal_cajamar
             or municipal_osasco or municipal_jundiai
         )
-        if provider != NACIONAL_HOMOLOGATION_PROVIDER_ID and not municipal_sp:
+        if (
+            provider not in (NACIONAL_HOMOLOGATION_PROVIDER_ID, _SANTANA_PROVIDER)
+            and not municipal_sp
+        ):
             raise FiscalValidationError("Configured NFS-e provider is not supported")
+        if provider == _SANTANA_PROVIDER and (
+            profile.address.jurisdiction.state_code != "SP"
+            or profile.address.jurisdiction.municipality_ibge_code != _SANTANA_IBGE
+        ):
+            raise FiscalValidationError("Santana Simpliss requires its exact issuer city")
+        if provider == _SANTANA_PROVIDER and not _DIGITS_9.fullmatch(
+            str(payload.get("nbs_code", ""))
+        ):
+            raise FiscalValidationError("Santana requires reviewed NBS 2.0 nine-digit code")
         if municipal_sp:
             expected_city = (
                 "3505708" if municipal_barueri else
@@ -302,6 +321,7 @@ def prepare_native_nfse(
             iss_amount=Money(iss), iss_withheld=payload["iss_withheld"],
             source_normative=payload["source_normative"].strip(),
             rule_version=payload["rule_version"],
+            nbs_code=payload.get("nbs_code"),
         )
         document = NfseCanonicalDocument(
             document_id=document_id, scope=scope, source=source,

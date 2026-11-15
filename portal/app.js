@@ -236,7 +236,7 @@ function appendNativeNfsePreparation(article) {
   heading.textContent = "Preparar NFS-e pelo NFCore — canal fiscal configurado";
   const info = document.createElement("p");
   info.className = "empty-state";
-  info.textContent = "Emissor próprio, sem ERP. Somente homologação. O canal Nacional ou Cajamar é determinado pelo vínculo fiscal e competência no servidor. Informe emitente, serviço e tomador revisados. Preparação não emite a nota; a numeração fiscal é reservada no Core.";
+  info.textContent = "Emissor próprio, sem ERP. Somente homologação. O provedor municipal ou nacional é definido no servidor pelo vínculo fiscal da unidade. Informe NBS 2.0 revisado quando exigido pelo município (Santana de Parnaíba). Preparar não transmite a nota.";
   form.append(heading, info);
   const identityLabel = document.createElement("label");
   identityLabel.textContent = "Identificação fiscal do tomador";
@@ -265,6 +265,7 @@ function appendNativeNfsePreparation(article) {
     ["service_state_code", "UF da prestação", "text", "[A-Za-z]{2}"],
     ["service_municipality_ibge", "IBGE do local da prestação", "text", "[0-9]{7}"],
     ["national_taxation_code", "cTribNac oficial (6 dígitos)", "text", "[0-9]{6}"],
+    ["nbs_code", "NBS 2.0 (9 dígitos, obrigatório para Simpliss Santana)", "text", "[0-9]{9}"],
     ["municipal_service_code", "Código municipal de serviço", "text", ""],
     ["description", "Descrição do serviço prestado", "text", ""],
     ["gross_amount", "Valor bruto (R$ 0.00)", "text", "[0-9]+\\.[0-9]{2}"],
@@ -286,7 +287,7 @@ function appendNativeNfsePreparation(article) {
     const label = document.createElement("label");
     label.textContent = labelText;
     const input = document.createElement("input");
-    input.type = type; input.name = name; input.required = true; input.autocomplete = "off";
+    input.type = type; input.name = name; input.required = name !== "nbs_code"; input.autocomplete = "off";
     input.id = "native-nfse-" + name.replaceAll("_", "-");
     if (type === "number") { input.min = "1"; input.max = "99999"; input.step = "1"; }
     if (type === "text" && pattern) input.pattern = pattern;
@@ -363,7 +364,8 @@ function appendNativeNfsePreparation(article) {
     }
     const payload = {
       ...Object.fromEntries(Object.entries(inputs)
-        .filter(([key]) => identityMode.value === "br" || !domesticOnly.has(key))
+        .filter(([key, input]) => (identityMode.value === "br" || !domesticOnly.has(key))
+          && (key !== "nbs_code" || Boolean(input.value.trim())))
         .map(([key, input]) => [key, input.value.trim()])),
       ...(identityMode.value === "br" ? {} : Object.fromEntries(
         Object.entries(foreignInputs).filter(([key]) =>

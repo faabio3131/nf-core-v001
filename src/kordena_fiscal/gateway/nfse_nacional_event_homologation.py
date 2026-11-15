@@ -95,6 +95,7 @@ class NationalNfseCancellationIntent:
     invoice_reference: str
     human_approval_reference: str
     signed_event_xml: bytes = field(repr=False)
+    event_sequence: int | None = None
 
     def __post_init__(self) -> None:
         if (
@@ -112,6 +113,14 @@ class NationalNfseCancellationIntent:
                 "National cancellation requires governed issuer scope and human approval"
             )
         _key(self.invoice_reference)
+        if (
+            self.event_sequence is not None
+            and (type(self.event_sequence) is not int or not 1 <= self.event_sequence <= 999)
+        ):
+            raise NationalNfseEventError("Invalid reviewed cancellation event sequence")
+        event_id = "PRE" + self.invoice_reference + _CANCEL_TYPE
+        if self.event_sequence is not None:
+            event_id += f"{self.event_sequence:03d}"
         root = _secure_parse(self.signed_event_xml)
         if root.tag != f"{_NS_TAG}pedRegEvento":
             raise NationalNfseEventError("Cancellation requires pedRegEvento root")
@@ -120,7 +129,16 @@ class NationalNfseCancellationIntent:
         if (
             len(info) != 1 or len(signature) != 1
             or signature[0].getparent() is not root
-            or info[0].get("Id") != "PRE" + self.invoice_reference + _CANCEL_TYPE
+            or info[0].get("Id") != event_id
+            or (
+                self.event_sequence is None
+                and info[0].find(f"{_NS_TAG}nPedRegEvento") is not None
+            )
+            or (
+                self.event_sequence is not None
+                and info[0].findtext(f"{_NS_TAG}nPedRegEvento")
+                != str(self.event_sequence)
+            )
             or sum(x.get("Id") == info[0].get("Id") for x in root.iter()) != 1
             or info[0].findtext(f"{_NS_TAG}tpAmb") != "2"
             or info[0].findtext(f"{_NS_TAG}CNPJAutor") != self.issuer.value
