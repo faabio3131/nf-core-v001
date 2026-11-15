@@ -28,7 +28,7 @@ SOURCE = (
 )
 DOCUMENTS = {
     "schemas": ("nfse-esquemas_xsd-anexos_i_ii_iv-sefin_adn-prod-v1-00-20251210", "PK"),
-    "manual": ("Manual Integração Nota Nacional - Simpliss V1.00", "%PDF"),
+    "manual": ("manual_integracao_nota_nacional_-_simpliss_v1.00", "%PDF"),
     "layout_rtc": ("AnexoVI-LeiautesRN_RTC_IBSCBS-V1.01.01_Simpliss", "PK"),
     "layout_dps": ("ANEXO_I-SEFIN_ADN-DPS_NFSe-SNNFSe_Simpliss", "PK"),
     "layout_event": ("ANEXO_II-SEFIN_ADN-PEDREGEVT_EVT-SNNFSe_Simpliss", "PK"),
