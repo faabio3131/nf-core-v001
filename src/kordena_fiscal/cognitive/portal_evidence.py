@@ -108,10 +108,17 @@ class PortalSurfaceEvidenceProvider:
                                     EvidenceKind.RECONCILIATION_ISSUE,
                                     "portal:reconciliation", data))
         elif capability is Capability.ANSWER_ACCOUNTANT_QUESTION:
-            for index, row in enumerate(rows("reconciliation")[:5]):
+            # A document-specific question may not silently borrow evidence
+            # from other documents in the same authorized tenant/unit.
+            # Keep the unfiltered behaviour only for an explicit general question.
+            for index, row in enumerate(
+                [r for r in rows("reconciliation") if matches(r)][:5]
+            ):
                 out.append(make(f"rec:{index}", EvidenceKind.RECONCILIATION_ISSUE,
                                 "portal:reconciliation", {"status": _s(row.get("status", ""))}))
-            for index, row in enumerate(rows("errors")[:5]):
+            for index, row in enumerate(
+                [r for r in rows("errors") if matches(r)][:5]
+            ):
                 if row.get("state"):
                     out.append(make(f"doc:{index}", EvidenceKind.DOCUMENT_STATE,
                                     "portal:errors", {"state": _s(row["state"])}))
