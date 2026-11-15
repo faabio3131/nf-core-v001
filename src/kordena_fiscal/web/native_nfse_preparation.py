@@ -43,9 +43,9 @@ from kordena_fiscal.issuance import (
     NfseAuthorizationRequest,
     NfseCanonicalDocument,
     NfseForeignAddress,
+    NfseNationalSubstitution,
     NfseServiceLine,
     NfseServiceTaker,
-    NfseNationalSubstitution,
 )
 from kordena_fiscal.issuance.sp4_original_rps_archive import (
     build_sp4_original_from_reservation,
