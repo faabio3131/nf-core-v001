@@ -186,7 +186,7 @@ def build_signed_santana_cancellation(
     root = etree.Element(_TAG + "pedRegEvento", nsmap={None: _NS})  # type: ignore[dict-item]
     root.set("versao", "1.01")
     inf = etree.SubElement(root, _TAG + "infPedReg")
-    inf.set("Id", "PRE" + key + "101101")
+    inf.set("Id", "PRE" + key + "101101001")
     etree.SubElement(inf, _TAG + "tpAmb").text = "2"
     etree.SubElement(inf, _TAG + "verAplic").text = _APP_VERSION
     etree.SubElement(inf, _TAG + "dhEvento").text = occurred_at.astimezone(
@@ -210,4 +210,5 @@ def build_signed_santana_cancellation(
         invoice_reference=key,
         human_approval_reference=approval_reference,
         signed_event_xml=signed,
+        event_sequence=1,
     )
