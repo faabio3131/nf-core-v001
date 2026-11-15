@@ -1285,6 +1285,48 @@ class FiscalApplicationService:
                 return DurableAuthorizationOutcome(attempt, current, True, True)
             if current.state is not FiscalDocumentState.READY_TO_TRANSMIT:
                 raise PersistenceStateError("issuance is not ready to transmit")
+            if (
+                isinstance(request, NfseAuthorizationRequest)
+                and request.document.national_substitution is not None
+            ):
+                linked = request.document.national_substitution
+                old_id = linked.original_document_id
+                uow.lifecycle.assert_scope(old_id, scope)
+                old_request = self._load_prepared_from_uow(uow, scope, old_id)
+                old_state = uow.lifecycle.get(old_id)
+                old_attempts = uow.idempotency.attempts(old_request.idempotency_key)
+                if (
+                    not isinstance(old_request, NfseAuthorizationRequest)
+                    or old_state is None
+                    or old_state.state is not FiscalDocumentState.AUTHORIZED
+                    or len(old_attempts) != 1
+                    or old_attempts[0].status is not IssuanceAttemptStatus.AUTHORIZED
+                    or old_attempts[0].result_reference != linked.original_invoice_reference
+                    or old_request.document.issuer.cnpj != request.document.issuer.cnpj
+                ):
+                    raise PersistenceStateError("National replacement original not authorized")
+                claimed_original = self._state_machine.transition(
+                    old_state, FiscalDocumentState.CANCEL_REQUESTED,
+                    occurred_at=occurred_at,
+                    reason="National original linked to one replacement DPS",
+                    correlation_id=scope.correlation_id,
+                )
+                uow.lifecycle.save(claimed_original, expected_version=old_state.version)
+                uow.archive.append(FiscalArchiveEntry.build(
+                    scope=scope, document_reference=old_id,
+                    kind=FiscalArchiveKind.OTHER,
+                    content=json.dumps({
+                        "original_id": old_id,
+                        "old_key": linked.original_invoice_reference,
+                        "replacement_id": document_id,
+                        "fingerprint": request.request_fingerprint,
+                        "approval_reference": linked.approval_reference,
+                        "reason_code": linked.reason_code,
+                    }, sort_keys=True, separators=(",", ":")).encode("utf-8"),
+                    media_type="application/vnd.nfcore.national-substitution-intent.v1+json",
+                    archived_at=occurred_at,
+                    retention=RetentionPolicyMetadata("nfcore-fiscal-archive", 1),
+                ))
             transmitting = self._state_machine.transition(
                 current,
                 FiscalDocumentState.TRANSMITTING,
