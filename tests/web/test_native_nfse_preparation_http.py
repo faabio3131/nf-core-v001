@@ -3386,3 +3386,166 @@ def test_salto_sp_national_requires_review_and_tenant_unit_authority(
         owner, payload | {"environment": "production"}, "salto-no-prod",
     ).status_code == 400
     assert _post(owner, payload, "salto-owner-authorized").status_code == 200
+
+
+
+def test_salto_sp_national_pending_query_recovers_without_reissuing(
+    tmp_path: Path,
+) -> None:
+    """Salto Portal -> pending DPS -> real GET contract -> signed XML, never re-POST.
+
+    All SEFIN responses and certificate material are synthetic; the two GET
+    requests use the National query gateway, not an invented Salto adapter.
+    """
+    from kordena_fiscal.control_plane.commercial import DurableProviderBindingResolver
+    from kordena_fiscal.control_plane.service import ControlPlaneNotFoundError
+    from kordena_fiscal.gateway.authorization import GatewayProviderMetadata
+    from kordena_fiscal.gateway.nfse_national_query import (
+        NfseNationalHomologationQueryGateway,
+    )
+    from kordena_fiscal.issuance import NfseAuthorizationResult, NfseQueryClient
+    from kordena_fiscal.runtime.canonical_fiscal_composition import _GovernedNfseRouter
+
+    db = _database(
+        tmp_path / "salto-national-recovery.sqlite",
+        issuer_ibge="3545209", tax_regime=TaxRegimeCode.NORMAL,
+    )
+    app = FiscalApplicationService(db)
+    a1 = _synthetic_a1_for_native_issuer()
+    private, certificate, _ = pkcs12.load_key_and_certificates(
+        a1.pkcs12_bytes, a1.password,
+    )
+    assert isinstance(private, rsa.RSAPrivateKey)
+    assert certificate is not None
+    key = "35" + "5" * 48
+    ns = "http://www.sped.fazenda.gov.br/nfse"
+    root = etree.Element(f"{{{ns}}}NFSe", nsmap={None: ns}, versao="1.01")
+    info = etree.SubElement(root, f"{{{ns}}}infNFSe", Id="NFS" + key)
+    append_nfse_signature(root, info, private, certificate, legacy_abrasf=False)
+    authorized_xml = etree.tostring(root, encoding="utf-8", xml_declaration=True)
+    get_calls: list[str] = []
+
+    def fake_get(url: str, _tls: object, _timeout: float) -> bytes:
+        get_calls.append(url)
+        if "/dps/" in url:
+            assert url.endswith(expected_dps)
+            return json.dumps({"chaveAcesso": key}).encode()
+        assert url.endswith("/nfse/" + key)
+        return json.dumps({
+            "nfseXmlGZipB64": base64.b64encode(
+                gzip.compress(authorized_xml, mtime=0),
+            ).decode("ascii"),
+        }).encode()
+
+    query = NfseNationalHomologationQueryGateway(
+        provider_resolver=DurableProviderBindingResolver(db),
+        resolve_certificate=lambda _scope, _cnpj: a1,
+        exchange_get=fake_get,
+    )
+    submitted = Mock()
+
+    def pending_authorization(request: NfseAuthorizationRequest) -> NfseAuthorizationResult:
+        submitted(request)
+        return NfseAuthorizationResult(
+            status=AuthorizationStatus.PENDING,
+            scope=request.document.scope,
+            document_id=request.document.document_id,
+            idempotency_key=request.idempotency_key,
+            request_fingerprint=request.request_fingerprint,
+            provider=GatewayProviderMetadata(NACIONAL_HOMOLOGATION_PROVIDER_ID, "1.0"),
+            provider_request_id="synthetic-national-pending",
+        )
+
+    national = Mock()
+    national.authorize.side_effect = pending_authorization
+    router = _GovernedNfseRouter(
+        application=app, national=national, national_query=query, extrema=None,
+    )
+    handlers = build_provider_operation_handlers(
+        FiscalOperationsClient(FakeFiscalOperationsGateway()),
+        application=app,
+        prepared_nfse_gateway=NfseGatewayClient(router),
+        prepared_nfse_query_client=NfseQueryClient(router),
+        archive_retention=RetentionPolicyMetadata("nfcore-fiscal-archive", 1),
+    )
+    browser = _client(db, operation_executor=CanonicalPortalOperationExecutor(
+        unit_of_work_factory=db,
+        path=CanonicalFiscalOperationPath(app, handlers=handlers),
+    ))
+    payload = _payload() | {
+        "source_id": "salto-national-recovery-2026",
+        "service_municipality_ibge": "3545209",
+        "competence_date": "2026-11-15",
+    }
+    prepared = _post(browser, payload, "salto-recovery-prepare")
+    assert prepared.status_code == 200, prepared.text
+    document_id = prepared.json()["document_id"]
+    scope = ExecutionScope(
+        TENANT, UNIT, FiscalEnvironment.HOMOLOGATION,
+        "salto-recovery-check", "fm-nfcore",
+    )
+    request = app.load_prepared_nfse_authorization(scope, document_id)
+    expected_dps = (
+        "/dps/DPS35452091" + request.document.issuer.cnpj.value
+        + f"{request.document.dps_series:05d}{request.document.dps_number:015d}"
+    )
+
+    # Authorizing a national DPS does not automatically grant read-back rights.
+    with pytest.raises(ControlPlaneNotFoundError):
+        query.query(request)
+    assert get_calls == []
+
+    with db() as uow:
+        uow.commercial.put_provider_binding(ProviderBinding(
+            binding_id="salto-national-query-approved",
+            tenant_id=TENANT, unit_id=UNIT,
+            environment=FiscalEnvironment.HOMOLOGATION,
+            document_kind=FiscalDocumentKind.NFSE,
+            jurisdiction=BrazilianJurisdiction("SP", "3545209"),
+            operation=ConfiguredFiscalOperation.QUERY,
+            provider_id=NACIONAL_HOMOLOGATION_PROVIDER_ID,
+        ))
+        uow.commit()
+    csrf = browser.cookies.get(CSRF_COOKIE)
+    assert csrf
+    body = {
+        "unit_id": UNIT, "environment": "homologation",
+        "document_id": document_id,
+    }
+    with patch(
+        "kordena_fiscal.gateway.nfse_national_query.build_fiscal_tls_context",
+        return_value=Mock(),
+    ):
+        first = browser.post(
+            "/v1/portal/operations/issueFiscalDocument", json=body,
+            headers={CSRF_HEADER: csrf, "Idempotency-Key": "salto-pending-submit"},
+        )
+        assert first.status_code == 200, first.text
+        assert first.json()["recovery_required"] is True
+        recovered = browser.post(
+            "/v1/portal/operations/reconcileFiscalOperation", json=body,
+            headers={CSRF_HEADER: csrf, "Idempotency-Key": "salto-read-only-query"},
+        )
+        assert recovered.status_code == 200, recovered.text
+        assert recovered.json()["status"] == FiscalDocumentState.AUTHORIZED.value
+        terminal = browser.post(
+            "/v1/portal/operations/reconcileFiscalOperation", json=body,
+            headers={CSRF_HEADER: csrf, "Idempotency-Key": "salto-query-replay"},
+        )
+        assert terminal.status_code == 200, terminal.text
+        assert terminal.json()["replay"] is True
+
+    assert submitted.call_count == 1
+    assert len(get_calls) == 2, "Terminal replay cannot make new GET or POST calls"
+    authorized = browser.get(
+        f"/v1/portal/documents/{document_id}/artifacts/authorized_xml",
+        params={"unit_id": UNIT, "environment": "homologation"},
+    )
+    assert authorized.status_code == 200, authorized.text
+    assert authorized.content == authorized_xml
+    with db() as uow:
+        xml_entries = [
+            row for row in uow.archive.list_for_document(scope, document_id)
+            if row.kind is FiscalArchiveKind.AUTHORIZED_XML
+        ]
+        assert len(xml_entries) == 1
