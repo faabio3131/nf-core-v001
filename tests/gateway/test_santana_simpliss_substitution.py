@@ -3,7 +3,14 @@ from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
+from datetime import UTC, datetime, timedelta
 from unittest.mock import Mock
+
+from cryptography import x509
+from cryptography.hazmat.primitives import hashes, serialization
+from cryptography.hazmat.primitives.asymmetric import rsa
+from cryptography.hazmat.primitives.serialization import pkcs12
+from cryptography.x509.oid import NameOID
 
 import pytest
 from lxml import etree
@@ -23,6 +30,10 @@ from kordena_fiscal.domain import (
     TaxRegimeCode,
 )
 from kordena_fiscal.gateway import santana_simpliss_substitution as subst
+from kordena_fiscal.gateway.nfse_nacional_homologation import (
+    build_nfse_dps_request,
+)
+from kordena_fiscal.xml.nfse_nacional_schema import national_dps_validator
 from kordena_fiscal.gateway.santana_simpliss_homologation import SANTANA_IBGE
 from kordena_fiscal.issuance import (
     NfseAuthorizationRequest,
@@ -155,3 +166,48 @@ def test_reviewed_dps_adds_subst_in_xsd_order_then_signs_final_xml(
         validator.validate_document.call_args.args[0], material,
     )
     assert parsed.call_count == 2
+
+
+
+def test_santana_real_signed_replacement_passes_official_xsd_101() -> None:
+    """Build, re-sign and verify XSD 1.01 with an ephemeral synthetic test key."""
+    key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+    subject = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, "Synthetic Santana")])
+    now = datetime.now(UTC)
+    cert = (
+        x509.CertificateBuilder()
+        .subject_name(subject).issuer_name(subject)
+        .public_key(key.public_key()).serial_number(x509.random_serial_number())
+        .not_valid_before(now - timedelta(days=1))
+        .not_valid_after(now + timedelta(days=30))
+        .sign(key, hashes.SHA256())
+    )
+    pwd = b"synthetic-test-password"
+    pfx = pkcs12.serialize_key_and_certificates(
+        name=b"santana-test", key=key, cert=cert, cas=None,
+        encryption_algorithm=serialization.BestAvailableEncryption(pwd),
+    )
+    material = EphemeralCertificateMaterial(
+        reference_id="synthetic-santana-only", pkcs12_bytes=pfx, password=pwd,
+    )
+    request = _request()
+    verified_source = Mock()
+    signed = subst.build_santana_signed_replacement_dps(
+        request, material, review=_review(), verify_original=verified_source,
+    )
+    verified_source.assert_called_once()
+    root = etree.fromstring(signed)
+    info = root.find("{" + _NS + "}infDPS")
+    assert info is not None
+    subst_node = info.find("{" + _NS + "}subst")
+    assert subst_node is not None
+    assert subst_node.findtext("{" + _NS + "}chSubstda") == _KEY
+    assert subst_node.findtext("{" + _NS + "}cMotivo") == "99"
+    assert len(root.findall("{" + _DS + "}Signature")) == 1
+    national_dps_validator("1.01").validate_document(signed)
+    wrapped = build_nfse_dps_request(
+        signed,
+        issuer_cnpj="11222333000181",
+        issuer_municipality_ibge="3547304",
+    )
+    assert b"dpsXmlGZipB64" in wrapped
