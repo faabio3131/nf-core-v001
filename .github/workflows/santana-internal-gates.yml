@@ -28,3 +28,4 @@ jobs:
       - name: Santana targeted integration tests
         run: |
           pytest -q tests/gateway/test_santana_simpliss_events.py tests/gateway/test_santana_simpliss_substitution.py tests/gateway/test_santana_simpliss_homologation.py tests/runtime/test_santana_reviewed_config.py tests/runtime/test_santana_official_contracts.py tests/web/test_native_nfse_preparation_http.py -k "santana"
+          pytest -q tests/gateway/test_nfse_nacional_event_homologation.py tests/issuance/test_nfse_dps_builder.py tests/runtime/test_nfv1_nfse_dps_builder_and_preaudit_wiring.py
