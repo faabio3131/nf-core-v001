@@ -193,6 +193,7 @@ def _database(
                 "cajamar-geisweb-homologation", "osasco-rtc-homologation",
                 "barueri-pmb004-homologation",
                 "jundiai-giss-v2-homologation",
+                "santana-simpliss-v1-homologation",
             }:
                 uow.commercial.put_provider_binding(ProviderBinding(
                     binding_id="cajamar-query-binding",
@@ -2721,3 +2722,180 @@ def test_santana_simpliss_real_portal_uow_issue_archive_and_one_post(
     assert exchange.call_count == 1
     with db() as uow:
         assert uow.lifecycle.get(document_id).state is FiscalDocumentState.AUTHORIZED
+
+
+@pytest.mark.parametrize("substitution", [False, True])
+def test_santana_http_cancellation_or_substitution_durable_single_dispatch(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, substitution: bool,
+) -> None:
+    """Same authenticated Portal/UoW: issue, event, replay, negative approval.
+
+    The external provider and certificate validation are synthetic test ports;
+    real XMLDSig/XSD paths are tested separately in the gateway suite.
+    """
+    from kordena_fiscal.application import service as service_module
+    from kordena_fiscal.gateway import santana_simpliss_homologation as simpliss
+    from kordena_fiscal.gateway.nfse_nacional_event_homologation import (
+        NationalNfseCancellationReceipt,
+    )
+
+    db = _database(
+        tmp_path / ("santana-substitute.sqlite" if substitution else "santana-cancel.sqlite"),
+        issuer_ibge="3547304", provider_id=simpliss.SANTANA_PROVIDER_ID,
+        tax_regime=TaxRegimeCode.NORMAL,
+    )
+    application = FiscalApplicationService(db)
+    keys = ["35" + "2" * 48, "35" + "3" * 48]
+    calls: list[tuple[str, str]] = []
+
+    def fake_provider(method, url, payload, tls, timeout):
+        assert method == "POST"
+        assert url.endswith("/nfse")
+        assert isinstance(payload, bytes)
+        calls.append((method, url))
+        key = keys[len(calls) - 1]
+        return json.dumps({
+            "tipoAmbiente": 2, "chaveAcesso": key,
+            "nfseXmlGZipB64": "synthetic-signature-fixture",
+        }).encode("ascii")
+
+    def fake_signed_invoice(raw, key):
+        assert key in keys
+        return (
+            '<NFSe xmlns="http://www.sped.fazenda.gov.br/nfse" versao="1.01">'
+            f'<infNFSe Id="NFS{key}"/></NFSe>'
+        ).encode("ascii")
+
+    monkeypatch.setattr(simpliss, "validate_a1_for_issuer", Mock())
+    monkeypatch.setattr(simpliss, "build_fiscal_tls_context", Mock(return_value=Mock()))
+    monkeypatch.setattr(simpliss, "encode_signed_dps", Mock(
+        return_value=b'{"dpsXmlGZipB64":"synthetic"}',
+    ))
+    monkeypatch.setattr(simpliss, "_validate_official_nfse", fake_signed_invoice)
+    # The official XML cryptographic verifier is deliberately replaced ONLY in
+    # this operation-level fixture; dedicated tests exercise actual RSA/XSD.
+    monkeypatch.setattr(service_module, "_verify_nfse_receipt_signature", Mock())
+    event_sent = Mock(side_effect=lambda request, key, *args: NationalNfseCancellationReceipt(
+        invoice_reference=key, event_xml=b"<synthetic-101101-event/>",
+    ))
+
+    def build(app: FiscalApplicationService):
+        class Resolver:
+            def resolve_provider_id(self, *, scope, document_kind, jurisdiction, operation):
+                return app.resolve_configured_provider_id(
+                    scope=scope, document_kind=document_kind,
+                    jurisdiction=jurisdiction, operation=operation,
+                )
+
+        gw = simpliss.SantanaSimplissHomologationGateway(
+            endpoint=simpliss.SantanaSimplissEndpoint(
+                "https://producaorestrita.simplissweb.com.br/SEFIN/nfse"
+            ),
+            provider_resolver=Resolver(),
+            resolve_certificate=lambda scope, cnpj: Mock(
+                pkcs12_bytes=b"synthetic", password=b"synthetic",
+            ),
+            build_signed_dps=lambda request, cert: b"<synthetic-signed-DPS/>",
+            preaudit=nfse_preaudit,
+            submit_event=event_sent,
+            exchange=fake_provider,
+        )
+
+        if substitution:
+            def fake_reviewed_replacement(request, *, review, verify_original):
+                assert review.original_access_key == keys[0]
+                verify_original(request, review)
+                return b'{"dpsXmlGZipB64":"synthetic-replacement-with-subst"}'
+            monkeypatch.setattr(gw, "prepare_substitution", fake_reviewed_replacement)
+        return gw
+
+    handlers = build_runtime_fiscal_handler_factory(
+        operations_gateway=FakeFiscalOperationsGateway(),
+        santana_port_builder=build,
+    )(application)
+    assert "cancelSantanaNfse" in handlers
+    assert "substituteSantanaNfse" in handlers
+    web = _client(db, operation_executor=CanonicalPortalOperationExecutor(
+        unit_of_work_factory=db,
+        path=CanonicalFiscalOperationPath(application, handlers=handlers),
+    ))
+    fields = _payload() | _TAKER_ADDRESS | {
+        "source_id": "santana-original-issuer-2026",
+        "competence_date": "2026-11-12",
+        "service_municipality_ibge": "3547304",
+    }
+    prepared = _post(web, fields, "santana-original-preparation")
+    assert prepared.status_code == 200, prepared.text
+    original_id = prepared.json()["document_id"]
+    replacement_id: str | None = None
+    if substitution:
+        replacement = _post(
+            web, fields | {"source_id": "santana-replacement-issuer-2026"},
+            "santana-replacement-preparation",
+        )
+        assert replacement.status_code == 200, replacement.text
+        replacement_id = replacement.json()["document_id"]
+        assert original_id != replacement_id
+
+    csrf = web.cookies.get(CSRF_COOKIE)
+    assert csrf
+    root = "/v1/portal/operations/"
+    old_body = {
+        "unit_id": UNIT, "environment": "homologation",
+        "document_id": original_id,
+    }
+    issued = web.post(root + "issueFiscalDocument", json=old_body, headers={
+        CSRF_HEADER: csrf, "Idempotency-Key": "santana-original-first-issue",
+    })
+    assert issued.status_code == 200, issued.text
+    assert issued.json()["status"] == FiscalDocumentState.AUTHORIZED.value
+    assert len(calls) == 1
+    command = "substituteSantanaNfse" if substitution else "cancelSantanaNfse"
+    payload = {
+        "unit_id": UNIT, "environment": "homologation",
+        "human_approval": True,
+        "reason_code": "99" if substitution else "1",
+        "reason_description": "Motivo sintético revisado para a nota fiscal",
+    }
+    if substitution:
+        payload.update({"original_id": original_id, "replacement_id": replacement_id})
+    else:
+        payload["document_id"] = original_id
+
+    no_csrf = web.post(root + command, json=payload)
+    assert no_csrf.status_code == 403
+    unapproved = web.post(root + command, json=payload | {
+        "human_approval": False,
+    }, headers={CSRF_HEADER: csrf, "Idempotency-Key": "santana-refused-approval"})
+    assert unapproved.status_code in (400, 403), unapproved.text
+    assert len(calls) == 1
+    event_sent.assert_not_called()
+
+    headers = {CSRF_HEADER: csrf, "Idempotency-Key": "santana-approved-one-shot"}
+    outcome = web.post(root + command, json=payload, headers=headers)
+    assert outcome.status_code == 200, outcome.text
+    assert outcome.json()["municipality_ibge"] == "3547304"
+    assert outcome.json()["official_fiscal_confirmation"] is True
+    with db() as uow:
+        assert uow.lifecycle.get(original_id).state is FiscalDocumentState.CANCELLED
+        if replacement_id is not None:
+            assert uow.lifecycle.get(replacement_id).state is FiscalDocumentState.AUTHORIZED
+            assert uow.idempotency.attempts(
+                application.load_prepared_nfse_authorization(
+                    ExecutionScope(
+                        TENANT, UNIT, FiscalEnvironment.HOMOLOGATION,
+                        "santana-check", "fm-nfcore",
+                    ), replacement_id,
+                ).idempotency_key,
+            )[-1].status.value == "authorized"
+    assert len(calls) == (2 if substitution else 1)
+    assert event_sent.call_count == (0 if substitution else 1)
+    replay = web.post(root + command, json=payload, headers=headers)
+    assert replay.status_code == 200, replay.text
+    assert len(calls) == (2 if substitution else 1)
+    assert event_sent.call_count == (0 if substitution else 1)
+    new_key = web.post(root + command, json=payload, headers={
+        CSRF_HEADER: csrf, "Idempotency-Key": "santana-must-not-reissue",
+    })
+    assert new_key.status_code in (400, 409, 403), new_key.text
+    assert len(calls) == (2 if substitution else 1)
