@@ -42,6 +42,7 @@ from kordena_fiscal.domain import (
     FiscalEnvironment,
     FiscalValidationError,
     HostScope,
+    TaxRegimeCode,
     SourceReference,
 )
 from kordena_fiscal.events import (
@@ -795,6 +796,29 @@ class FiscalApplicationService:
                     "SP4 municipal original RPS requires reviewed scope and series"
                 )
         with self._uow_factory() as uow:
+            if document.national_substitution is not None:
+                if extrema_intent_builder is not None or sp4_original_builder is not None:
+                    raise FiscalValidationError("National replacement cannot use municipal RPS")
+                linked = document.national_substitution
+                old = self._load_prepared_from_uow(
+                    uow, document.scope, linked.original_document_id,
+                )
+                old_state = uow.lifecycle.get(linked.original_document_id)
+                old_attempts = uow.idempotency.attempts(old.idempotency_key)
+                if (
+                    not isinstance(old, NfseAuthorizationRequest)
+                    or old_state is None
+                    or old_state.state is not FiscalDocumentState.AUTHORIZED
+                    or len(old_attempts) != 1
+                    or old_attempts[0].status is not IssuanceAttemptStatus.AUTHORIZED
+                    or old_attempts[0].result_reference != linked.original_invoice_reference
+                    or old.document.issuer.cnpj != document.issuer.cnpj
+                    or old.document.issuer.address.jurisdiction
+                    != document.issuer.address.jurisdiction
+                    or old.document.competence_date != document.competence_date
+                    or old.document.service_jurisdiction != document.service_jurisdiction
+                ):
+                    raise PersistenceStateError("National original is no longer replaceable")
             if extrema_intent_builder is None and sp4_original_builder is None:
                 # The National DPS number and issuance reservation belong to one UoW.
                 dps_serial = uow.dps_sequences.reserve(
@@ -3292,6 +3316,48 @@ class FiscalApplicationService:
             decision=decision, lifecycle=final, archive_reference=archived.entry_id,
         )
 
+
+    def review_prepared_national_nfse_substitution(
+        self, *, scope: ExecutionScope,
+        original_id: str, replacement: NfseCanonicalDocument,
+    ) -> str:
+        """Verify national substitution invariants without provider I/O or new numbers."""
+        if (
+            not isinstance(replacement, NfseCanonicalDocument)
+            or replacement.scope.identity_partition_key != scope.identity_partition_key
+            or replacement.document_id == original_id
+            or replacement.national_substitution is not None
+        ):
+            raise FiscalValidationError("Replacement must be an independent reviewed DPS")
+        original, key = self.preflight_national_nfse_cancellation(
+            scope=scope, document_id=original_id,
+        )
+        prev = original.document
+        old_loc = prev.issuer.address.jurisdiction
+        new_loc = replacement.issuer.address.jurisdiction
+        if (
+            prev.issuer.cnpj != replacement.issuer.cnpj
+            or old_loc != new_loc
+            or prev.competence_date != replacement.competence_date
+            or prev.service_jurisdiction != replacement.service_jurisdiction
+            or len(prev.services) != 1 or len(replacement.services) != 1
+            or prev.services[0].national_taxation_code
+            != replacement.services[0].national_taxation_code
+            or prev.services[0].municipal_service_code
+            != replacement.services[0].municipal_service_code
+        ):
+            raise FiscalValidationError("National replacement changes protected fiscal identity")
+        if prev.issuer.tax_regime in {
+            TaxRegimeCode.SIMPLES_NACIONAL,
+            TaxRegimeCode.SIMPLES_NACIONAL_EXCESS_SUBLIMIT,
+            TaxRegimeCode.MEI,
+        }:
+            if (
+                prev.services[0].gross_amount != replacement.services[0].gross_amount
+                or prev.service_taker != replacement.service_taker
+            ):
+                raise FiscalValidationError("National Simples replacement changes protected facts")
+        return key
 
     def preflight_national_nfse_cancellation(
         self, *, scope: ExecutionScope, document_id: str,
