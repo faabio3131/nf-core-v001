@@ -565,6 +565,63 @@ function appendNationalNfseCancellation(article) {
   });
 }
 
+/** Consult an uncertain national 101101 without any new provider POST. */
+/** @param {HTMLElement} article */
+function appendNationalNfseCancellationRecovery(article) {
+  const ops = bootstrapState?.projection.configured_fiscal_operations;
+  if (!bootstrapState?.permissions.includes("reconciliation.execute")
+    || !Array.isArray(ops) || !ops.includes("reconcileNationalNfseCancellation")
+    || selectedFiscalEnvironment !== "homologation") return;
+  const form = document.createElement("form");
+  form.id = "national-nfse-cancellation-recovery";
+  form.className = "panel-form";
+  const heading = document.createElement("h3");
+  heading.textContent = "Conciliar cancelamento nacional 101101";
+  const info = document.createElement("p");
+  info.className = "empty-state";
+  info.textContent = "Para um cancelamento de resultado incerto, execute somente a consulta oficial do evento existente. A operação não retransmite a solicitação nem altera uma nota sem prova fiscal assinada.";
+  const documentLabel = document.createElement("label");
+  documentLabel.textContent = "ID da NFS-e original no NFCore";
+  const documentInput = document.createElement("input");
+  documentInput.type = "text"; documentInput.required = true;
+  documentInput.maxLength = 128; documentInput.autocomplete = "off";
+  documentLabel.append(documentInput);
+  const button = document.createElement("button");
+  button.type = "submit"; button.className = "primary";
+  button.textContent = "Consultar evento nacional existente (somente leitura)";
+  const status = document.createElement("p");
+  status.id = "national-nfse-cancellation-recovery-result";
+  status.setAttribute("role", "status");
+  status.setAttribute("aria-live", "polite");
+  form.append(heading, info, documentLabel, button, status);
+  article.append(form);
+  form.addEventListener("submit", async event => {
+    event.preventDefault();
+    if (!form.reportValidity() || !selectedFiscalUnit) return;
+    button.disabled = true;
+    status.textContent = "Consultando a confirmação oficial do evento...";
+    try {
+      const result = await api("/v1/portal/operations/reconcileNationalNfseCancellation", {
+        method: "POST",
+        headers: {
+          "X-CSRF-Token": csrfToken(),
+          "Idempotency-Key": crypto.randomUUID(),
+        },
+        body: JSON.stringify({
+          unit_id: selectedFiscalUnit, environment: "homologation",
+          document_id: documentInput.value.trim(),
+        }),
+      });
+      status.textContent = result.official_fiscal_confirmation
+        ? "Evento 101101 confirmado e arquivado. Cancelamento concluído."
+        : "Sem confirmação oficial. Mantenha o pedido original e não reenvie o cancelamento.";
+    } catch (error) {
+      status.textContent = (error instanceof Error ? error.message : "Consulta indisponível")
+        + " Nenhum reenvio fiscal será realizado.";
+    } finally { button.disabled = false; }
+  });
+}
+
 /** @param {HTMLElement} article */
 function appendExtremaNfsePreparation(article) {
   if (!bootstrapState?.permissions.includes("configuration.write")
@@ -3048,6 +3105,7 @@ async function renderSurface(viewId) {
     if (["inutilizations", "documents", "issuances", "reconciliation"].includes(viewId)) await appendFiscalRecovery(article);
     if (viewId === "issuances") appendNativeNfsePreparation(article);
     if (viewId === "issuances") appendNationalNfseCancellation(article);
+    if (viewId === "issuances") appendNationalNfseCancellationRecovery(article);
     if (viewId === "issuances") appendExtremaNfsePreparation(article);
     if (viewId === "issuances") appendExtremaCancellation(article);
     if (viewId === "issuances") appendCajamarCancellation(article);
