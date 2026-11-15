@@ -397,3 +397,59 @@ class SantanaSimplissHomologationGateway:
         if len(matches) > 1:
             raise SantanaSimplissError("Ambiguous Santana cancellation event")
         return matches[0] if matches else None
+
+    def query_substitution_invoice(
+        self, request: NfseAuthorizationRequest, *,
+        replacement_key: str, original_key: str,
+    ) -> NfseAuthorizationResult:
+        """Verify GET replacement NFS-e is the exact reserved new DPS.
+
+        A signed event that happens to reference a different substitute cannot
+        authorize this document. The returned NFS-e must contain its actual
+        signed DPS with the same canonical Id and substituted original key.
+        """
+        if not _valid_key(replacement_key) or not _valid_key(original_key):
+            raise SantanaSimplissError("Invalid signed Santana replacement reference")
+        material, issuer = self._review(request, "query")
+        assert isinstance(replacement_key, str)
+        raw = self._exchange(
+            "GET", self._endpoint.invoice_url(replacement_key), None,
+            build_fiscal_tls_context(material), self._timeout,
+        )
+        result = self._result(request, raw)
+        if (
+            result.status is not AuthorizationStatus.AUTHORIZED
+            or result.invoice_reference != replacement_key
+            or result.authorized_xml is None
+        ):
+            raise SantanaSimplissError("Read-only Santana replacement is unconfirmed")
+        from lxml import etree
+
+        from kordena_fiscal.gateway.nfse_national_query import _dps_id
+
+        parser = etree.XMLParser(
+            resolve_entities=False, no_network=True,
+            load_dtd=False, huge_tree=False,
+        )
+        root = etree.fromstring(result.authorized_xml, parser)
+        namespace = "{http://www.sped.fazenda.gov.br/nfse}"
+        info = root.find(namespace + "infNFSe")
+        dps = (
+            info.find(namespace + "DPS/" + namespace + "infDPS")
+            if info is not None else None
+        )
+        if (
+            root.tag != namespace + "NFSe"
+            or dps is None or dps.get("Id") != _dps_id(request)
+            or dps.findtext(
+                namespace + "subst/" + namespace + "chSubstda"
+            ) != original_key
+            or dps.findtext(
+                namespace + "prest/" + namespace + "CNPJ"
+            ) != issuer
+            or dps.findtext(namespace + "cLocEmi") != SANTANA_IBGE
+        ):
+            raise SantanaSimplissError(
+                "Signed official substitute does not match reserved canonical DPS"
+            )
+        return result
