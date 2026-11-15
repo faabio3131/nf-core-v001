@@ -3653,13 +3653,14 @@ def test_salto_national_replacement_dps_is_atomic_and_replay_safe(
     original_id = first.json()["document_id"]
     csrf = web.cookies.get(CSRF_COOKIE)
     assert csrf
-    issue = lambda doc, idem: web.post(
-        "/v1/portal/operations/issueFiscalDocument",
-        json={
-            "unit_id": UNIT, "environment": "homologation", "document_id": doc,
-        },
-        headers={CSRF_HEADER: csrf, "Idempotency-Key": idem},
-    )
+    def issue(doc: str, idem: str):
+        return web.post(
+            "/v1/portal/operations/issueFiscalDocument",
+            json={
+                "unit_id": UNIT, "environment": "homologation", "document_id": doc,
+            },
+            headers={CSRF_HEADER: csrf, "Idempotency-Key": idem},
+        )
     issued = issue(original_id, "salto-first-national-issue")
     assert issued.status_code == 200, issued.text
     assert issued.json()["status"] == "authorized"
