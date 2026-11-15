@@ -183,6 +183,15 @@ class DurableSantanaCancellationOutcome:
 
 
 @dataclass(frozen=True, slots=True)
+class DurableNationalCancellationRecoveryOutcome:
+    lifecycle: FiscalStateSnapshot
+    archive_reference: str | None
+    recovered: bool
+    recovery_required: bool
+    replay: bool
+
+
+@dataclass(frozen=True, slots=True)
 class DurableSantanaSubstitutionOutcome:
     original_lifecycle: FiscalStateSnapshot
     replacement_lifecycle: FiscalStateSnapshot
@@ -3608,11 +3617,22 @@ class FiscalApplicationService:
                 raise PersistenceStateError("National cancellation has no unique durable claim")
             FiscalArchiveVerifier().verify_entry(records[0])
             facts = json.loads(records[0].content)
+            requests = [
+                entry for entry in uow.archive.list_for_document(scope, document_id)
+                if entry.kind is FiscalArchiveKind.OTHER
+                and entry.media_type
+                == "application/vnd.nfcore.national-cancel-request.v1+xml"
+            ]
+            if len(requests) != 1:
+                raise PersistenceStateError("National signed cancellation request is not durable")
+            FiscalArchiveVerifier().verify_entry(requests[0])
             if (
                 not isinstance(facts, dict)
                 or facts.get("original_id") != document_id
                 or facts.get("key") != original_key
                 or facts.get("approval_reference") != approval_reference
+                or facts.get("signed_event_sha256")
+                != hashlib.sha256(requests[0].content).hexdigest()
             ):
                 raise PersistenceConflictError("National cancellation approval changed")
 
@@ -3728,6 +3748,147 @@ class FiscalApplicationService:
             ))
             uow.commit()
         return DurableSantanaCancellationOutcome(final, archived.entry_id)
+
+    def national_cancellation_claim_status(
+        self, *, scope: ExecutionScope, document_id: str,
+        approval_reference: str | None = None,
+        reason_code: str | None = None,
+        reason_description: str | None = None,
+    ) -> DurableNationalCancellationRecoveryOutcome | None:
+        """Read a prior cancellation without a duplicate event or provider POST."""
+        with self._uow_factory() as uow:
+            uow.lifecycle.assert_scope(document_id, scope)
+            state = uow.lifecycle.get(document_id)
+            if state is None or state.state is FiscalDocumentState.AUTHORIZED:
+                return None
+            if state.state not in (
+                FiscalDocumentState.CANCEL_REQUESTED,
+                FiscalDocumentState.CANCELLED,
+            ):
+                raise PersistenceStateError("National document is not cancellable")
+            records = [
+                entry for entry in uow.archive.list_for_document(scope, document_id)
+                if entry.media_type
+                == "application/vnd.nfcore.national-cancel-intent.v1+json"
+            ]
+            if len(records) != 1:
+                raise PersistenceStateError("National cancellation approval is missing")
+            FiscalArchiveVerifier().verify_entry(records[0])
+            facts = json.loads(records[0].content)
+            if (
+                (approval_reference is not None
+                 and facts.get("approval_reference") != approval_reference)
+                or (reason_code is not None and facts.get("reason_code") != reason_code)
+                or (
+                    reason_description is not None
+                    and facts.get("reason_description") != reason_description.strip()
+                )
+            ):
+                raise PersistenceConflictError("National cancellation replay changed approval")
+            events = [
+                entry for entry in uow.archive.list_for_document(scope, document_id)
+                if entry.kind is FiscalArchiveKind.FISCAL_EVENT
+                and entry.media_type == "application/xml"
+            ]
+            terminal = state.state is FiscalDocumentState.CANCELLED
+            if terminal and len(events) != 1 or not terminal and events:
+                raise PersistenceConflictError("National cancellation official proof mismatch")
+            if terminal:
+                FiscalArchiveVerifier().verify_entry(events[0])
+            return DurableNationalCancellationRecoveryOutcome(
+                lifecycle=state,
+                archive_reference=events[0].entry_id if terminal else None,
+                recovered=terminal, recovery_required=not terminal, replay=True,
+            )
+
+    def reconcile_prepared_national_nfse_cancellation(
+        self, *, scope: ExecutionScope, document_id: str,
+        query_verified_cancel: Callable[
+            [NationalNfseCancellationIntent],
+            NationalNfseCancellationReceipt | None,
+        ],
+        occurred_at: datetime, retention: RetentionPolicyMetadata,
+    ) -> DurableNationalCancellationRecoveryOutcome:
+        """Read the official 101101 event before finalizing a pending cancellation."""
+        if not callable(query_verified_cancel) or not isinstance(retention, RetentionPolicyMetadata):
+            raise FiscalValidationError("National event recovery needs trusted read-only port")
+        status = self.national_cancellation_claim_status(
+            scope=scope, document_id=document_id,
+        )
+        if status is None:
+            raise PersistenceStateError("No national cancellation claim to recover")
+        if not status.recovery_required:
+            return status
+        with self._uow_factory() as uow:
+            request = self._load_prepared_from_uow(uow, scope, document_id)
+            if not isinstance(request, NfseAuthorizationRequest):
+                raise PersistenceStateError("National event recovery needs original NFS-e")
+            record_list = uow.archive.list_for_document(scope, document_id)
+            approvals = [
+                entry for entry in record_list
+                if entry.media_type
+                == "application/vnd.nfcore.national-cancel-intent.v1+json"
+            ]
+            signed = [
+                entry for entry in record_list
+                if entry.media_type
+                == "application/vnd.nfcore.national-cancel-request.v1+xml"
+            ]
+            if len(approvals) != 1 or len(signed) != 1:
+                raise PersistenceStateError("Uncertain national event has no durable request")
+            FiscalArchiveVerifier().verify_entry(approvals[0])
+            FiscalArchiveVerifier().verify_entry(signed[0])
+            approval = json.loads(approvals[0].content)
+            xml = signed[0].content
+            if approval.get("signed_event_sha256") != hashlib.sha256(xml).hexdigest():
+                raise PersistenceConflictError("National event signed intent was tampered")
+            intent = NationalNfseCancellationIntent(
+                scope=scope,
+                issuer=request.document.issuer.cnpj,
+                issuer_jurisdiction=request.document.issuer.address.jurisdiction,
+                invoice_reference=approval["key"],
+                human_approval_reference=approval["approval_reference"],
+                signed_event_xml=xml,
+            )
+            validate_national_event_xml(xml, kind="request")
+            claimed = uow.lifecycle.get(document_id)
+            if claimed is None or claimed.state is not FiscalDocumentState.CANCEL_REQUESTED:
+                raise PersistenceConflictError("National event claim changed")
+        receipt = query_verified_cancel(intent)
+        if receipt is None:
+            return DurableNationalCancellationRecoveryOutcome(
+                lifecycle=claimed, archive_reference=None,
+                recovered=False, recovery_required=True, replay=False,
+            )
+        if (
+            not isinstance(receipt, NationalNfseCancellationReceipt)
+            or not receipt.confirmed
+            or receipt.invoice_reference != intent.invoice_reference
+        ):
+            raise FiscalValidationError("National event GET response was not validated")
+        with self._uow_factory() as uow:
+            uow.lifecycle.assert_scope(document_id, scope)
+            latest = uow.lifecycle.get(document_id)
+            if latest != claimed:
+                raise PersistenceConflictError("National event changed during official GET")
+            updated = self._state_machine.transition(
+                claimed, FiscalDocumentState.CANCELLED,
+                occurred_at=occurred_at,
+                reason="Official read-only national event 101101 confirmed",
+                correlation_id=scope.correlation_id,
+            )
+            uow.lifecycle.save(updated, expected_version=claimed.version)
+            entry = uow.archive.append(FiscalArchiveEntry.build(
+                scope=scope, document_reference=document_id,
+                kind=FiscalArchiveKind.FISCAL_EVENT,
+                content=receipt.event_xml, media_type="application/xml",
+                archived_at=occurred_at, retention=retention,
+            ))
+            uow.commit()
+            return DurableNationalCancellationRecoveryOutcome(
+                lifecycle=updated, archive_reference=entry.entry_id,
+                recovered=True, recovery_required=False, replay=False,
+            )
 
     def preflight_santana_nfse_cancellation(
         self, *, scope: ExecutionScope, document_id: str,
