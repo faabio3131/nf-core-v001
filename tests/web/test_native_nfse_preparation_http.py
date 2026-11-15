@@ -1661,3 +1661,126 @@ def test_osasco_executable_api_real_xsd_end_to_end_one_uow(
             application.load_sp4_original_rps(scope, replacement_id).rps_number == "2"
         )
         assert vault.resolve.call_count == 5
+
+
+_FOREIGN_TAKER_ADDRESS = {
+    "taker_country_code": "US",
+    "taker_foreign_postal_code": "10001",
+    "taker_foreign_city": "New York",
+    "taker_foreign_region": "NY",
+    "taker_street": "Foreign Business Avenue",
+    "taker_number": "10",
+    "taker_neighborhood": "Manhattan",
+}
+
+
+@pytest.mark.parametrize(
+    ("identity", "expected_reference"),
+    [
+        ({"taker_nif": "US-AB123456"}, "nif:US-AB123456"),
+        ({"taker_no_nif_reason": "1"}, "no-nif:US:Foreign Services"),
+    ],
+)
+def test_native_national_prepares_foreign_taker_through_real_http_and_replay(
+    tmp_path: Path, identity: dict[str, str], expected_reference: str,
+) -> None:
+    """Real session/CSRF/UoW, official National DPS model, no external emission."""
+    db = _database(tmp_path / ("foreign-" + next(iter(identity)) + ".sqlite"))
+    web = _client(db)
+    original = _payload()
+    original.pop("taker_document")
+    original["taker_name"] = "Foreign Services"
+    original["source_id"] = "foreign-reviewed-" + next(iter(identity))
+    payload = original | _FOREIGN_TAKER_ADDRESS | identity
+    first = _post(web, payload, key="foreign-preparation-one")
+    assert first.status_code == 200, first.text
+    assert first.json()["transmitted"] is False
+    assert first.json()["numbering_authority"] == "national_dps_durable"
+    again = _post(web, payload, key="foreign-preparation-one")
+    assert again.status_code == 200, again.text
+    assert again.json()["replay"] is True
+    assert again.json()["document_id"] == first.json()["document_id"]
+    scope = ExecutionScope(
+        TENANT, UNIT, FiscalEnvironment.HOMOLOGATION, "read", "fm-nfcore",
+    )
+    document = FiscalApplicationService(db).load_prepared_nfse_authorization(
+        scope, first.json()["document_id"],
+    ).document
+    assert document.service_taker_reference == expected_reference
+    assert document.service_taker is not None
+    assert document.service_taker.tax_id is None
+    assert document.service_taker.nif == identity.get("taker_nif")
+    assert document.service_taker.no_nif_reason == identity.get("taker_no_nif_reason")
+    assert document.service_taker.address is not None
+    assert document.service_taker.address.country_code == "US"
+    assert document.service_taker.address.city == "New York"
+
+
+@pytest.mark.parametrize("mutation", [
+    {"taker_country_code": "BR"},
+    {"taker_country_code": "USA"},
+    {"taker_no_nif_reason": "9"},
+    {"taker_nif": ""},
+    {"taker_foreign_postal_code": ""},
+])
+def test_foreign_taker_rejects_invalid_canonical_facts_without_persisting(
+    tmp_path: Path, mutation: dict[str, str],
+) -> None:
+    db = _database(tmp_path / "foreign-invalid.sqlite")
+    web = _client(db)
+    payload = _payload()
+    payload.pop("taker_document")
+    payload.update(_FOREIGN_TAKER_ADDRESS)
+    payload["taker_no_nif_reason"] = "1"
+    if "taker_nif" in mutation:
+        payload.pop("taker_no_nif_reason")
+    payload.update(mutation)
+    response = _post(web, payload)
+    assert response.status_code == 400, response.text
+    assert response.json()["detail"]["code"] in {
+        "NATIVE_NFSE_INVALID_FISCAL_FACTS",
+        "NATIVE_NFSE_INVALID_REQUEST",
+    }
+
+
+@pytest.mark.parametrize("extra", [
+    {"taker_document": "12345678000195"},
+    {"taker_nif": "US-A111"},
+    {"taker_municipality_ibge": "3550308"},
+])
+def test_foreign_taker_refuses_mixed_or_spoofed_identity_shapes(
+    tmp_path: Path, extra: dict[str, str],
+) -> None:
+    db = _database(tmp_path / "foreign-mixed.sqlite")
+    web = _client(db)
+    payload = _payload()
+    payload.pop("taker_document")
+    payload.update(_FOREIGN_TAKER_ADDRESS)
+    payload["taker_no_nif_reason"] = "1"
+    payload.update(extra)
+    response = _post(web, payload)
+    assert response.status_code == 400
+    assert response.json()["detail"]["code"] == "NATIVE_NFSE_INVALID_REQUEST"
+
+
+def test_municipal_nfs_e_refuses_foreign_taker_without_municipal_RPS(
+    tmp_path: Path,
+) -> None:
+    db = _database(
+        tmp_path / "municipal-foreign.sqlite",
+        provider_id="cajamar-geisweb-homologation",
+    )
+    web = _client(db)
+    payload = _payload()
+    payload.pop("taker_document")
+    payload.update(_FOREIGN_TAKER_ADDRESS)
+    payload["taker_nif"] = "US-A111"
+    payload["competence_date"] = "2026-10-31"
+    response = _post(web, payload)
+    assert response.status_code == 400
+    assert response.json()["detail"]["code"] == "NATIVE_NFSE_INVALID_FISCAL_FACTS"
+    scope = ExecutionScope(
+        TENANT, UNIT, FiscalEnvironment.HOMOLOGATION, "read", "fm-nfcore",
+    )
+    with db() as uow:
+        assert uow.numbering.next_number(scope, "nfse", 1) == 1
