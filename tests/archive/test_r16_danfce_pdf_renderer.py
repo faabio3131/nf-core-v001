@@ -4,7 +4,8 @@ from __future__ import annotations
 import pytest
 
 from kordena_fiscal.archive.danfce_pdf import (
-    render_authorized_nfce_danfce, validate_authorized_nfce_danfce,
+    render_authorized_nfce_danfce,
+    validate_authorized_nfce_danfce,
 )
 from kordena_fiscal.domain import FiscalValidationError
 
