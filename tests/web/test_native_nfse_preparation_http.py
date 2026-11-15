@@ -1782,5 +1782,8 @@ def test_municipal_nfs_e_refuses_foreign_taker_without_municipal_RPS(
     scope = ExecutionScope(
         TENANT, UNIT, FiscalEnvironment.HOMOLOGATION, "read", "fm-nfcore",
     )
+    reference = "native-nfse-" + hashlib.sha256(
+        (repr(scope.identity_partition_key) + ":" + payload["source_id"]).encode(),
+    ).hexdigest()[:40]
     with db() as uow:
-        assert uow.numbering.next_number(scope, "nfse", 1) == 1
+        assert uow.lifecycle.get(reference) is None
