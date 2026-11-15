@@ -20,12 +20,6 @@ from kordena_fiscal.domain import (
     FiscalDocumentKind,
     FiscalValidationError,
 )
-from kordena_fiscal.gateway.santana_simpliss_homologation import (
-    SANTANA_IBGE,
-    SANTANA_PROVIDER_ID,
-    SantanaSimplissEndpoint,
-    SantanaSimplissHomologationGateway,
-)
 from kordena_fiscal.gateway.nfse_nacional_event_homologation import (
     NationalNfseCancellationIntent,
     NationalNfseCancellationReceipt,
@@ -34,6 +28,12 @@ from kordena_fiscal.gateway.santana_simpliss_events import (
     SantanaSimplissEventTransport,
     build_signed_santana_cancellation,
     validate_santana_event_xml,
+)
+from kordena_fiscal.gateway.santana_simpliss_homologation import (
+    SANTANA_IBGE,
+    SANTANA_PROVIDER_ID,
+    SantanaSimplissEndpoint,
+    SantanaSimplissHomologationGateway,
 )
 from kordena_fiscal.issuance.nfe_nfse import NfseAuthorizationRequest
 from kordena_fiscal.issuance.nfse_dps_builder import build_signed_dps

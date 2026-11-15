@@ -169,7 +169,6 @@ from kordena_fiscal.runtime.observability import MetricsRegistry
 from kordena_fiscal.xml import NfeAccessKey
 
 
-
 @dataclass(frozen=True, slots=True)
 class DurableSantanaCancellationOutcome:
     lifecycle: FiscalStateSnapshot
