@@ -2,7 +2,7 @@
 
 **Município:** Estância Turística de Salto, São Paulo — **IBGE 3545209**. **Não confundir** com Salto Grande/SP (IBGE 3545407).
 
-**Bloco:** NFCore V1 / SP-22 / Grupo 2 — Emissor Nacional, após Santana de Parnaíba. **Estado:** construção de testes municipais iniciada; não homologado externamente.
+**Bloco:** NFCore V1 / SP-22 / Grupo 2 — Emissor Nacional, após Santana de Parnaíba. **Estado:** engenharia interna ampliada; CI integral do HEAD ainda pendente; não homologado externamente.
 
 ## CURRENT verificado no GitHub
 
@@ -37,3 +37,12 @@
 ## Gate de fechamento
 
 Somente marcar `INTERNAL_COMPLETE` após CI integral **SUCCESS no HEAD exato**, confirmação das jornadas nacionais de consulta/eventos para Salto e reconciliação eventual com as PRs cumulativas em avanço. Sem essa prova, estado é **IN_PROGRESS**.
+
+## Incremento de recuperação nacional — 15/11/2026
+
+- O runtime canônico passou a conectar `NfseNationalHomologationQueryGateway` ao roteador de recuperação, com `reconcileFiscalOperation`. A consulta é criada apenas na composição de NFS-e Nacional com cofre A1 configurado. O gateway exige um vínculo durável separado de `QUERY`, além do vínculo de `AUTHORIZE` requerido para emissão.
+- O teste HTTP de Salto `test_salto_sp_national_pending_query_recovers_without_reissuing` cobre Portal -> UoW/SQLite -> DPS nacional durável -> estado pendente -> GET por DPS e chave -> XML nacional assinado e íntegro -> arquivo canônico -> replay, sem segundo POST. As respostas de serviço e A1 usados no teste são sintéticos, nunca credenciais reais.
+- O transporte nacional de cancelamento recebe agora regressão com IBGE 3545209, comprovando o escopo municipal no resolvedor e confirmação sintética do evento. Essa prova NÃO cobre a jornada de evento completa pelo Portal: a ligação operacional nacional de cancelamento/substituição ainda exige integração e certificação específica. Não promover o bloco a `INTERNAL_COMPLETE` apenas com os testes do transporte.
+- A normativa federal oficial define para ME/EPP do Simples competência a partir de 01/11/2026; o Decreto municipal 319/2025, invocado em comunicação secundária, ainda requer íntegra oficial para provar os detalhes de regimes e vigência local. Referências: https://www.gov.br/receitafederal/pt-br/assuntos/noticias/2026/agosto/simples-nacional-nfs-e-nacional-sera-obrigatoria-para-me-e-epp-a-partir-de-1o-de-novembro-de-2026/ e https://www.gov.br/nfse/pt-br/noticias/nfs-e-informa-diretrizes-sobre-a-obrigatoriedade-da-emissao-da-nfs-e-nacional-para-optantes-do-simples-nacional/
+
+**Fechamento permanece condicionado** a CI completa no commit exato, evidência da composição cumulativa, gateway de eventos nacional no Portal (cancelamento e substituição, quando o contrato oficial suportar) e manutenção da distinção `INTERNAL` versus `EXTERNAL_HOMOLOGATION_PENDING`.
