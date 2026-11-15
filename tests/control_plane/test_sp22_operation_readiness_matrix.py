@@ -102,5 +102,9 @@ def test_sp_federal_competence_and_legacy_boundary_are_explicit() -> None:
         "REQUIRES_REVIEWED_MUNICIPAL_CONTRACT"
     )
     assert matrix["state_wide"]["inutilization_from"] == "2026-11-01"
-    assert matrix["state_wide"]["inutilization"] == "NO_LONGER_REQUIRED_TRANSITION_SERVICE_AVAILABLE"
-    assert matrix["state_wide"]["inutilization_transition_availability_through"] == "2027-03"
+    assert matrix["state_wide"]["inutilization"] == (
+        "NO_LONGER_REQUIRED_TRANSITION_SERVICE_AVAILABLE"
+    )
+    assert matrix["state_wide"]["inutilization_transition_availability_through"] == (
+        "2027-03"
+    )
