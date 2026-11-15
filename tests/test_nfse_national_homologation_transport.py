@@ -21,7 +21,7 @@ from kordena_fiscal.gateway.nfse_national_homologation import (
     build_nfse_dps_request,
     parse_nfse_homologation_response,
 )
-from kordena_fiscal.signing.nfse_xmldsig import sign_nfse_dps_xml
+from kordena_fiscal.signing.nfse_xmldsig import append_nfse_signature, sign_nfse_dps_xml
 from kordena_fiscal.vault import EphemeralCertificateMaterial
 
 _NS = "http://www.sped.fazenda.gov.br/nfse"
@@ -47,6 +47,12 @@ def _ephemeral_certificate() -> tuple[EphemeralCertificateMaterial, rsa.RSAPriva
         .public_key(key.public_key()).serial_number(x509.random_serial_number())
         .not_valid_before(now - timedelta(days=1))
         .not_valid_after(now + timedelta(days=1))
+        .add_extension(x509.KeyUsage(
+            digital_signature=True, content_commitment=False,
+            key_encipherment=False, data_encipherment=False,
+            key_agreement=False, key_cert_sign=False, crl_sign=False,
+            encipher_only=False, decipher_only=False,
+        ), critical=True)
         .sign(key, hashes.SHA256())
     )
     blob = pkcs12.serialize_key_and_certificates(
@@ -98,9 +104,24 @@ def test_nfse_rejects_missing_xml_signature() -> None:
         build_nfse_dps_request(_unsigned_dps())
 
 
+
+
+def _signed_national_receipt(key: str) -> bytes:
+    """Synthetic certificate and XMLDSig; never a real official NFSe receipt."""
+    material, signer = _ephemeral_certificate()
+    _key, cert, _chain = pkcs12.load_key_and_certificates(
+        material.pkcs12_bytes, material.password
+    )
+    assert cert is not None
+    root = etree.Element(f"{{{_NS}}}NFSe", nsmap={None: _NS}, versao="1.01")
+    info = etree.SubElement(root, f"{{{_NS}}}infNFSe", Id="NFS" + key)
+    append_nfse_signature(root, info, signer, cert, legacy_abrasf=False)
+    return etree.tostring(root, encoding="utf-8", xml_declaration=True)
+
+
 def test_nfse_parses_offline_authorization_receipt() -> None:
     key = "35" + "0" * 48
-    xml = f'<NFSe xmlns="{_NS}"><infNFSe Id="NFS{key}"/></NFSe>'.encode()
+    xml = _signed_national_receipt(key)
     response = json.dumps({
         "chaveAcesso": key,
         "nfseXmlGZipB64": base64.b64encode(gzip.compress(xml)).decode("ascii"),
@@ -238,3 +259,30 @@ def test_scoped_dps_checks_issuer_municipality_before_envelope(issuer_ibge):
         encode_signed_dps(
             signed, issuer_cnpj="11222333000181", issuer_municipality_ibge=issuer_ibge,
         )
+
+
+def test_direct_issue_rejects_unsigned_xml_even_for_matching_access_key() -> None:
+    key = "35" + "0" * 48
+    unsigned = (
+        f'<NFSe xmlns="{_NS}" versao="1.01"><infNFSe Id="NFS{key}"/></NFSe>'
+    ).encode()
+    body = json.dumps({
+        "chaveAcesso": key,
+        "nfseXmlGZipB64": base64.b64encode(gzip.compress(unsigned)).decode("ascii"),
+    }).encode()
+    with pytest.raises(OfficialNfseTransportError, match="XML retornado"):
+        parse_nfse_homologation_response(body)
+
+
+def test_direct_issue_rejects_xml_with_tampered_signed_content() -> None:
+    key = "35" + "0" * 48
+    receipt = etree.fromstring(_signed_national_receipt(key))
+    receipt.find(f"{{{_NS}}}infNFSe").set("extra", "tampered")
+    body = json.dumps({
+        "chaveAcesso": key,
+        "nfseXmlGZipB64": base64.b64encode(
+            gzip.compress(etree.tostring(receipt))
+        ).decode("ascii"),
+    }).encode()
+    with pytest.raises(OfficialNfseTransportError, match="XML retornado"):
+        parse_nfse_homologation_response(body)
