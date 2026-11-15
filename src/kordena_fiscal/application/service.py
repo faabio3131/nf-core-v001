@@ -3324,7 +3324,10 @@ class FiscalApplicationService:
             ):
                 raise PersistenceStateError("National original authorization is not confirmed")
             key = attempts[0].result_reference
-            if len(key) != 50 or not key.isascii() or not key.isdecimal() or not key.startswith("35"):
+            if (
+                len(key) != 50 or not key.isascii() or not key.isdecimal()
+                or not key.startswith("35")
+            ):
                 raise PersistenceStateError("National original official access key is invalid")
             entries = [
                 entry for entry in uow.archive.list_for_document(scope, document_id)
