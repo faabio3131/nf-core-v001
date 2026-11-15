@@ -231,6 +231,7 @@ class SantanaSimplissHomologationGateway:
         if key is not None:
             if not _valid_key(key):
                 raise SantanaSimplissError("Invalid Santana NFS-e access key")
+            assert isinstance(key, str)
             try:
                 invoice_xml = _validate_official_nfse(raw, key)
             except FiscalValidationError:
@@ -242,6 +243,7 @@ class SantanaSimplissHomologationGateway:
             rejections = _rejections(data)
             if rejections:
                 status = AuthorizationStatus.REJECTED
+        dps_id = data.get("idDps")
         return NfseAuthorizationResult(
             status=status,
             scope=request.document.scope,
@@ -249,9 +251,7 @@ class SantanaSimplissHomologationGateway:
             idempotency_key=request.idempotency_key,
             request_fingerprint=request.request_fingerprint,
             provider=_PROVIDER,
-            provider_request_id=(
-                data["idDps"][:512] if isinstance(data.get("idDps"), str) else None
-            ),
+            provider_request_id=dps_id[:512] if isinstance(dps_id, str) else None,
             invoice_reference=key if status is AuthorizationStatus.AUTHORIZED else None,
             authorized_xml=invoice_xml,
             rejection_code=rejections[0].code if rejections else None,
@@ -281,6 +281,7 @@ class SantanaSimplissHomologationGateway:
         key = self._known_key(request)
         if not _valid_key(key):
             raise SantanaSimplissError("Unverified Santana access key")
+        assert isinstance(key, str)
         raw = self._exchange(
             "GET", self._endpoint.invoice_url(key), None,
             build_fiscal_tls_context(material), self._timeout,

@@ -12,6 +12,11 @@ from typing import Any
 
 from kordena_fiscal.application.service import FiscalApplicationService
 from kordena_fiscal.compliance.nfse_preaudit import nfse_preaudit
+from kordena_fiscal.domain import (
+    BrazilianJurisdiction,
+    ExecutionScope,
+    FiscalDocumentKind,
+)
 from kordena_fiscal.gateway.santana_simpliss_homologation import (
     SANTANA_IBGE,
     SANTANA_PROVIDER_ID,
@@ -88,9 +93,20 @@ def build_santana_port_builder_from_environ(
                     return None
                 return attempt.result_reference
 
+        class CanonicalSantanaResolver:
+            def resolve_provider_id(
+                self, *, scope: ExecutionScope,
+                document_kind: FiscalDocumentKind,
+                jurisdiction: BrazilianJurisdiction, operation: str,
+            ) -> str:
+                return application.resolve_configured_provider_id(
+                    scope=scope, document_kind=document_kind,
+                    jurisdiction=jurisdiction, operation=operation,
+                )
+
         return SantanaSimplissHomologationGateway(
             endpoint=endpoint,
-            provider_resolver=application,
+            provider_resolver=CanonicalSantanaResolver(),
             resolve_certificate=lambda scope, cnpj: vault.resolve(
                 scope=scope, issuer_cnpj=cnpj,
             ),

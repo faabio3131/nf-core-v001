@@ -6,7 +6,10 @@ import json
 import pytest
 
 from kordena_fiscal.application.service import FiscalApplicationService
-from kordena_fiscal.gateway.santana_simpliss_homologation import SANTANA_PROVIDER_ID
+from kordena_fiscal.gateway.santana_simpliss_homologation import (
+    SANTANA_PROVIDER_ID,
+    SantanaSimplissError,
+)
 from kordena_fiscal.persistence import SqliteFiscalDatabase
 from kordena_fiscal.runtime.canonical_fiscal_composition import (
     build_runtime_fiscal_handler_factory,
@@ -38,7 +41,7 @@ def test_reviewed_manifest_requires_exact_santana_host_and_fields(tmp_path) -> N
     wrong = _manifest(
         tmp_path, url="https://nfsesantanadeparnaiba.simplissweb.com.br/nfse"
     )
-    with pytest.raises(ValueError):
+    with pytest.raises(SantanaSimplissError):
         _read_reviewed_manifest(str(wrong))
     with pytest.raises(RuntimeConfigurationError):
         _read_reviewed_manifest("relative/santana-review.json")
