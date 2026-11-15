@@ -3810,7 +3810,10 @@ class FiscalApplicationService:
         occurred_at: datetime, retention: RetentionPolicyMetadata,
     ) -> DurableNationalCancellationRecoveryOutcome:
         """Read the official 101101 event before finalizing a pending cancellation."""
-        if not callable(query_verified_cancel) or not isinstance(retention, RetentionPolicyMetadata):
+        if (
+            not callable(query_verified_cancel)
+            or not isinstance(retention, RetentionPolicyMetadata)
+        ):
             raise FiscalValidationError("National event recovery needs trusted read-only port")
         status = self.national_cancellation_claim_status(
             scope=scope, document_id=document_id,
