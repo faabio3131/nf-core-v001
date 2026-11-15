@@ -113,6 +113,7 @@ from kordena_fiscal.security.human_identity import (
     PortalRole,
     ScryptPasswordHasher,
 )
+from kordena_fiscal.signing.nfse_xmldsig import append_nfse_signature
 from kordena_fiscal.vault import EphemeralCertificateMaterial
 from kordena_fiscal.vault.contracts import EphemeralProviderCredentialsMaterial
 from kordena_fiscal.web import create_app
@@ -1302,10 +1303,16 @@ def test_web_native_nfse_preparation_to_signed_gateway_and_authorized_xml(
     application = FiscalApplicationService(db)
     captured: list[bytes] = []
     key = "35" + "0" * 48
-    official_xml = (
-        '<NFSe xmlns="http://www.sped.fazenda.gov.br/nfse">'
-        f'<infNFSe Id="NFS{key}"/></NFSe>'
-    ).encode()
+    a1 = _synthetic_a1_for_native_issuer()
+    private, cert, _chain = pkcs12.load_key_and_certificates(
+        a1.pkcs12_bytes, a1.password
+    )
+    assert isinstance(private, rsa.RSAPrivateKey) and cert is not None
+    ns = "http://www.sped.fazenda.gov.br/nfse"
+    receipt = etree.Element(f"{{{ns}}}NFSe", nsmap={None: ns}, versao="1.01")
+    info = etree.SubElement(receipt, f"{{{ns}}}infNFSe", Id="NFS" + key)
+    append_nfse_signature(receipt, info, private, cert, legacy_abrasf=False)
+    official_xml = etree.tostring(receipt, encoding="utf-8", xml_declaration=True)
 
     def fake_sefin(payload: bytes, *_args: object) -> bytes:
         request = json.loads(payload)
@@ -1327,7 +1334,6 @@ def test_web_native_nfse_preparation_to_signed_gateway_and_authorized_xml(
             ).decode("ascii"),
         }).encode()
 
-    a1 = _synthetic_a1_for_native_issuer()
     national = NfseNacionalHomologationGateway(
         resolve_certificate=lambda _scope, _cnpj: a1,
         build_signed_dps=build_signed_dps,

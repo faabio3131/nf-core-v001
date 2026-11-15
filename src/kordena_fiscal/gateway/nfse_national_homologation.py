@@ -18,6 +18,10 @@ from lxml import etree
 
 from kordena_fiscal.domain import FiscalValidationError
 from kordena_fiscal.gateway.fiscal_tls import RejectFiscalRedirects, build_fiscal_tls_context
+from kordena_fiscal.gateway.nfse_national_receipt import (
+    NfseReceiptVerificationError,
+    validate_official_nfse_receipt,
+)
 from kordena_fiscal.issuance.nfe_nfse import NfseRejectionDetail
 from kordena_fiscal.signing.nfse_xmldsig import sign_nfse_dps_xml
 from kordena_fiscal.vault import EphemeralCertificateMaterial
@@ -132,34 +136,15 @@ def parse_nfse_homologation_response(raw: bytes) -> dict[str, str]:
     encoded = payload.get("nfseXmlGZipB64")
     if isinstance(access_key, str) and access_key and isinstance(encoded, str) and encoded:
         try:
-            zipped = base64.b64decode(encoded, validate=True)
-            if len(zipped) > _MAX_RESPONSE_BYTES:
-                raise ValueError
-            # Bound the uncompressed payload to prevent compression bombs.
-            with gzip.GzipFile(fileobj=__import__("io").BytesIO(zipped)) as stream:
-                document = stream.read(_MAX_RESPONSE_BYTES + 1)
-            if len(document) > _MAX_RESPONSE_BYTES:
-                raise ValueError
-            root = etree.fromstring(
-                document, parser=etree.XMLParser(resolve_entities=False, no_network=True)
-            )
-            ns = "http://www.sped.fazenda.gov.br/nfse"
-            if (
-                root.tag != f"{{{ns}}}NFSe"
-                or bool(getattr(root.getroottree().docinfo, "doctype", ""))
-                or not access_key.isascii()
-                or not access_key.isdecimal()
-                or len(access_key) != 50
-            ):
-                raise ValueError("Invalid national access key or NFS-e root")
-            infos = root.findall(f"{{{ns}}}infNFSe")
-            if len(infos) != 1 or infos[0].get("Id") != "NFS" + access_key:
-                raise ValueError("XML does not belong to the returned NFS-e access key")
-        except (ValueError, OSError, etree.XMLSyntaxError):
+            # A direct POST acknowledgement and a later GET recovery share
+            # exactly one verification contract before AUTHORIZED is returned.
+            document = validate_official_nfse_receipt(raw, access_key)
+            rendered = document.decode("utf-8")
+        except (NfseReceiptVerificationError, UnicodeDecodeError):
             raise OfficialNfseTransportError(
                 "XML retornado pela NFS-e Nacional é inválido"
             ) from None
-        return {"status": "authorized", "chaveAcesso": access_key, "xml": document.decode("utf-8")}
+        return {"status": "authorized", "chaveAcesso": access_key, "xml": rendered}
     raise OfficialNfseTransportError(
         "NFS-e Nacional não autorizou a DPS; consulte as rejeições no retorno oficial"
     )
