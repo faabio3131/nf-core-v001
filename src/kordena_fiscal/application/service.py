@@ -886,25 +886,26 @@ class FiscalApplicationService:
                 if extrema_intent_builder is not None or sp4_original_builder is not None:
                     raise FiscalValidationError("National replacement cannot use municipal RPS")
                 linked = document.national_substitution
-                old = self._load_prepared_from_uow(
-                    uow, document.scope, linked.original_document_id,
-                )
-                old_state = uow.lifecycle.get(linked.original_document_id)
-                old_attempts = uow.idempotency.attempts(old.idempotency_key)
-                if (
-                    not isinstance(old, NfseAuthorizationRequest)
-                    or old_state is None
-                    or old_state.state is not FiscalDocumentState.AUTHORIZED
-                    or len(old_attempts) != 1
-                    or old_attempts[0].status is not IssuanceAttemptStatus.AUTHORIZED
-                    or old_attempts[0].result_reference != linked.original_invoice_reference
-                    or old.document.issuer.cnpj != document.issuer.cnpj
-                    or old.document.issuer.address.jurisdiction
-                    != document.issuer.address.jurisdiction
-                    or old.document.competence_date != document.competence_date
-                    or old.document.service_jurisdiction != document.service_jurisdiction
-                ):
-                    raise PersistenceStateError("National original is no longer replaceable")
+                if uow.lifecycle.get(document.document_id) is None:
+                    old = self._load_prepared_from_uow(
+                        uow, document.scope, linked.original_document_id,
+                    )
+                    old_state = uow.lifecycle.get(linked.original_document_id)
+                    old_attempts = uow.idempotency.attempts(old.idempotency_key)
+                    if (
+                        not isinstance(old, NfseAuthorizationRequest)
+                        or old_state is None
+                        or old_state.state is not FiscalDocumentState.AUTHORIZED
+                        or len(old_attempts) != 1
+                        or old_attempts[0].status is not IssuanceAttemptStatus.AUTHORIZED
+                        or old_attempts[0].result_reference != linked.original_invoice_reference
+                        or old.document.issuer.cnpj != document.issuer.cnpj
+                        or old.document.issuer.address.jurisdiction
+                        != document.issuer.address.jurisdiction
+                        or old.document.competence_date != document.competence_date
+                        or old.document.service_jurisdiction != document.service_jurisdiction
+                    ):
+                        raise PersistenceStateError("National original is no longer replaceable")
             if extrema_intent_builder is None and sp4_original_builder is None:
                 # The National DPS number and issuance reservation belong to one UoW.
                 dps_serial = uow.dps_sequences.reserve(
