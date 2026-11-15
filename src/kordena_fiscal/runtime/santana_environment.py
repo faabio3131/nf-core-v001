@@ -7,13 +7,16 @@ from __future__ import annotations
 
 import json
 from collections.abc import Callable, Mapping
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
 from kordena_fiscal.application.service import FiscalApplicationService
+from kordena_fiscal.archive import FiscalArchiveKind, FiscalArchiveVerifier
 from kordena_fiscal.compliance.nfse_preaudit import nfse_preaudit
 from kordena_fiscal.domain import (
     BrazilianJurisdiction,
+    FiscalValidationError,
     ExecutionScope,
     FiscalDocumentKind,
 )
@@ -22,6 +25,15 @@ from kordena_fiscal.gateway.santana_simpliss_homologation import (
     SANTANA_PROVIDER_ID,
     SantanaSimplissEndpoint,
     SantanaSimplissHomologationGateway,
+)
+from kordena_fiscal.gateway.santana_simpliss_events import (
+    SantanaSimplissEventTransport,
+    build_signed_santana_cancellation,
+    validate_santana_event_xml,
+)
+from kordena_fiscal.gateway.nfse_nacional_event_homologation import (
+    NationalNfseCancellationIntent,
+    NationalNfseCancellationReceipt,
 )
 from kordena_fiscal.issuance.nfe_nfse import NfseAuthorizationRequest
 from kordena_fiscal.issuance.nfse_dps_builder import build_signed_dps
@@ -104,15 +116,77 @@ def build_santana_port_builder_from_environ(
                     jurisdiction=jurisdiction, operation=operation,
                 )
 
+        def resolve_certificate(scope: ExecutionScope, cnpj: str):
+            return vault.resolve(scope=scope, issuer_cnpj=cnpj)
+
+        def submit_event(
+            request: NfseAuthorizationRequest, key: str, reason_code: str,
+            reason_description: str, approval_reference: str,
+            occurred_at: datetime,
+        ) -> NationalNfseCancellationReceipt:
+            scope = request.document.scope
+            doc_id = request.document.document_id
+
+            def approve(intent: NationalNfseCancellationIntent) -> None:
+                if (
+                    intent.scope.identity_partition_key
+                    != scope.identity_partition_key
+                    or intent.invoice_reference != key
+                    or intent.human_approval_reference != approval_reference
+                ):
+                    raise FiscalValidationError("Santana event approval identity mismatch")
+                with application._uow_factory() as uow:
+                    uow.lifecycle.assert_scope(doc_id, scope)
+                    current = uow.lifecycle.get(doc_id)
+                    if current is None or current.state.value != "cancel_requested":
+                        raise FiscalValidationError("Santana event is not durably claimed")
+                    candidates = [
+                        entry for entry in uow.archive.list_for_document(scope, doc_id)
+                        if entry.kind is FiscalArchiveKind.OTHER
+                        and entry.media_type
+                        == "application/vnd.nfcore.santana-cancel-intent.v1+json"
+                    ]
+                    if len(candidates) != 1:
+                        raise FiscalValidationError("Santana cancellation lacks approval evidence")
+                    FiscalArchiveVerifier().verify_entry(candidates[0])
+                    source = json.loads(candidates[0].content)
+                    if (
+                        source.get("original_id") != doc_id
+                        or source.get("key") != key
+                        or source.get("approval_reference") != approval_reference
+                        or source.get("reason_code") != reason_code
+                        or source.get("reason") != reason_description.strip()
+                    ):
+                        raise FiscalValidationError("Santana event audit claim mismatch")
+
+            material = resolve_certificate(scope, request.document.issuer.cnpj.value)
+            intent = build_signed_santana_cancellation(
+                request=request, key=key, reason_code=reason_code,
+                reason_description=reason_description,
+                approval_reference=approval_reference,
+                occurred_at=occurred_at, material=material,
+            )
+            transport = SantanaSimplissEventTransport(
+                endpoint=endpoint, provider_resolver=CanonicalSantanaResolver(),
+                resolve_certificate=resolve_certificate,
+                approve_cancellation=approve,
+                validate_signed_event=lambda xml: validate_santana_event_xml(
+                    xml, kind="request",
+                ),
+                validate_official_event=lambda xml: validate_santana_event_xml(
+                    xml, kind="response",
+                ),
+            )
+            return transport.cancel(intent)
+
         return SantanaSimplissHomologationGateway(
             endpoint=endpoint,
             provider_resolver=CanonicalSantanaResolver(),
-            resolve_certificate=lambda scope, cnpj: vault.resolve(
-                scope=scope, issuer_cnpj=cnpj,
-            ),
+            resolve_certificate=resolve_certificate,
             build_signed_dps=build_signed_dps,
             preaudit=nfse_preaudit,
             resolve_known_key=known_key,
+            submit_event=submit_event,
         )
 
     return build
