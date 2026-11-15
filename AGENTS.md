@@ -1,3 +1,15 @@
+# CURRENT — Salto/SP incorporado à candidata cumulativa (15/11/2026)
+
+> **Checkpoint técnico posterior às diretrizes históricas abaixo.** Repositório `faabio3131/nf-core-v001`: PR #503 (Salto/SP IBGE 3545209) **MERGED NA BRANCH CUMULATIVA**, commit de integração `17f1ad3dafe9b86795bae21a0c5fe61a3ac3ff9f`, **NÃO em `main`**. PR #468 continua OPEN/DRAFT. `main` observado em `f23d2a050a4c1555de1bdbe8620bb69b6d983cc8` antes deste checkpoint; revalidar ao retomar.
+
+- **Gates da PR #503 no HEAD `959dd2690a4ad1c61c1f76b930acf583e2926458`:** GitHub Actions FM NFCORE V1 CI #43775298708 **SUCCESS**; **4.821 PASS, 3 SKIP, 2 warnings**, Ruff, Mypy, lint/typecheck/frontend E2E/build, containers, controles de infraestrutura e auditoria de segurança; governança e completude também SUCCESS.
+- **Jornadas internas Salto:** preparação/assinatura/envio DPS 1.01 nacional, XML oficial sintético assinado e arquivado, consulta/reconciliação por GET, cancelamento 101101 assinado com aprovação humana e claim durável, GET read-only para evento incerto, substituição por nova DPS `subst/chSubstda`, sem segundo motor, UI/API novas ligadas ao Portal e mesmas permissões/tenant/UoW.
+- **Gate de integração:** CI/Governança/Completude da PR #468 no commit `17f1ad3` **EM VERIFICAÇÃO**. Ainda NÃO afirmar `INTERNAL_COMPLETE_CUMULATIVE` até os gates pós-merge no HEAD final. Se a PR #468 mudar, testar o novo HEAD.
+- **Provas externas pendentes, separadas da engenharia interna:** certificado A1 e transmissões reais com SEFIN/município, conferência de atos municipais oficiais/condições de regime, homologação e publicação. Nenhum deploy, migration produtiva, segredo, emissão real ou merge na `main` foi autorizado/executado por este checkpoint.
+- **Próximo bloco após gate cumulativo verde:** Louveira/SP, primeiro confirmando canal/provedor oficial vigente; não presumir adequação pela semelhança com Salto.
+
+---
+
 # DIRETRIZ SUPERVENIENTE — REORDENAÇÃO SP-22 POR GRUPO DE ENGENHARIA (13/11/2026)
 
 > **Decisão vigente do proprietário em 13/11/2026 — complementa, sem revogar, a diretriz de 12/11 abaixo. Detalhe completo em `docs/NFCORE_SP22_REORDENACAO_GRUPOS_ENGENHARIA_2026-11-13.md`.**

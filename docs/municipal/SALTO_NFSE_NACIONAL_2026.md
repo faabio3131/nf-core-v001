@@ -2,7 +2,7 @@
 
 **Município:** Estância Turística de Salto, São Paulo — **IBGE 3545209**. **Não confundir** com Salto Grande/SP (IBGE 3545407).
 
-**Bloco:** NFCore V1 / SP-22 / Grupo 2 — Emissor Nacional, após Santana de Parnaíba. **Estado:** engenharia interna ampliada; CI integral do HEAD ainda pendente; não homologado externamente.
+**Bloco:** NFCore V1 / SP-22 / Grupo 2 — Emissor Nacional. **Estado técnico (15/11/2026):** PR #503 com CI integral SUCCESS no HEAD exato; código integrado à candidata cumulativa PR #468, commit `17f1ad3`; certificação pós-merge da candidata ainda em andamento; homologação externa não executada.
 
 ## CURRENT verificado no GitHub
 
@@ -46,3 +46,23 @@ Somente marcar `INTERNAL_COMPLETE` após CI integral **SUCCESS no HEAD exato**, 
 - A normativa federal oficial define para ME/EPP do Simples competência a partir de 01/11/2026; o Decreto municipal 319/2025, invocado em comunicação secundária, ainda requer íntegra oficial para provar os detalhes de regimes e vigência local. Referências: https://www.gov.br/receitafederal/pt-br/assuntos/noticias/2026/agosto/simples-nacional-nfs-e-nacional-sera-obrigatoria-para-me-e-epp-a-partir-de-1o-de-novembro-de-2026/ e https://www.gov.br/nfse/pt-br/noticias/nfs-e-informa-diretrizes-sobre-a-obrigatoriedade-da-emissao-da-nfs-e-nacional-para-optantes-do-simples-nacional/
 
 **Fechamento permanece condicionado** a CI completa no commit exato, evidência da composição cumulativa, gateway de eventos nacional no Portal (cancelamento e substituição, quando o contrato oficial suportar) e manutenção da distinção `INTERNAL` versus `EXTERNAL_HOMOLOGATION_PENDING`.
+
+## Fechamento técnico de Salto — evidência posterior aos incrementos históricos acima
+
+O texto histórico anterior descreve a primeira revisão de Salto, **antes** do fechamento do cancelamento/substituição pelo Portal. As pendências internas referentes à ausência desses caminhos foram efetivamente implementadas na PR #503; não devem mais ser tratadas como ausência de código. A certificação **da árvore cumulativa** ainda depende de CI no commit pós-merge.
+
+| Gate / operação | Evidência interna confirmada |
+|---|---|
+| Preparação NFS-e Nacional Salto | Portal `prepareNativeNfse`, autorização normal por binding IBGE 3545209, perfil, fonte e escopo |
+| Emissão e XML NFS-e | DPS 1.01 assinado e XSD validado; A1 sintético e retorno SEFIN sintético no teste; documento autorizado arquivado |
+| Consulta/read-only após retorno pendente | `reconcileFiscalOperation` → gateway nacional GET DPS/chave; sem segundo POST; requer vínculo separado de QUERY |
+| Cancelamento oficial 101101 | `cancelNationalNfse`; aprovação humana, RBAC/CSRF, XMLDSig/XSD, solicitação e aprovação arquivadas antes do POST, confirmação por evento oficial assinado |
+| Cancelamento incerto | `reconcileNationalNfseCancellation`, somente GET do evento 101101, sem repetir POST; `CANCEL_REQUESTED` preservado até prova válida |
+| Substituição | Novo documento com grupo `subst/chSubstda`, referência imutável ao original e motivo, numeração DPS única, claim atômico anterior ao envio e reconciliação do estado original junto ao substituto |
+| Isolamento/idempotência | Escopo tenant/unidade/host, bind de provedor por operação, permissões `document.issue` / `document.cancel` / `reconciliation.execute`, replay e conflito sem duplicação |
+| CI da PR #503 | `959dd2690a4ad1c61c1f76b930acf583e2926458` · [FM NFCORE V1 CI #43775298708](https://github.com/faabio3131/nf-core-v001/actions/runs/43775298708) · **SUCCESS** · 4.821 PASS, 3 SKIP, 2 warnings; Governança e Completude SUCCESS |
+| Integração na PR #468 | PR #503 **MERGED**, commit `17f1ad3dafe9b86795bae21a0c5fe61a3ac3ff9f`; PR #468 OPEN/DRAFT, sem merge em `main` |
+| CI cumulativa do commit de integração | [CI #43776912347](https://github.com/faabio3131/nf-core-v001/actions/runs/43776912347) em verificação na publicação deste checkpoint; revalidar resultado e HEAD |
+| Externo | **EXTERNAL_HOMOLOGATION_PENDING** (dados sintéticos não substituem SEFIN real, decreto municipal original, credenciais e operações oficiais) |
+
+**Classificação:** código e testes isolados da PR #503 certificados; integração de código concluída na PR #468; **certificação pós-merge cumulativa ainda pendente**. A documentação anterior que dizia não existir a implementação de cancelamento/substituição é um snapshot histórico superado por esta seção. Não declarar disponibilidade fiscal externa/produção.
