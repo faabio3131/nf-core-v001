@@ -27,4 +27,4 @@ jobs:
         run: mypy
       - name: Santana targeted integration tests
         run: |
-          pytest -q tests/gateway/test_santana_simpliss_events.py tests/gateway/test_santana_simpliss_substitution.py tests/gateway/test_santana_simpliss_homologation.py tests/runtime/test_santana_reviewed_config.py tests/web/test_native_nfse_preparation_http.py -k "santana"
+          pytest -q tests/gateway/test_santana_simpliss_events.py tests/gateway/test_santana_simpliss_substitution.py tests/gateway/test_santana_simpliss_homologation.py tests/runtime/test_santana_reviewed_config.py tests/runtime/test_santana_official_contracts.py tests/web/test_native_nfse_preparation_http.py -k "santana"
