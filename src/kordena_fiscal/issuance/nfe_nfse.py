@@ -164,6 +164,7 @@ class NfseServiceLine:
     national_taxation_code: str | None = None
     rule_version: int = 1
     source_normative: str = "external-rule-set"
+    nbs_code: str | None = None
 
     def __post_init__(self) -> None:
         if not isinstance(self.line_number, int) or isinstance(self.line_number, bool):
@@ -196,6 +197,13 @@ class NfseServiceLine:
             "national_taxation_code",
             _optional(self.national_taxation_code, "national_taxation_code", 64),
         )
+        if self.nbs_code is not None and (
+            type(self.nbs_code) is not str
+            or not self.nbs_code.isascii()
+            or len(self.nbs_code) != 9
+            or not self.nbs_code.isdecimal()
+        ):
+            raise FiscalValidationError("NBS service code must have exactly nine ASCII digits")
         if not isinstance(self.rule_version, int) or isinstance(self.rule_version, bool):
             raise FiscalValidationError("rule_version must be an integer")
         if self.rule_version < 1:
@@ -508,6 +516,7 @@ def build_nfse_request_fingerprint(document: NfseCanonicalDocument) -> str:
                 "line_number": line.line_number,
                 "municipal_service_code": line.municipal_service_code,
                 "national_taxation_code": line.national_taxation_code,
+                **({"nbs_code": line.nbs_code} if line.nbs_code is not None else {}),
                 "description": line.description,
                 "gross_amount": str(line.gross_amount.amount),
                 "deduction_amount": str(line.deduction_amount.amount),

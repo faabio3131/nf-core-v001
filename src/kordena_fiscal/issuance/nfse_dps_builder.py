@@ -228,6 +228,10 @@ def build_signed_dps(
     c_serv = etree.SubElement(serv, f"{{{_NFSE_NS}}}cServ")
     _child(c_serv, "cTribNac", service.national_taxation_code)
     _child(c_serv, "xDescServ", service.description.strip())
+    if service.nbs_code is not None:
+        # NBS 2.0 required by Santana's official XSD.
+        # The user must provide the reviewed classification.
+        _child(c_serv, "cNBS", service.nbs_code)
 
     valores = etree.SubElement(info, f"{{{_NFSE_NS}}}valores")
     v_serv_prest = etree.SubElement(valores, f"{{{_NFSE_NS}}}vServPrest")

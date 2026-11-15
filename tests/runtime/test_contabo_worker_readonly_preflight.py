@@ -241,3 +241,47 @@ def test_secret_mount_source_cannot_escape_nfcore_namespace(
     alias.symlink_to(other, target_is_directory=True)
     assert not audit.approved_nfcore_secret_source(alias / "worker.json")
     assert not audit.approved_nfcore_secret_source(root / ".." / "other-saas" / "worker.json")
+
+
+def test_root_audit_reads_only_pinned_nfcore_checkout_with_explicit_safe_directory(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Root's HOME=/nonexistent must not break HEAD of an fmadmin-owned tree."""
+    commands: list[list[str]] = []
+
+    def fake_run(command: list[str], **kwargs: object) -> SimpleNamespace:
+        commands.append(command)
+        assert kwargs["capture_output"] is True
+        assert kwargs["check"] is False
+        return SimpleNamespace(returncode=0, stdout=SHA + "\n", stderr="")
+
+    monkeypatch.setattr(audit.subprocess, "run", fake_run)
+    assert audit.command_sha() == SHA
+    assert commands == [[
+        "/usr/bin/git",
+        "-c", "safe.directory=/opt/fm/nfcore/src",
+        "-C", "/opt/fm/nfcore/src",
+        "rev-parse", "HEAD",
+    ]]
+    assert "safe.directory=*" not in commands[0]
+
+
+def test_root_audit_fails_closed_when_git_head_cannot_be_verified(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def denied(command: list[str], **kwargs: object) -> SimpleNamespace:
+        del command, kwargs
+        return SimpleNamespace(
+            returncode=128, stdout="",
+            stderr="fatal: dubious ownership or broken repository",
+        )
+
+    monkeypatch.setattr(audit.subprocess, "run", denied)
+    assert audit.command_sha() is None
+
+    def invalid(command: list[str], **kwargs: object) -> SimpleNamespace:
+        del command, kwargs
+        return SimpleNamespace(returncode=0, stdout="unknown\n", stderr="")
+
+    monkeypatch.setattr(audit.subprocess, "run", invalid)
+    assert audit.command_sha() is None

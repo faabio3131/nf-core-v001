@@ -51,6 +51,10 @@ from kordena_fiscal.gateway.nfse_nacional_homologation import (
     NACIONAL_HOMOLOGATION_PROVIDER_ID,
     NfseNacionalHomologationGateway,
 )
+from kordena_fiscal.gateway.santana_simpliss_homologation import (
+    SANTANA_PROVIDER_ID,
+    SantanaSimplissHomologationGateway,
+)
 from kordena_fiscal.gateway.sp4_municipal_canonical import (
     Sp4OriginalRps,
     Sp4VerifiedInvoice,
@@ -77,6 +81,7 @@ from kordena_fiscal.operations import (
     InutilizationRequest,
     InutilizationResult,
 )
+from kordena_fiscal.runtime.santana_event_handlers import build_santana_event_handlers
 from kordena_fiscal.vault import EphemeralCertificateMaterial
 from kordena_fiscal.vault.encrypted_a1 import EncryptedA1Vault
 from kordena_fiscal.xml import NfeAccessKey
@@ -392,6 +397,9 @@ def build_runtime_fiscal_handler_factory(
     jundiai_port_builder: Callable[
         [FiscalApplicationService], JundiaiTrustedRuntimePorts
     ] | None = None,
+    santana_port_builder: Callable[
+        [FiscalApplicationService], SantanaSimplissHomologationGateway
+    ] | None = None,
 ) -> Any:
     """Register all four canonical operations without granting fiscal readiness.
 
@@ -475,6 +483,10 @@ def build_runtime_fiscal_handler_factory(
         and (not callable(jundiai_port_builder) or nfse_gateway is not None)
     ):
         raise ValueError("Conflicting reviewed Jundiai municipal fiscal authorities")
+    if santana_port_builder is not None and (
+        not callable(santana_port_builder) or nfse_gateway is not None
+    ):
+        raise ValueError("Conflicting reviewed Santana municipal fiscal authorities")
     if webiss_extrema_exchange is not None or webiss_service_preaudit is not None:
         if (
             nfse_gateway is not None
@@ -661,6 +673,21 @@ def build_runtime_fiscal_handler_factory(
                 configured_municipalities=active_municipalities,
                 canonical_rps_loader=application.load_sp4_original_rps,
             )
+        reviewed_santana: SantanaSimplissHomologationGateway | None = None
+        if santana_port_builder is not None:
+            reviewed_santana = santana_port_builder(application)
+            if not isinstance(reviewed_santana, SantanaSimplissHomologationGateway):
+                raise ValueError("Santana reviewed gateway composition is incomplete")
+            if SANTANA_PROVIDER_ID in municipal_issue:
+                raise ValueError("Duplicate Santana municipal provider authority")
+            municipal_issue = {
+                **municipal_issue,
+                SANTANA_PROVIDER_ID: NfseGatewayClient(reviewed_santana),
+            }
+            municipal_query = {
+                **municipal_query,
+                SANTANA_PROVIDER_ID: NfseQueryClient(reviewed_santana),
+            }
         if national_adapter is not None or extrema_adapter is not None or municipal_issue:
             router = _GovernedNfseRouter(
                 application=application,
@@ -682,6 +709,14 @@ def build_runtime_fiscal_handler_factory(
             prepared_nfse_query_client=nfse_query_client,
             archive_retention=retention,
         )
+        if reviewed_santana is not None and reviewed_santana.supports_events:
+            for operation, handler in build_santana_event_handlers(
+                application=application, gateway=reviewed_santana,
+                retention=retention,
+            ).items():
+                if operation in handlers:
+                    raise ValueError("Duplicate Santana fiscal event handler authority")
+                handlers[operation] = handler
         if (
             selected_barueri_ports is not None
             and selected_barueri_ports.supports_events

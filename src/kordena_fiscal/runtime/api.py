@@ -132,6 +132,7 @@ from .production_commercial_acquisition_env import (
 )
 from .production_gsm import production_api_verifier
 from .public_trial_abuse import PostgresPublicTrialAbuseGate
+from .santana_environment import build_santana_port_builder_from_environ
 from .secret_manager import SecretBindingAdministration
 from .security import configure_edge_security
 from .staging_commercial_ingress import staging_commercial_ingress
@@ -1210,12 +1211,14 @@ def build_entrypoint_fiscal_handler_factory(
     osasco_requested = bool(environ.get("NFCORE_OSASCO_WCF_CONFIG_PATH", "").strip())
     barueri_requested = bool(environ.get("NFCORE_BARUERI_PMB004_CONFIG_PATH", "").strip())
     jundiai_requested = bool(environ.get("NFCORE_JUNDIAI_GISS_CONFIG_PATH", "").strip())
+    santana_requested = bool(environ.get("NFCORE_SANTANA_SIMPLISS_CONFIG_PATH", "").strip())
     if settings.environment.value not in {"staging", "production"}:
         if (
             environ.get("NFCORE_CAJAMAR_GEISWEB_CONFIG_PATH", "").strip()
             or osasco_requested
             or barueri_requested
             or jundiai_requested
+            or santana_requested
         ):
             raise RuntimeConfigurationError(
                 "Reviewed municipal adapters require staging/production runtime"
@@ -1256,6 +1259,9 @@ def build_entrypoint_fiscal_handler_factory(
             environ, vault=vault,
         ),
         jundiai_port_builder=build_jundiai_port_builder_from_environ(
+            environ, vault=vault,
+        ),
+        santana_port_builder=build_santana_port_builder_from_environ(
             environ, vault=vault,
         ),
     )
