@@ -184,6 +184,15 @@ class DurableSantanaSubstitutionOutcome:
     recovery_required: bool
 
 
+@dataclass(frozen=True, slots=True)
+class DurableSantanaRecoveryOutcome:
+    original_lifecycle: FiscalStateSnapshot
+    replacement_lifecycle: FiscalStateSnapshot | None
+    archive_reference: str | None
+    recovered: bool
+    recovery_required: bool
+
+
 class IssuanceResumeDisposition(StrEnum):
     """Fail-closed instruction returned after a durable idempotency reservation."""
 
@@ -3624,6 +3633,137 @@ class FiscalApplicationService:
             return DurableSantanaSubstitutionOutcome(
                 final_old, final_new, result, entry_id, False,
             )
+
+
+    def reconcile_santana_nfse_cancellation(
+        self, *, scope: ExecutionScope, document_id: str,
+        gateway: SantanaSimplissHomologationGateway,
+        occurred_at: datetime, retention: RetentionPolicyMetadata,
+    ) -> DurableSantanaRecoveryOutcome:
+        """Read-only reconciliation for a previously claimed event 101101.
+
+        A missing event never permits re-POST. One signed municipal event is
+        required before promotion from CANCEL_REQUESTED to CANCELLED.
+        """
+        if (
+            not isinstance(scope, ExecutionScope)
+            or not isinstance(document_id, str) or not document_id.strip()
+            or not isinstance(gateway, SantanaSimplissHomologationGateway)
+            or not isinstance(occurred_at, datetime) or occurred_at.tzinfo is None
+            or not isinstance(retention, RetentionPolicyMetadata)
+        ):
+            raise FiscalValidationError("Invalid Santana cancellation recovery request")
+        with self._uow_factory() as uow:
+            request = self._load_prepared_from_uow(uow, scope, document_id)
+            if not isinstance(request, NfseAuthorizationRequest):
+                raise PersistenceStateError("Santana recovery requires original NFS-e")
+            uow.lifecycle.assert_scope(document_id, scope)
+            state = uow.lifecycle.get(document_id)
+            attempts = uow.idempotency.attempts(request.idempotency_key)
+            if (
+                state is None
+                or state.state not in (
+                    FiscalDocumentState.CANCEL_REQUESTED,
+                    FiscalDocumentState.CANCELLED,
+                )
+                or len(attempts) != 1
+                or attempts[0].status is not IssuanceAttemptStatus.AUTHORIZED
+                or attempts[0].document_id != document_id
+                or attempts[0].request_fingerprint != request.request_fingerprint
+                or request.document.issuer.address.jurisdiction.municipality_ibge_code
+                != SANTANA_IBGE
+                or scope.environment is not FiscalEnvironment.HOMOLOGATION
+            ):
+                raise PersistenceStateError(
+                    "Santana recovery requires one claimed, authorized original"
+                )
+            key = attempts[0].result_reference
+            if (
+                not isinstance(key, str) or len(key) != 50
+                or not key.isascii() or not key.isdecimal() or not key.startswith("35")
+            ):
+                raise PersistenceStateError("Santana recovery access key is invalid")
+            entries = uow.archive.list_for_document(scope, document_id)
+            intents = [
+                item for item in entries
+                if item.kind is FiscalArchiveKind.OTHER
+                and item.media_type
+                == "application/vnd.nfcore.santana-cancel-intent.v1+json"
+            ]
+            invoices = [
+                item for item in entries
+                if item.kind is FiscalArchiveKind.AUTHORIZED_XML
+                and item.media_type == "application/xml"
+            ]
+            if len(intents) != 1 or len(invoices) != 1:
+                raise PersistenceStateError("Santana recovery lacks original audit proofs")
+            for item in (intents[0], invoices[0]):
+                FiscalArchiveVerifier().verify_entry(item)
+            intent = json.loads(intents[0].content)
+            if (
+                intent.get("operation") != "santana_cancel_101101"
+                or intent.get("original_id") != document_id
+                or intent.get("key") != key
+            ):
+                raise PersistenceStateError("Santana cancellation intent identity differs")
+            if state.state is FiscalDocumentState.CANCELLED:
+                events = [
+                    item for item in entries
+                    if item.kind is FiscalArchiveKind.FISCAL_EVENT
+                    and item.media_type == "application/xml"
+                ]
+                if len(events) != 1:
+                    raise PersistenceStateError("Santana cancelled invoice lacks event XML")
+                FiscalArchiveVerifier().verify_entry(events[0])
+                return DurableSantanaRecoveryOutcome(
+                    state, None, events[0].entry_id, True, False,
+                )
+        binding = self.resolve_configured_provider_id(
+            scope=scope, document_kind=FiscalDocumentKind.NFSE,
+            jurisdiction=request.document.issuer.address.jurisdiction,
+            operation="cancel",
+        )
+        if binding != SANTANA_PROVIDER_ID:
+            raise FiscalValidationError("Santana recovery provider binding differs")
+        result = gateway.query_verified_event(
+            request, original_key=key, event_code="101101",
+        )
+        if result is None:
+            return DurableSantanaRecoveryOutcome(
+                state, None, None, False, True,
+            )
+        archive = FiscalArchiveEntry.build(
+            scope=scope, document_reference=document_id,
+            kind=FiscalArchiveKind.FISCAL_EVENT,
+            content=result.signed_event_xml, media_type="application/xml",
+            archived_at=occurred_at, retention=retention,
+        )
+        with self._uow_factory() as uow:
+            uow.lifecycle.assert_scope(document_id, scope)
+            latest = uow.lifecycle.get(document_id)
+            if latest != state:
+                raise PersistenceConflictError(
+                    "Santana original changed during read-only cancellation query"
+                )
+            previous = [
+                row for row in uow.archive.list_for_document(scope, document_id)
+                if row.kind is FiscalArchiveKind.FISCAL_EVENT
+                and row.media_type == "application/xml"
+            ]
+            if previous:
+                raise PersistenceConflictError("Santana cancellation already archived")
+            updated = self._state_machine.transition(
+                latest, FiscalDocumentState.CANCELLED,
+                occurred_at=occurred_at,
+                reason="Santana signed cancellation confirmed by read-only event GET",
+                correlation_id=scope.correlation_id,
+            )
+            uow.lifecycle.save(updated, expected_version=latest.version)
+            saved = uow.archive.append(archive)
+            uow.commit()
+        return DurableSantanaRecoveryOutcome(
+            updated, None, saved.entry_id, True, False,
+        )
 
     def reserve_number(
         self,
