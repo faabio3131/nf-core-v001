@@ -2927,3 +2927,226 @@ def test_santana_http_cancellation_or_substitution_durable_single_dispatch(
     })
     assert new_key.status_code in (400, 409, 403), new_key.text
     assert len(calls) == (2 if substitution else 1)
+
+
+@pytest.mark.parametrize("substitution", [False, True])
+def test_santana_unknown_event_post_requires_verified_read_only_recovery(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, substitution: bool,
+) -> None:
+    """Real SQLite/Portal one-shot claim, pending GET and signed-event recovery.
+
+    Official event and invoice signatures are exercised separately with
+    ephemeral RSA fixtures. This integration test replaces ONLY the external
+    municipal network/cryptographic oracle and verifies the canonical UoW.
+    """
+    from kordena_fiscal.application import service as app_module
+    from kordena_fiscal.gateway import santana_simpliss_homologation as simpliss
+    from kordena_fiscal.gateway.santana_simpliss_events import SantanaVerifiedEvent
+
+    db = _database(
+        tmp_path / (
+            "santana-unknown-substitute.sqlite" if substitution
+            else "santana-unknown-cancel.sqlite"
+        ),
+        issuer_ibge="3547304", provider_id=simpliss.SANTANA_PROVIDER_ID,
+        tax_regime=TaxRegimeCode.NORMAL,
+    )
+    app = FiscalApplicationService(db)
+    first_key = "35" + "6" * 48
+    second_key = "35" + "7" * 48
+    request_posts = Mock(return_value=json.dumps({
+        "tipoAmbiente": 2, "chaveAcesso": first_key,
+        "nfseXmlGZipB64": "synthetic-only",
+    }).encode("ascii"))
+    monkeypatch.setattr(simpliss, "validate_a1_for_issuer", Mock())
+    monkeypatch.setattr(simpliss, "build_fiscal_tls_context", Mock(return_value=Mock()))
+    monkeypatch.setattr(simpliss, "encode_signed_dps", Mock(
+        return_value=b'{"dpsXmlGZipB64":"synthetic-fixture"}',
+    ))
+    monkeypatch.setattr(
+        simpliss, "_validate_official_nfse",
+        lambda raw, key: (
+            '<NFSe xmlns="http://www.sped.fazenda.gov.br/nfse" versao="1.01">'
+            f'<infNFSe Id="NFS{key}"/></NFSe>'
+        ).encode("ascii"),
+    )
+    monkeypatch.setattr(app_module, "_verify_nfse_receipt_signature", Mock())
+    installed: list[simpliss.SantanaSimplissHomologationGateway] = []
+
+    def build(application: FiscalApplicationService):
+        class Authority:
+            def resolve_provider_id(
+                self, *, scope, document_kind, jurisdiction, operation,
+            ):
+                return application.resolve_configured_provider_id(
+                    scope=scope, document_kind=document_kind,
+                    jurisdiction=jurisdiction, operation=operation,
+                )
+
+        gateway = simpliss.SantanaSimplissHomologationGateway(
+            endpoint=simpliss.SantanaSimplissEndpoint(
+                "https://producaorestrita.simplissweb.com.br/SEFIN/nfse"
+            ),
+            provider_resolver=Authority(),
+            resolve_certificate=lambda scope, cnpj: Mock(
+                pkcs12_bytes=b"synthetic", password=b"synthetic",
+            ),
+            build_signed_dps=lambda request, cert: b"<synthetic-signed-DPS/>",
+            preaudit=nfse_preaudit,
+            exchange=lambda method, url, body, tls, timeout: request_posts(
+                method, url, body, tls, timeout,
+            ),
+            submit_event=lambda *args: None,
+        )
+        installed.append(gateway)
+        return gateway
+
+    handlers = build_runtime_fiscal_handler_factory(
+        operations_gateway=FakeFiscalOperationsGateway(),
+        santana_port_builder=build,
+    )(app)
+    assert "reconcileSantanaNfseCancellation" in handlers
+    assert "reconcileSantanaNfseSubstitution" in handlers
+    web = _client(db, operation_executor=CanonicalPortalOperationExecutor(
+        unit_of_work_factory=db,
+        path=CanonicalFiscalOperationPath(app, handlers=handlers),
+    ))
+    payload = _payload() | _TAKER_ADDRESS | {
+        "nbs_code": "123456789",
+        "service_municipality_ibge": "3547304",
+        "competence_date": "2026-11-12",
+        "source_id": "santana-recovery-original-001",
+    }
+    old_prepared = _post(web, payload, "santana-original-claim-001")
+    assert old_prepared.status_code == 200, old_prepared.text
+    old_id = old_prepared.json()["document_id"]
+    replacement_id: str | None = None
+    if substitution:
+        new_prepared = _post(
+            web, payload | {"source_id": "santana-recovery-replacement-002"},
+            "santana-replacement-claim-002",
+        )
+        assert new_prepared.status_code == 200, new_prepared.text
+        replacement_id = new_prepared.json()["document_id"]
+    csrf = web.cookies.get(CSRF_COOKIE)
+    assert csrf
+    original_args = {
+        "unit_id": UNIT, "environment": "homologation",
+        "document_id": old_id,
+    }
+    issued = web.post(
+        "/v1/portal/operations/issueFiscalDocument", json=original_args,
+        headers={
+            CSRF_HEADER: csrf, "Idempotency-Key": "santana-recovery-issued-001",
+        },
+    )
+    assert issued.status_code == 200, issued.text
+    assert request_posts.call_count == 1
+    scope = ExecutionScope(
+        TENANT, UNIT, FiscalEnvironment.HOMOLOGATION, "santana-recovery",
+        "fm-nfcore",
+    )
+    gateway = installed[0]
+
+    # A network failure AFTER a persisted dispatch claim is ambiguous.
+    # Never convert it into rejection or re-POST.
+    if substitution:
+        assert replacement_id is not None
+        def signed_candidate(request, *, review, verify_original):
+            verify_original(request, review)
+            assert review.original_access_key == first_key
+            return b'{"dpsXmlGZipB64":"synthetic-substitute"}'
+
+        monkeypatch.setattr(gateway, "prepare_substitution", signed_candidate)
+        lost = Mock(side_effect=simpliss.SantanaSimplissError(
+            "Uncertain municipal new-DPS POST",
+        ))
+        monkeypatch.setattr(gateway, "submit_substitution", lost)
+        with pytest.raises(simpliss.SantanaSimplissError, match="Uncertain"):
+            app.substitute_prepared_santana_nfse(
+                scope=scope, original_id=old_id, replacement_id=replacement_id,
+                reason_code="99",
+                reason_description="Retificacao fiscalmente revisada em homologacao",
+                approval_reference="santana-human-approved-substitute",
+                gateway=gateway, occurred_at=datetime.now(UTC),
+                retention=RetentionPolicyMetadata("nfcore-fiscal-archive", 1),
+            )
+        lost.assert_called_once()
+    else:
+        lost = Mock(side_effect=simpliss.SantanaSimplissError(
+            "Uncertain municipal event POST",
+        ))
+        monkeypatch.setattr(gateway, "submit_cancellation", lost)
+        with pytest.raises(simpliss.SantanaSimplissError, match="Uncertain"):
+            app.cancel_prepared_santana_nfse(
+                scope=scope, document_id=old_id,
+                reason_code="1",
+                reason_description="Correcao fiscalmente revisada da nota original",
+                approval_reference="santana-human-approved-cancel",
+                gateway=gateway, occurred_at=datetime.now(UTC),
+                retention=RetentionPolicyMetadata("nfcore-fiscal-archive", 1),
+            )
+        lost.assert_called_once()
+
+    with db() as uow:
+        assert uow.lifecycle.get(old_id).state is FiscalDocumentState.CANCEL_REQUESTED
+        if replacement_id is not None:
+            assert uow.lifecycle.get(replacement_id).state is FiscalDocumentState.TRANSMITTING
+
+    approved_event = SantanaVerifiedEvent(
+        "105102" if substitution else "101101",
+        first_key,
+        b"<synthetic-signed-provider-event-fixture/>",
+        second_key if substitution else None,
+    )
+    verified_get = Mock(side_effect=[None, approved_event])
+    monkeypatch.setattr(gateway, "query_verified_event", verified_get)
+    if substitution:
+        monkeypatch.setattr(gateway, "query_substitution_invoice", Mock(
+            side_effect=lambda request, **kwargs: gateway._result(
+                request, json.dumps({
+                    "tipoAmbiente": 2, "chaveAcesso": second_key,
+                    "nfseXmlGZipB64": "synthetic-only",
+                }).encode("ascii"),
+            ),
+        ))
+    action = (
+        "reconcileSantanaNfseSubstitution" if substitution
+        else "reconcileSantanaNfseCancellation"
+    )
+    recovery_body = {
+        "unit_id": UNIT, "environment": "homologation",
+        **(
+            {"original_id": old_id, "replacement_id": replacement_id}
+            if substitution else {"document_id": old_id}
+        ),
+    }
+    api = "/v1/portal/operations/" + action
+    no_csrf = web.post(api, json=recovery_body)
+    assert no_csrf.status_code == 403
+    pending = web.post(api, json=recovery_body, headers={
+        CSRF_HEADER: csrf, "Idempotency-Key": "santana-first-read-only-get",
+    })
+    assert pending.status_code == 200, pending.text
+    assert pending.json()["recovery_required"] is True
+    assert pending.json()["official_fiscal_confirmation"] is False
+
+    confirmed = web.post(api, json=recovery_body, headers={
+        CSRF_HEADER: csrf, "Idempotency-Key": "santana-second-read-only-get",
+    })
+    assert confirmed.status_code == 200, confirmed.text
+    assert confirmed.json()["recovery_required"] is False
+    assert confirmed.json()["official_fiscal_confirmation"] is True
+    assert verified_get.call_count == 2
+    with db() as uow:
+        assert uow.lifecycle.get(old_id).state is FiscalDocumentState.CANCELLED
+        if replacement_id is not None:
+            assert uow.lifecycle.get(replacement_id).state is FiscalDocumentState.AUTHORIZED
+    assert request_posts.call_count == 1
+    terminal = web.post(api, json=recovery_body, headers={
+        CSRF_HEADER: csrf, "Idempotency-Key": "santana-terminal-read-only-get",
+    })
+    assert terminal.status_code == 200, terminal.text
+    assert terminal.json()["official_fiscal_confirmation"] is True
+    assert verified_get.call_count == 2, "Terminal replay cannot query or resend"
+    assert request_posts.call_count == 1
