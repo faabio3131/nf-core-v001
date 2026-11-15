@@ -14,8 +14,8 @@ from pathlib import Path
 import pytest
 
 from kordena_fiscal.domain import FiscalValidationError
-from kordena_fiscal.xml.schema import XmlSchemaValidationError
 from kordena_fiscal.xml.santana_simpliss_schema import santana_official_validator
+from kordena_fiscal.xml.schema import XmlSchemaValidationError
 
 _ROOT = Path(__file__).resolve().parents[2]
 _MANIFEST = _ROOT / "contracts" / "official" / "santana" / "simpliss_2026" / "manifest.json"
