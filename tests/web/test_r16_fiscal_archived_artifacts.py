@@ -83,7 +83,12 @@ def test_danfe_is_rendered_only_after_scoped_authorized_xml_lookup() -> None:
         environment=FiscalEnvironment.HOMOLOGATION, correlation_id="pdf-test",
     )
     archive = InMemoryFiscalArchiveStore()
-    xml = b"<nfeProc xmlns='http://www.portalfiscal.inf.br/nfe' versao='4.00'/>"
+    # Tenant authorization is exercised against a supported model-55 XML;
+    # an empty nfeProc is not eligible for either DANFE or DANFCe.
+    xml = (
+        b"<nfeProc xmlns='http://www.portalfiscal.inf.br/nfe' versao='4.00'>"
+        b"<NFe><infNFe><ide><mod>55</mod></ide></infNFe></NFe></nfeProc>"
+    )
     archive.append(FiscalArchiveEntry.build(
         scope=scope, document_reference="NF-123",
         kind=FiscalArchiveKind.AUTHORIZED_XML,
