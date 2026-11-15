@@ -41,6 +41,7 @@ from kordena_fiscal.gateway.sp4_municipal_canonical import Sp4OriginalRps
 from kordena_fiscal.issuance import (
     NfseAuthorizationRequest,
     NfseCanonicalDocument,
+    NfseForeignAddress,
     NfseServiceLine,
     NfseServiceTaker,
 )
@@ -68,11 +69,27 @@ _FIELDS = frozenset({
     "iss_amount", "iss_withheld", "taker_document", "taker_name",
     "source_normative", "rule_version", "fiscal_review_approved",
 })
-_STRING_FIELDS = _FIELDS - {"iss_withheld", "rule_version", "fiscal_review_approved"}
 _TAKER_ADDRESS_FIELDS = frozenset({
     "taker_street", "taker_number", "taker_neighborhood", "taker_city",
     "taker_state", "taker_municipality_ibge", "taker_postal_code",
 })
+_FOREIGN_ADDRESS_FIELDS = frozenset({
+    "taker_country_code", "taker_foreign_postal_code", "taker_foreign_city",
+    "taker_foreign_region", "taker_street", "taker_number",
+    "taker_neighborhood",
+})
+_FOREIGN_ID_FIELDS = frozenset({"taker_nif", "taker_no_nif_reason"})
+_COMMON_FIELDS = _FIELDS - {"taker_document"}
+_ALLOWED_PAYLOADS = frozenset({
+    _FIELDS,
+    _FIELDS | _TAKER_ADDRESS_FIELDS,
+    _COMMON_FIELDS | _FOREIGN_ADDRESS_FIELDS | {"taker_nif"},
+    _COMMON_FIELDS | _FOREIGN_ADDRESS_FIELDS | {"taker_no_nif_reason"},
+})
+_STRING_FIELDS = (
+    (_FIELDS | _TAKER_ADDRESS_FIELDS | _FOREIGN_ADDRESS_FIELDS | _FOREIGN_ID_FIELDS)
+    - {"iss_withheld", "rule_version", "fiscal_review_approved"}
+)
 _CAJAMAR_PROVIDER = "cajamar-geisweb-homologation"
 _OSASCO_PROVIDER = "osasco-rtc-homologation"
 _CENTS = re.compile(r"(?:0|[1-9][0-9]{0,8})\.[0-9]{2}\Z")
@@ -93,10 +110,10 @@ def prepare_native_nfse(
     key = (idempotency_key or "").strip()
     if (
         not isinstance(payload, Mapping)
-        or set(payload) not in (_FIELDS, _FIELDS | _TAKER_ADDRESS_FIELDS)
+        or frozenset(payload) not in _ALLOWED_PAYLOADS
         or any(
-            type(payload.get(field)) is not str
-            for field in _STRING_FIELDS | (set(payload) & _TAKER_ADDRESS_FIELDS)
+            type(payload[field]) is not str
+            for field in _STRING_FIELDS & set(payload)
         )
         or type(payload.get("iss_withheld")) is not bool
         or type(payload.get("rule_version")) is not int
@@ -135,30 +152,58 @@ def prepare_native_nfse(
             raise FiscalValidationError("Rule version must be explicit")
         if not 1 <= len(payload["source_normative"].strip()) <= 512:
             raise FiscalValidationError("Reviewed normative source is required")
-        if not _TAKER.fullmatch(payload["taker_document"]):
-            raise FiscalValidationError("Validated CPF or CNPJ is mandatory")
-        taker_id = (
-            Cnpj(payload["taker_document"]) if len(payload["taker_document"]) == 14
-            else Cpf(payload["taker_document"])
-        )
-        taker_address: FiscalAddress | None = None
-        if _TAKER_ADDRESS_FIELDS.issubset(payload):
-            if not _DIGITS_7.fullmatch(payload["taker_municipality_ibge"]):
-                raise FiscalValidationError("Taker municipality IBGE code is required")
-            taker_address = FiscalAddress(
+        # The canonical domain and DPS 1.01 serializer already support
+        # foreign tomadores. Never coerce NIF/cNaoNIF into a Brazilian CPF/CNPJ.
+        taker_id: Cnpj | Cpf | None = None
+        taker_address: FiscalAddress | NfseForeignAddress | None = None
+        if _FOREIGN_ADDRESS_FIELDS.issubset(payload):
+            taker_address = NfseForeignAddress(
+                country_code=payload["taker_country_code"],
+                postal_code=payload["taker_foreign_postal_code"],
+                city=payload["taker_foreign_city"],
+                region=payload["taker_foreign_region"],
                 street=payload["taker_street"],
                 number=payload["taker_number"],
                 district=payload["taker_neighborhood"],
-                municipality_name=payload["taker_city"],
-                jurisdiction=BrazilianJurisdiction(
-                    payload["taker_state"], payload["taker_municipality_ibge"],
-                ),
-                postal_code=payload["taker_postal_code"],
             )
-        taker = NfseServiceTaker(
-            tax_id=taker_id, legal_name=payload["taker_name"],
-            address=taker_address,
-        )
+            nif = payload.get("taker_nif")
+            no_nif = payload.get("taker_no_nif_reason")
+            taker = NfseServiceTaker(
+                tax_id=None, legal_name=payload["taker_name"],
+                address=taker_address, nif=nif, no_nif_reason=no_nif,
+            )
+            taker_reference = (
+                "nif:" + nif if nif is not None else
+                "no-nif:" + payload["taker_country_code"] + ":" + payload["taker_name"]
+            )
+        else:
+            if not _TAKER.fullmatch(payload["taker_document"]):
+                raise FiscalValidationError("Validated CPF or CNPJ is mandatory")
+            taker_id = (
+                Cnpj(payload["taker_document"])
+                if len(payload["taker_document"]) == 14
+                else Cpf(payload["taker_document"])
+            )
+            if _TAKER_ADDRESS_FIELDS.issubset(payload):
+                if not _DIGITS_7.fullmatch(payload["taker_municipality_ibge"]):
+                    raise FiscalValidationError("Taker municipality IBGE code is required")
+                taker_address = FiscalAddress(
+                    street=payload["taker_street"],
+                    number=payload["taker_number"],
+                    district=payload["taker_neighborhood"],
+                    municipality_name=payload["taker_city"],
+                    jurisdiction=BrazilianJurisdiction(
+                        payload["taker_state"], payload["taker_municipality_ibge"],
+                    ),
+                    postal_code=payload["taker_postal_code"],
+                )
+            taker = NfseServiceTaker(
+                tax_id=taker_id, legal_name=payload["taker_name"],
+                address=taker_address,
+            )
+            taker_reference = (
+                "cnpj:" if isinstance(taker_id, Cnpj) else "cpf:"
+            ) + taker_id.value
         for field in ("gross_amount", "deduction_amount", "iss_amount"):
             if not _CENTS.fullmatch(payload[field]):
                 raise FiscalValidationError("Values require exact two-decimal BRL amounts")
@@ -213,7 +258,7 @@ def prepare_native_nfse(
             if (
                 profile.address.jurisdiction.state_code != "SP"
                 or profile.address.jurisdiction.municipality_ibge_code != expected_city
-                or taker_address is None
+                or not isinstance(taker_address, FiscalAddress)
             ):
                 raise FiscalValidationError(
                     "Municipal NFS-e requires issuer city and complete taker address"
@@ -251,9 +296,7 @@ def prepare_native_nfse(
             document_id=document_id, scope=scope, source=source,
             issued_at=issued_at, competence_date=competence, issuer=profile,
             service_jurisdiction=service_jurisdiction, services=(line,),
-            service_taker_reference=(
-                "cnpj:" if isinstance(taker_id, Cnpj) else "cpf:"
-            ) + taker_id.value,
+            service_taker_reference=taker_reference,
             service_taker=taker,
         )
         nfse_preaudit(NfseAuthorizationRequest.build(document))
