@@ -40,6 +40,7 @@ from kordena_fiscal.issuance.nfse_dps_builder import build_signed_dps
 from kordena_fiscal.lifecycle import IssuanceAttemptStatus
 from kordena_fiscal.vault import EphemeralCertificateMaterial
 from kordena_fiscal.vault.encrypted_a1 import EncryptedA1Vault
+from kordena_fiscal.xml.santana_simpliss_schema import santana_official_validator
 
 from .config import RuntimeConfigurationError
 
@@ -182,14 +183,25 @@ def build_santana_port_builder_from_environ(
             )
             return transport.cancel(intent)
 
+        def build_official_signed_dps(
+            request: NfseAuthorizationRequest, material: EphemeralCertificateMaterial,
+        ) -> bytes:
+            signed = build_signed_dps(request, material)
+            santana_official_validator("dps").validate_document(signed)
+            return signed
+
+        def validate_official_invoice(xml: bytes) -> None:
+            santana_official_validator("invoice").validate_document(xml)
+
         return SantanaSimplissHomologationGateway(
             endpoint=endpoint,
             provider_resolver=CanonicalSantanaResolver(),
             resolve_certificate=resolve_certificate,
-            build_signed_dps=build_signed_dps,
+            build_signed_dps=build_official_signed_dps,
             preaudit=nfse_preaudit,
             resolve_known_key=known_key,
             submit_event=submit_event,
+            validate_official_invoice=validate_official_invoice,
         )
 
     return build

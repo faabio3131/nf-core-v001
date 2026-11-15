@@ -42,6 +42,8 @@ from kordena_fiscal.issuance.nfe_nfse import (
 )
 from kordena_fiscal.vault import EphemeralCertificateMaterial
 from kordena_fiscal.vault.a1_preflight import validate_a1_for_issuer
+from kordena_fiscal.xml.santana_simpliss_schema import santana_official_validator
+from kordena_fiscal.xml.schema import XmlSchemaValidationError
 
 if TYPE_CHECKING:
     from kordena_fiscal.gateway.santana_simpliss_substitution import (
@@ -184,6 +186,7 @@ class SantanaSimplissHomologationGateway:
         submit_event: Callable[[
             NfseAuthorizationRequest, str, str, str, str, datetime,
         ], NationalNfseCancellationReceipt] | None = None,
+        validate_official_invoice: Callable[[bytes], None] | None = None,
     ) -> None:
         if (
             not isinstance(endpoint, SantanaSimplissEndpoint)
@@ -193,6 +196,7 @@ class SantanaSimplissHomologationGateway:
             or not callable(preaudit)
             or (resolve_known_key is not None and not callable(resolve_known_key))
             or (submit_event is not None and not callable(submit_event))
+            or (validate_official_invoice is not None and not callable(validate_official_invoice))
             or not 0 < timeout_seconds <= 30
         ):
             raise SantanaSimplissError("Incomplete reviewed Santana fiscal authority")
@@ -205,6 +209,7 @@ class SantanaSimplissHomologationGateway:
         self._exchange = exchange or _https_exchange
         self._timeout = timeout_seconds
         self._submit_event = submit_event
+        self._validate_official_invoice = validate_official_invoice
 
     def _review(
         self, request: NfseAuthorizationRequest, operation: str,
@@ -248,7 +253,9 @@ class SantanaSimplissHomologationGateway:
             assert isinstance(key, str)
             try:
                 invoice_xml = _validate_official_nfse(raw, key)
-            except FiscalValidationError:
+                if self._validate_official_invoice is not None:
+                    self._validate_official_invoice(invoice_xml)
+            except (FiscalValidationError, XmlSchemaValidationError):
                 raise SantanaSimplissError(
                     "Santana response lacks cryptographically verified NFS-e"
                 ) from None
@@ -340,6 +347,8 @@ class SantanaSimplissHomologationGateway:
         signed = build_santana_signed_replacement_dps(
             request, material, review=review, verify_original=verify_original,
         )
+        # Signature and official municipal 1.01 shape must both match.
+        santana_official_validator("dps").validate_document(signed)
         return encode_signed_dps(
             signed, issuer_cnpj=cnpj,
             issuer_municipality_ibge=SANTANA_IBGE,
