@@ -1,0 +1,294 @@
+"""Santana de Parnaíba: reviewed Simpliss municipal JSON/GZIP/XMLDSig API.
+
+Reuses the canonical national DPS signer, durable numbering, A1, fiscal UoW
+and signed receipt verifier. The actual /nfse URL is operator reviewed:
+the public Swagger currently denies unattended retrieval. Never repeat a
+fiscal POST after an ambiguous response or invent a DPS lookup endpoint.
+"""
+from __future__ import annotations
+
+import json
+import ssl
+from collections.abc import Callable
+from dataclasses import dataclass
+from datetime import UTC, datetime
+from urllib.error import HTTPError, URLError
+from urllib.parse import urlsplit
+from urllib.request import HTTPSHandler, Request, build_opener
+
+from kordena_fiscal.domain import (
+    Cnpj,
+    ExecutionScope,
+    FiscalDocumentKind,
+    FiscalEnvironment,
+    FiscalValidationError,
+)
+from kordena_fiscal.gateway.authorization import (
+    AuthorizationStatus,
+    GatewayProviderMetadata,
+)
+from kordena_fiscal.gateway.fiscal_tls import RejectFiscalRedirects, build_fiscal_tls_context
+from kordena_fiscal.gateway.nfse_nacional_homologation import encode_signed_dps
+from kordena_fiscal.gateway.nfse_national_query import _validate_official_nfse
+from kordena_fiscal.gateway.provider import ProviderSelectionResolver
+from kordena_fiscal.issuance.nfe_nfse import (
+    NfseAuthorizationRequest,
+    NfseAuthorizationResult,
+    NfseRejectionDetail,
+)
+from kordena_fiscal.vault import EphemeralCertificateMaterial
+from kordena_fiscal.vault.a1_preflight import validate_a1_for_issuer
+
+SANTANA_PROVIDER_ID = "santana-simpliss-v1-homologation"
+SANTANA_IBGE = "3547304"
+_HOMOLOGATION_HOST = "producaorestrita.simplissweb.com.br"
+_PROVIDER = GatewayProviderMetadata(SANTANA_PROVIDER_ID, "1.00")
+_MAX_RESPONSE = 4_194_304
+
+
+class SantanaSimplissError(FiscalValidationError):
+    """Non-secret municipal integration error."""
+
+
+def _valid_key(key: object) -> bool:
+    return (
+        type(key) is str and len(key) == 50
+        and key.isascii() and key.isdecimal() and key.startswith("35")
+    )
+
+
+@dataclass(frozen=True, slots=True)
+class SantanaSimplissEndpoint:
+    """Exact POST /nfse URL; an operator must verify the prefix in official Swagger."""
+
+    issue_url: str
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.issue_url, str):
+            raise SantanaSimplissError("Reviewed Santana API URL is mandatory")
+        parsed = urlsplit(self.issue_url)
+        try:
+            valid_port = parsed.port in (None, 443)
+        except ValueError:
+            valid_port = False
+        if (
+            parsed.scheme != "https"
+            or parsed.hostname != _HOMOLOGATION_HOST
+            or not valid_port
+            or parsed.username is not None
+            or parsed.password is not None
+            or parsed.query or parsed.fragment
+            or not parsed.path.endswith("/nfse")
+            or parsed.path.startswith("//")
+            or "%" in parsed.path
+            or any(p in ("", ".", "..") for p in parsed.path.split("/")[1:])
+        ):
+            raise SantanaSimplissError("Santana requires pinned restricted HTTPS /nfse URL")
+
+    def invoice_url(self, access_key: str) -> str:
+        if not _valid_key(access_key):
+            raise SantanaSimplissError("Invalid scoped Santana NFS-e access key")
+        return self.issue_url + "/" + access_key
+
+    def events_url(self, access_key: str) -> str:
+        return self.invoice_url(access_key) + "/eventos"
+
+
+def _response(raw: bytes) -> dict[str, object]:
+    if not isinstance(raw, bytes) or not 0 < len(raw) <= _MAX_RESPONSE:
+        raise SantanaSimplissError("Invalid Santana response size")
+    try:
+        data = json.loads(raw.decode("utf-8"))
+    except (ValueError, UnicodeDecodeError, RecursionError):
+        raise SantanaSimplissError("Invalid Santana response JSON") from None
+    if not isinstance(data, dict):
+        raise SantanaSimplissError("Invalid Santana response envelope")
+    ambient = data.get("tipoAmbiente")
+    if ambient is not None and ambient not in (2, "2"):
+        raise SantanaSimplissError("Santana response environment mismatch")
+    return data
+
+
+def _rejections(data: dict[str, object]) -> tuple[NfseRejectionDetail, ...]:
+    raw = data.get("erros")
+    if raw is None:
+        return ()
+    if not isinstance(raw, list) or not 1 <= len(raw) <= 32:
+        raise SantanaSimplissError("Invalid Santana rejection list")
+    results: list[NfseRejectionDetail] = []
+    for item in raw:
+        if not isinstance(item, dict):
+            raise SantanaSimplissError("Invalid Santana rejection entry")
+        code = item.get("Codigo", item.get("codigo"))
+        message = item.get("Descricao", item.get("descricao"))
+        if (
+            not isinstance(code, (str, int)) or isinstance(code, bool)
+            or not isinstance(message, str)
+        ):
+            raise SantanaSimplissError("Invalid Santana rejection fields")
+        results.append(NfseRejectionDetail(
+            code=str(code), origin="SIMPLISS_SANTANA", raw_message=message,
+        ))
+    return tuple(results)
+
+
+def _https_exchange(
+    method: str, url: str, body: bytes | None, tls: ssl.SSLContext, timeout: float,
+) -> bytes:
+    if method not in {"POST", "GET"}:
+        raise SantanaSimplissError("Unsupported Santana method")
+    request = Request(
+        url, data=body, method=method,
+        headers={
+            "Accept": "application/json",
+            **({"Content-Type": "application/json"} if body is not None else {}),
+        },
+    )
+    try:
+        with build_opener(HTTPSHandler(context=tls), RejectFiscalRedirects()).open(
+            request, timeout=timeout,
+        ) as response:
+            raw = response.read(_MAX_RESPONSE + 1)
+    except (HTTPError, URLError, TimeoutError, OSError, ssl.SSLError):
+        raise SantanaSimplissError(
+            "Santana fiscal response uncertain; query before another transmission"
+        ) from None
+    if len(raw) > _MAX_RESPONSE:
+        raise SantanaSimplissError("Santana response exceeds the allowed size")
+    return bytes(raw)
+
+
+class SantanaSimplissHomologationGateway:
+    """Separate municipal provider, shared canonical document/A1/numbering."""
+
+    def __init__(
+        self, *, endpoint: SantanaSimplissEndpoint,
+        provider_resolver: ProviderSelectionResolver,
+        resolve_certificate: Callable[[ExecutionScope, str], EphemeralCertificateMaterial],
+        build_signed_dps: Callable[
+            [NfseAuthorizationRequest, EphemeralCertificateMaterial], bytes
+        ],
+        preaudit: Callable[[NfseAuthorizationRequest], None],
+        resolve_known_key: Callable[[NfseAuthorizationRequest], str | None] | None = None,
+        exchange: Callable[[str, str, bytes | None, ssl.SSLContext, float], bytes] | None = None,
+        timeout_seconds: float = 15,
+    ) -> None:
+        if (
+            not isinstance(endpoint, SantanaSimplissEndpoint)
+            or not callable(getattr(provider_resolver, "resolve_provider_id", None))
+            or not callable(resolve_certificate)
+            or not callable(build_signed_dps)
+            or not callable(preaudit)
+            or (resolve_known_key is not None and not callable(resolve_known_key))
+            or not 0 < timeout_seconds <= 30
+        ):
+            raise SantanaSimplissError("Incomplete reviewed Santana fiscal authority")
+        self._endpoint = endpoint
+        self._resolver = provider_resolver
+        self._certificate = resolve_certificate
+        self._builder = build_signed_dps
+        self._preaudit = preaudit
+        self._known_key = resolve_known_key
+        self._exchange = exchange or _https_exchange
+        self._timeout = timeout_seconds
+
+    def _review(
+        self, request: NfseAuthorizationRequest, operation: str,
+    ) -> tuple[EphemeralCertificateMaterial, str]:
+        if not isinstance(request, NfseAuthorizationRequest):
+            raise SantanaSimplissError("Prepared NFS-e must be canonical")
+        document = request.document
+        scope = document.scope
+        jurisdiction = document.issuer.address.jurisdiction
+        if (
+            scope.environment is not FiscalEnvironment.HOMOLOGATION
+            or not scope.host_namespace or jurisdiction.state_code != "SP"
+            or jurisdiction.municipality_ibge_code != SANTANA_IBGE
+            or document.dps_number is None
+        ):
+            raise SantanaSimplissError("Santana requires a scoped, durably numbered DPS")
+        actual = self._resolver.resolve_provider_id(
+            scope=scope, document_kind=FiscalDocumentKind.NFSE,
+            jurisdiction=jurisdiction, operation=operation,
+        )
+        if actual != SANTANA_PROVIDER_ID:
+            raise SantanaSimplissError("Santana fiscal binding mismatch")
+        self._preaudit(request)
+        cnpj = document.issuer.cnpj.value
+        material = self._certificate(scope, cnpj)
+        validate_a1_for_issuer(
+            material.pkcs12_bytes, material.password,
+            issuer_cnpj=Cnpj(cnpj), at=datetime.now(UTC),
+        )
+        return material, cnpj
+
+    def _result(self, request: NfseAuthorizationRequest, raw: bytes) -> NfseAuthorizationResult:
+        data = _response(raw)
+        key = data.get("chaveAcesso")
+        status = AuthorizationStatus.PENDING
+        invoice_xml: bytes | None = None
+        rejections: tuple[NfseRejectionDetail, ...] = ()
+        if key is not None:
+            if not _valid_key(key):
+                raise SantanaSimplissError("Invalid Santana NFS-e access key")
+            try:
+                invoice_xml = _validate_official_nfse(raw, key)
+            except FiscalValidationError:
+                raise SantanaSimplissError(
+                    "Santana response lacks cryptographically verified NFS-e"
+                ) from None
+            status = AuthorizationStatus.AUTHORIZED
+        else:
+            rejections = _rejections(data)
+            if rejections:
+                status = AuthorizationStatus.REJECTED
+        return NfseAuthorizationResult(
+            status=status,
+            scope=request.document.scope,
+            document_id=request.document.document_id,
+            idempotency_key=request.idempotency_key,
+            request_fingerprint=request.request_fingerprint,
+            provider=_PROVIDER,
+            provider_request_id=(
+                data["idDps"][:512] if isinstance(data.get("idDps"), str) else None
+            ),
+            invoice_reference=key if status is AuthorizationStatus.AUTHORIZED else None,
+            authorized_xml=invoice_xml,
+            rejection_code=rejections[0].code if rejections else None,
+            rejection_message=rejections[0].raw_message if rejections else None,
+            rejections=rejections,
+        )
+
+    def authorize(self, request: NfseAuthorizationRequest) -> NfseAuthorizationResult:
+        material, cnpj = self._review(request, "authorize")
+        signed_dps = self._builder(request, material)
+        payload = encode_signed_dps(
+            signed_dps, issuer_cnpj=cnpj, issuer_municipality_ibge=SANTANA_IBGE,
+        )
+        raw = self._exchange(
+            "POST", self._endpoint.issue_url, payload,
+            build_fiscal_tls_context(material), self._timeout,
+        )
+        return self._result(request, raw)
+
+    def query(self, request: NfseAuthorizationRequest) -> NfseAuthorizationResult:
+        """GET by persisted official key; the public manual has no GET /dps method."""
+        if self._known_key is None:
+            raise SantanaSimplissError(
+                "Santana query needs the original confirmed official access key"
+            )
+        material, _ = self._review(request, "query")
+        key = self._known_key(request)
+        if not _valid_key(key):
+            raise SantanaSimplissError("Unverified Santana access key")
+        raw = self._exchange(
+            "GET", self._endpoint.invoice_url(key), None,
+            build_fiscal_tls_context(material), self._timeout,
+        )
+        result = self._result(request, raw)
+        if (
+            result.status is not AuthorizationStatus.AUTHORIZED
+            or result.invoice_reference != key
+        ):
+            raise SantanaSimplissError("Santana query did not confirm the original invoice")
+        return result
