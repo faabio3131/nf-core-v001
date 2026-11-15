@@ -29,6 +29,12 @@ PERMISSIONS = {
     "cancelExtremaNfse": PortalPermission.DOCUMENT_CANCEL,
     "cancelCajamarNfse": PortalPermission.DOCUMENT_CANCEL,
     "cancelOsascoNfse": PortalPermission.DOCUMENT_CANCEL,
+    "cancelBarueriNfse": PortalPermission.DOCUMENT_CANCEL,
+    "substituteBarueriNfse": PortalPermission.DOCUMENT_CANCEL,
+    "reconcileBarueriNfseCancellation": PortalPermission.RECONCILIATION_EXECUTE,
+    "cancelJundiaiNfse": PortalPermission.DOCUMENT_CANCEL,
+    "substituteJundiaiNfse": PortalPermission.DOCUMENT_CANCEL,
+    "reconcileJundiaiNfseCancellation": PortalPermission.RECONCILIATION_EXECUTE,
     "substituteOsascoNfse": PortalPermission.DOCUMENT_CANCEL,
     "substituteExtremaNfse": PortalPermission.DOCUMENT_CANCEL,
     "inutilizeFiscalRange": PortalPermission.DOCUMENT_INUTILIZE,
@@ -40,11 +46,21 @@ OPERATIONS = {
     "cancelExtremaNfse": frozenset({"cancelExtremaNfse"}),
     "cancelCajamarNfse": frozenset({"cancelCajamarNfse"}),
     "cancelOsascoNfse": frozenset({"cancelOsascoNfse"}),
+    "cancelBarueriNfse": frozenset({"cancelBarueriNfse"}),
+    "substituteBarueriNfse": frozenset({"substituteBarueriNfse"}),
+    "reconcileBarueriNfseCancellation": frozenset({"reconcileBarueriNfseCancellation"}),
+    "cancelJundiaiNfse": frozenset({"cancelJundiaiNfse"}),
+    "substituteJundiaiNfse": frozenset({"substituteJundiaiNfse"}),
+    "reconcileJundiaiNfseCancellation": frozenset({"reconcileJundiaiNfseCancellation"}),
     "substituteOsascoNfse": frozenset({"substituteOsascoNfse"}),
     "substituteExtremaNfse": frozenset({"substituteExtremaNfse"}),
     "inutilizeFiscalRange": frozenset({"inutilize", "inutilizeFiscalRange"}),
     "reconcileFiscalOperation": frozenset({"reconcile", "reconcileFiscalOperation"}),
 }
+_READ_ONLY_POLL = frozenset({
+    "reconcileFiscalOperation", "reconcileBarueriNfseCancellation",
+    "reconcileJundiaiNfseCancellation",
+})
 POLICY = "T07-v1-24h-same-account-epoch"
 HOST = "fm-nfcore"
 
@@ -138,6 +154,16 @@ class FiscalIntentRecovery:
             )
         except (ValueError, TypeError) as exc:
             raise denied("INVALID_FISCAL_REQUEST", 400) from exc
+
+    @classmethod
+    def intent_name(
+        cls, auth: AuthenticatedHuman, operation: str, fingerprint: str, key: str,
+    ) -> str:
+        """Each read-only poll gets a distinct key; mutations retain one content claim."""
+        material = cls.prefix(auth) + fingerprint
+        if operation in _READ_ONLY_POLL:
+            material += ":read-only-poll:" + digest(key)
+        return cls.prefix(auth) + digest(material)
 
     @staticmethod
     def audit(
@@ -258,7 +284,7 @@ class FiscalIntentRecovery:
             raise denied("MISSING_IDEMPOTENCY_KEY", 400)
         scope = self.scope(auth, payload)
         fingerprint = self.fingerprint(operation, scope, payload)
-        intent = self.prefix(auth) + digest(self.prefix(auth) + fingerprint)
+        intent = self.intent_name(auth, operation, fingerprint, key)
         with self.factory() as uow:
             recorded = uow.commercial.configuration_receipt(scope, intent)
         if recorded is None or recorded.get("original_key") != key:
@@ -279,7 +305,7 @@ class FiscalIntentRecovery:
             raise denied("MISSING_IDEMPOTENCY_KEY", 400)
         scope = self.scope(auth, payload)
         fingerprint = self.fingerprint(operation, scope, payload)
-        intent = self.prefix(auth) + digest(self.prefix(auth) + fingerprint)
+        intent = self.intent_name(auth, operation, fingerprint, key)
         alias = "fiscal-key:" + digest(HOST + ":" + auth.account.account_id + ":" + key)
         now = datetime.now(UTC)
         row: Mapping[str, object] = {
