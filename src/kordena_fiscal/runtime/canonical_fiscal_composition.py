@@ -55,7 +55,6 @@ from kordena_fiscal.gateway.santana_simpliss_homologation import (
     SANTANA_PROVIDER_ID,
     SantanaSimplissHomologationGateway,
 )
-from kordena_fiscal.runtime.santana_event_handlers import build_santana_event_handlers
 from kordena_fiscal.gateway.sp4_municipal_canonical import (
     Sp4OriginalRps,
     Sp4VerifiedInvoice,
@@ -82,6 +81,7 @@ from kordena_fiscal.operations import (
     InutilizationRequest,
     InutilizationResult,
 )
+from kordena_fiscal.runtime.santana_event_handlers import build_santana_event_handlers
 from kordena_fiscal.vault import EphemeralCertificateMaterial
 from kordena_fiscal.vault.encrypted_a1 import EncryptedA1Vault
 from kordena_fiscal.xml import NfeAccessKey

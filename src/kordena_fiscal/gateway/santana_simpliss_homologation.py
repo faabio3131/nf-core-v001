@@ -11,8 +11,8 @@ import json
 import ssl
 from collections.abc import Callable
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
 from datetime import UTC, datetime
+from typing import TYPE_CHECKING
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlsplit
 from urllib.request import HTTPSHandler, Request, build_opener
@@ -29,10 +29,10 @@ from kordena_fiscal.gateway.authorization import (
     GatewayProviderMetadata,
 )
 from kordena_fiscal.gateway.fiscal_tls import RejectFiscalRedirects, build_fiscal_tls_context
-from kordena_fiscal.gateway.nfse_nacional_homologation import encode_signed_dps
 from kordena_fiscal.gateway.nfse_nacional_event_homologation import (
     NationalNfseCancellationReceipt,
 )
+from kordena_fiscal.gateway.nfse_nacional_homologation import encode_signed_dps
 from kordena_fiscal.gateway.nfse_national_query import _validate_official_nfse
 from kordena_fiscal.gateway.provider import ProviderSelectionResolver
 from kordena_fiscal.issuance.nfe_nfse import (

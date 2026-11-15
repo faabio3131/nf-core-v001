@@ -19,21 +19,17 @@ from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.hazmat.primitives.serialization import pkcs12
 from lxml import etree
 
-
 from kordena_fiscal.domain import (
     FiscalDocumentKind,
     FiscalValidationError,
 )
-from kordena_fiscal.gateway.nfse_national_query import _verify_nfse_receipt_signature
-from kordena_fiscal.signing.nfse_xmldsig import append_nfse_signature
-from kordena_fiscal.xml.nfse_nacional_schema import national_event_validator
-from kordena_fiscal.issuance.nfe_nfse import NfseAuthorizationRequest
 from kordena_fiscal.gateway.fiscal_tls import build_fiscal_tls_context
 from kordena_fiscal.gateway.nfse_nacional_event_homologation import (
     NationalNfseCancellationIntent,
     NationalNfseCancellationReceipt,
     _validated_response,
 )
+from kordena_fiscal.gateway.nfse_national_query import _verify_nfse_receipt_signature
 from kordena_fiscal.gateway.provider import ProviderSelectionResolver
 from kordena_fiscal.gateway.santana_simpliss_homologation import (
     SANTANA_IBGE,
@@ -42,8 +38,11 @@ from kordena_fiscal.gateway.santana_simpliss_homologation import (
     SantanaSimplissError,
     _https_exchange,
 )
+from kordena_fiscal.issuance.nfe_nfse import NfseAuthorizationRequest
+from kordena_fiscal.signing.nfse_xmldsig import append_nfse_signature
 from kordena_fiscal.vault import EphemeralCertificateMaterial
 from kordena_fiscal.vault.a1_preflight import validate_a1_for_issuer
+from kordena_fiscal.xml.nfse_nacional_schema import national_event_validator
 
 
 class SantanaSimplissEventTransport:
