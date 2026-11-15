@@ -126,10 +126,19 @@ def _printable_authorized_xml(entry: Any) -> bool:
         )
         if getattr(root.getroottree().docinfo, "doctype", ""):
             return False
-        return root.tag in {
-            "{http://www.sped.fazenda.gov.br/nfse}NFSe",
-            "{http://www.portalfiscal.inf.br/nfe}nfeProc",
-        }
+        if root.tag == "{http://www.sped.fazenda.gov.br/nfse}NFSe":
+            return True
+        if root.tag == "{http://www.portalfiscal.inf.br/nfe}nfeProc":
+            # The only currently wired local PDF renderer accepts DANFE
+            # model 55. NFC-e model 65 uses a separate printable contract;
+            # advertising this action for 65 creates a broken Portal journey.
+            ns = "{http://www.portalfiscal.inf.br/nfe}"
+            invoices = root.findall(f"{ns}NFe/{ns}infNFe")
+            return (
+                len(invoices) == 1
+                and invoices[0].findtext(f"{ns}ide/{ns}mod") == "55"
+            )
+        return False
     except (ArchiveIntegrityError, etree.XMLSyntaxError, ValueError, TypeError):
         return False
 
