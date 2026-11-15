@@ -27,6 +27,7 @@ from kordena_fiscal.domain import (
     StateRegistration,
     TaxRegimeCode,
 )
+from kordena_fiscal.gateway import santana_simpliss_events as events
 from kordena_fiscal.gateway import santana_simpliss_substitution as subst
 from kordena_fiscal.gateway.nfse_nacional_homologation import build_nfse_dps_request
 from kordena_fiscal.gateway.santana_simpliss_homologation import SANTANA_IBGE
@@ -207,3 +208,58 @@ def test_santana_real_signed_replacement_passes_official_xsd_101() -> None:
         issuer_municipality_ibge="3547304",
     )
     assert b"dpsXmlGZipB64" in wrapped
+
+
+def test_santana_real_101101_signed_event_passes_offline_xsd_and_signature(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Real RSA-SHA256 signature and pinned national XSD without network/A1 secrets."""
+    private = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+    now = datetime.now(UTC)
+    subject = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, "Synthetic Santana")])
+    certificate = (
+        x509.CertificateBuilder()
+        .subject_name(subject).issuer_name(subject)
+        .public_key(private.public_key())
+        .serial_number(x509.random_serial_number())
+        .not_valid_before(now - timedelta(days=1))
+        .not_valid_after(now + timedelta(days=30))
+        .add_extension(x509.KeyUsage(
+            digital_signature=True, content_commitment=False,
+            key_encipherment=False, data_encipherment=False,
+            key_agreement=False, key_cert_sign=False, crl_sign=False,
+            encipher_only=False, decipher_only=False,
+        ), critical=True)
+        .sign(private, hashes.SHA256())
+    )
+    password = b"synthetic-santana-test"
+    material = EphemeralCertificateMaterial(
+        reference_id="santana-only-synthetic-event-certificate",
+        pkcs12_bytes=pkcs12.serialize_key_and_certificates(
+            name=b"santana-ephemeral", key=private, cert=certificate, cas=None,
+            encryption_algorithm=serialization.BestAvailableEncryption(password),
+        ),
+        password=password,
+    )
+    # The production A1 issuer identity preflight remains mandatory. The fixture
+    # certificate is deliberately NOT an ICP-Brasil A1 or a real taxpayer ID.
+    preflight = Mock()
+    monkeypatch.setattr(events, "validate_a1_for_issuer", preflight)
+    intent = events.build_signed_santana_cancellation(
+        request=_request(), key=_KEY, reason_code="1",
+        reason_description="Correcao sintetica da emissao original",
+        approval_reference="human-approval-santana-test",
+        occurred_at=now, material=material,
+    )
+    preflight.assert_called_once()
+    assert intent.invoice_reference == _KEY
+    events.validate_santana_event_xml(intent.signed_event_xml, kind="request")
+    root = etree.fromstring(intent.signed_event_xml)
+    assert root.findtext(".//{" + _NS + "}chNFSe") == _KEY
+    assert root.findtext(".//{" + _NS + "}cMotivo") == "1"
+    assert len(root.findall("{" + _DS + "}Signature")) == 1
+    invalid = intent.signed_event_xml.replace(
+        b"Correcao sintetica", b"CorrecaO sintetica",
+    )
+    with pytest.raises(FiscalValidationError):
+        events.validate_santana_event_xml(invalid, kind="request")
