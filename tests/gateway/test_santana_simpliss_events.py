@@ -21,8 +21,6 @@ from kordena_fiscal.domain import (
     FiscalEnvironment,
 )
 from kordena_fiscal.gateway import santana_simpliss_events as events
-from kordena_fiscal.signing.nfse_xmldsig import append_nfse_signature
-from kordena_fiscal.xml.schema import XmlSchemaValidationError
 from kordena_fiscal.gateway.nfse_nacional_event_homologation import (
     NationalNfseCancellationIntent,
 )
@@ -31,6 +29,8 @@ from kordena_fiscal.gateway.santana_simpliss_homologation import (
     SantanaSimplissEndpoint,
     SantanaSimplissError,
 )
+from kordena_fiscal.signing.nfse_xmldsig import append_nfse_signature
+from kordena_fiscal.xml.schema import XmlSchemaValidationError
 
 
 def _intent(city: str = "3547304") -> NationalNfseCancellationIntent:

@@ -304,15 +304,18 @@ function appendNativeNfsePreparation(article) {
       result.textContent = "Selecione unidade fiscal autorizada em homologação."; return;
     }
     const payload = {
-      ...Object.fromEntries(Object.entries(inputs).map(([key, input]) => [key, input.value.trim()])),
+      ...Object.fromEntries(
+        Object.entries(inputs)
+          .filter(([name, input]) => name !== "nbs_code" || Boolean(input.value.trim()))
+          .map(([key, input]) => [key, input.value.trim()])
+      ),
       unit_id: selectedFiscalUnit, environment: "homologation",
       rule_version: Number(inputs.rule_version.value),
       iss_withheld: select.value === "true",
       fiscal_review_approved: reviewed.checked,
     };
-    // Omit absent optional NBS; the backend requires it only when the
-    // tenant/unit resolves to Santana Simpliss, never on client provider claims.
-    if (!payload.nbs_code) delete payload.nbs_code;
+    // Blank optional NBS is omitted in the payload above. Only the canonical
+    // server binding decides when a real, reviewed NBS is mandatory.
     if (!Number.isSafeInteger(payload.rule_version)) {
       result.textContent = "Informe a versão fiscal inteira."; return;
     }
