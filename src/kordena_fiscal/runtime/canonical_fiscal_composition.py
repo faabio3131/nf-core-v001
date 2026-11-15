@@ -51,6 +51,9 @@ from kordena_fiscal.gateway.nfse_nacional_homologation import (
     NACIONAL_HOMOLOGATION_PROVIDER_ID,
     NfseNacionalHomologationGateway,
 )
+from kordena_fiscal.gateway.nfse_national_query import (
+    NfseNationalHomologationQueryGateway,
+)
 from kordena_fiscal.gateway.santana_simpliss_homologation import (
     SANTANA_PROVIDER_ID,
     SantanaSimplissHomologationGateway,
@@ -254,11 +257,13 @@ class _GovernedNfseRouter:
         self, *, application: FiscalApplicationService,
         national: _GovernedNationalNfseGateway | None,
         extrema: WebissExtremaCanonicalNfseGateway | None,
+        national_query: NfseNationalHomologationQueryGateway | None = None,
         municipal_issuance: Mapping[str, NfseGatewayClient] | None = None,
         municipal_recovery: Mapping[str, NfseQueryClient] | None = None,
     ) -> None:
         self._application = application
         self._national = national
+        self._national_query = national_query
         self._extrema = extrema
         self._municipal_issuance = municipal_issuance or {}
         self._municipal_recovery = municipal_recovery or {}
@@ -295,6 +300,11 @@ class _GovernedNfseRouter:
 
     def query(self, request: NfseAuthorizationRequest) -> NfseAuthorizationResult:
         provider = self._provider(request)
+        if provider == NACIONAL_HOMOLOGATION_PROVIDER_ID:
+            if self._national_query is None:
+                raise FiscalValidationError("Read-only NFS-e provider recovery is unavailable")
+            # The query transport independently requires an exact QUERY binding.
+            return self._national_query.query(request)
         if provider == EXTREMA_WEBISS_PROVIDER_ID:
             if (
                 self._extrema is None
@@ -688,17 +698,26 @@ def build_runtime_fiscal_handler_factory(
                 **municipal_query,
                 SANTANA_PROVIDER_ID: NfseQueryClient(reviewed_santana),
             }
+        national_query = None
+        if national_adapter is not None and certificate_vault is not None:
+            national_query = NfseNationalHomologationQueryGateway(
+                provider_resolver=_CanonicalWebissProviderResolver(application),
+                resolve_certificate=lambda scope, cnpj: certificate_vault.resolve(
+                    scope=scope, issuer_cnpj=cnpj,
+                ),
+            )
         if national_adapter is not None or extrema_adapter is not None or municipal_issue:
             router = _GovernedNfseRouter(
                 application=application,
                 national=national_adapter,
                 extrema=extrema_adapter,
+                national_query=national_query,
                 municipal_issuance=municipal_issue,
                 municipal_recovery=municipal_query,
             )
             selected_nfse = NfseGatewayClient(router)
-            if extrema_adapter is not None or municipal_query:
-                # Never re-submit a municipal RPS on an uncertain return.
+            if extrema_adapter is not None or municipal_query or national_query is not None:
+                # Never re-submit a national DPS or municipal RPS on an uncertain return.
                 nfse_query_client = NfseQueryClient(router)
         handlers = build_provider_operation_handlers(
             FiscalOperationsClient(gateway),
