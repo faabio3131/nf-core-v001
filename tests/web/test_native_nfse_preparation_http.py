@@ -2568,3 +2568,58 @@ def test_jundiai_http_cancel_or_substitute_officially_scoped_and_idempotent(
         assert repeated.status_code == 200, repeated.text
         cancellation_query.assert_called_once()
         cancellation_post.assert_called_once()
+
+
+
+def test_santana_simpliss_portal_uses_existing_durable_dps_and_replay(
+    tmp_path: Path,
+) -> None:
+    """Real Portal/SQLite/UoW with municipal Simpliss, not a second RPS ledger."""
+    db = _database(
+        tmp_path / "santana-native.sqlite",
+        issuer_ibge="3547304",
+        provider_id="santana-simpliss-v1-homologation",
+        tax_regime=TaxRegimeCode.NORMAL,
+    )
+    web = _client(db)
+    payload = _payload() | _TAKER_ADDRESS | {
+        "source_id": "santana-reviewed-dps-2026",
+        "service_municipality_ibge": "3547304",
+        "competence_date": "2026-11-12",
+    }
+    first = _post(web, payload, key="santana-durable-first")
+    assert first.status_code == 200, first.text
+    assert first.json()["numbering_authority"] == "national_dps_durable"
+    assert first.json()["transmitted"] is False
+    identifier = first.json()["document_id"]
+    scope = ExecutionScope(
+        TENANT, UNIT, FiscalEnvironment.HOMOLOGATION, "santana-readback", "fm-nfcore",
+    )
+    app = FiscalApplicationService(db)
+    original = app.load_prepared_nfse_authorization(scope, identifier)
+    assert original.document.dps_number == 1
+    assert original.document.issuer.address.jurisdiction.municipality_ibge_code == "3547304"
+    again = _post(web, payload, key="santana-durable-first")
+    assert again.status_code == 200, again.text
+    assert again.json()["replay"] is True
+    assert again.json()["document_id"] == identifier
+    assert app.load_prepared_nfse_authorization(scope, identifier) == original
+
+
+def test_santana_provider_rejects_profile_of_another_municipality(
+    tmp_path: Path,
+) -> None:
+    db = _database(
+        tmp_path / "santana-wrong-city.sqlite",
+        issuer_ibge="3509205",
+        provider_id="santana-simpliss-v1-homologation",
+        tax_regime=TaxRegimeCode.NORMAL,
+    )
+    web = _client(db)
+    payload = _payload() | _TAKER_ADDRESS | {
+        "source_id": "santana-city-spoof-attempt",
+        "service_municipality_ibge": "3547304",
+    }
+    response = _post(web, payload, key="santana-city-spoof")
+    assert response.status_code == 400, response.text
+    assert response.json()["detail"]["code"] == "NATIVE_NFSE_INVALID_FISCAL_FACTS"
