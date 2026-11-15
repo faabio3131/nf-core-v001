@@ -38,6 +38,7 @@ from kordena_fiscal.issuance import (
 )
 from kordena_fiscal.vault import EphemeralCertificateMaterial
 from kordena_fiscal.xml.nfse_nacional_schema import national_dps_validator
+from kordena_fiscal.xml.santana_simpliss_schema import santana_official_validator
 
 _NS = "http://www.sped.fazenda.gov.br/nfse"
 _DS = "http://www.w3.org/2000/09/xmldsig#"
@@ -202,6 +203,7 @@ def test_santana_real_signed_replacement_passes_official_xsd_101() -> None:
     assert subst_node.findtext("{" + _NS + "}cMotivo") == "99"
     assert len(root.findall("{" + _DS + "}Signature")) == 1
     national_dps_validator("1.01").validate_document(signed)
+    santana_official_validator("dps").validate_document(signed)
     wrapped = build_nfse_dps_request(
         signed,
         issuer_cnpj="11222333000181",
