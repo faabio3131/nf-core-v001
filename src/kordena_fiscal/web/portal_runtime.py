@@ -14,6 +14,7 @@ from datetime import UTC, datetime
 from typing import Any, Protocol
 
 from fastapi import HTTPException, status
+from lxml import etree
 
 from kordena_fiscal.application.commercial_portal import (
     CommercialPortalReader,
@@ -975,20 +976,24 @@ class DurableHumanPortalExecutor:
                     FiscalArchiveVerifier().verify_entry(original)
                     if len(original.content) > 2 * 1024 * 1024:
                         raise FiscalValidationError("Authorized XML too large")
+                    # Both legacy DANFE and unified auxiliary PDFs must use a
+                    # document-specific renderer, never infer NF-e from a PDF URL.
+                    root = etree.fromstring(
+                        original.content,
+                        parser=etree.XMLParser(
+                            resolve_entities=False, load_dtd=False,
+                            no_network=True, huge_tree=False,
+                        ),
+                    )
+                    if getattr(root.getroottree().docinfo, "doctype", ""):
+                        raise FiscalValidationError("Forbidden XML DOCTYPE")
                     renderer = self._danfe_renderer
-                    if kind is FiscalArchiveKind.AUXILIARY_PDF:
-                        from lxml import etree
-
-                        root = etree.fromstring(
-                            original.content,
-                            parser=etree.XMLParser(resolve_entities=False, no_network=True),
-                        )
-                        if getattr(root.getroottree().docinfo, "doctype", ""):
-                            raise FiscalValidationError("Forbidden XML DOCTYPE")
-                        if root.tag == "{http://www.sped.fazenda.gov.br/nfse}NFSe":
-                            renderer = self._danfse_renderer
-                        elif root.tag != "{http://www.portalfiscal.inf.br/nfe}nfeProc":
-                            raise FiscalValidationError("Unsupported authorized XML kind")
+                    if root.tag == "{http://www.sped.fazenda.gov.br/nfse}NFSe":
+                        if kind is not FiscalArchiveKind.AUXILIARY_PDF:
+                            raise FiscalValidationError("DANFE cannot represent national NFS-e")
+                        renderer = self._danfse_renderer
+                    elif root.tag != "{http://www.portalfiscal.inf.br/nfe}nfeProc":
+                        raise FiscalValidationError("Unsupported authorized XML kind")
                     if renderer is None:
                         raise FiscalValidationError("Auxiliary PDF generator unavailable")
                     pdf = renderer(original.content)
