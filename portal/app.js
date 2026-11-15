@@ -238,8 +238,26 @@ function appendNativeNfsePreparation(article) {
   info.className = "empty-state";
   info.textContent = "Emissor próprio, sem ERP. Somente homologação. O provedor municipal ou nacional é definido no servidor pelo vínculo fiscal da unidade. Informe NBS 2.0 revisado quando exigido pelo município (Santana de Parnaíba). Preparar não transmite a nota.";
   form.append(heading, info);
+  const identityLabel = document.createElement("label");
+  identityLabel.textContent = "Identificação fiscal do tomador";
+  const identityMode = document.createElement("select");
+  identityMode.name = "taker_identity_mode"; identityMode.required = true;
+  for (const [mode, description] of [
+    ["br", "Brasil — CPF/CNPJ"],
+    ["nif", "Exterior — NIF"],
+    ["no-nif", "Exterior — motivo oficial cNaoNIF"],
+  ]) {
+    const option = document.createElement("option");
+    option.value = mode; option.textContent = description;
+    identityMode.append(option);
+  }
+  identityLabel.append(identityMode); form.append(identityLabel);
   /** @type {Record<string, HTMLInputElement>} */
   const inputs = {};
+  const domesticOnly = new Set([
+    "taker_document", "taker_city", "taker_state",
+    "taker_municipality_ibge", "taker_postal_code",
+  ]);
   /** @type {Array<[string, string, string, string]>} */
   const fields = [
     ["source_id", "Referência imutável da ordem de serviço", "text", ""],
@@ -276,6 +294,47 @@ function appendNativeNfsePreparation(article) {
     input.maxLength = name === "description" ? 1000 : name === "source_normative" ? 512 : 160;
     label.append(input); form.append(label); inputs[name] = input;
   }
+  /** @type {Record<string, HTMLInputElement>} */
+  const foreignInputs = {};
+  /** @type {Record<string, HTMLLabelElement>} */
+  const foreignLabels = {};
+  for (const [name, labelText, pattern] of [
+    ["taker_country_code", "País do tomador (ISO, duas letras)", "[A-Z]{2}"],
+    ["taker_foreign_postal_code", "Código postal estrangeiro", ""],
+    ["taker_foreign_city", "Cidade no exterior", ""],
+    ["taker_foreign_region", "Estado, província ou região", ""],
+    ["taker_nif", "Identificador fiscal estrangeiro (NIF)", ""],
+    ["taker_no_nif_reason", "Motivo oficial cNaoNIF (0, 1 ou 2)", "[012]"],
+  ]) {
+    const label = document.createElement("label");
+    label.textContent = labelText;
+    const input = document.createElement("input");
+    input.type = "text"; input.name = name; input.autocomplete = "off";
+    input.id = "native-nfse-" + name.replaceAll("_", "-");
+    if (pattern) input.pattern = pattern;
+    input.maxLength = name === "taker_nif" ? 40 : 60;
+    foreignInputs[name] = input; foreignLabels[name] = label;
+    label.append(input); form.append(label);
+  }
+  function syncTakerIdentity() {
+    const foreign = identityMode.value !== "br";
+    for (const name of domesticOnly) {
+      const input = inputs[name];
+      input.required = !foreign;
+      if (input.parentElement) input.parentElement.hidden = foreign;
+    }
+    for (const [name, input] of Object.entries(foreignInputs)) {
+      const active = foreign && (
+        (name !== "taker_nif" && name !== "taker_no_nif_reason")
+        || (name === "taker_nif" && identityMode.value === "nif")
+        || (name === "taker_no_nif_reason" && identityMode.value === "no-nif")
+      );
+      input.required = active;
+      foreignLabels[name].hidden = !active;
+    }
+  }
+  identityMode.addEventListener("change", syncTakerIdentity);
+  syncTakerIdentity();
   const withholding = document.createElement("label");
   const select = document.createElement("select");
   select.name = "iss_withheld"; select.required = true;
@@ -304,18 +363,22 @@ function appendNativeNfsePreparation(article) {
       result.textContent = "Selecione unidade fiscal autorizada em homologação."; return;
     }
     const payload = {
-      ...Object.fromEntries(
-        Object.entries(inputs)
-          .filter(([name, input]) => name !== "nbs_code" || Boolean(input.value.trim()))
-          .map(([key, input]) => [key, input.value.trim()])
-      ),
+      ...Object.fromEntries(Object.entries(inputs)
+        .filter(([key, input]) => (identityMode.value === "br" || !domesticOnly.has(key))
+          && (key !== "nbs_code" || Boolean(input.value.trim())))
+        .map(([key, input]) => [key, input.value.trim()])),
+      ...(identityMode.value === "br" ? {} : Object.fromEntries(
+        Object.entries(foreignInputs).filter(([key]) =>
+          (key !== "taker_nif" && key !== "taker_no_nif_reason")
+          || (key === "taker_nif" && identityMode.value === "nif")
+          || (key === "taker_no_nif_reason" && identityMode.value === "no-nif")
+        ).map(([key, input]) => [key, input.value.trim()])
+      )),
       unit_id: selectedFiscalUnit, environment: "homologation",
       rule_version: Number(inputs.rule_version.value),
       iss_withheld: select.value === "true",
       fiscal_review_approved: reviewed.checked,
     };
-    // Blank optional NBS is omitted in the payload above. Only the canonical
-    // server binding decides when a real, reviewed NBS is mandatory.
     if (!Number.isSafeInteger(payload.rule_version)) {
       result.textContent = "Informe a versão fiscal inteira."; return;
     }
@@ -1462,7 +1525,7 @@ function fiscalRowElement(row) {
     if (kind === "authorized_xml" && row.auxiliary_pdf_available === true) {
       const danfe = document.createElement("a");
       danfe.className = "ghost";
-      danfe.textContent = "Visualizar documento auxiliar (DANFE/DANFSe)";
+      danfe.textContent = "Visualizar documento auxiliar (DANFE/DANFCe/DANFSe)";
       danfe.href = `/v1/portal/documents/${encodeURIComponent(reference)}/artifacts/auxiliary_pdf?${new URLSearchParams({
         unit_id: unit, environment,
       })}`;

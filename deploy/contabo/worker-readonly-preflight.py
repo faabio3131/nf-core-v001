@@ -164,7 +164,12 @@ def worker_policy(info: dict[str, Any], *, bling: bool) -> dict[str, str]:
 def command_sha() -> str | None:
     try:
         r = subprocess.run(
-            ["git", "-C", str(ROOT / "src"), "rev-parse", "HEAD"],
+            [
+                "/usr/bin/git",
+                "-c", f"safe.directory={ROOT / 'src'}",
+                "-C", str(ROOT / "src"),
+                "rev-parse", "HEAD",
+            ],
             capture_output=True, text=True, timeout=8, check=False,
         )
         value = r.stdout.strip()
