@@ -59,13 +59,18 @@ def test_common_receipt_verifier_sanitizes_malformed_provider_bytes(
 
 
 @pytest.mark.parametrize(
-    "untrusted_response",
-    [_DEEP_JSON, _envelope(_GZIP[:-8]), _envelope(_GZIP[:12]), _envelope(_CORRUPT_DEFLATE)],
+    ("untrusted_response", "expected_error"),
+    [
+        (_DEEP_JSON, "Resposta inválida da NFS-e Nacional"),
+        (_envelope(_GZIP[:-8]), "XML retornado pela NFS-e Nacional é inválido"),
+        (_envelope(_GZIP[:12]), "XML retornado pela NFS-e Nacional é inválido"),
+        (_envelope(_CORRUPT_DEFLATE), "XML retornado pela NFS-e Nacional é inválido"),
+    ],
 )
-def test_direct_post_never_authorizes_corrupt_gzip(untrusted_response: bytes) -> None:
-    with pytest.raises(
-        OfficialNfseTransportError, match="XML retornado pela NFS-e Nacional é inválido"
-    ):
+def test_direct_post_never_authorizes_corrupt_gzip(
+    untrusted_response: bytes, expected_error: str,
+) -> None:
+    with pytest.raises(OfficialNfseTransportError, match=expected_error):
         parse_nfse_homologation_response(untrusted_response)
 
 
