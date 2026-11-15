@@ -11,7 +11,7 @@ from kordena_fiscal.cognitive import (
 from kordena_fiscal.cognitive.ports import ProviderSection
 from kordena_fiscal.domain import FiscalValidationError
 
-from .conftest import make_request, rejection_evidence
+from .conftest import make_request, make_scope, rejection_evidence
 
 CASES = {
     "model_authored_fact": (SectionKind.FACT, "A rejeição 204 ocorreu.", ("rej-1",)),
@@ -100,6 +100,25 @@ def test_context_hash_is_stable_and_nonce_independent() -> None:
     assert first.context_hash == second.context_hash
     other = make_request(evidence=rejection_evidence(code="225"))
     assert ContextPackBuilder().build(other).prompt.context_hash != first.context_hash
+
+
+def test_context_hash_separates_tenants_units_and_evidence_origin() -> None:
+    first = make_request()
+    baseline = ContextPackBuilder().build(first).prompt.context_hash
+    tenant_b = make_request(
+        scope=make_scope("tenant-b", "unit-a"),
+        evidence=rejection_evidence(tenant="tenant-b"),
+    )
+    unit_b = make_request(
+        scope=make_scope("tenant-a", "unit-b"),
+        evidence=rejection_evidence(unit="unit-b"),
+    )
+    other_origin = make_request(evidence=(
+        dataclasses.replace(first.evidence[0], origin="different-verified-source"),
+        *first.evidence[1:],
+    ))
+    for request in (tenant_b, unit_b, other_origin):
+        assert ContextPackBuilder().build(request).prompt.context_hash != baseline
 
 
 def test_request_validation() -> None:
