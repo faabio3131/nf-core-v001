@@ -128,7 +128,7 @@ def parse_nfse_homologation_response(raw: bytes) -> dict[str, str]:
         raise OfficialNfseTransportError("Resposta da NFS-e Nacional ausente ou excede limite")
     try:
         payload = json.loads(raw)
-    except (ValueError, UnicodeDecodeError):
+    except (ValueError, UnicodeDecodeError, RecursionError):
         raise OfficialNfseTransportError("Resposta inválida da NFS-e Nacional") from None
     if not isinstance(payload, dict):
         raise OfficialNfseTransportError("Resposta inválida da NFS-e Nacional")
