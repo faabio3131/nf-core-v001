@@ -29,8 +29,10 @@ from kordena_fiscal.gateway.nfse_national_homologation import (
 )
 from kordena_fiscal.gateway.nfse_national_receipt import (
     NfseReceiptVerificationError,
-    _verify_nfse_receipt_signature as _verify_nfse_receipt_signature,
     validate_official_nfse_receipt,
+)
+from kordena_fiscal.gateway.nfse_national_receipt import (
+    _verify_nfse_receipt_signature as _verify_nfse_receipt_signature,
 )
 from kordena_fiscal.gateway.provider import ProviderSelectionResolver
 from kordena_fiscal.issuance.nfe_nfse import (
