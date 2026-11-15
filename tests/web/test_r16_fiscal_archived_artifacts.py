@@ -184,3 +184,36 @@ def test_legacy_danfe_handles_bad_xml_as_safe_http_error() -> None:
         )
     assert error.value.status_code == 409
     assert rendered == []
+
+
+
+@pytest.mark.parametrize(
+    ("document_model", "advertise_pdf"),
+    [("55", True), ("65", False), ("57", False)],
+)
+def test_portal_advertises_nfe_danfe_only_for_supported_model(
+    document_model: str, advertise_pdf: bool,
+) -> None:
+    """A supported nfeProc root alone does not mean model 65 can print as DANFE 55."""
+    from kordena_fiscal.web.portal_runtime import _printable_authorized_xml
+
+    scope = ExecutionScope(
+        host_namespace="fm-nfcore", tenant_id="tenant-a", unit_id="unit-a",
+        environment=FiscalEnvironment.HOMOLOGATION, correlation_id="pdf-model-scope",
+    )
+    xml = (
+        '<nfeProc xmlns="http://www.portalfiscal.inf.br/nfe" versao="4.00">'
+        '<NFe><infNFe Id="NFe' + ("1" * 44) + '">'
+        '<ide><mod>' + document_model + '</mod></ide>'
+        '</infNFe></NFe></nfeProc>'
+    ).encode("ascii")
+    entry = FiscalArchiveEntry.build(
+        scope=scope,
+        document_reference="MODEL-" + document_model,
+        kind=FiscalArchiveKind.AUTHORIZED_XML,
+        content=xml,
+        media_type="application/xml",
+        archived_at=datetime.now(UTC),
+        retention=RetentionPolicyMetadata(policy_id="test", policy_version=1),
+    )
+    assert _printable_authorized_xml(entry) is advertise_pdf
