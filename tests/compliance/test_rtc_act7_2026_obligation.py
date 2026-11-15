@@ -21,17 +21,44 @@ from kordena_fiscal.domain import FiscalDocumentKind, FiscalValidationError, Tax
 @pytest.mark.parametrize(
     ("regime", "category", "deadline"),
     [
-        (TaxRegimeCode.NORMAL, RtcNfseSupplyCategory.ISS_GENERAL_D, datetime(2026, 10, 1, tzinfo=UTC)),
-        (TaxRegimeCode.NORMAL, RtcNfseSupplyCategory.ISS_SOFTWARE_B, datetime(2027, 3, 1, tzinfo=UTC)),
-        (TaxRegimeCode.NORMAL, RtcNfseSupplyCategory.DIGITAL_PLATFORM_A, datetime(2027, 3, 1, tzinfo=UTC)),
-        (TaxRegimeCode.NORMAL, RtcNfseSupplyCategory.ISS_TRANSPORT_C, datetime(2027, 3, 1, tzinfo=UTC)),
-        (TaxRegimeCode.NORMAL, RtcNfseSupplyCategory.INTANGIBLE_E, datetime(2027, 1, 1, tzinfo=UTC)),
-        (TaxRegimeCode.NORMAL, RtcNfseSupplyCategory.CONDOMINIUM_F, datetime(2027, 1, 1, tzinfo=UTC)),
+        (
+            TaxRegimeCode.NORMAL, RtcNfseSupplyCategory.ISS_GENERAL_D,
+            datetime(2026, 10, 1, tzinfo=UTC),
+        ),
+        (
+            TaxRegimeCode.NORMAL, RtcNfseSupplyCategory.ISS_SOFTWARE_B,
+            datetime(2027, 3, 1, tzinfo=UTC),
+        ),
+        (
+            TaxRegimeCode.NORMAL, RtcNfseSupplyCategory.DIGITAL_PLATFORM_A,
+            datetime(2027, 3, 1, tzinfo=UTC),
+        ),
+        (
+            TaxRegimeCode.NORMAL, RtcNfseSupplyCategory.ISS_TRANSPORT_C,
+            datetime(2027, 3, 1, tzinfo=UTC),
+        ),
+        (
+            TaxRegimeCode.NORMAL, RtcNfseSupplyCategory.INTANGIBLE_E,
+            datetime(2027, 1, 1, tzinfo=UTC),
+        ),
+        (
+            TaxRegimeCode.NORMAL, RtcNfseSupplyCategory.CONDOMINIUM_F,
+            datetime(2027, 1, 1, tzinfo=UTC),
+        ),
         (TaxRegimeCode.NORMAL, RtcNfseSupplyCategory.LEASE_G, datetime(2027, 1, 1, tzinfo=UTC)),
         (TaxRegimeCode.NORMAL, RtcNfseSupplyCategory.OTHER_H, datetime(2027, 1, 1, tzinfo=UTC)),
-        (TaxRegimeCode.SIMPLES_NACIONAL, RtcNfseSupplyCategory.ISS_GENERAL_D, datetime(2027, 1, 1, tzinfo=UTC)),
-        (TaxRegimeCode.SIMPLES_NACIONAL, RtcNfseSupplyCategory.ISS_SOFTWARE_B, datetime(2027, 3, 1, tzinfo=UTC)),
-        (TaxRegimeCode.SIMPLES_NACIONAL_EXCESS_SUBLIMIT, RtcNfseSupplyCategory.ISS_GENERAL_D, datetime(2027, 1, 1, tzinfo=UTC)),
+        (
+            TaxRegimeCode.SIMPLES_NACIONAL, RtcNfseSupplyCategory.ISS_GENERAL_D,
+            datetime(2027, 1, 1, tzinfo=UTC),
+        ),
+        (
+            TaxRegimeCode.SIMPLES_NACIONAL, RtcNfseSupplyCategory.ISS_SOFTWARE_B,
+            datetime(2027, 3, 1, tzinfo=UTC),
+        ),
+        (
+            TaxRegimeCode.SIMPLES_NACIONAL_EXCESS_SUBLIMIT, RtcNfseSupplyCategory.ISS_GENERAL_D,
+            datetime(2027, 1, 1, tzinfo=UTC),
+        ),
     ],
 )
 def test_act7_obligation_transition_on_exact_day(
