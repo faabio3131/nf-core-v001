@@ -42,8 +42,8 @@ from kordena_fiscal.domain import (
     FiscalEnvironment,
     FiscalValidationError,
     HostScope,
-    TaxRegimeCode,
     SourceReference,
+    TaxRegimeCode,
 )
 from kordena_fiscal.events import (
     FiscalInboxEntry,
