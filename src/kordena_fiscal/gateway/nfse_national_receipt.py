@@ -11,6 +11,7 @@ import base64
 import gzip
 import io
 import json
+import zlib
 from datetime import UTC, datetime
 
 from cryptography import x509
@@ -145,7 +146,10 @@ def validate_official_nfse_receipt(raw: bytes, key: str) -> bytes:
                 no_network=True, huge_tree=False,
             )
         )
-    except (OSError, ValueError, etree.XMLSyntaxError):
+    except (EOFError, OSError, UnicodeError, ValueError, zlib.error, etree.XMLSyntaxError):
+        # A provider can return malformed UTF-8, a truncated GZIP stream or a
+        # corrupt deflate block. None of those may escape as an HTTP 500 or
+        # be treated as an authorized fiscal document.
         raise NfseReceiptVerificationError("Invalid signed national NFS-e receipt") from None
     if (
         root.tag != f"{{{_NS}}}NFSe"
