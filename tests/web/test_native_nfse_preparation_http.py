@@ -770,6 +770,25 @@ def test_native_nfse_requires_real_binding_and_effective_profile(tmp_path: Path)
     assert result.json()["detail"]["code"] == "NATIVE_NFSE_PROVIDER_NOT_CONFIGURED"
 
 
+def test_sublimit_national_preparation_refuses_unreviewed_tax_assessment(
+    tmp_path: Path,
+) -> None:
+    db = _database(
+        tmp_path / "sublimit-fail-closed.sqlite",
+        tax_regime=TaxRegimeCode.SIMPLES_NACIONAL_EXCESS_SUBLIMIT,
+    )
+    web = _client(db)
+    response = _post(web, _payload(), key="no-sublimit-review")
+    assert response.status_code == 400
+    assert response.json()["detail"]["code"] == "NATIVE_NFSE_INVALID_FISCAL_FACTS"
+    # A forged browser treatment cannot create a server-approved fiscal fact.
+    forged = _post(
+        web, _payload() | {"simples_assessment_code": "3"},
+        key="forged-sublimit-review",
+    )
+    assert forged.status_code == 400
+
+
 def test_unmodeled_untaxed_iss_and_malformed_money_fail_before_preparation(tmp_path: Path) -> None:
     db = _database(tmp_path / "tax.sqlite")
     web = _client(db)
