@@ -3765,6 +3765,222 @@ class FiscalApplicationService:
             updated, None, saved.entry_id, True, False,
         )
 
+
+    def reconcile_santana_nfse_substitution(
+        self, *, scope: ExecutionScope, original_id: str, replacement_id: str,
+        gateway: SantanaSimplissHomologationGateway,
+        occurred_at: datetime, retention: RetentionPolicyMetadata,
+    ) -> DurableSantanaRecoveryOutcome:
+        """Complete an uncertain new-DPS POST by official event and NFS-e GETs.
+
+        The original NFS-e event 105102 contains the new key. A second signed
+        official receipt must also prove the exact reserved replacement DPS and
+        original key before both lifecycles can be promoted atomically.
+        """
+        if (
+            not isinstance(scope, ExecutionScope)
+            or not isinstance(original_id, str) or not original_id.strip()
+            or not isinstance(replacement_id, str) or not replacement_id.strip()
+            or original_id == replacement_id
+            or not isinstance(gateway, SantanaSimplissHomologationGateway)
+            or not isinstance(occurred_at, datetime) or occurred_at.tzinfo is None
+            or not isinstance(retention, RetentionPolicyMetadata)
+        ):
+            raise FiscalValidationError("Invalid scoped Santana substitution recovery")
+        with self._uow_factory() as uow:
+            original = self._load_prepared_from_uow(uow, scope, original_id)
+            replacement = self._load_prepared_from_uow(uow, scope, replacement_id)
+            if (
+                not isinstance(original, NfseAuthorizationRequest)
+                or not isinstance(replacement, NfseAuthorizationRequest)
+                or original.document.issuer.cnpj != replacement.document.issuer.cnpj
+                or original.document.issuer.address.jurisdiction
+                != replacement.document.issuer.address.jurisdiction
+                or original.document.issuer.address.jurisdiction.municipality_ibge_code
+                != SANTANA_IBGE
+                or original.document.scope.identity_partition_key
+                != replacement.document.scope.identity_partition_key
+            ):
+                raise PersistenceStateError(
+                    "Santana recovery requires two scoped same-issuer NFS-e documents"
+                )
+            uow.lifecycle.assert_scope(original_id, scope)
+            uow.lifecycle.assert_scope(replacement_id, scope)
+            before_original = uow.lifecycle.get(original_id)
+            before_replacement = uow.lifecycle.get(replacement_id)
+            original_attempts = uow.idempotency.attempts(original.idempotency_key)
+            replacement_attempts = uow.idempotency.attempts(replacement.idempotency_key)
+            if (
+                before_original is None or before_replacement is None
+                or len(original_attempts) != 1
+                or original_attempts[0].status is not IssuanceAttemptStatus.AUTHORIZED
+                or original_attempts[0].request_fingerprint
+                != original.request_fingerprint
+                or original_attempts[0].document_id != original_id
+                or len(replacement_attempts) != 1
+                or replacement_attempts[0].document_id != replacement_id
+                or replacement_attempts[0].request_fingerprint
+                != replacement.request_fingerprint
+            ):
+                raise PersistenceStateError(
+                    "Santana substitution recovery has inconsistent issuance attempts"
+                )
+            original_key = original_attempts[0].result_reference
+            if (
+                not isinstance(original_key, str) or len(original_key) != 50
+                or not original_key.isascii() or not original_key.isdecimal()
+                or not original_key.startswith("35")
+            ):
+                raise PersistenceStateError("Santana original fiscal key is not confirmed")
+            entries = uow.archive.list_for_document(scope, original_id)
+            intents = [
+                item for item in entries
+                if item.kind is FiscalArchiveKind.OTHER
+                and item.media_type
+                == "application/vnd.nfcore.santana-substitution-intent.v1+json"
+            ]
+            source_xml = [
+                item for item in entries
+                if item.kind is FiscalArchiveKind.AUTHORIZED_XML
+                and item.media_type == "application/xml"
+            ]
+            if len(intents) != 1 or len(source_xml) != 1:
+                raise PersistenceStateError(
+                    "Santana substitution original proof is missing or duplicated"
+                )
+            for item in (intents[0], source_xml[0]):
+                FiscalArchiveVerifier().verify_entry(item)
+            intent = json.loads(intents[0].content)
+            if (
+                intent.get("original_id") != original_id
+                or intent.get("original_key") != original_key
+                or intent.get("replacement_id") != replacement_id
+                or intent.get("replacement_fingerprint")
+                != replacement.request_fingerprint
+            ):
+                raise PersistenceStateError("Santana substitution approval changed")
+            if (
+                before_original.state is FiscalDocumentState.CANCELLED
+                and before_replacement.state is FiscalDocumentState.AUTHORIZED
+                and replacement_attempts[0].status is IssuanceAttemptStatus.AUTHORIZED
+            ):
+                linked = [
+                    item for item in entries
+                    if item.kind is FiscalArchiveKind.FISCAL_EVENT
+                    and item.media_type
+                    == "application/vnd.nfcore.santana-substitution.v1+json"
+                ]
+                if len(linked) != 1:
+                    raise PersistenceStateError("Santana terminal substitution lacks link")
+                FiscalArchiveVerifier().verify_entry(linked[0])
+                return DurableSantanaRecoveryOutcome(
+                    before_original, before_replacement, linked[0].entry_id,
+                    True, False,
+                )
+            if (
+                before_original.state is not FiscalDocumentState.CANCEL_REQUESTED
+                or before_replacement.state is not FiscalDocumentState.TRANSMITTING
+                or replacement_attempts[0].status is not IssuanceAttemptStatus.RESERVED
+            ):
+                raise PersistenceStateError(
+                    "Santana substitution recovery requires uncertain original claims"
+                )
+        jurisdiction = original.document.issuer.address.jurisdiction
+        for operation in ("cancel", "query", "authorize"):
+            configured = self.resolve_configured_provider_id(
+                scope=scope, document_kind=FiscalDocumentKind.NFSE,
+                jurisdiction=jurisdiction, operation=operation,
+            )
+            if configured != SANTANA_PROVIDER_ID:
+                raise FiscalValidationError(
+                    "Santana substitution recovery provider binding differs"
+                )
+        event = gateway.query_verified_event(
+            original, original_key=original_key, event_code="105102",
+        )
+        if event is None:
+            return DurableSantanaRecoveryOutcome(
+                before_original, before_replacement, None, False, True,
+            )
+        if event.replacement_access_key is None:
+            raise PersistenceStateError(
+                "Signed Santana substitution lacks the replacement access key"
+            )
+        result = gateway.query_substitution_invoice(
+            replacement, replacement_key=event.replacement_access_key,
+            original_key=original_key,
+        )
+        if (
+            result.status is not AuthorizationStatus.AUTHORIZED
+            or result.invoice_reference != event.replacement_access_key
+            or result.authorized_xml is None
+        ):
+            raise PersistenceStateError("Santana substitute has no verified official note")
+        with self._uow_factory() as uow:
+            uow.lifecycle.assert_scope(original_id, scope)
+            uow.lifecycle.assert_scope(replacement_id, scope)
+            old = uow.lifecycle.get(original_id)
+            new = uow.lifecycle.get(replacement_id)
+            attempts = uow.idempotency.attempts(replacement.idempotency_key)
+            if (
+                old != before_original or new != before_replacement
+                or len(attempts) != 1
+                or attempts[0].status is not IssuanceAttemptStatus.RESERVED
+                or attempts[0].generation != replacement_attempts[0].generation
+                or attempts[0].request_fingerprint
+                != replacement.request_fingerprint
+            ):
+                raise PersistenceConflictError(
+                    "Santana substitution state changed during read-only query"
+                )
+            old_terminal = self._state_machine.transition(
+                old, FiscalDocumentState.CANCELLED,
+                occurred_at=occurred_at,
+                reason="Santana signed substitution event 105102 verified by GET",
+                correlation_id=scope.correlation_id,
+            )
+            new_terminal = self._state_machine.transition(
+                new, FiscalDocumentState.AUTHORIZED,
+                occurred_at=occurred_at,
+                reason="Santana replacement DPS and official NFS-e verified by GET",
+                correlation_id=scope.correlation_id,
+            )
+            uow.idempotency.mark_authorized(
+                replacement.idempotency_key, attempts[0].generation,
+                event.replacement_access_key,
+            )
+            uow.lifecycle.save(old_terminal, expected_version=old.version)
+            uow.lifecycle.save(new_terminal, expected_version=new.version)
+            uow.archive.append(FiscalArchiveEntry.build(
+                scope=scope, document_reference=replacement_id,
+                kind=FiscalArchiveKind.AUTHORIZED_XML,
+                content=result.authorized_xml, media_type="application/xml",
+                archived_at=occurred_at, retention=retention,
+            ))
+            proof = uow.archive.append(FiscalArchiveEntry.build(
+                scope=scope, document_reference=original_id,
+                kind=FiscalArchiveKind.FISCAL_EVENT,
+                content=event.signed_event_xml, media_type="application/xml",
+                archived_at=occurred_at, retention=retention,
+            ))
+            uow.archive.append(FiscalArchiveEntry.build(
+                scope=scope, document_reference=original_id,
+                kind=FiscalArchiveKind.FISCAL_EVENT,
+                content=json.dumps({
+                    "original_id": original_id, "original_key": original_key,
+                    "replacement_id": replacement_id,
+                    "replacement_key": event.replacement_access_key,
+                    "event": "automatic_substitution",
+                    "municipality_ibge": SANTANA_IBGE,
+                }, sort_keys=True, separators=(",", ":")).encode("utf-8"),
+                media_type="application/vnd.nfcore.santana-substitution.v1+json",
+                archived_at=occurred_at, retention=retention,
+            ))
+            uow.commit()
+        return DurableSantanaRecoveryOutcome(
+            old_terminal, new_terminal, proof.entry_id, True, False,
+        )
+
     def reserve_number(
         self,
         key: FiscalSequenceKey,
