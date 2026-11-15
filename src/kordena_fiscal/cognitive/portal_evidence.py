@@ -72,6 +72,12 @@ class PortalSurfaceEvidenceProvider:
             )
 
         def matches(row: Mapping[str, Any]) -> bool:
+            # Defence in depth: a faulty projection must never elevate data
+            # bearing an explicit foreign tenant/unit marker into trusted facts.
+            if row.get("tenant_id") is not None and str(row["tenant_id"]) != tenant:
+                return False
+            if row.get("unit_id") is not None and str(row["unit_id"]) != unit_id:
+                return False
             if subject_id is None:
                 return True
             return subject_id in {
