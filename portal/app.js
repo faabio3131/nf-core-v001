@@ -320,7 +320,7 @@ function appendNativeNfsePreparation(article) {
     for (const name of domesticOnly) {
       const input = inputs[name];
       input.required = !foreign;
-      input.parentElement.hidden = foreign;
+      if (input.parentElement) input.parentElement.hidden = foreign;
     }
     for (const [name, input] of Object.entries(foreignInputs)) {
       const active = foreign && (
