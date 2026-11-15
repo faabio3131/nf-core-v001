@@ -28,6 +28,7 @@ from .nfe_nfse import (
     NfseAuthorizationRequest,
     NfseCanonicalDocument,
     NfseForeignAddress,
+    NfseNationalSubstitution,
     NfseNationalTaxTreatment,
     NfseServiceLine,
     NfseServiceTaker,
@@ -159,6 +160,17 @@ def encode_prepared_nfse(request: NfseAuthorizationRequest) -> bytes:
                     document.national_tax_treatment.effective_to.isoformat()
                     if document.national_tax_treatment.effective_to else None
                 ),
+            }
+        ),
+        "national_substitution": (
+            None if document.national_substitution is None else {
+                "original_document_id": document.national_substitution.original_document_id,
+                "original_invoice_reference": (
+                    document.national_substitution.original_invoice_reference
+                ),
+                "reason_code": document.national_substitution.reason_code,
+                "reason_description": document.national_substitution.reason_description,
+                "approval_reference": document.national_substitution.approval_reference,
             }
         ),
         "dps_series": document.dps_series,
@@ -365,6 +377,23 @@ def decode_prepared_nfse(content: bytes, *, scope: ExecutionScope) -> NfseAuthor
                     decision.get("immunity_type_code"), "tax_treatment.immunity_type_code",
                 ),
             )
+        substitution = None
+        if root.get("national_substitution") is not None:
+            data = _mapping(root["national_substitution"], "national_substitution")
+            if set(data) != {
+                "original_document_id", "original_invoice_reference",
+                "reason_code", "reason_description", "approval_reference",
+            }:
+                raise FiscalValidationError("Invalid archived national replacement fields")
+            substitution = NfseNationalSubstitution(
+                original_document_id=_text(data["original_document_id"], "original_document_id"),
+                original_invoice_reference=_text(
+                    data["original_invoice_reference"], "original_invoice_reference",
+                ),
+                reason_code=_text(data["reason_code"], "reason_code"),
+                reason_description=_text(data["reason_description"], "reason_description"),
+                approval_reference=_text(data["approval_reference"], "approval_reference"),
+            )
         document = NfseCanonicalDocument(
             document_id=_text(root["document_id"], "document_id"),
             scope=scope,
@@ -388,6 +417,7 @@ def decode_prepared_nfse(content: bytes, *, scope: ExecutionScope) -> NfseAuthor
             dps_series=root.get("dps_series", 1),
             dps_number=root.get("dps_number"),
             national_tax_treatment=treatment,
+            national_substitution=substitution,
         )
         request = NfseAuthorizationRequest.build(document)
         if request.idempotency_key.value != _text(root["idempotency_key"], "idempotency_key"):

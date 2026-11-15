@@ -358,6 +358,36 @@ class NfseNationalTaxTreatment:
 
 
 @dataclass(frozen=True, slots=True)
+class NfseNationalSubstitution:
+    """Reviewed original NFS-e reference for a replacement DPS, never a second event."""
+
+    original_document_id: str
+    original_invoice_reference: str
+    reason_code: str
+    reason_description: str
+    approval_reference: str
+
+    def __post_init__(self) -> None:
+        object.__setattr__(
+            self, "original_document_id",
+            _required(self.original_document_id, "original_document_id", 128),
+        )
+        key = self.original_invoice_reference
+        if (
+            not isinstance(key, str) or len(key) != 50
+            or not key.isascii() or not key.isdecimal()
+            or self.reason_code not in {"01", "02", "03", "04", "05", "99"}
+            or not isinstance(self.reason_description, str)
+            or not 15 <= len(self.reason_description.strip()) <= 255
+            or any(ord(char) < 32 for char in self.reason_description)
+            or not isinstance(self.approval_reference, str)
+            or not 8 <= len(self.approval_reference.strip()) <= 128
+            or not self.approval_reference.isascii()
+        ):
+            raise FiscalValidationError("National substitution needs reviewed original and reason")
+
+
+@dataclass(frozen=True, slots=True)
 class NfseCanonicalDocument:
     """Canonical NFS-e service snapshot kept separate from merchandise-line semantics."""
 
@@ -375,6 +405,7 @@ class NfseCanonicalDocument:
     dps_series: int = 1
     dps_number: int | None = None
     national_tax_treatment: NfseNationalTaxTreatment | None = None
+    national_substitution: NfseNationalSubstitution | None = None
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "document_id", _required(self.document_id, "document_id", 128))
@@ -434,6 +465,14 @@ class NfseCanonicalDocument:
                 raise FiscalValidationError(
                     "Non-taxable ISS treatment cannot charge or withhold ISS"
                 )
+        if (
+            self.national_substitution is not None
+            and (
+                not isinstance(self.national_substitution, NfseNationalSubstitution)
+                or self.national_substitution.original_document_id == self.document_id
+            )
+        ):
+            raise FiscalValidationError("Invalid canonical national substitution reference")
         if not isinstance(self.schema_version, int) or isinstance(self.schema_version, bool):
             raise FiscalValidationError("schema_version must be an integer")
         if self.schema_version < 1:
@@ -577,6 +616,15 @@ def build_nfse_request_fingerprint(document: NfseCanonicalDocument) -> str:
         else:
             taker_payload["address"] = None
         payload["service_taker"] = taker_payload
+    if document.national_substitution is not None:
+        linked = document.national_substitution
+        payload["national_substitution"] = {
+            "original_document_id": linked.original_document_id,
+            "original_invoice_reference": linked.original_invoice_reference,
+            "reason_code": linked.reason_code,
+            "reason_description": linked.reason_description,
+            "approval_reference": linked.approval_reference,
+        }
     # Preserve the historic fingerprint of unnumbered/archived requests.
     # On new preparations the UoW supplies a legally reserved DPS serial,
     # and this serial is bound to the immutable request fingerprint.

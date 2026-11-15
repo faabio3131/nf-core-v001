@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import base64
+import hashlib
 import json
 from collections.abc import Callable
 from dataclasses import dataclass, replace
@@ -43,6 +44,7 @@ from kordena_fiscal.domain import (
     FiscalValidationError,
     HostScope,
     SourceReference,
+    TaxRegimeCode,
 )
 from kordena_fiscal.events import (
     FiscalInboxEntry,
@@ -76,7 +78,12 @@ from kordena_fiscal.gateway.jundiai_giss_invoice_interpreter import (
     decode_jundiai_archived_invoice,
 )
 from kordena_fiscal.gateway.nfse_nacional_event_homologation import (
+    NationalNfseCancellationIntent,
     NationalNfseCancellationReceipt,
+    validate_national_event_xml,
+)
+from kordena_fiscal.gateway.nfse_nacional_homologation import (
+    NACIONAL_HOMOLOGATION_PROVIDER_ID,
 )
 from kordena_fiscal.gateway.nfse_national_query import _verify_nfse_receipt_signature
 from kordena_fiscal.gateway.osasco_rtc_cancellation_builder import (
@@ -173,6 +180,15 @@ from kordena_fiscal.xml import NfeAccessKey
 class DurableSantanaCancellationOutcome:
     lifecycle: FiscalStateSnapshot
     archive_reference: str
+
+
+@dataclass(frozen=True, slots=True)
+class DurableNationalCancellationRecoveryOutcome:
+    lifecycle: FiscalStateSnapshot
+    archive_reference: str | None
+    recovered: bool
+    recovery_required: bool
+    replay: bool
 
 
 @dataclass(frozen=True, slots=True)
@@ -601,6 +617,66 @@ class FiscalApplicationService:
             uow.commit()
             return updated
 
+    def _complete_national_replacement_in_uow(
+        self, *, uow: FiscalUnitOfWork,
+        prepared: NfseAuthorizationRequest,
+        authorized: bool, occurred_at: datetime,
+        retention: RetentionPolicyMetadata,
+    ) -> None:
+        """Reconcile original state atomically with the replacement's terminal state."""
+        linked = prepared.document.national_substitution
+        if linked is None:
+            return
+        original_id = linked.original_document_id
+        scope = prepared.document.scope
+        uow.lifecycle.assert_scope(original_id, scope)
+        state = uow.lifecycle.get(original_id)
+        records = [
+            item for item in uow.archive.list_for_document(scope, original_id)
+            if item.kind is FiscalArchiveKind.OTHER
+            and item.media_type == "application/vnd.nfcore.national-substitution-intent.v1+json"
+        ]
+        if (
+            state is None or state.state is not FiscalDocumentState.CANCEL_REQUESTED
+            or len(records) != 1
+        ):
+            raise PersistenceConflictError("National original substitution claim changed")
+        FiscalArchiveVerifier().verify_entry(records[0])
+        original = json.loads(records[0].content)
+        if (
+            original.get("replacement_id") != prepared.document.document_id
+            or original.get("old_key") != linked.original_invoice_reference
+            or original.get("approval_reference") != linked.approval_reference
+            or original.get("fingerprint") != prepared.request_fingerprint
+        ):
+            raise PersistenceConflictError("National original substitution evidence mismatch")
+        target = (
+            FiscalDocumentState.CANCELLED if authorized
+            else FiscalDocumentState.AUTHORIZED
+        )
+        updated = self._state_machine.transition(
+            state, target, occurred_at=occurred_at,
+            reason=(
+                "National official replacement DPS authorized"
+                if authorized else "National replacement DPS rejected"
+            ),
+            correlation_id=scope.correlation_id,
+        )
+        uow.lifecycle.save(updated, expected_version=state.version)
+        uow.archive.append(FiscalArchiveEntry.build(
+            scope=scope, document_reference=original_id,
+            kind=FiscalArchiveKind.OTHER,
+            content=json.dumps({
+                "operation": "national_substitution_resolution",
+                "original_id": original_id,
+                "replacement_id": prepared.document.document_id,
+                "original_key": linked.original_invoice_reference,
+                "result": "authorized" if authorized else "rejected",
+            }, sort_keys=True, separators=(",", ":")).encode("utf-8"),
+            media_type="application/vnd.nfcore.national-substitution-resolution.v1+json",
+            archived_at=occurred_at, retention=retention,
+        ))
+
     def finalize_authorized(
         self,
         *,
@@ -641,6 +717,24 @@ class FiscalApplicationService:
                 uow.archive.append(archive_entry)
             uow.idempotency.mark_authorized(key, generation, result_reference)
             uow.lifecycle.save(updated, expected_version=current.version)
+            if archive_entry is not None and any(
+                row.media_type == NFSE_PREPARED_MEDIA_TYPE
+                for row in uow.archive.list_for_document(
+                    archive_entry.scope, document_id,
+                )
+            ):
+                prepared = self._load_prepared_from_uow(
+                    uow, archive_entry.scope, document_id,
+                )
+                if (
+                    isinstance(prepared, NfseAuthorizationRequest)
+                    and prepared.document.national_substitution is not None
+                ):
+                    self._complete_national_replacement_in_uow(
+                        uow=uow, prepared=prepared, authorized=True,
+                        occurred_at=occurred_at,
+                        retention=RetentionPolicyMetadata("nfcore-fiscal-archive", 1),
+                    )
             uow.commit()
             return updated
 
@@ -682,6 +776,24 @@ class FiscalApplicationService:
                 if archive_entry.document_reference != document_id:
                     raise PersistenceConflictError("Rejection archive document does not match")
                 uow.archive.append(archive_entry)
+            if archive_entry is not None and any(
+                row.media_type == NFSE_PREPARED_MEDIA_TYPE
+                for row in uow.archive.list_for_document(
+                    archive_entry.scope, document_id,
+                )
+            ):
+                prepared = self._load_prepared_from_uow(
+                    uow, archive_entry.scope, document_id,
+                )
+                if (
+                    isinstance(prepared, NfseAuthorizationRequest)
+                    and prepared.document.national_substitution is not None
+                ):
+                    self._complete_national_replacement_in_uow(
+                        uow=uow, prepared=prepared, authorized=False,
+                        occurred_at=occurred_at,
+                        retention=RetentionPolicyMetadata("nfcore-fiscal-archive", 1),
+                    )
             uow.commit()
             return updated
 
@@ -792,6 +904,30 @@ class FiscalApplicationService:
                     "SP4 municipal original RPS requires reviewed scope and series"
                 )
         with self._uow_factory() as uow:
+            if document.national_substitution is not None:
+                if extrema_intent_builder is not None or sp4_original_builder is not None:
+                    raise FiscalValidationError("National replacement cannot use municipal RPS")
+                linked = document.national_substitution
+                if uow.lifecycle.get(document.document_id) is None:
+                    old = self._load_prepared_from_uow(
+                        uow, document.scope, linked.original_document_id,
+                    )
+                    old_state = uow.lifecycle.get(linked.original_document_id)
+                    old_attempts = uow.idempotency.attempts(old.idempotency_key)
+                    if (
+                        not isinstance(old, NfseAuthorizationRequest)
+                        or old_state is None
+                        or old_state.state is not FiscalDocumentState.AUTHORIZED
+                        or len(old_attempts) != 1
+                        or old_attempts[0].status is not IssuanceAttemptStatus.AUTHORIZED
+                        or old_attempts[0].result_reference != linked.original_invoice_reference
+                        or old.document.issuer.cnpj != document.issuer.cnpj
+                        or old.document.issuer.address.jurisdiction
+                        != document.issuer.address.jurisdiction
+                        or old.document.competence_date != document.competence_date
+                        or old.document.service_jurisdiction != document.service_jurisdiction
+                    ):
+                        raise PersistenceStateError("National original is no longer replaceable")
             if extrema_intent_builder is None and sp4_original_builder is None:
                 # The National DPS number and issuance reservation belong to one UoW.
                 dps_serial = uow.dps_sequences.reserve(
@@ -1172,6 +1308,48 @@ class FiscalApplicationService:
                 return DurableAuthorizationOutcome(attempt, current, True, True)
             if current.state is not FiscalDocumentState.READY_TO_TRANSMIT:
                 raise PersistenceStateError("issuance is not ready to transmit")
+            if (
+                isinstance(request, NfseAuthorizationRequest)
+                and request.document.national_substitution is not None
+            ):
+                linked = request.document.national_substitution
+                old_id = linked.original_document_id
+                uow.lifecycle.assert_scope(old_id, scope)
+                old_request = self._load_prepared_from_uow(uow, scope, old_id)
+                old_state = uow.lifecycle.get(old_id)
+                old_attempts = uow.idempotency.attempts(old_request.idempotency_key)
+                if (
+                    not isinstance(old_request, NfseAuthorizationRequest)
+                    or old_state is None
+                    or old_state.state is not FiscalDocumentState.AUTHORIZED
+                    or len(old_attempts) != 1
+                    or old_attempts[0].status is not IssuanceAttemptStatus.AUTHORIZED
+                    or old_attempts[0].result_reference != linked.original_invoice_reference
+                    or old_request.document.issuer.cnpj != request.document.issuer.cnpj
+                ):
+                    raise PersistenceStateError("National replacement original not authorized")
+                claimed_original = self._state_machine.transition(
+                    old_state, FiscalDocumentState.CANCEL_REQUESTED,
+                    occurred_at=occurred_at,
+                    reason="National original linked to one replacement DPS",
+                    correlation_id=scope.correlation_id,
+                )
+                uow.lifecycle.save(claimed_original, expected_version=old_state.version)
+                uow.archive.append(FiscalArchiveEntry.build(
+                    scope=scope, document_reference=old_id,
+                    kind=FiscalArchiveKind.OTHER,
+                    content=json.dumps({
+                        "original_id": old_id,
+                        "old_key": linked.original_invoice_reference,
+                        "replacement_id": document_id,
+                        "fingerprint": request.request_fingerprint,
+                        "approval_reference": linked.approval_reference,
+                        "reason_code": linked.reason_code,
+                    }, sort_keys=True, separators=(",", ":")).encode("utf-8"),
+                    media_type="application/vnd.nfcore.national-substitution-intent.v1+json",
+                    archived_at=occurred_at,
+                    retention=RetentionPolicyMetadata("nfcore-fiscal-archive", 1),
+                ))
             transmitting = self._state_machine.transition(
                 current,
                 FiscalDocumentState.TRANSMITTING,
@@ -1189,6 +1367,17 @@ class FiscalApplicationService:
             assert isinstance(gateway, NfseGatewayClient)
             result = gateway.authorize(request)
         if result.status is AuthorizationStatus.AUTHORIZED:
+            if (
+                isinstance(request, NfseAuthorizationRequest)
+                and request.document.national_substitution is not None
+                and (
+                    not isinstance(result, NfseAuthorizationResult)
+                    or result.authorized_xml is None
+                )
+            ):
+                raise PersistenceStateError(
+                    "National replacement requires signed authorized substitute XML"
+                )
             reference = (
                 result.protocol_reference
                 if isinstance(result, AuthorizationResult)
@@ -1492,6 +1681,13 @@ class FiscalApplicationService:
                 raise PersistenceConflictError("NFS-e transmission changed during provider query")
             if result.status is AuthorizationStatus.AUTHORIZED:
                 assert result.invoice_reference is not None
+                if (
+                    request.document.national_substitution is not None
+                    and result.authorized_xml is None
+                ):
+                    raise PersistenceStateError(
+                        "National replacement recovery needs signed official NFS-e"
+                    )
                 updated = self._state_machine.transition(
                     current,
                     FiscalDocumentState.AUTHORIZED,
@@ -1515,6 +1711,11 @@ class FiscalApplicationService:
                         archived_at=occurred_at,
                         retention=retention,
                     ))
+                if request.document.national_substitution is not None:
+                    self._complete_national_replacement_in_uow(
+                        uow=uow, prepared=request, authorized=True,
+                        occurred_at=occurred_at, retention=retention,
+                    )
                 current = updated
             elif result.status is AuthorizationStatus.REJECTED:
                 assert result.rejection_code is not None
@@ -1536,6 +1737,11 @@ class FiscalApplicationService:
                     occurred_at=occurred_at,
                     retention=retention,
                 ))
+                if request.document.national_substitution is not None:
+                    self._complete_national_replacement_in_uow(
+                        uow=uow, prepared=request, authorized=False,
+                        occurred_at=occurred_at, retention=retention,
+                    )
                 current = updated
             uow.archive.append(evidence)
             uow.commit()
@@ -3289,6 +3495,413 @@ class FiscalApplicationService:
             decision=decision, lifecycle=final, archive_reference=archived.entry_id,
         )
 
+
+    def review_prepared_national_nfse_substitution(
+        self, *, scope: ExecutionScope,
+        original_id: str, replacement: NfseCanonicalDocument,
+    ) -> str:
+        """Verify national substitution invariants without provider I/O or new numbers."""
+        if (
+            not isinstance(replacement, NfseCanonicalDocument)
+            or replacement.scope.identity_partition_key != scope.identity_partition_key
+            or replacement.document_id == original_id
+            or replacement.national_substitution is not None
+        ):
+            raise FiscalValidationError("Replacement must be an independent reviewed DPS")
+        original, key = self.preflight_national_nfse_cancellation(
+            scope=scope, document_id=original_id,
+        )
+        prev = original.document
+        old_loc = prev.issuer.address.jurisdiction
+        new_loc = replacement.issuer.address.jurisdiction
+        if (
+            prev.issuer.cnpj != replacement.issuer.cnpj
+            or old_loc != new_loc
+            or prev.competence_date != replacement.competence_date
+            or prev.service_jurisdiction != replacement.service_jurisdiction
+            or len(prev.services) != 1 or len(replacement.services) != 1
+            or prev.services[0].national_taxation_code
+            != replacement.services[0].national_taxation_code
+            or prev.services[0].municipal_service_code
+            != replacement.services[0].municipal_service_code
+        ):
+            raise FiscalValidationError("National replacement changes protected fiscal identity")
+        if prev.issuer.tax_regime in {
+            TaxRegimeCode.SIMPLES_NACIONAL,
+            TaxRegimeCode.SIMPLES_NACIONAL_EXCESS_SUBLIMIT,
+            TaxRegimeCode.MEI,
+        }:
+            if (
+                prev.services[0].gross_amount != replacement.services[0].gross_amount
+                or prev.service_taker != replacement.service_taker
+            ):
+                raise FiscalValidationError("National Simples replacement changes protected facts")
+        return key
+
+    def preflight_national_nfse_cancellation(
+        self, *, scope: ExecutionScope, document_id: str,
+    ) -> tuple[NfseAuthorizationRequest, str]:
+        """Load the unique signed, authorized national original in one tenant scope."""
+        if (
+            not isinstance(scope, ExecutionScope)
+            or scope.environment is not FiscalEnvironment.HOMOLOGATION
+            or not scope.host_namespace
+            or not isinstance(document_id, str) or not document_id.strip()
+        ):
+            raise FiscalValidationError("National cancellation requires scoped original")
+        with self._uow_factory() as uow:
+            request = self._load_prepared_from_uow(uow, scope, document_id)
+            if not isinstance(request, NfseAuthorizationRequest):
+                raise PersistenceStateError("National original must be prepared NFS-e")
+            jurisdiction = request.document.issuer.address.jurisdiction
+            state = uow.lifecycle.get(document_id)
+            attempts = uow.idempotency.attempts(request.idempotency_key)
+            if (
+                jurisdiction.state_code != "SP"
+                or jurisdiction.municipality_ibge_code is None
+                or request.document.dps_number is None
+                or state is None or state.state is not FiscalDocumentState.AUTHORIZED
+                or len(attempts) != 1
+                or attempts[0].status is not IssuanceAttemptStatus.AUTHORIZED
+                or attempts[0].document_id != document_id
+                or attempts[0].request_fingerprint != request.request_fingerprint
+                or not isinstance(attempts[0].result_reference, str)
+            ):
+                raise PersistenceStateError("National original authorization is not confirmed")
+            key = attempts[0].result_reference
+            if (
+                len(key) != 50 or not key.isascii() or not key.isdecimal()
+                or not key.startswith("35")
+            ):
+                raise PersistenceStateError("National original official access key is invalid")
+            entries = [
+                entry for entry in uow.archive.list_for_document(scope, document_id)
+                if entry.kind is FiscalArchiveKind.AUTHORIZED_XML
+                and entry.media_type == "application/xml"
+            ]
+            if len(entries) != 1:
+                raise PersistenceStateError("National original needs one official signed XML")
+            FiscalArchiveVerifier().verify_entry(entries[0])
+            root = etree.fromstring(
+                entries[0].content,
+                etree.XMLParser(
+                    resolve_entities=False, no_network=True,
+                    load_dtd=False, huge_tree=False,
+                ),
+            )
+            ns = "{http://www.sped.fazenda.gov.br/nfse}"
+            info = root.find(ns + "infNFSe")
+            if (
+                root.tag != ns + "NFSe" or info is None
+                or info.get("Id") != "NFS" + key
+                or getattr(root.getroottree().docinfo, "doctype", None)
+            ):
+                raise PersistenceStateError("National original signed XML identity mismatch")
+            _verify_nfse_receipt_signature(root, info, "NFS" + key)
+        for operation in ("authorize", "cancel"):
+            provider = self.resolve_configured_provider_id(
+                scope=scope, document_kind=FiscalDocumentKind.NFSE,
+                jurisdiction=jurisdiction, operation=operation,
+            )
+            if provider != NACIONAL_HOMOLOGATION_PROVIDER_ID:
+                raise FiscalValidationError("National original provider binding mismatch")
+        return request, key
+
+    def validate_claimed_national_nfse_cancellation(
+        self, *, scope: ExecutionScope, document_id: str,
+        original_key: str, approval_reference: str,
+    ) -> None:
+        """Recheck the durable human-approved one-shot claim before fiscal POST."""
+        with self._uow_factory() as uow:
+            uow.lifecycle.assert_scope(document_id, scope)
+            state = uow.lifecycle.get(document_id)
+            records = [
+                entry for entry in uow.archive.list_for_document(scope, document_id)
+                if entry.kind is FiscalArchiveKind.OTHER
+                and entry.media_type == "application/vnd.nfcore.national-cancel-intent.v1+json"
+            ]
+            if (
+                state is None or state.state is not FiscalDocumentState.CANCEL_REQUESTED
+                or len(records) != 1
+            ):
+                raise PersistenceStateError("National cancellation has no unique durable claim")
+            FiscalArchiveVerifier().verify_entry(records[0])
+            facts = json.loads(records[0].content)
+            requests = [
+                entry for entry in uow.archive.list_for_document(scope, document_id)
+                if entry.kind is FiscalArchiveKind.OTHER
+                and entry.media_type
+                == "application/vnd.nfcore.national-cancel-request.v1+xml"
+            ]
+            if len(requests) != 1:
+                raise PersistenceStateError("National signed cancellation request is not durable")
+            FiscalArchiveVerifier().verify_entry(requests[0])
+            if (
+                not isinstance(facts, dict)
+                or facts.get("original_id") != document_id
+                or facts.get("key") != original_key
+                or facts.get("approval_reference") != approval_reference
+                or facts.get("signed_event_sha256")
+                != hashlib.sha256(requests[0].content).hexdigest()
+            ):
+                raise PersistenceConflictError("National cancellation approval changed")
+
+    def cancel_prepared_national_nfse(
+        self, *, scope: ExecutionScope, document_id: str,
+        reason_code: str, reason_description: str, approval_reference: str,
+        signed_event_xml: bytes,
+        submit_verified_cancel: Callable[
+            [NfseAuthorizationRequest, str, str, str, str, datetime],
+            NationalNfseCancellationReceipt,
+        ],
+        occurred_at: datetime, retention: RetentionPolicyMetadata,
+    ) -> DurableSantanaCancellationOutcome:
+        """Commit once-only cancellation claim before calling trusted SEFIN transport."""
+        if (
+            not callable(submit_verified_cancel)
+            or not isinstance(signed_event_xml, bytes)
+            or not isinstance(retention, RetentionPolicyMetadata)
+            or not isinstance(occurred_at, datetime) or occurred_at.tzinfo is None
+            or reason_code not in ("1", "2", "9")
+            or not isinstance(reason_description, str)
+            or not 15 <= len(reason_description.strip()) <= 255
+            or any(ord(char) < 32 for char in reason_description)
+            or not isinstance(approval_reference, str)
+            or not 8 <= len(approval_reference.strip()) <= 128
+            or not approval_reference.isascii()
+        ):
+            raise FiscalValidationError("National cancellation requires reviewed human approval")
+        request, key = self.preflight_national_nfse_cancellation(
+            scope=scope, document_id=document_id,
+        )
+        intent = NationalNfseCancellationIntent(
+            scope=scope, issuer=request.document.issuer.cnpj,
+            issuer_jurisdiction=request.document.issuer.address.jurisdiction,
+            invoice_reference=key, human_approval_reference=approval_reference,
+            signed_event_xml=signed_event_xml,
+        )
+        validate_national_event_xml(signed_event_xml, kind="request")
+        parsed = etree.fromstring(
+            signed_event_xml,
+            etree.XMLParser(
+                resolve_entities=False, no_network=True,
+                load_dtd=False, huge_tree=False,
+            ),
+        )
+        tag = "{http://www.sped.fazenda.gov.br/nfse}"
+        cancellation = parsed.find(tag + "infPedReg/" + tag + "e101101")
+        if (
+            cancellation is None
+            or cancellation.findtext(tag + "cMotivo") != reason_code
+            or cancellation.findtext(tag + "xMotivo") != reason_description.strip()
+            or intent.scope.identity_partition_key != scope.identity_partition_key
+        ):
+            raise FiscalValidationError("National signed event does not match approval")
+        with self._uow_factory() as uow:
+            uow.lifecycle.assert_scope(document_id, scope)
+            current = uow.lifecycle.get(document_id)
+            if current is None or current.state is not FiscalDocumentState.AUTHORIZED:
+                raise PersistenceConflictError("National cancellation already claimed")
+            claim = self._state_machine.transition(
+                current, FiscalDocumentState.CANCEL_REQUESTED,
+                occurred_at=occurred_at, reason="National cancellation durable claim 101101",
+                correlation_id=scope.correlation_id,
+            )
+            uow.lifecycle.save(claim, expected_version=current.version)
+            uow.archive.append(FiscalArchiveEntry.build(
+                scope=scope, document_reference=document_id,
+                kind=FiscalArchiveKind.OTHER,
+                content=json.dumps({
+                    "original_id": document_id, "key": key,
+                    "reason_code": reason_code,
+                    "reason_description": reason_description.strip(),
+                    "approval_reference": approval_reference,
+                    "event": "101101",
+                    "signed_event_sha256": hashlib.sha256(signed_event_xml).hexdigest(),
+                }, sort_keys=True, separators=(",", ":")).encode("utf-8"),
+                media_type="application/vnd.nfcore.national-cancel-intent.v1+json",
+                archived_at=occurred_at, retention=retention,
+            ))
+            uow.archive.append(FiscalArchiveEntry.build(
+                scope=scope, document_reference=document_id,
+                kind=FiscalArchiveKind.OTHER,
+                content=signed_event_xml,
+                media_type="application/vnd.nfcore.national-cancel-request.v1+xml",
+                archived_at=occurred_at, retention=retention,
+            ))
+            uow.commit()
+        # Ambiguous provider timeout deliberately leaves CANCEL_REQUESTED.
+        receipt = submit_verified_cancel(
+            request, key, reason_code, reason_description, approval_reference, occurred_at,
+        )
+        if (
+            not isinstance(receipt, NationalNfseCancellationReceipt)
+            or not receipt.confirmed or receipt.invoice_reference != key
+        ):
+            raise FiscalValidationError("National cancellation lacks verified official evidence")
+        with self._uow_factory() as uow:
+            uow.lifecycle.assert_scope(document_id, scope)
+            current = uow.lifecycle.get(document_id)
+            if current != claim:
+                raise PersistenceConflictError("National cancellation state changed during POST")
+            final = self._state_machine.transition(
+                current, FiscalDocumentState.CANCELLED,
+                occurred_at=occurred_at, reason="SEFIN signed cancellation 101101 confirmed",
+                correlation_id=scope.correlation_id,
+            )
+            uow.lifecycle.save(final, expected_version=current.version)
+            archived = uow.archive.append(FiscalArchiveEntry.build(
+                scope=scope, document_reference=document_id,
+                kind=FiscalArchiveKind.FISCAL_EVENT,
+                content=receipt.event_xml, media_type="application/xml",
+                archived_at=occurred_at, retention=retention,
+            ))
+            uow.commit()
+        return DurableSantanaCancellationOutcome(final, archived.entry_id)
+
+    def national_cancellation_claim_status(
+        self, *, scope: ExecutionScope, document_id: str,
+        approval_reference: str | None = None,
+        reason_code: str | None = None,
+        reason_description: str | None = None,
+    ) -> DurableNationalCancellationRecoveryOutcome | None:
+        """Read a prior cancellation without a duplicate event or provider POST."""
+        with self._uow_factory() as uow:
+            uow.lifecycle.assert_scope(document_id, scope)
+            state = uow.lifecycle.get(document_id)
+            if state is None or state.state is FiscalDocumentState.AUTHORIZED:
+                return None
+            if state.state not in (
+                FiscalDocumentState.CANCEL_REQUESTED,
+                FiscalDocumentState.CANCELLED,
+            ):
+                raise PersistenceStateError("National document is not cancellable")
+            records = [
+                entry for entry in uow.archive.list_for_document(scope, document_id)
+                if entry.media_type
+                == "application/vnd.nfcore.national-cancel-intent.v1+json"
+            ]
+            if len(records) != 1:
+                raise PersistenceStateError("National cancellation approval is missing")
+            FiscalArchiveVerifier().verify_entry(records[0])
+            facts = json.loads(records[0].content)
+            if (
+                (approval_reference is not None
+                 and facts.get("approval_reference") != approval_reference)
+                or (reason_code is not None and facts.get("reason_code") != reason_code)
+                or (
+                    reason_description is not None
+                    and facts.get("reason_description") != reason_description.strip()
+                )
+            ):
+                raise PersistenceConflictError("National cancellation replay changed approval")
+            events = [
+                entry for entry in uow.archive.list_for_document(scope, document_id)
+                if entry.kind is FiscalArchiveKind.FISCAL_EVENT
+                and entry.media_type == "application/xml"
+            ]
+            terminal = state.state is FiscalDocumentState.CANCELLED
+            if terminal and len(events) != 1 or not terminal and events:
+                raise PersistenceConflictError("National cancellation official proof mismatch")
+            if terminal:
+                FiscalArchiveVerifier().verify_entry(events[0])
+            return DurableNationalCancellationRecoveryOutcome(
+                lifecycle=state,
+                archive_reference=events[0].entry_id if terminal else None,
+                recovered=terminal, recovery_required=not terminal, replay=True,
+            )
+
+    def reconcile_prepared_national_nfse_cancellation(
+        self, *, scope: ExecutionScope, document_id: str,
+        query_verified_cancel: Callable[
+            [NationalNfseCancellationIntent],
+            NationalNfseCancellationReceipt | None,
+        ],
+        occurred_at: datetime, retention: RetentionPolicyMetadata,
+    ) -> DurableNationalCancellationRecoveryOutcome:
+        """Read the official 101101 event before finalizing a pending cancellation."""
+        if (
+            not callable(query_verified_cancel)
+            or not isinstance(retention, RetentionPolicyMetadata)
+        ):
+            raise FiscalValidationError("National event recovery needs trusted read-only port")
+        status = self.national_cancellation_claim_status(
+            scope=scope, document_id=document_id,
+        )
+        if status is None:
+            raise PersistenceStateError("No national cancellation claim to recover")
+        if not status.recovery_required:
+            return status
+        with self._uow_factory() as uow:
+            request = self._load_prepared_from_uow(uow, scope, document_id)
+            if not isinstance(request, NfseAuthorizationRequest):
+                raise PersistenceStateError("National event recovery needs original NFS-e")
+            record_list = uow.archive.list_for_document(scope, document_id)
+            approvals = [
+                entry for entry in record_list
+                if entry.media_type
+                == "application/vnd.nfcore.national-cancel-intent.v1+json"
+            ]
+            signed = [
+                entry for entry in record_list
+                if entry.media_type
+                == "application/vnd.nfcore.national-cancel-request.v1+xml"
+            ]
+            if len(approvals) != 1 or len(signed) != 1:
+                raise PersistenceStateError("Uncertain national event has no durable request")
+            FiscalArchiveVerifier().verify_entry(approvals[0])
+            FiscalArchiveVerifier().verify_entry(signed[0])
+            approval = json.loads(approvals[0].content)
+            xml = signed[0].content
+            if approval.get("signed_event_sha256") != hashlib.sha256(xml).hexdigest():
+                raise PersistenceConflictError("National event signed intent was tampered")
+            intent = NationalNfseCancellationIntent(
+                scope=scope,
+                issuer=request.document.issuer.cnpj,
+                issuer_jurisdiction=request.document.issuer.address.jurisdiction,
+                invoice_reference=approval["key"],
+                human_approval_reference=approval["approval_reference"],
+                signed_event_xml=xml,
+            )
+            validate_national_event_xml(xml, kind="request")
+            claimed = uow.lifecycle.get(document_id)
+            if claimed is None or claimed.state is not FiscalDocumentState.CANCEL_REQUESTED:
+                raise PersistenceConflictError("National event claim changed")
+        receipt = query_verified_cancel(intent)
+        if receipt is None:
+            return DurableNationalCancellationRecoveryOutcome(
+                lifecycle=claimed, archive_reference=None,
+                recovered=False, recovery_required=True, replay=False,
+            )
+        if (
+            not isinstance(receipt, NationalNfseCancellationReceipt)
+            or not receipt.confirmed
+            or receipt.invoice_reference != intent.invoice_reference
+        ):
+            raise FiscalValidationError("National event GET response was not validated")
+        with self._uow_factory() as uow:
+            uow.lifecycle.assert_scope(document_id, scope)
+            latest = uow.lifecycle.get(document_id)
+            if latest != claimed:
+                raise PersistenceConflictError("National event changed during official GET")
+            updated = self._state_machine.transition(
+                claimed, FiscalDocumentState.CANCELLED,
+                occurred_at=occurred_at,
+                reason="Official read-only national event 101101 confirmed",
+                correlation_id=scope.correlation_id,
+            )
+            uow.lifecycle.save(updated, expected_version=claimed.version)
+            entry = uow.archive.append(FiscalArchiveEntry.build(
+                scope=scope, document_reference=document_id,
+                kind=FiscalArchiveKind.FISCAL_EVENT,
+                content=receipt.event_xml, media_type="application/xml",
+                archived_at=occurred_at, retention=retention,
+            ))
+            uow.commit()
+            return DurableNationalCancellationRecoveryOutcome(
+                lifecycle=updated, archive_reference=entry.entry_id,
+                recovered=True, recovery_required=False, replay=False,
+            )
 
     def preflight_santana_nfse_cancellation(
         self, *, scope: ExecutionScope, document_id: str,
