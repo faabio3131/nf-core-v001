@@ -158,6 +158,60 @@ def test_legacy_danfe_never_renders_national_nfse_and_unified_path_uses_danfse()
     assert rendered == ["danfse"]
 
 
+def test_nfce_uses_model65_danfce_only_on_authorized_scoped_xml() -> None:
+    from kordena_fiscal.web.portal_runtime import _printable_authorized_xml
+
+    scope = ExecutionScope(
+        host_namespace="fm-nfcore", tenant_id="tenant-a", unit_id="unit-a",
+        environment=FiscalEnvironment.HOMOLOGATION, correlation_id="nfce-pdf",
+    )
+    key = "3" * 44
+    xml = (
+        '<nfeProc xmlns="http://www.portalfiscal.inf.br/nfe" versao="4.00">'
+        f'<NFe><infNFe Id="NFe{key}"><ide><mod>65</mod>'
+        '<tpAmb>2</tpAmb></ide></infNFe>'
+        f'<infNFeSupl><qrCode>https://sefaz.example/nfce?p={key}</qrCode></infNFeSupl>'
+        '<Signature xmlns="http://www.w3.org/2000/09/xmldsig#"><SignedInfo/></Signature>'
+        '</NFe><protNFe><infProt>'
+        f'<chNFe>{key}</chNFe><tpAmb>2</tpAmb><cStat>100</cStat>'
+        '<nProt>123456789</nProt></infProt></protNFe></nfeProc>'
+    ).encode()
+    archive = InMemoryFiscalArchiveStore()
+    entry = FiscalArchiveEntry.build(
+        scope=scope, document_reference="NFCE-65",
+        kind=FiscalArchiveKind.AUTHORIZED_XML, content=xml, media_type="application/xml",
+        archived_at=datetime.now(UTC),
+        retention=RetentionPolicyMetadata(policy_id="test", policy_version=1),
+    )
+    archive.append(entry)
+    assert _printable_authorized_xml(entry)
+    observed: list[str] = []
+    executor = DurableHumanPortalExecutor(
+        cast(FiscalUnitOfWorkFactory, lambda: _Uow(archive)),
+        danfe_renderer=lambda _xml: observed.append("danfe55") or b"%PDF-1.7\nWRONG",
+        danfce_renderer=lambda _xml: observed.append("danfce65") or b"%PDF-1.7\nNFCe",
+    )
+
+    def read(kind: FiscalArchiveKind, tenant: str = "tenant-a") -> tuple[bytes, str]:
+        return executor.fiscal_artifact(
+            authority=cast(AuthenticatedHuman, _Authorized(tenant)),
+            unit_id="unit-a", environment=FiscalEnvironment.HOMOLOGATION,
+            document_reference="NFCE-65", kind=kind,
+        )
+
+    with pytest.raises(HTTPException) as legacy:
+        read(FiscalArchiveKind.DANFE)
+    assert legacy.value.status_code == 409
+    assert observed == []
+    assert read(FiscalArchiveKind.AUXILIARY_PDF) == (
+        b"%PDF-1.7\nNFCe", "application/pdf",
+    )
+    assert observed == ["danfce65"]
+    with pytest.raises(HTTPException) as cross_tenant:
+        read(FiscalArchiveKind.AUXILIARY_PDF, "another-tenant")
+    assert cross_tenant.value.status_code == 404
+
+
 def test_legacy_danfe_handles_bad_xml_as_safe_http_error() -> None:
     scope = ExecutionScope(
         host_namespace="fm-nfcore", tenant_id="tenant-a", unit_id="unit-a",

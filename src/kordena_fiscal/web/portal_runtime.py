@@ -26,6 +26,10 @@ from kordena_fiscal.archive import (
     FiscalArchiveVerifier,
 )
 from kordena_fiscal.archive.danfse_pdf import render_authorized_national_danfse
+from kordena_fiscal.archive.danfce_pdf import (
+    render_authorized_nfce_danfce,
+    validate_authorized_nfce_danfce,
+)
 from kordena_fiscal.compliance import CapabilityReadinessService, JurisdictionCapabilityError
 from kordena_fiscal.compliance.capability_api import CapabilityReadinessError
 from kordena_fiscal.contingency import FiscalOutboxStatus
@@ -134,10 +138,18 @@ def _printable_authorized_xml(entry: Any) -> bool:
             # advertising this action for 65 creates a broken Portal journey.
             ns = "{http://www.portalfiscal.inf.br/nfe}"
             invoices = root.findall(f"{ns}NFe/{ns}infNFe")
-            return (
-                len(invoices) == 1
-                and invoices[0].findtext(f"{ns}ide/{ns}mod") == "55"
-            )
+            if len(invoices) != 1:
+                return False
+            model = invoices[0].findtext(f"{ns}ide/{ns}mod")
+            if model == "55":
+                return True
+            if model == "65":
+                try:
+                    validate_authorized_nfce_danfce(entry.content)
+                    return True
+                except FiscalValidationError:
+                    return False
+            return False
         return False
     except (ArchiveIntegrityError, etree.XMLSyntaxError, ValueError, TypeError):
         return False
@@ -180,12 +192,17 @@ class DurableHumanPortalExecutor:
         commercial_reader: CommercialPortalReader | None = None,
         danfe_renderer: Callable[[bytes], bytes] | None = None,
         danfse_renderer: Callable[[bytes], bytes] | None = None,
+        danfce_renderer: Callable[[bytes], bytes] | None = None,
     ) -> None:
         self._unit_of_work_factory = unit_of_work_factory
         self._operation_executor = operation_executor
         self._user_administration = user_administration
         self._commercial_reader = commercial_reader
         self._danfe_renderer = danfe_renderer
+        self._danfce_renderer = (
+            danfce_renderer if danfce_renderer is not None
+            else render_authorized_nfce_danfce
+        )
         # Use the same already-approved national PDF implementation as #454.
         # Only a scoped, verified authorized National XML may produce DANFSe.
         self._danfse_renderer = (
@@ -1008,7 +1025,19 @@ class DurableHumanPortalExecutor:
                         if kind is not FiscalArchiveKind.AUXILIARY_PDF:
                             raise FiscalValidationError("DANFE cannot represent national NFS-e")
                         renderer = self._danfse_renderer
-                    elif root.tag != "{http://www.portalfiscal.inf.br/nfe}nfeProc":
+                    elif root.tag == "{http://www.portalfiscal.inf.br/nfe}nfeProc":
+                        ns = "{http://www.portalfiscal.inf.br/nfe}"
+                        invoices = root.findall(f"{ns}NFe/{ns}infNFe")
+                        if len(invoices) != 1:
+                            raise FiscalValidationError("Ambiguous NFe/NFC-e model")
+                        model = invoices[0].findtext(f"{ns}ide/{ns}mod")
+                        if model == "65":
+                            if kind is not FiscalArchiveKind.AUXILIARY_PDF:
+                                raise FiscalValidationError("DANFE 55 cannot represent NFC-e 65")
+                            renderer = self._danfce_renderer
+                        elif model != "55":
+                            raise FiscalValidationError("Unsupported NFe/NFC-e model")
+                    else:
                         raise FiscalValidationError("Unsupported authorized XML kind")
                     if renderer is None:
                         raise FiscalValidationError("Auxiliary PDF generator unavailable")
