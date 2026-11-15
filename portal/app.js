@@ -349,11 +349,75 @@ function appendNativeNfsePreparation(article) {
   reviewedLabel.append(reviewed, document.createTextNode(
     " Confirmo a revisão dos dados fiscais, competência, tomador, código de serviço e ISS. A aplicação não presume enquadramento tributário."
   ));
+  const substitution = document.createElement("fieldset");
+  substitution.id = "national-nfse-substitution";
+  const toggleSubstitution = document.createElement("input");
+  toggleSubstitution.type = "checkbox";
+  toggleSubstitution.id = "national-nfse-substitution-toggle";
+  const toggleLabel = document.createElement("label");
+  toggleLabel.append(toggleSubstitution, document.createTextNode(
+    " Preparar DPS de substituição nacional (nova emissão vinculada à nota original)"
+  ));
+  const originalLabel = document.createElement("label");
+  originalLabel.textContent = "ID da NFS-e original autorizada";
+  const originalInput = document.createElement("input");
+  originalInput.name = "substitution_original_id"; originalInput.type = "text";
+  originalInput.autocomplete = "off"; originalInput.maxLength = 128;
+  originalLabel.append(originalInput);
+  const reasonLabel = document.createElement("label");
+  reasonLabel.textContent = "Código oficial de substituição";
+  const reasonInput = document.createElement("select");
+  reasonInput.name = "substitution_reason_code";
+  for (const code of ["01", "02", "03", "04", "05", "99"]) {
+    const option = document.createElement("option");
+    option.value = code; option.textContent = code;
+    reasonInput.append(option);
+  }
+  reasonLabel.append(reasonInput);
+  const explanationLabel = document.createElement("label");
+  explanationLabel.textContent = "Justificativa fiscal da substituição (15–255 caracteres)";
+  const explanationInput = document.createElement("textarea");
+  explanationInput.name = "substitution_reason_description";
+  explanationInput.minLength = 15; explanationInput.maxLength = 255;
+  explanationLabel.append(explanationInput);
+  const approvalLabel = document.createElement("label");
+  const substitutionApproval = document.createElement("input");
+  substitutionApproval.type = "checkbox";
+  approvalLabel.append(substitutionApproval, document.createTextNode(
+    " Aprovo expressamente a vinculação à nota original, a revisão do motivo e a nova DPS."
+  ));
+  const substitutionHint = document.createElement("p");
+  substitutionHint.className = "empty-state";
+  substitutionHint.textContent = "A substituição nacional é uma nova DPS com a chave original. O NFCore verifica autorização, mesmo emissor, vínculo CANCEL e idempotência. Não reenvie em caso de retorno incerto.";
+  substitution.append(
+    toggleLabel, originalLabel, reasonLabel, explanationLabel,
+    approvalLabel, substitutionHint,
+  );
+  const canSubstitute = bootstrapState.permissions.includes("document.cancel");
+  substitution.hidden = !canSubstitute;
+  const syncSubstitution = () => {
+    const active = canSubstitute && toggleSubstitution.checked;
+    originalInput.required = active;
+    reasonInput.required = active;
+    explanationInput.required = active;
+    substitutionApproval.required = active;
+    originalInput.disabled = !active;
+    reasonInput.disabled = !active;
+    explanationInput.disabled = !active;
+    substitutionApproval.disabled = !active;
+    originalLabel.hidden = !active;
+    reasonLabel.hidden = !active;
+    explanationLabel.hidden = !active;
+    approvalLabel.hidden = !active;
+    substitutionHint.hidden = !active;
+  };
+  toggleSubstitution.addEventListener("change", syncSubstitution);
+  syncSubstitution();
   const submit = document.createElement("button");
   submit.type = "submit"; submit.className = "primary"; submit.textContent = "Preparar NFS-e revisada em homologação";
   const result = document.createElement("p"); result.id = "native-nfse-result";
   result.setAttribute("role", "status"); result.setAttribute("aria-live", "polite");
-  form.append(withholding, reviewedLabel, submit, result); article.append(form);
+  form.append(withholding, reviewedLabel, substitution, submit, result); article.append(form);
   /** @type {{fingerprint:string,key:string}|null} */
   let attempt = null;
   form.addEventListener("submit", async event => {
@@ -378,6 +442,12 @@ function appendNativeNfsePreparation(article) {
       rule_version: Number(inputs.rule_version.value),
       iss_withheld: select.value === "true",
       fiscal_review_approved: reviewed.checked,
+      ...(canSubstitute && toggleSubstitution.checked ? {
+        substitution_original_id: originalInput.value.trim(),
+        substitution_reason_code: reasonInput.value,
+        substitution_reason_description: explanationInput.value.trim(),
+        substitution_human_approval: substitutionApproval.checked,
+      } : {}),
     };
     if (!Number.isSafeInteger(payload.rule_version)) {
       result.textContent = "Informe a versão fiscal inteira."; return;
