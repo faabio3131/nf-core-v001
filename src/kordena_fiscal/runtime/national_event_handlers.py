@@ -62,9 +62,16 @@ def build_national_event_handlers(
             or not payload["document_id"].strip()
         ):
             raise FiscalValidationError("National cancellation requires human-reviewed scope")
-        application.preflight_national_nfse_cancellation(
+        existing = application.national_cancellation_claim_status(
             scope=scope, document_id=str(payload["document_id"]),
+            approval_reference=key,
+            reason_code=str(payload["reason_code"]),
+            reason_description=str(payload["reason_description"]),
         )
+        if existing is None:
+            application.preflight_national_nfse_cancellation(
+                scope=scope, document_id=str(payload["document_id"]),
+            )
 
     def cancel(
         scope: ExecutionScope, payload: Mapping[str, Any], key: str | None,
@@ -72,6 +79,21 @@ def build_national_event_handlers(
         preflight(scope, payload, key)
         assert key is not None
         document_id = str(payload["document_id"])
+        existing = application.national_cancellation_claim_status(
+            scope=scope, document_id=document_id,
+            approval_reference=key,
+            reason_code=str(payload["reason_code"]),
+            reason_description=str(payload["reason_description"]),
+        )
+        if existing is not None:
+            return {
+                "document_id": document_id,
+                "status": existing.lifecycle.state.value,
+                "entry_id": existing.archive_reference,
+                "official_fiscal_confirmation": existing.recovered,
+                "recovery_required": existing.recovery_required,
+                "replay": True,
+            }
         request, original_key = application.preflight_national_nfse_cancellation(
             scope=scope, document_id=document_id,
         )
@@ -144,4 +166,78 @@ def build_national_event_handlers(
             "official_fiscal_confirmation": True,
         }
 
-    return {"cancelNationalNfse": PreflightFiscalOperationHandler(cancel, preflight)}
+    def preflight_recovery(
+        scope: ExecutionScope, payload: Mapping[str, Any], key: str | None,
+    ) -> None:
+        if (
+            not isinstance(key, str) or not 8 <= len(key.strip()) <= 128
+            or not key.isascii()
+            or set(payload) != {"unit_id", "environment", "document_id"}
+            or payload.get("unit_id") != scope.unit_id
+            or payload.get("environment") != scope.environment.value
+            or not isinstance(payload.get("document_id"), str)
+            or not payload["document_id"].strip()
+        ):
+            raise FiscalValidationError("National event read-only recovery needs scoped document")
+        if application.national_cancellation_claim_status(
+            scope=scope, document_id=str(payload["document_id"]),
+        ) is None:
+            raise FiscalValidationError("No national event claim exists to reconcile")
+
+    def recover(
+        scope: ExecutionScope, payload: Mapping[str, Any], key: str | None,
+    ) -> Mapping[str, Any]:
+        preflight_recovery(scope, payload, key)
+        doc_id = str(payload["document_id"])
+
+        def query_official(intent: NationalNfseCancellationIntent) -> Any:
+            def approve(stored: NationalNfseCancellationIntent) -> None:
+                if (
+                    stored.scope.identity_partition_key
+                    != scope.identity_partition_key
+                    or stored.invoice_reference != intent.invoice_reference
+                    or stored.human_approval_reference
+                    != intent.human_approval_reference
+                ):
+                    raise FiscalValidationError("National event reconciliation scope mismatch")
+                application.validate_claimed_national_nfse_cancellation(
+                    scope=scope, document_id=doc_id,
+                    original_key=stored.invoice_reference,
+                    approval_reference=stored.human_approval_reference,
+                )
+
+            transport = NationalNfseCancellationHomologationTransport(
+                provider_resolver=provider_resolver,
+                resolve_certificate=lambda s, cnpj: certificate_vault.resolve(
+                    scope=s, issuer_cnpj=cnpj,
+                ),
+                validate_signed_event=lambda xml: validate_national_event_xml(
+                    xml, kind="request",
+                ),
+                approve_cancellation=approve,
+                validate_official_event=lambda xml: validate_national_event_xml(
+                    xml, kind="response",
+                ),
+            )
+            return transport.query_cancellation(intent)
+
+        outcome = application.reconcile_prepared_national_nfse_cancellation(
+            scope=scope, document_id=doc_id, query_verified_cancel=query_official,
+            occurred_at=datetime.now(UTC), retention=retention,
+        )
+        return {
+            "document_id": doc_id,
+            "status": outcome.lifecycle.state.value,
+            "entry_id": outcome.archive_reference,
+            "official_fiscal_confirmation": outcome.recovered,
+            "recovery_required": outcome.recovery_required,
+            "replay": outcome.replay,
+            "reconciliation_mode": "read_only_official_101101_get",
+        }
+
+    return {
+        "cancelNationalNfse": PreflightFiscalOperationHandler(cancel, preflight),
+        "reconcileNationalNfseCancellation": PreflightFiscalOperationHandler(
+            recover, preflight_recovery,
+        ),
+    }
