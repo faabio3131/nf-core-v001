@@ -42,7 +42,7 @@ from kordena_fiscal.issuance.nfe_nfse import NfseAuthorizationRequest
 from kordena_fiscal.signing.nfse_xmldsig import append_nfse_signature
 from kordena_fiscal.vault import EphemeralCertificateMaterial
 from kordena_fiscal.vault.a1_preflight import validate_a1_for_issuer
-from kordena_fiscal.xml.nfse_nacional_schema import national_event_validator
+from kordena_fiscal.xml.santana_simpliss_schema import santana_official_validator
 
 
 class SantanaSimplissEventTransport:
@@ -137,7 +137,7 @@ def validate_santana_event_xml(xml: bytes, *, kind: str) -> None:
     """Prove national 1.01 schema, signed reference and cryptographic integrity."""
     if kind not in ("request", "response"):
         raise SantanaSimplissError("Unsupported official event contract")
-    national_event_validator(kind).validate_document(xml)
+    santana_official_validator(kind).validate_document(xml)
     parser = etree.XMLParser(
         resolve_entities=False, no_network=True, load_dtd=False, huge_tree=False,
     )
