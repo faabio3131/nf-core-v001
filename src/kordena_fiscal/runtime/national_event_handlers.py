@@ -72,6 +72,21 @@ def build_national_event_handlers(
         preflight(scope, payload, key)
         assert key is not None
         document_id = str(payload["document_id"])
+        request, original_key = application.preflight_national_nfse_cancellation(
+            scope=scope, document_id=document_id,
+        )
+        occurred_at = datetime.now(UTC)
+        material = certificate_vault.resolve(
+            scope=request.document.scope,
+            issuer_cnpj=request.document.issuer.cnpj.value,
+        )
+        intent = build_signed_national_cancellation(
+            request=request, key=original_key,
+            reason_code=str(payload["reason_code"]),
+            reason_description=str(payload["reason_description"]),
+            approval_reference=key, occurred_at=occurred_at,
+            material=material,
+        )
 
         def submit_verified_cancel(
             request: Any, original_key: str, code: str, explanation: str,
@@ -103,24 +118,24 @@ def build_national_event_handlers(
                     xml, kind="response",
                 ),
             )
-            material = certificate_vault.resolve(
-                scope=request.document.scope,
-                issuer_cnpj=request.document.issuer.cnpj.value,
-            )
-            intent = build_signed_national_cancellation(
-                request=request, key=original_key,
-                reason_code=code, reason_description=explanation,
-                approval_reference=approval, occurred_at=when,
-                material=material,
-            )
+            if (
+                request.document.document_id != document_id
+                or original_key != intent.invoice_reference
+                or code != payload["reason_code"]
+                or explanation != payload["reason_description"]
+                or approval != key
+                or when != occurred_at
+            ):
+                raise FiscalValidationError("National cancellation intent changed after claim")
             return transport.cancel(intent)
 
         result = application.cancel_prepared_national_nfse(
             scope=scope, document_id=document_id,
             reason_code=str(payload["reason_code"]),
             reason_description=str(payload["reason_description"]),
-            approval_reference=key, submit_verified_cancel=submit_verified_cancel,
-            occurred_at=datetime.now(UTC), retention=retention,
+            approval_reference=key, signed_event_xml=intent.signed_event_xml,
+            submit_verified_cancel=submit_verified_cancel,
+            occurred_at=occurred_at, retention=retention,
         )
         return {
             "document_id": document_id,
