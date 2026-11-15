@@ -1165,7 +1165,7 @@ function fiscalRowElement(row) {
     if (kind === "authorized_xml" && row.auxiliary_pdf_available === true) {
       const danfe = document.createElement("a");
       danfe.className = "ghost";
-      danfe.textContent = "Visualizar documento auxiliar (DANFE/DANFSe)";
+      danfe.textContent = "Visualizar documento auxiliar (DANFE/DANFCe/DANFSe)";
       danfe.href = `/v1/portal/documents/${encodeURIComponent(reference)}/artifacts/auxiliary_pdf?${new URLSearchParams({
         unit_id: unit, environment,
       })}`;
