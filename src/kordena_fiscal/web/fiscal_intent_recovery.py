@@ -36,6 +36,8 @@ PERMISSIONS = {
     "substituteJundiaiNfse": PortalPermission.DOCUMENT_CANCEL,
     "cancelSantanaNfse": PortalPermission.DOCUMENT_CANCEL,
     "substituteSantanaNfse": PortalPermission.DOCUMENT_CANCEL,
+    "reconcileSantanaNfseCancellation": PortalPermission.RECONCILIATION_EXECUTE,
+    "reconcileSantanaNfseSubstitution": PortalPermission.RECONCILIATION_EXECUTE,
     "reconcileJundiaiNfseCancellation": PortalPermission.RECONCILIATION_EXECUTE,
     "substituteOsascoNfse": PortalPermission.DOCUMENT_CANCEL,
     "substituteExtremaNfse": PortalPermission.DOCUMENT_CANCEL,
@@ -55,6 +57,8 @@ OPERATIONS = {
     "substituteJundiaiNfse": frozenset({"substituteJundiaiNfse"}),
     "cancelSantanaNfse": frozenset({"cancelSantanaNfse"}),
     "substituteSantanaNfse": frozenset({"substituteSantanaNfse"}),
+    "reconcileSantanaNfseCancellation": frozenset({"reconcileSantanaNfseCancellation"}),
+    "reconcileSantanaNfseSubstitution": frozenset({"reconcileSantanaNfseSubstitution"}),
     "reconcileJundiaiNfseCancellation": frozenset({"reconcileJundiaiNfseCancellation"}),
     "substituteOsascoNfse": frozenset({"substituteOsascoNfse"}),
     "substituteExtremaNfse": frozenset({"substituteExtremaNfse"}),
@@ -64,6 +68,8 @@ OPERATIONS = {
 _READ_ONLY_POLL = frozenset({
     "reconcileFiscalOperation", "reconcileBarueriNfseCancellation",
     "reconcileJundiaiNfseCancellation",
+    "reconcileSantanaNfseCancellation",
+    "reconcileSantanaNfseSubstitution",
 })
 POLICY = "T07-v1-24h-same-account-epoch"
 HOST = "fm-nfcore"

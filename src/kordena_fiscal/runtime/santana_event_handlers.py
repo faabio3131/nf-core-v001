@@ -147,7 +147,104 @@ def build_santana_event_handlers(
             "substitution_mode": "single_official_new_dps",
         }
 
+
+    def validate_cancel_recovery(
+        scope: ExecutionScope, payload: Mapping[str, Any], key: str | None,
+    ) -> None:
+        if (
+            not isinstance(key, str) or not 8 <= len(key.strip()) <= 256
+            or set(payload) != {"unit_id", "environment", "document_id"}
+            or payload.get("unit_id") != scope.unit_id
+            or payload.get("environment") != scope.environment.value
+            or not isinstance(payload.get("document_id"), str)
+            or not payload["document_id"].strip()
+        ):
+            raise FiscalValidationError("Santana cancellation recovery needs a scoped note")
+        source = application.load_prepared_nfse_authorization(
+            scope, payload["document_id"],
+        )
+        if (
+            source.document.issuer.address.jurisdiction.municipality_ibge_code
+            != SANTANA_IBGE
+        ):
+            raise FiscalValidationError("Santana recovery cannot query another city")
+
+    def cancel_recovery(
+        scope: ExecutionScope, payload: Mapping[str, Any], key: str | None,
+    ) -> Mapping[str, Any]:
+        validate_cancel_recovery(scope, payload, key)
+        result = application.reconcile_santana_nfse_cancellation(
+            scope=scope, document_id=str(payload["document_id"]),
+            gateway=gateway, occurred_at=datetime.now(UTC), retention=retention,
+        )
+        return {
+            "document_id": str(payload["document_id"]),
+            "status": result.original_lifecycle.state.value,
+            "municipality_ibge": SANTANA_IBGE,
+            "entry_id": result.archive_reference,
+            "official_fiscal_confirmation": result.recovered,
+            "recovery_required": result.recovery_required,
+        }
+
+    def validate_substitute_recovery(
+        scope: ExecutionScope, payload: Mapping[str, Any], key: str | None,
+    ) -> None:
+        if (
+            not isinstance(key, str) or not 8 <= len(key.strip()) <= 256
+            or set(payload) != {
+                "unit_id", "environment", "original_id", "replacement_id",
+            }
+            or payload.get("unit_id") != scope.unit_id
+            or payload.get("environment") != scope.environment.value
+            or not isinstance(payload.get("original_id"), str)
+            or not payload["original_id"].strip()
+            or not isinstance(payload.get("replacement_id"), str)
+            or not payload["replacement_id"].strip()
+            or payload["original_id"] == payload["replacement_id"]
+        ):
+            raise FiscalValidationError(
+                "Santana substitution recovery needs two scoped documents"
+            )
+        for key_name in ("original_id", "replacement_id"):
+            document = application.load_prepared_nfse_authorization(
+                scope, payload[key_name],
+            )
+            if (
+                document.document.issuer.address.jurisdiction.municipality_ibge_code
+                != SANTANA_IBGE
+            ):
+                raise FiscalValidationError("Santana recovery city mismatch")
+
+    def substitute_recovery(
+        scope: ExecutionScope, payload: Mapping[str, Any], key: str | None,
+    ) -> Mapping[str, Any]:
+        validate_substitute_recovery(scope, payload, key)
+        result = application.reconcile_santana_nfse_substitution(
+            scope=scope, original_id=str(payload["original_id"]),
+            replacement_id=str(payload["replacement_id"]),
+            gateway=gateway, occurred_at=datetime.now(UTC), retention=retention,
+        )
+        return {
+            "original_id": str(payload["original_id"]),
+            "replacement_id": str(payload["replacement_id"]),
+            "original_status": result.original_lifecycle.state.value,
+            "replacement_status": (
+                result.replacement_lifecycle.state.value
+                if result.replacement_lifecycle is not None else None
+            ),
+            "municipality_ibge": SANTANA_IBGE,
+            "entry_id": result.archive_reference,
+            "official_fiscal_confirmation": result.recovered,
+            "recovery_required": result.recovery_required,
+        }
+
     return {
+        "reconcileSantanaNfseCancellation": PreflightFiscalOperationHandler(
+            cancel_recovery, validate_cancel_recovery,
+        ),
+        "reconcileSantanaNfseSubstitution": PreflightFiscalOperationHandler(
+            substitute_recovery, validate_substitute_recovery,
+        ),
         "cancelSantanaNfse": PreflightFiscalOperationHandler(
             cancel, preflight_cancel,
         ),
