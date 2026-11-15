@@ -220,6 +220,15 @@ def test_validation_errors_and_not_configured() -> None:
     assert unknown.json()["detail"]["code"] == "UNKNOWN_CAPABILITY"
     no_unit = post(web, {"capability": "cognitive.explain_rejection"})
     assert no_unit.json()["detail"]["code"] == "UNIT_REQUIRED"
+    for invalid_subject in ("", " ", "x" * 129, 11):
+        bad = post(web, {
+            "capability": "cognitive.answer_accountant_question",
+            "unit_id": "unit-a",
+            "question": "Como está o documento?",
+            "subject_id": invalid_subject,
+        }, key=str(invalid_subject))
+        assert bad.status_code == 400
+        assert bad.json()["detail"]["code"] == "INVALID_SUBJECT"
     long_q = {"capability": "cognitive.answer_accountant_question", "unit_id": "unit-a",
               "question": "x" * 1001}
     assert post(web, long_q).json()["detail"]["code"] == "INVALID_QUESTION"
