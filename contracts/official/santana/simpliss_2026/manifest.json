@@ -139,6 +139,18 @@
       "size_bytes": 208362,
       "source_url": "https://santanadeparnaiba.simplissweb.com.br/contrib/app/nfse/DocumentoIntegracaoNotaNacional/DownloadArquivo?nomeDocumento=manual_integracao_nota_nacional_-_simpliss_v1.00"
     },
+    "nbs_catalog": {
+      "redistributed_in_git": false,
+      "sha256": "a588fea05010a037826d826dd74520e32651bee926f2faa1ffd2794fba55d424",
+      "size_bytes": 83277,
+      "source_url": "https://santanadeparnaiba.simplissweb.com.br/contrib/app/nfse/DocumentoIntegracaoNotaNacional/DownloadArquivo?nomeDocumento=anexo_b-nbs2-lista_servico_nacional-snnfse"
+    },
+    "rtc_correlation": {
+      "redistributed_in_git": false,
+      "sha256": "86c3e30fef9186472a4b4eabae79d471aaa62699497d200f478c7fa95ef326bf",
+      "size_bytes": 144594,
+      "source_url": "https://santanadeparnaiba.simplissweb.com.br/contrib/app/nfse/DocumentoIntegracaoNotaNacional/DownloadArquivo?nomeDocumento=AnexoVIII-CorrelacaoItemNBSIndOpCClassTrib_IBSCBS_V1_00_00"
+    },
     "schemas": {
       "redistributed_in_git": false,
       "sha256": "78010844c589a2a1c84790f6852f9ae5789794d7f9b88086e643fd044f2c942e",
