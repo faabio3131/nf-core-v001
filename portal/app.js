@@ -253,6 +253,7 @@ function appendNativeNfsePreparation(article) {
   }
   identityLabel.append(identityMode); form.append(identityLabel);
   /** @type {Record<string, HTMLInputElement>} */
+  /** @type {Record<string, HTMLInputElement>} */
   const inputs = {};
   const domesticOnly = new Set([
     "taker_document", "taker_city", "taker_state",
@@ -619,6 +620,183 @@ function appendExtremaCancellation(article) {
       status.textContent = (error instanceof Error ? error.message : "Cancelamento não confirmado")
         + " Resultado incerto: não envie outra solicitação sem conciliar com o WebISS.";
     } finally { send.disabled = false; }
+  });
+}
+
+/** Reviewed municipal operation surfaces use the same session/CSRF/UoW as the API.
+ * Never infer provider readiness or submit a second mutation after an uncertain result.
+ */
+/**
+ * @typedef {Object} ReviewedMunicipalWebSpec
+ * @property {string} title
+ * @property {"mutation"|"recovery"} kind
+ * @property {Array<[string, string]>} fields
+ * @property {string[]} [codes]
+ * @property {string} [reason]
+ * @property {string} [reasonLabel]
+ * @property {number} [min]
+ * @property {number} [max]
+ */
+/** @type {Readonly<Record<string, ReviewedMunicipalWebSpec>>} */
+const reviewedMunicipalWebActions = Object.freeze({
+  cancelOsascoNfse: {
+    title: "Cancelar NFS-e — Osasco RTC", kind: "mutation",
+    fields: [["document_id", "ID da NFS-e original autorizada"]],
+    reason: "cancellation_reason", reasonLabel: "Justificativa de cancelamento (1–500 caracteres)",
+    min: 1, max: 500,
+  },
+  substituteOsascoNfse: {
+    title: "Substituição — Osasco RTC (cancelamento tipo S)", kind: "mutation",
+    fields: [["original_id", "ID da NFS-e original autorizada"],
+      ["replacement_id", "ID do RPS substituto já preparado"]],
+    reason: "cancellation_reason", reasonLabel: "Justificativa fiscal revisada (1–500 caracteres)",
+    min: 1, max: 500,
+  },
+  cancelSantanaNfse: {
+    title: "Cancelar NFS-e — Santana de Parnaíba Simpliss", kind: "mutation",
+    fields: [["document_id", "ID da NFS-e original autorizada"]],
+    codes: ["1", "2", "9"], reason: "reason_description",
+    reasonLabel: "Descrição fiscal revisada (15–255 caracteres)", min: 15, max: 255,
+  },
+  substituteSantanaNfse: {
+    title: "Substituir NFS-e — Santana de Parnaíba Simpliss", kind: "mutation",
+    fields: [["original_id", "ID da NFS-e original autorizada"],
+      ["replacement_id", "ID da nova DPS previamente preparada"]],
+    codes: ["01", "02", "03", "04", "05", "99"], reason: "reason_description",
+    reasonLabel: "Justificativa fiscal revisada (15–255 caracteres)", min: 15, max: 255,
+  },
+  reconcileSantanaNfseCancellation: {
+    title: "Conciliar cancelamento — Santana Simpliss", kind: "recovery",
+    fields: [["document_id", "ID da nota original"]],
+  },
+  reconcileSantanaNfseSubstitution: {
+    title: "Conciliar substituição — Santana Simpliss", kind: "recovery",
+    fields: [["original_id", "ID da nota original"],
+      ["replacement_id", "ID da nova DPS"]],
+  },
+  reconcileJundiaiNfseCancellation: {
+    title: "Conciliar cancelamento — Jundiaí GissOnline", kind: "recovery",
+    fields: [["document_id", "ID da nota original"]],
+  },
+});
+
+/** @param {HTMLElement} article @param {keyof typeof reviewedMunicipalWebActions} operation */
+function appendReviewedMunicipalWebAction(article, operation) {
+  const spec = reviewedMunicipalWebActions[operation];
+  if (!spec) return;
+  const configured = bootstrapState?.projection.configured_fiscal_operations;
+  if (!Array.isArray(configured) || !configured.includes(operation)) return;
+  const recovery = spec.kind === "recovery";
+  const permissions = bootstrapState?.permissions || [];
+  if (recovery && !permissions.includes("reconciliation.execute")) return;
+  if (!recovery && !permissions.includes("document.cancel")) return;
+  if (!recovery && operation.startsWith("substitute")
+    && !permissions.includes("document.issue")) return;
+
+  const form = document.createElement("form");
+  form.id = "reviewed-municipal-" + operation;
+  form.className = "panel-form";
+  const title = document.createElement("h3"); title.textContent = spec.title;
+  const help = document.createElement("p");
+  help.textContent = recovery
+    ? "Consulta oficial somente leitura. Um estado pendente não confirma o evento nem autoriza repetir a transmissão."
+    : "Conferir a nota original e o vínculo fiscal antes de autorizar. Se o retorno for incerto, NÃO retransmita: use a reconciliação ou consulte o histórico. Preparar e transmitir são etapas diferentes.";
+  form.append(title, help);
+  const inputs = {};
+  for (const [key, caption] of spec.fields) {
+    const label = document.createElement("label"); label.textContent = caption;
+    const input = document.createElement("input");
+    input.type = "text"; input.required = true; input.maxLength = 128;
+    input.autocomplete = "off"; input.name = key; label.append(input);
+    inputs[key] = input; form.append(label);
+  }
+  /** @type {HTMLSelectElement | null} */
+  let reasonCode = null;
+  if (spec.codes) {
+    const label = document.createElement("label");
+    label.textContent = "Código oficial do motivo (confira o contrato municipal)";
+    reasonCode = document.createElement("select"); reasonCode.required = true;
+    for (const code of ["", ...spec.codes]) {
+      const item = document.createElement("option");
+      item.value = code;
+      item.textContent = code ? "Código " + code : "Selecione o código revisado";
+      reasonCode.append(item);
+    }
+    label.append(reasonCode); form.append(label);
+  }
+  /** @type {HTMLTextAreaElement | null} */
+  let reason = null;
+  if (spec.reason) {
+    const label = document.createElement("label");
+    label.textContent = spec.reasonLabel || "Justificativa fiscal revisada";
+    reason = document.createElement("textarea");
+    reason.required = true; reason.minLength = spec.min || 1; reason.maxLength = spec.max || 500;
+    reason.rows = 3; label.append(reason); form.append(label);
+  }
+  /** @type {HTMLInputElement | null} */
+  let approved = null;
+  if (!recovery) {
+    const label = document.createElement("label");
+    approved = document.createElement("input");
+    approved.type = "checkbox"; approved.required = true;
+    label.append(approved, document.createTextNode(
+      " Validei emitente, competência, documentos, motivo e autorizo esta operação fiscal."
+    ));
+    form.append(label);
+  }
+  const submit = document.createElement("button");
+  submit.className = "primary"; submit.type = "submit";
+  submit.textContent = recovery ? "Consultar confirmação municipal" : "Autorizar operação fiscal";
+  const status = document.createElement("p");
+  status.setAttribute("role", "status"); status.setAttribute("aria-live", "polite");
+  form.append(submit, status); article.append(form);
+
+  let attempted = false;
+  form.addEventListener("submit", async event => {
+    event.preventDefault();
+    if (!form.reportValidity() || (!recovery && attempted)) return;
+    if (!selectedFiscalUnit || selectedFiscalEnvironment !== "homologation") {
+      status.textContent = "Selecione uma unidade fiscal autorizada de homologação.";
+      return;
+    }
+    /** @type {Record<string, string | boolean>} */
+    const payload = {
+      unit_id: selectedFiscalUnit, environment: selectedFiscalEnvironment,
+    };
+    for (const [key, input] of Object.entries(inputs)) payload[key] = input.value.trim();
+    if (reasonCode) payload.reason_code = reasonCode.value;
+    if (reason && spec.reason) payload[spec.reason] = reason.value.trim();
+    if (!recovery) payload.human_approval = approved?.checked === true;
+    if (payload.original_id && payload.replacement_id
+      && payload.original_id === payload.replacement_id) {
+      status.textContent = "Nota original e documento substituto devem ser diferentes.";
+      return;
+    }
+    const key = crypto.randomUUID();
+    if (!recovery) attempted = true;
+    submit.disabled = true;
+    status.textContent = recovery
+      ? "Consultando o retorno oficial sem retransmitir o evento..."
+      : "Enviando uma única solicitação autorizada. Resultado incerto exige conciliação.";
+    try {
+      const reply = await api("/v1/portal/operations/" + operation, {
+        method: "POST",
+        headers: {"X-CSRF-Token": csrfToken(), "Idempotency-Key": key},
+        body: JSON.stringify(payload),
+      });
+      status.textContent = reply.official_fiscal_confirmation === true
+        ? "Confirmação fiscal oficial registrada. Consulte XML e histórico do documento."
+        : "Operação pendente ou não confirmada. Consulte a reconciliação; não retransmita.";
+      if (reply.recovery_required === true) {
+        status.textContent += " Recuperação oficial necessária.";
+      }
+    } catch (error) {
+      status.textContent = (error instanceof Error ? error.message : "Resultado incerto")
+        + (recovery ? " Consulta indisponível." :
+          " Pode ter sido recebido. NÃO retransmita; concilie primeiro.");
+    } finally {
+      if (recovery) submit.disabled = false;
+    }
   });
 }
 
@@ -2896,6 +3074,17 @@ async function renderSurface(viewId) {
     if (viewId === "issuances") appendBarueriFiscalEvent(article, "cancelBarueriNfse");
     if (viewId === "issuances") appendBarueriFiscalEvent(article, "substituteBarueriNfse");
     if (viewId === "issuances" || viewId === "reconciliation") appendBarueriEventReconciliation(article);
+    if (viewId === "issuances") {
+      appendReviewedMunicipalWebAction(article, "cancelOsascoNfse");
+      appendReviewedMunicipalWebAction(article, "substituteOsascoNfse");
+      appendReviewedMunicipalWebAction(article, "cancelSantanaNfse");
+      appendReviewedMunicipalWebAction(article, "substituteSantanaNfse");
+    }
+    if (viewId === "issuances" || viewId === "reconciliation") {
+      appendReviewedMunicipalWebAction(article, "reconcileSantanaNfseCancellation");
+      appendReviewedMunicipalWebAction(article, "reconcileSantanaNfseSubstitution");
+      appendReviewedMunicipalWebAction(article, "reconcileJundiaiNfseCancellation");
+    }
     if (viewId === "issuances") appendExtremaSubstitution(article);
     if (viewId === "issuances") appendCajamarSubstitutionReview(article);
     if (viewId === "inutilizations") appendInutilizationForm(article);
