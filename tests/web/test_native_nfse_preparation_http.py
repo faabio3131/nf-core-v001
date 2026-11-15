@@ -2876,17 +2876,21 @@ def test_santana_http_cancellation_or_substitution_durable_single_dispatch(
     assert outcome.status_code == 200, outcome.text
     assert outcome.json()["municipality_ibge"] == "3547304"
     assert outcome.json()["official_fiscal_confirmation"] is True
+    replacement_prepared = (
+        application.load_prepared_nfse_authorization(
+            ExecutionScope(
+                TENANT, UNIT, FiscalEnvironment.HOMOLOGATION,
+                "santana-check", "fm-nfcore",
+            ), replacement_id,
+        )
+        if replacement_id is not None else None
+    )
     with db() as uow:
         assert uow.lifecycle.get(original_id).state is FiscalDocumentState.CANCELLED
-        if replacement_id is not None:
+        if replacement_id is not None and replacement_prepared is not None:
             assert uow.lifecycle.get(replacement_id).state is FiscalDocumentState.AUTHORIZED
             assert uow.idempotency.attempts(
-                application.load_prepared_nfse_authorization(
-                    ExecutionScope(
-                        TENANT, UNIT, FiscalEnvironment.HOMOLOGATION,
-                        "santana-check", "fm-nfcore",
-                    ), replacement_id,
-                ).idempotency_key,
+                replacement_prepared.idempotency_key,
             )[-1].status.value == "authorized"
     assert len(calls) == (2 if substitution else 1)
     assert event_sent.call_count == (0 if substitution else 1)
