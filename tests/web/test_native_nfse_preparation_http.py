@@ -175,7 +175,8 @@ def _database(
                 municipality_name=(
                     "Osasco" if issuer_ibge == "3534401"
                     else "Barueri" if issuer_ibge == "3505708"
-                    else "Jundiai" if issuer_ibge == "3525904" else "Cajamar"
+                    else "Jundiai" if issuer_ibge == "3525904"
+                    else "Salto" if issuer_ibge == "3545209" else "Cajamar"
                 ), jurisdiction=jurisdiction,
                 postal_code="07750000",
             ),
@@ -1345,15 +1346,29 @@ def _synthetic_a1_for_native_issuer() -> EphemeralCertificateMaterial:
     )
 
 
+@pytest.mark.parametrize(
+    ("issuer_ibge", "tax_regime"), [
+        ("3509205", TaxRegimeCode.SIMPLES_NACIONAL),
+        ("3545209", TaxRegimeCode.NORMAL),
+    ],
+)
 def test_web_native_nfse_preparation_to_signed_gateway_and_authorized_xml(
-    tmp_path: Path,
+    tmp_path: Path, issuer_ibge: str, tax_regime: TaxRegimeCode,
 ) -> None:
     """HTTP Portal -> durable preparation -> DPS 1.01 -> fake SEFIN -> archive HTTP.
 
     This uses one canonical runtime path and an ephemeral synthetic A1; no
     external gateway, municipality authorization or customer cert is contacted.
     """
-    db = _database(tmp_path / "native-e2e.sqlite")
+    db = _database(
+        tmp_path / f"native-e2e-{issuer_ibge}.sqlite",
+        issuer_ibge=issuer_ibge, tax_regime=tax_regime,
+    )
+    payload = _payload() | {
+        "source_id": f"native-e2e-{issuer_ibge}",
+        "competence_date": "2026-11-15",
+        "service_municipality_ibge": issuer_ibge,
+    }
     application = FiscalApplicationService(db)
     captured: list[bytes] = []
     key = "35" + "0" * 48
@@ -1380,6 +1395,10 @@ def test_web_native_nfse_preparation_to_signed_gateway_and_authorized_xml(
             "{http://www.sped.fazenda.gov.br/nfse}prest/"
             "{http://www.sped.fazenda.gov.br/nfse}CNPJ"
         ) == "11222333000181"
+        assert root.findtext(
+            "{http://www.sped.fazenda.gov.br/nfse}infDPS/"
+            "{http://www.sped.fazenda.gov.br/nfse}cLocEmi"
+        ) == issuer_ibge
         captured.append(signed)
         return json.dumps({
             "tipoAmbiente": 2, "chaveAcesso": key, "idDps": "synthetic-native-e2e",
@@ -1406,7 +1425,7 @@ def test_web_native_nfse_preparation_to_signed_gateway_and_authorized_xml(
         path=CanonicalFiscalOperationPath(application, handlers=handlers),
     )
     browser = _client(db, operation_executor=operation_executor)
-    prepared = _post(browser, _payload())
+    prepared = _post(browser, payload)
     assert prepared.status_code == 200, prepared.text
     document_id = prepared.json()["document_id"]
 
@@ -1485,7 +1504,7 @@ def test_web_native_nfse_preparation_to_signed_gateway_and_authorized_xml(
     )
     assert again.status_code == 200, again.text
     assert len(captured) == 1, "Replay must not retransmit the signed DPS"
-    assert _post(browser, _payload(), "native-after-authorization").status_code == 200
+    assert _post(browser, payload, "native-after-authorization").status_code == 200
 
 
 
@@ -3280,3 +3299,90 @@ def test_santana_unknown_event_post_requires_verified_read_only_recovery(
     assert terminal.json()["official_fiscal_confirmation"] is True
     assert verified_get.call_count == 2, "Terminal replay cannot query or resend"
     assert request_posts.call_count == 1
+
+
+def test_salto_sp_national_portal_reuses_existing_durable_binding_and_dps(
+    tmp_path: Path,
+) -> None:
+    """IBGE 3545209 uses the canonical National issuer: no municipal RPS or API."""
+    db = _database(
+        tmp_path / "salto-national-preparation.sqlite",
+        issuer_ibge="3545209", tax_regime=TaxRegimeCode.NORMAL,
+    )
+    browser = _client(db)
+    payload = _payload() | {
+        "source_id": "salto-reviewed-normal-2026",
+        "service_municipality_ibge": "3545209",
+        "competence_date": "2026-11-15",
+    }
+    first = _post(browser, payload, key="salto-national-first")
+    assert first.status_code == 200, first.text
+    data = first.json()
+    assert data["numbering_authority"] == "national_dps_durable"
+    assert data["transmitted"] is False
+    identifier = data["document_id"]
+    scope = ExecutionScope(
+        TENANT, UNIT, FiscalEnvironment.HOMOLOGATION, "salto-read", "fm-nfcore",
+    )
+    request = FiscalApplicationService(db).load_prepared_nfse_authorization(
+        scope, identifier,
+    )
+    assert request.document.issuer.address.jurisdiction.municipality_ibge_code == "3545209"
+    assert request.document.issuer.tax_regime is TaxRegimeCode.NORMAL
+    assert request.document.service_jurisdiction.municipality_ibge_code == "3545209"
+    same = _post(browser, payload, key="salto-national-second")
+    assert same.status_code == 200, same.text
+    assert same.json()["replay"] is True
+    assert same.json()["document_id"] == identifier
+    modified = _post(
+        browser, payload | {"iss_amount": "4.00"}, key="salto-mutated",
+    )
+    assert modified.status_code == 409
+    assert modified.json()["detail"]["code"] == "NATIVE_NFSE_CONTENT_CONFLICT"
+
+
+def test_salto_sp_national_fails_without_canonical_provider_binding(
+    tmp_path: Path,
+) -> None:
+    """The municipality label alone never creates an authorized provider."""
+    db = _database(
+        tmp_path / "salto-national-unbound.sqlite",
+        issuer_ibge="3545209", tax_regime=TaxRegimeCode.NORMAL,
+        with_binding=False,
+    )
+    web = _client(db)
+    payload = _payload() | {
+        "source_id": "salto-unbound",
+        "service_municipality_ibge": "3545209",
+        "competence_date": "2026-11-15",
+    }
+    result = _post(web, payload, key="salto-unbound")
+    assert result.status_code == 409, result.text
+    assert result.json()["detail"]["code"] == "NATIVE_NFSE_PROVIDER_NOT_CONFIGURED"
+
+
+def test_salto_sp_national_requires_review_and_tenant_unit_authority(
+    tmp_path: Path,
+) -> None:
+    db = _database(
+        tmp_path / "salto-national-auth.sqlite",
+        issuer_ibge="3545209", tax_regime=TaxRegimeCode.NORMAL,
+    )
+    payload = _payload() | {
+        "source_id": "salto-auth-check",
+        "service_municipality_ibge": "3545209",
+        "competence_date": "2026-11-15",
+    }
+    operator = _client(db, PortalRole.OPERATOR)
+    assert _post(operator, payload, "salto-no-owner").status_code == 403
+    owner = _client(db)
+    assert _post(
+        owner, payload | {"fiscal_review_approved": False}, "salto-no-review",
+    ).status_code == 403
+    assert _post(
+        owner, payload | {"unit_id": "another-tenant-unit"}, "salto-spoof",
+    ).status_code == 403
+    assert _post(
+        owner, payload | {"environment": "production"}, "salto-no-prod",
+    ).status_code == 400
+    assert _post(owner, payload, "salto-owner-authorized").status_code == 200
