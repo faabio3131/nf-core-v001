@@ -55,6 +55,7 @@ from kordena_fiscal.gateway.santana_simpliss_homologation import (
     SANTANA_PROVIDER_ID,
     SantanaSimplissHomologationGateway,
 )
+from kordena_fiscal.runtime.santana_event_handlers import build_santana_event_handlers
 from kordena_fiscal.gateway.sp4_municipal_canonical import (
     Sp4OriginalRps,
     Sp4VerifiedInvoice,
@@ -672,6 +673,7 @@ def build_runtime_fiscal_handler_factory(
                 configured_municipalities=active_municipalities,
                 canonical_rps_loader=application.load_sp4_original_rps,
             )
+        reviewed_santana: SantanaSimplissHomologationGateway | None = None
         if santana_port_builder is not None:
             reviewed_santana = santana_port_builder(application)
             if not isinstance(reviewed_santana, SantanaSimplissHomologationGateway):
@@ -707,6 +709,14 @@ def build_runtime_fiscal_handler_factory(
             prepared_nfse_query_client=nfse_query_client,
             archive_retention=retention,
         )
+        if reviewed_santana is not None and reviewed_santana.supports_events:
+            for operation, handler in build_santana_event_handlers(
+                application=application, gateway=reviewed_santana,
+                retention=retention,
+            ).items():
+                if operation in handlers:
+                    raise ValueError("Duplicate Santana fiscal event handler authority")
+                handlers[operation] = handler
         if (
             selected_barueri_ports is not None
             and selected_barueri_ports.supports_events
