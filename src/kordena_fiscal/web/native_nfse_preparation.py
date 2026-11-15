@@ -358,9 +358,23 @@ def prepare_native_nfse(
             if provider != NACIONAL_HOMOLOGATION_PROVIDER_ID:
                 raise FiscalValidationError("Replacement DPS requires national provider")
             original_id = payload["substitution_original_id"]
-            original_key = app.review_prepared_national_nfse_substitution(
-                scope=scope, original_id=original_id, replacement=document,
+            existing_link = (
+                previous.document.national_substitution if previous is not None else None
             )
+            if existing_link is not None:
+                if (
+                    existing_link.original_document_id != original_id
+                    or existing_link.reason_code != payload["substitution_reason_code"]
+                    or existing_link.reason_description
+                    != payload["substitution_reason_description"]
+                    or existing_link.approval_reference != key
+                ):
+                    raise PersistenceConflictError("National replacement review changed")
+                original_key = existing_link.original_invoice_reference
+            else:
+                original_key = app.review_prepared_national_nfse_substitution(
+                    scope=scope, original_id=original_id, replacement=document,
+                )
             document = replace(document, national_substitution=NfseNationalSubstitution(
                 original_document_id=original_id,
                 original_invoice_reference=original_key,
