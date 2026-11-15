@@ -175,10 +175,10 @@ def test_accountant_question_cannot_borrow_evidence_from_another_subject() -> No
     assert matching.json()["status"] == "baseline_only"
     assert matching.json()["sections"][0]["evidenceIds"] == ["rec:0"]
 
-    other = post(web, {**request, "subject_id": "ev-1"}, key="subject-ev-1")
+    other = post(web, {**request, "subject_id": "doc-1"}, key="subject-doc-1")
     assert other.status_code == 200
     assert other.json()["status"] == "baseline_only"
-    assert other.json()["sections"][0]["evidenceIds"] == [] if False else ["doc:0"]
+    assert other.json()["sections"][0]["evidenceIds"] == ["doc:0"]
 
 
 def test_classification_without_evidence_declares_insufficient_basis() -> None:
