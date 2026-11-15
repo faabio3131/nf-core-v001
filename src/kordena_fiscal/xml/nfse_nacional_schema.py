@@ -83,3 +83,42 @@ def national_dps_validator(version: str) -> XmlSchemaValidator:
         ),
         source_uri=_SOURCE,
     ))
+
+
+# National event schemas mirrored from the public reference repository listed
+# below, with exact mirrored bytes pinned. The municipal Simpliss package must
+# be reconciled separately: a mirror does not certify upstream source identity.
+# https://github.com/nfse-nacional/nfse-php/tree/main/references/schemas
+_EVENT_MIRROR_SOURCE = (
+    "https://github.com/nfse-nacional/nfse-php/tree/main/references/schemas"
+)
+_EVENT_MIRROR_HASHES = {
+    "pedRegEvento_v1.01.xsd": "e90b6816d29cca0bd5ed8f86ad98d3b7b0d8bbfc11a7583e6ff8f98170fd4009",
+    "evento_v1.01.xsd": "986d0a1c4d27454f712169849aa7c2380aaa4560bd9c920e0ff03ba6599ae28b",
+    "tiposEventos_v1.01.xsd": "1b32bea21089dc232d78b62d805e9c07382f440d4e0ea2cb3fb6b82ebde68c11",
+}
+
+
+@lru_cache(maxsize=2)
+def national_event_validator(kind: str) -> XmlSchemaValidator:
+    """Offline validated cancellation request/response (national event 1.01)."""
+    if kind not in ("request", "response"):
+        raise FiscalValidationError("Unsupported national event schema")
+    root_name = "pedRegEvento_v1.01.xsd" if kind == "request" else "evento_v1.01.xsd"
+    version = "1.01"
+    directory = files("kordena_fiscal.xml").joinpath("official", "NFSE_NACIONAL_1.01")
+    shared = {
+        name: sha for name, sha in _HASHES["1.01"].items()
+        if name != "DPS_v1.01.xsd"
+    }
+    resources = tuple(
+        _pinned_schema_resource(
+            version=version, name=name, official_bytes=directory.joinpath(name).read_bytes(),
+            official_sha256=digest,
+        )
+        for name, digest in {**shared, **_EVENT_MIRROR_HASHES}.items()
+    )
+    return XmlSchemaValidator(SchemaSet(
+        version=version, root_schema=root_name, resources=resources,
+        source_uri=_EVENT_MIRROR_SOURCE,
+    ))
