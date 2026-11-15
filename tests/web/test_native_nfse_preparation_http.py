@@ -2623,3 +2623,101 @@ def test_santana_provider_rejects_profile_of_another_municipality(
     response = _post(web, payload, key="santana-city-spoof")
     assert response.status_code == 400, response.text
     assert response.json()["detail"]["code"] == "NATIVE_NFSE_INVALID_FISCAL_FACTS"
+
+
+
+def test_santana_simpliss_real_portal_uow_issue_archive_and_one_post(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Authenticated Portal→canonical DPS→municipal adapter→durable archived XML.
+
+    The official response verifier is replaced with a deliberate synthetic
+    fixture. This proves internal transport wiring, NOT real municipality approval.
+    """
+    from kordena_fiscal.gateway import santana_simpliss_homologation as simpliss
+
+    db = _database(
+        tmp_path / "santana-http-complete.sqlite",
+        issuer_ibge="3547304",
+        provider_id=simpliss.SANTANA_PROVIDER_ID,
+        tax_regime=TaxRegimeCode.NORMAL,
+    )
+    app = FiscalApplicationService(db)
+    key = "35" + "3" * 48
+    fake_xml = b"<NFSe>SantanaSyntheticReceipt</NFSe>"
+    exchange = Mock(return_value=json.dumps({
+        "tipoAmbiente": 2,
+        "chaveAcesso": key,
+        "nfseXmlGZipB64": "synthetic-fixture-no-cryptographic-proof",
+    }).encode("ascii"))
+    validate_a1 = Mock()
+    verifier = Mock(return_value=fake_xml)
+    monkeypatch.setattr(simpliss, "validate_a1_for_issuer", validate_a1)
+    monkeypatch.setattr(simpliss, "build_fiscal_tls_context", Mock(return_value=Mock()))
+    monkeypatch.setattr(simpliss, "encode_signed_dps", Mock(
+        return_value=b'{"dpsXmlGZipB64":"synthetic"}',
+    ))
+    monkeypatch.setattr(simpliss, "_validate_official_nfse", verifier)
+
+    def build(application: FiscalApplicationService):
+        class ScopedBinding:
+            def resolve_provider_id(
+                self, *, scope, document_kind, jurisdiction, operation,
+            ):
+                return application.resolve_configured_provider_id(
+                    scope=scope, document_kind=document_kind,
+                    jurisdiction=jurisdiction, operation=operation,
+                )
+        return simpliss.SantanaSimplissHomologationGateway(
+            endpoint=simpliss.SantanaSimplissEndpoint(
+                "https://producaorestrita.simplissweb.com.br/SEFIN/nfse"
+            ),
+            provider_resolver=ScopedBinding(),
+            resolve_certificate=lambda scope, cnpj: Mock(
+                pkcs12_bytes=b"synthetic", password=b"synthetic",
+            ),
+            build_signed_dps=lambda request, cert: b"<synthetic-signed-dps/>",
+            preaudit=nfse_preaudit,
+            exchange=exchange,
+        )
+
+    handlers = build_runtime_fiscal_handler_factory(
+        operations_gateway=FakeFiscalOperationsGateway(),
+        santana_port_builder=build,
+    )(app)
+    web = _client(db, operation_executor=CanonicalPortalOperationExecutor(
+        unit_of_work_factory=db,
+        path=CanonicalFiscalOperationPath(app, handlers=handlers),
+    ))
+    payload = _payload() | _TAKER_ADDRESS | {
+        "source_id": "santana-full-http-2026",
+        "competence_date": "2026-11-12",
+        "service_municipality_ibge": "3547304",
+    }
+    prepared = _post(web, payload, "santana-one-dps")
+    assert prepared.status_code == 200, prepared.text
+    document_id = prepared.json()["document_id"]
+    csrf = web.cookies.get(CSRF_COOKIE)
+    assert csrf
+    path = "/v1/portal/operations/issueFiscalDocument"
+    args = {"unit_id": UNIT, "environment": "homologation",
+            "document_id": document_id}
+    headers = {CSRF_HEADER: csrf, "Idempotency-Key": "santana-one-issue"}
+    result = web.post(path, json=args, headers=headers)
+    assert result.status_code == 200, result.text
+    assert result.json()["status"] == FiscalDocumentState.AUTHORIZED.value
+    assert exchange.call_count == 1
+    assert exchange.call_args.args[0] == "POST"
+    validate_a1.assert_called_once()
+    verifier.assert_called_once()
+    evidence = web.get(
+        f"/v1/portal/documents/{document_id}/artifacts/authorized_xml",
+        params={"unit_id": UNIT, "environment": "homologation"},
+    )
+    assert evidence.status_code == 200, evidence.text
+    assert evidence.content == fake_xml
+    again = web.post(path, json=args, headers=headers)
+    assert again.status_code == 200, again.text
+    assert exchange.call_count == 1
+    with db() as uow:
+        assert uow.lifecycle.get(document_id).state is FiscalDocumentState.AUTHORIZED
