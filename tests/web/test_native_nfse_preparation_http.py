@@ -2512,6 +2512,47 @@ def test_jundiai_http_cancel_or_substitute_officially_scoped_and_idempotent(
             assert uow.lifecycle.get(replacement_id).state is (
                 FiscalDocumentState.READY_TO_TRANSMIT
             )
+        # Internal substitution must also complete the NEW fiscal document:
+        # its own transmit, read-only provider reconciliation, and immutable
+        # archived XML. The municipality's atomic SOAP substitute is separate
+        # and not inferred from this synthetic sequential workflow.
+        replacement_body = {
+            "unit_id": UNIT, "environment": "homologation",
+            "document_id": replacement_id,
+        }
+        replacement_issued = web.post(
+            root + "issueFiscalDocument", json=replacement_body,
+            headers={CSRF_HEADER: csrf, "Idempotency-Key": "jundiai-replacement-issue"},
+        )
+        assert replacement_issued.status_code == 200, replacement_issued.text
+        assert posted.call_count == 2, "Original and replacement each require one POST"
+        replacement_recovered = web.post(
+            root + "reconcileFiscalOperation", json=replacement_body,
+            headers={CSRF_HEADER: csrf, "Idempotency-Key": "jundiai-replacement-query"},
+        )
+        assert replacement_recovered.status_code == 200, replacement_recovered.text
+        assert replacement_recovered.json()["status"] == FiscalDocumentState.AUTHORIZED.value
+        assert queried.call_count == 2
+        archived_replacement = web.get(
+            f"/v1/portal/documents/{replacement_id}/artifacts/authorized_xml",
+            params={"unit_id": UNIT, "environment": "homologation"},
+        )
+        assert archived_replacement.status_code == 200, archived_replacement.text
+        assert b"ConsultarNfseRpsResposta" in archived_replacement.content
+        replay_issue = web.post(
+            root + "issueFiscalDocument", json=replacement_body,
+            headers={CSRF_HEADER: csrf, "Idempotency-Key": "jundiai-replacement-issue"},
+        )
+        assert replay_issue.status_code == 200, replay_issue.text
+        assert posted.call_count == 2, "An exact replay must not issue a third RPS"
+        replay_cancel = web.post(
+            root + operation, json=payload,
+            headers={CSRF_HEADER: csrf, "Idempotency-Key": "jundiai-one-event"},
+        )
+        assert replay_cancel.status_code == 200, replay_cancel.text
+        cancellation_post.assert_called_once()
+        with db() as uow:
+            assert uow.lifecycle.get(replacement_id).state is FiscalDocumentState.AUTHORIZED
     else:
         assert event.json()["status"] == FiscalDocumentState.CANCEL_REQUESTED.value
         recovered = web.post(root + "reconcileJundiaiNfseCancellation", json=original_body,
