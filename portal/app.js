@@ -702,6 +702,7 @@ function appendReviewedMunicipalWebAction(article, operation) {
     ? "Consulta oficial somente leitura. Um estado pendente não confirma o evento nem autoriza repetir a transmissão."
     : "Conferir a nota original e o vínculo fiscal antes de autorizar. Se o retorno for incerto, NÃO retransmita: use a reconciliação ou consulte o histórico. Preparar e transmitir são etapas diferentes.";
   form.append(title, help);
+  /** @type {Record<string, HTMLInputElement>} */
   const inputs = {};
   for (const [key, caption] of spec.fields) {
     const label = document.createElement("label"); label.textContent = caption;
