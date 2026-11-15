@@ -84,6 +84,7 @@ from kordena_fiscal.operations import (
     InutilizationRequest,
     InutilizationResult,
 )
+from kordena_fiscal.runtime.national_event_handlers import build_national_event_handlers
 from kordena_fiscal.runtime.santana_event_handlers import build_santana_event_handlers
 from kordena_fiscal.vault import EphemeralCertificateMaterial
 from kordena_fiscal.vault.encrypted_a1 import EncryptedA1Vault
@@ -728,6 +729,17 @@ def build_runtime_fiscal_handler_factory(
             prepared_nfse_query_client=nfse_query_client,
             archive_retention=retention,
         )
+        if national_adapter is not None and certificate_vault is not None:
+            national_handlers = build_national_event_handlers(
+                application=application,
+                certificate_vault=certificate_vault,
+                provider_resolver=_CanonicalWebissProviderResolver(application),
+                retention=retention,
+            )
+            for operation, handler in national_handlers.items():
+                if operation in handlers:
+                    raise ValueError("Duplicate national fiscal event handler authority")
+                handlers[operation] = handler
         if reviewed_santana is not None and reviewed_santana.supports_events:
             for operation, handler in build_santana_event_handlers(
                 application=application, gateway=reviewed_santana,
