@@ -38,7 +38,7 @@ def build_national_event_handlers(
     """Register national events only when canonical fiscal authorities exist."""
     if (
         not isinstance(application, FiscalApplicationService)
-        or not isinstance(certificate_vault, EncryptedA1Vault)
+        or not callable(getattr(certificate_vault, "resolve", None))
         or not callable(getattr(provider_resolver, "resolve_provider_id", None))
         or not isinstance(retention, RetentionPolicyMetadata)
     ):
