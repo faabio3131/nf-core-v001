@@ -239,6 +239,30 @@ def _exchange(
     return bytes(raw)
 
 
+def _exchange_event_get(
+    key: str, tls: ssl.SSLContext, timeout: float,
+) -> bytes | None:
+    """Read-only official event 101101, seq=1. HTTP 404 means still pending."""
+    req = Request(
+        _URL + "/" + _key(key) + "/eventos/" + _CANCEL_TYPE + "/1",
+        method="GET", headers={"Accept": "application/json"},
+    )
+    try:
+        with build_opener(HTTPSHandler(context=tls), RejectFiscalRedirects()).open(
+            req, timeout=timeout,
+        ) as result:
+            body = result.read(_MAX_XML + 1)
+    except HTTPError as exc:
+        if exc.code == 404:
+            return None
+        raise NationalNfseEventError("SEFIN event GET could not be verified") from None
+    except (URLError, OSError, TimeoutError, ssl.SSLError):
+        raise NationalNfseEventError("SEFIN event GET status unknown") from None
+    if len(body) > _MAX_XML:
+        raise NationalNfseEventError("SEFIN event GET response exceeds limit")
+    return bytes(body)
+
+
 class NationalNfseCancellationHomologationTransport:
     """A1 + human-approved signed XML + fiscal binding, no automatic retry."""
 
@@ -251,6 +275,7 @@ class NationalNfseCancellationHomologationTransport:
         approve_cancellation: Callable[[NationalNfseCancellationIntent], None],
         validate_official_event: Callable[[bytes], None],
         exchange: Callable[[str, bytes, ssl.SSLContext, float], bytes] | None = None,
+        exchange_get: Callable[[str, ssl.SSLContext, float], bytes | None] | None = None,
         timeout_seconds: float = 15,
     ) -> None:
         if (
@@ -268,7 +293,43 @@ class NationalNfseCancellationHomologationTransport:
         self._approve = approve_cancellation
         self._validate_response = validate_official_event
         self._exchange = exchange or _exchange
+        self._exchange_get = exchange_get or _exchange_event_get
         self._timeout = timeout_seconds
+
+    def query_cancellation(
+        self, intent: NationalNfseCancellationIntent,
+    ) -> NationalNfseCancellationReceipt | None:
+        """Recover an uncertain event solely through official GET; never POST again."""
+        if not isinstance(intent, NationalNfseCancellationIntent):
+            raise NationalNfseEventError("Canonical national cancellation intent required")
+        provider = self._resolver.resolve_provider_id(
+            scope=intent.scope,
+            document_kind=FiscalDocumentKind.NFSE,
+            jurisdiction=intent.issuer_jurisdiction,
+            operation="query",
+        )
+        if provider != NACIONAL_HOMOLOGATION_PROVIDER_ID:
+            raise NationalNfseEventError("National event query provider binding mismatch")
+        self._approve(intent)
+        self._validate(intent.signed_event_xml)
+        material = self._certificate(intent.scope, intent.issuer.value)
+        validate_a1_for_issuer(
+            material.pkcs12_bytes, material.password,
+            issuer_cnpj=intent.issuer, at=datetime.now(UTC),
+        )
+        response = self._exchange_get(
+            intent.invoice_reference,
+            build_fiscal_tls_context(material),
+            self._timeout,
+        )
+        if response is None:
+            return None
+        xml = _validated_response(response, intent)
+        self._validate_response(xml)
+        return NationalNfseCancellationReceipt(
+            invoice_reference=intent.invoice_reference,
+            event_xml=xml,
+        )
 
     def cancel(
         self, intent: NationalNfseCancellationIntent,
