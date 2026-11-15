@@ -3332,7 +3332,7 @@ class FiscalApplicationService:
             if (
                 root.tag != ns + "NFSe" or info is None
                 or info.get("Id") != "NFS" + key
-                or root.getroottree().docinfo.doctype
+                or getattr(root.getroottree().docinfo, "doctype", None)
             ):
                 raise PersistenceStateError("Santana original XML identity mismatches")
             _verify_nfse_receipt_signature(root, info, "NFS" + key)

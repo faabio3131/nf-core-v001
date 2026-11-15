@@ -38,6 +38,7 @@ from kordena_fiscal.gateway.santana_simpliss_homologation import (
 from kordena_fiscal.issuance.nfe_nfse import NfseAuthorizationRequest
 from kordena_fiscal.issuance.nfse_dps_builder import build_signed_dps
 from kordena_fiscal.lifecycle import IssuanceAttemptStatus
+from kordena_fiscal.vault import EphemeralCertificateMaterial
 from kordena_fiscal.vault.encrypted_a1 import EncryptedA1Vault
 
 from .config import RuntimeConfigurationError
@@ -116,7 +117,9 @@ def build_santana_port_builder_from_environ(
                     jurisdiction=jurisdiction, operation=operation,
                 )
 
-        def resolve_certificate(scope: ExecutionScope, cnpj: str):
+        def resolve_certificate(
+            scope: ExecutionScope, cnpj: str,
+        ) -> EphemeralCertificateMaterial:
             return vault.resolve(scope=scope, issuer_cnpj=cnpj)
 
         def submit_event(

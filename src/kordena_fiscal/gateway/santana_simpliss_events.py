@@ -142,7 +142,7 @@ def validate_santana_event_xml(xml: bytes, *, kind: str) -> None:
         resolve_entities=False, no_network=True, load_dtd=False, huge_tree=False,
     )
     root = etree.fromstring(xml, parser)
-    if root.getroottree().docinfo.doctype:
+    if getattr(root.getroottree().docinfo, "doctype", None):
         raise SantanaSimplissError("Santana event DTD is forbidden")
     expected = _TAG + ("pedRegEvento" if kind == "request" else "evento")
     identifier = "infPedReg" if kind == "request" else "infEvento"
@@ -183,7 +183,7 @@ def build_signed_santana_cancellation(
     )
     if not isinstance(private, rsa.RSAPrivateKey) or certificate is None:
         raise SantanaSimplissError("Santana signing identity is not a valid A1 RSA")
-    root = etree.Element(_TAG + "pedRegEvento", nsmap={None: _NS})
+    root = etree.Element(_TAG + "pedRegEvento", nsmap={None: _NS})  # type: ignore[dict-item]
     root.set("versao", "1.01")
     inf = etree.SubElement(root, _TAG + "infPedReg")
     inf.set("Id", "PRE" + key + "101101")
