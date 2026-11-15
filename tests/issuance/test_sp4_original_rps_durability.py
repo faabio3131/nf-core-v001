@@ -46,6 +46,7 @@ from kordena_fiscal.issuance.sp4_original_rps_archive import (
     encode_sp4_original,
     expected_sp4_batch,
 )
+from kordena_fiscal.lifecycle import IdempotencyConflictError
 from kordena_fiscal.persistence.ports import (
     PersistenceConflictError,
     PersistenceStateError,
@@ -138,7 +139,7 @@ def test_all_four_municipalities_archive_one_original_rps_in_same_transaction(
     replay = restarted.prepare_nfse_authorization(
         request.document, occurred_at=_NOW, retention=_POLICY,
         sp4_rps_series=1,
-        sp4_intent_builder=lambda _: pytest.fail(
+        sp4_original_builder=lambda _request, _reservation: pytest.fail(
             "idempotent replay must not reserve a second municipal number"
         ),
     )
@@ -159,7 +160,7 @@ def test_replay_cannot_remove_or_add_original_rps_authority(tmp_path: Path) -> N
     app = FiscalApplicationService(db)
     request = _request("3509205")
     _prepare(app, request)
-    with pytest.raises(PersistenceConflictError, match="SP4 original RPS"):
+    with pytest.raises(IdempotencyConflictError, match="different content"):
         app.prepare_nfse_authorization(
             request.document, occurred_at=_NOW, retention=_POLICY,
         )
@@ -233,10 +234,10 @@ def test_bad_reviewed_source_rolls_back_rps_reservation(tmp_path: Path) -> None:
     app = FiscalApplicationService(db)
     request = _request("3534401")
 
-    def wrong_builder(reserved):
+    def wrong_builder(numbered_request, reserved):
         return replace(
             build_sp4_original_from_reservation(
-                request, reserved, rps_series="NF",
+                numbered_request, reserved, rps_series="NF",
             ),
             issuer_ibge="3525904",
         )
@@ -244,7 +245,7 @@ def test_bad_reviewed_source_rolls_back_rps_reservation(tmp_path: Path) -> None:
     with pytest.raises(FiscalValidationError, match="diverge"):
         app.prepare_nfse_authorization(
             request.document, occurred_at=_NOW, retention=_POLICY,
-            sp4_rps_series=1, sp4_intent_builder=wrong_builder,
+            sp4_rps_series=1, sp4_original_builder=wrong_builder,
         )
     _, approved = _prepare(app, request)
     assert approved.rps_number == "1"

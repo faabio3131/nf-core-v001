@@ -4,15 +4,18 @@ No Prefeitura network, certificate or production migration is performed.
 """
 from __future__ import annotations
 
+from pathlib import Path
 from unittest.mock import Mock
 
 import pytest
 
+from kordena_fiscal.application.service import FiscalApplicationService
 from kordena_fiscal.gateway.sp4_municipal_canonical import (
     SP4_MUNICIPAL_PROVIDERS,
     Sp4CanonicalMunicipalError,
 )
 from kordena_fiscal.issuance.nfe_nfse import NfseGatewayClient
+from kordena_fiscal.persistence import SqliteFiscalDatabase
 from kordena_fiscal.runtime.canonical_fiscal_composition import (
     build_runtime_fiscal_handler_factory,
 )
@@ -32,27 +35,35 @@ def _reviewed() -> Sp4ReviewedMunicipalPorts:
     )
 
 
-def test_all_four_reviewed_city_ports_install_into_canonical_handler_factory() -> None:
+def _application(tmp_path: Path) -> FiscalApplicationService:
+    db = SqliteFiscalDatabase(tmp_path / "sp4-composition.sqlite")
+    db.initialize()
+    return FiscalApplicationService(db)
+
+
+def test_all_four_reviewed_city_ports_install_into_canonical_handler_factory(
+    tmp_path: Path,
+) -> None:
     factory = build_runtime_fiscal_handler_factory(
         sp4_reviewed_municipalities={
             provider: _reviewed() for provider in SP4_MUNICIPAL_PROVIDERS
         },
         nfse_preaudit=Mock(),
     )
-    handlers = factory(Mock())
+    handlers = factory(_application(tmp_path))
     assert {
         "issueFiscalDocument", "queryFiscalDocument",
         "cancelFiscalDocument", "reconcileFiscalOperation",
     }.issubset(handlers)
 
 
-def test_unknown_city_cannot_enter_real_handler_factory() -> None:
+def test_unknown_city_cannot_enter_real_handler_factory(tmp_path: Path) -> None:
     factory = build_runtime_fiscal_handler_factory(
         sp4_reviewed_municipalities={"fake-global-provider": _reviewed()},
         nfse_preaudit=Mock(),
     )
     with pytest.raises(Sp4CanonicalMunicipalError, match="Unknown SP4"):
-        factory(Mock())
+        factory(_application(tmp_path))
 
 
 def test_handler_factory_refuses_two_municipal_provider_authorities() -> None:
@@ -64,10 +75,12 @@ def test_handler_factory_refuses_two_municipal_provider_authorities() -> None:
         )
 
 
-def test_no_reviewed_municipal_provider_does_not_enable_cities_implicitly() -> None:
+def test_no_reviewed_municipal_provider_does_not_enable_cities_implicitly(
+    tmp_path: Path,
+) -> None:
     factory = build_runtime_fiscal_handler_factory(
         sp4_reviewed_municipalities={},
     )
-    handlers = factory(Mock())
+    handlers = factory(_application(tmp_path))
     assert "issueFiscalDocument" in handlers
     assert "reconcileFiscalOperation" in handlers
