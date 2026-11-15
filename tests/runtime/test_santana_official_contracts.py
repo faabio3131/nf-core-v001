@@ -34,6 +34,7 @@ def test_santana_official_18_original_xsds_have_exact_provenance_and_sha() -> No
     assert len({row["path"] for row in manifest["schemas"]}) == 18
     assert set(manifest["sources"]) == {
         "manual", "schemas", "layout_dps", "layout_event", "layout_rtc",
+        "nbs_catalog", "rtc_correlation",
     }
     for row in manifest["schemas"]:
         original = _ROOT / row["path"]

@@ -32,6 +32,8 @@ DOCUMENTS = {
     "layout_rtc": ("AnexoVI-LeiautesRN_RTC_IBSCBS-V1.01.01_Simpliss", "PK"),
     "layout_dps": ("ANEXO_I-SEFIN_ADN-DPS_NFSe-SNNFSe_Simpliss", "PK"),
     "layout_event": ("ANEXO_II-SEFIN_ADN-PEDREGEVT_EVT-SNNFSe_Simpliss", "PK"),
+    "nbs_catalog": ("anexo_b-nbs2-lista_servico_nacional-snnfse", "PK"),
+    "rtc_correlation": ("AnexoVIII-CorrelacaoItemNBSIndOpCClassTrib_IBSCBS_V1_00_00", "PK"),
 }
 ROOT = Path("contracts/official/santana/simpliss_2026")
 MAX_DOWNLOAD = 30 * 1024 * 1024
