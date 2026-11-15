@@ -28,8 +28,8 @@ from .nfe_nfse import (
     NfseAuthorizationRequest,
     NfseCanonicalDocument,
     NfseForeignAddress,
-    NfseNationalTaxTreatment,
     NfseNationalSubstitution,
+    NfseNationalTaxTreatment,
     NfseServiceLine,
     NfseServiceTaker,
 )
@@ -165,7 +165,9 @@ def encode_prepared_nfse(request: NfseAuthorizationRequest) -> bytes:
         "national_substitution": (
             None if document.national_substitution is None else {
                 "original_document_id": document.national_substitution.original_document_id,
-                "original_invoice_reference": document.national_substitution.original_invoice_reference,
+                "original_invoice_reference": (
+                    document.national_substitution.original_invoice_reference
+                ),
                 "reason_code": document.national_substitution.reason_code,
                 "reason_description": document.national_substitution.reason_description,
                 "approval_reference": document.national_substitution.approval_reference,
