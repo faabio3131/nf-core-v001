@@ -2584,6 +2584,7 @@ def test_santana_simpliss_portal_uses_existing_durable_dps_and_replay(
     )
     web = _client(db)
     payload = _payload() | _TAKER_ADDRESS | {
+        "nbs_code": "123456789",  # synthetic test-only official NBS XSD shape
         "source_id": "santana-reviewed-dps-2026",
         "service_municipality_ibge": "3547304",
         "competence_date": "2026-11-12",
@@ -2605,6 +2606,27 @@ def test_santana_simpliss_portal_uses_existing_durable_dps_and_replay(
     assert again.json()["replay"] is True
     assert again.json()["document_id"] == identifier
     assert app.load_prepared_nfse_authorization(scope, identifier) == original
+
+
+
+def test_santana_missing_reviewed_nbs_fails_before_any_fiscal_preparation(
+    tmp_path: Path,
+) -> None:
+    """Official Simpliss cNBS is required; no synthetic NBS inserted by runtime."""
+    db = _database(
+        tmp_path / "santana-missing-nbs.sqlite",
+        issuer_ibge="3547304",
+        provider_id="santana-simpliss-v1-homologation",
+        tax_regime=TaxRegimeCode.NORMAL,
+    )
+    web = _client(db)
+    payload = _payload() | _TAKER_ADDRESS | {
+        "source_id": "santana-without-nbs-fail-closed",
+        "service_municipality_ibge": "3547304",
+    }
+    response = _post(web, payload, key="santana-requires-real-reviewed-nbs")
+    assert response.status_code == 400
+    assert response.json()["detail"]["code"] == "NATIVE_NFSE_INVALID_FISCAL_FACTS"
 
 
 def test_santana_provider_rejects_profile_of_another_municipality(
@@ -2691,6 +2713,7 @@ def test_santana_simpliss_real_portal_uow_issue_archive_and_one_post(
         path=CanonicalFiscalOperationPath(app, handlers=handlers),
     ))
     payload = _payload() | _TAKER_ADDRESS | {
+        "nbs_code": "123456789",  # synthetic test-only official NBS XSD shape
         "source_id": "santana-full-http-2026",
         "competence_date": "2026-11-12",
         "service_municipality_ibge": "3547304",
