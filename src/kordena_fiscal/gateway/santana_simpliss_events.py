@@ -194,6 +194,9 @@ def build_signed_santana_cancellation(
     ).isoformat(timespec="seconds")
     etree.SubElement(inf, _TAG + "CNPJAutor").text = document.issuer.cnpj.value
     etree.SubElement(inf, _TAG + "chNFSe").text = key
+    # Official Santana 2025-12-10 TCInfPedReg requires nPedRegEvento
+    # BEFORE e101101, unlike the generic reference mirror schema.
+    etree.SubElement(inf, _TAG + "nPedRegEvento").text = "1"
     cancel = etree.SubElement(inf, _TAG + "e101101")
     etree.SubElement(cancel, _TAG + "xDesc").text = "Cancelamento de NFS-e"
     etree.SubElement(cancel, _TAG + "cMotivo").text = reason_code
