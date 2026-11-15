@@ -605,6 +605,66 @@ class FiscalApplicationService:
             uow.commit()
             return updated
 
+    def _complete_national_replacement_in_uow(
+        self, *, uow: FiscalUnitOfWork,
+        prepared: NfseAuthorizationRequest,
+        authorized: bool, occurred_at: datetime,
+        retention: RetentionPolicyMetadata,
+    ) -> None:
+        """Reconcile original state atomically with the replacement's terminal state."""
+        linked = prepared.document.national_substitution
+        if linked is None:
+            return
+        original_id = linked.original_document_id
+        scope = prepared.document.scope
+        uow.lifecycle.assert_scope(original_id, scope)
+        state = uow.lifecycle.get(original_id)
+        records = [
+            item for item in uow.archive.list_for_document(scope, original_id)
+            if item.kind is FiscalArchiveKind.OTHER
+            and item.media_type == "application/vnd.nfcore.national-substitution-intent.v1+json"
+        ]
+        if (
+            state is None or state.state is not FiscalDocumentState.CANCEL_REQUESTED
+            or len(records) != 1
+        ):
+            raise PersistenceConflictError("National original substitution claim changed")
+        FiscalArchiveVerifier().verify_entry(records[0])
+        original = json.loads(records[0].content)
+        if (
+            original.get("replacement_id") != prepared.document.document_id
+            or original.get("old_key") != linked.original_invoice_reference
+            or original.get("approval_reference") != linked.approval_reference
+            or original.get("fingerprint") != prepared.request_fingerprint
+        ):
+            raise PersistenceConflictError("National original substitution evidence mismatch")
+        target = (
+            FiscalDocumentState.CANCELLED if authorized
+            else FiscalDocumentState.AUTHORIZED
+        )
+        updated = self._state_machine.transition(
+            state, target, occurred_at=occurred_at,
+            reason=(
+                "National official replacement DPS authorized"
+                if authorized else "National replacement DPS rejected"
+            ),
+            correlation_id=scope.correlation_id,
+        )
+        uow.lifecycle.save(updated, expected_version=state.version)
+        uow.archive.append(FiscalArchiveEntry.build(
+            scope=scope, document_reference=original_id,
+            kind=FiscalArchiveKind.OTHER,
+            content=json.dumps({
+                "operation": "national_substitution_resolution",
+                "original_id": original_id,
+                "replacement_id": prepared.document.document_id,
+                "original_key": linked.original_invoice_reference,
+                "result": "authorized" if authorized else "rejected",
+            }, sort_keys=True, separators=(",", ":")).encode("utf-8"),
+            media_type="application/vnd.nfcore.national-substitution-resolution.v1+json",
+            archived_at=occurred_at, retention=retention,
+        ))
+
     def finalize_authorized(
         self,
         *,
@@ -645,6 +705,19 @@ class FiscalApplicationService:
                 uow.archive.append(archive_entry)
             uow.idempotency.mark_authorized(key, generation, result_reference)
             uow.lifecycle.save(updated, expected_version=current.version)
+            if archive_entry is not None:
+                prepared = self._load_prepared_from_uow(
+                    uow, archive_entry.scope, document_id,
+                )
+                if (
+                    isinstance(prepared, NfseAuthorizationRequest)
+                    and prepared.document.national_substitution is not None
+                ):
+                    self._complete_national_replacement_in_uow(
+                        uow=uow, prepared=prepared, authorized=True,
+                        occurred_at=occurred_at,
+                        retention=RetentionPolicyMetadata("nfcore-fiscal-archive", 1),
+                    )
             uow.commit()
             return updated
 
@@ -686,6 +759,19 @@ class FiscalApplicationService:
                 if archive_entry.document_reference != document_id:
                     raise PersistenceConflictError("Rejection archive document does not match")
                 uow.archive.append(archive_entry)
+            if archive_entry is not None:
+                prepared = self._load_prepared_from_uow(
+                    uow, archive_entry.scope, document_id,
+                )
+                if (
+                    isinstance(prepared, NfseAuthorizationRequest)
+                    and prepared.document.national_substitution is not None
+                ):
+                    self._complete_national_replacement_in_uow(
+                        uow=uow, prepared=prepared, authorized=False,
+                        occurred_at=occurred_at,
+                        retention=RetentionPolicyMetadata("nfcore-fiscal-archive", 1),
+                    )
             uow.commit()
             return updated
 
