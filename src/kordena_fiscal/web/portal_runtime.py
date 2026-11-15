@@ -747,6 +747,7 @@ class DurableHumanPortalExecutor:
             "cancelCajamarNfse", "cancelOsascoNfse", "substituteOsascoNfse",
             "cancelBarueriNfse", "substituteBarueriNfse",
             "cancelJundiaiNfse", "substituteJundiaiNfse",
+            "cancelSantanaNfse", "substituteSantanaNfse",
         }:
             # Replay an already-scoped T07 claim without asking the gateway
             # to preflight a note that was successfully cancelled earlier.
@@ -866,7 +867,7 @@ class DurableHumanPortalExecutor:
         if operation_id in {
             "substituteExtremaNfse", "reviewCajamarSubstitution",
             "substituteOsascoNfse", "substituteBarueriNfse",
-            "substituteJundiaiNfse",
+            "substituteJundiaiNfse", "substituteSantanaNfse",
         }:
             try:
                 unit = payload.get("unit_id")
@@ -904,6 +905,7 @@ class DurableHumanPortalExecutor:
                     "cancelCajamarNfse", "cancelOsascoNfse", "substituteOsascoNfse",
                     "cancelBarueriNfse", "substituteBarueriNfse",
                     "cancelJundiaiNfse", "substituteJundiaiNfse",
+            "cancelSantanaNfse", "substituteSantanaNfse",
                 }:
                     raise
                 raise _portal_error(
