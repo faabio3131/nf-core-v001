@@ -146,7 +146,7 @@ def validate_official_nfse_receipt(raw: bytes, key: str) -> bytes:
                 no_network=True, huge_tree=False,
             )
         )
-    except (EOFError, OSError, UnicodeError, ValueError, zlib.error, etree.XMLSyntaxError):
+    except (EOFError, OSError, RecursionError, UnicodeError, ValueError, zlib.error, etree.XMLSyntaxError):
         # A provider can return malformed UTF-8, a truncated GZIP stream or a
         # corrupt deflate block. None of those may escape as an HTTP 500 or
         # be treated as an authorized fiscal document.
