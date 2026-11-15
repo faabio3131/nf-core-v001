@@ -3,16 +3,14 @@ from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
-from datetime import UTC, datetime, timedelta
 from unittest.mock import Mock
 
+import pytest
 from cryptography import x509
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.hazmat.primitives.serialization import pkcs12
 from cryptography.x509.oid import NameOID
-
-import pytest
 from lxml import etree
 
 from kordena_fiscal.domain import (
@@ -30,10 +28,7 @@ from kordena_fiscal.domain import (
     TaxRegimeCode,
 )
 from kordena_fiscal.gateway import santana_simpliss_substitution as subst
-from kordena_fiscal.gateway.nfse_nacional_homologation import (
-    build_nfse_dps_request,
-)
-from kordena_fiscal.xml.nfse_nacional_schema import national_dps_validator
+from kordena_fiscal.gateway.nfse_nacional_homologation import build_nfse_dps_request
 from kordena_fiscal.gateway.santana_simpliss_homologation import SANTANA_IBGE
 from kordena_fiscal.issuance import (
     NfseAuthorizationRequest,
@@ -41,6 +36,7 @@ from kordena_fiscal.issuance import (
     NfseServiceLine,
 )
 from kordena_fiscal.vault import EphemeralCertificateMaterial
+from kordena_fiscal.xml.nfse_nacional_schema import national_dps_validator
 
 _NS = "http://www.sped.fazenda.gov.br/nfse"
 _DS = "http://www.w3.org/2000/09/xmldsig#"
