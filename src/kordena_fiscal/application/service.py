@@ -717,7 +717,12 @@ class FiscalApplicationService:
                 uow.archive.append(archive_entry)
             uow.idempotency.mark_authorized(key, generation, result_reference)
             uow.lifecycle.save(updated, expected_version=current.version)
-            if archive_entry is not None:
+            if archive_entry is not None and any(
+                row.media_type == NFSE_PREPARED_MEDIA_TYPE
+                for row in uow.archive.list_for_document(
+                    archive_entry.scope, document_id,
+                )
+            ):
                 prepared = self._load_prepared_from_uow(
                     uow, archive_entry.scope, document_id,
                 )
@@ -771,7 +776,12 @@ class FiscalApplicationService:
                 if archive_entry.document_reference != document_id:
                     raise PersistenceConflictError("Rejection archive document does not match")
                 uow.archive.append(archive_entry)
-            if archive_entry is not None:
+            if archive_entry is not None and any(
+                row.media_type == NFSE_PREPARED_MEDIA_TYPE
+                for row in uow.archive.list_for_document(
+                    archive_entry.scope, document_id,
+                )
+            ):
                 prepared = self._load_prepared_from_uow(
                     uow, archive_entry.scope, document_id,
                 )
