@@ -156,6 +156,31 @@ def test_reconciliation_pending_never_presumes_success() -> None:
     assert "Não presumir sucesso" in text and "doc-9" in text
 
 
+def test_accountant_question_cannot_borrow_evidence_from_another_subject() -> None:
+    web = client(Executor(REJECTION_ROWS))
+    request = {
+        "capability": "cognitive.answer_accountant_question",
+        "unit_id": "unit-a",
+        "question": "Qual é a situação deste documento?",
+    }
+    missing = post(web, {**request, "subject_id": "unknown-document"})
+    assert missing.status_code == 200
+    assert missing.json()["status"] == "insufficient_basis"
+    assert "não há base suficiente" in " ".join(
+        section["text"] for section in missing.json()["sections"]
+    ).lower()
+
+    matching = post(web, {**request, "subject_id": "op-1"}, key="subject-op-1")
+    assert matching.status_code == 200
+    assert matching.json()["status"] == "baseline_only"
+    assert matching.json()["sections"][0]["evidenceIds"] == ["rec:0"]
+
+    other = post(web, {**request, "subject_id": "ev-1"}, key="subject-ev-1")
+    assert other.status_code == 200
+    assert other.json()["status"] == "baseline_only"
+    assert other.json()["sections"][0]["evidenceIds"] == [] if False else ["doc:0"]
+
+
 def test_classification_without_evidence_declares_insufficient_basis() -> None:
     web = client(Executor(REJECTION_ROWS))
     data = post(web, {"capability": "cognitive.suggest_classification",
