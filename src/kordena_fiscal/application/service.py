@@ -3480,7 +3480,7 @@ class FiscalApplicationService:
             or not isinstance(retention, RetentionPolicyMetadata)
             or not isinstance(occurred_at, datetime) or occurred_at.tzinfo is None
         ):
-            raise FiscalValidationError("Invalid Santander substitution dependencies")
+            raise FiscalValidationError("Invalid Santana substitution dependencies")
         _, replacement, old_key = self.preflight_santana_nfse_substitution(
             scope=scope, original_id=original_id, replacement_id=replacement_id,
         )
@@ -3489,14 +3489,18 @@ class FiscalApplicationService:
             reason_code=reason_code, reason_description=reason_description,
             human_approval_reference=approval_reference,
         )
+        def verify_original(
+            checked: NfseAuthorizationRequest, checked_review: SantanaSubstitutionReview,
+        ) -> None:
+            if checked != replacement or checked_review != review:
+                raise FiscalValidationError("Santana substitution review identity changed")
+            self.preflight_santana_nfse_substitution(
+                scope=scope, original_id=original_id,
+                replacement_id=replacement_id,
+            )
+
         envelope = gateway.prepare_substitution(
-            replacement, review=review,
-            verify_original=lambda _request, _review: (
-                self.preflight_santana_nfse_substitution(
-                    scope=scope, original_id=original_id,
-                    replacement_id=replacement_id,
-                )
-            ),
+            replacement, review=review, verify_original=verify_original,
         )
         with self._uow_factory() as uow:
             uow.lifecycle.assert_scope(original_id, scope)

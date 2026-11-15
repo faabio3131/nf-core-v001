@@ -11,6 +11,7 @@ import json
 import ssl
 from collections.abc import Callable
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 from datetime import UTC, datetime
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlsplit
@@ -34,10 +35,6 @@ from kordena_fiscal.gateway.nfse_nacional_event_homologation import (
 )
 from kordena_fiscal.gateway.nfse_national_query import _validate_official_nfse
 from kordena_fiscal.gateway.provider import ProviderSelectionResolver
-from kordena_fiscal.gateway.santana_simpliss_substitution import (
-    SantanaSubstitutionReview,
-    build_santana_signed_replacement_dps,
-)
 from kordena_fiscal.issuance.nfe_nfse import (
     NfseAuthorizationRequest,
     NfseAuthorizationResult,
@@ -45,6 +42,11 @@ from kordena_fiscal.issuance.nfe_nfse import (
 )
 from kordena_fiscal.vault import EphemeralCertificateMaterial
 from kordena_fiscal.vault.a1_preflight import validate_a1_for_issuer
+
+if TYPE_CHECKING:
+    from kordena_fiscal.gateway.santana_simpliss_substitution import (
+        SantanaSubstitutionReview,
+    )
 
 SANTANA_PROVIDER_ID = "santana-simpliss-v1-homologation"
 SANTANA_IBGE = "3547304"
@@ -331,6 +333,10 @@ class SantanaSimplissHomologationGateway:
     ) -> bytes:
         """Build official replacement DPS before any durable transmission claim."""
         material, cnpj = self._review(request, "authorize")
+        from kordena_fiscal.gateway.santana_simpliss_substitution import (
+            build_santana_signed_replacement_dps,
+        )
+
         signed = build_santana_signed_replacement_dps(
             request, material, review=review, verify_original=verify_original,
         )
