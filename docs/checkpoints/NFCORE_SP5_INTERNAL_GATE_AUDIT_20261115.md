@@ -42,3 +42,16 @@ A branch #446 mantém o antigo `tests/gateway/test_sp_inutilization_direct_guard
 5. Promoção em `main` e `production` apenas após gates; backup/offsite/A1, schema DPS v22, staging e Go/No-Go por release são verificados em separado.
 
 **Decisão:** este documento é um checkpoint técnico e NÃO altera os estados de release. 
+
+## DRIFT DE LEIAUTE NFS-e POR AMBIENTE — DESCOBERTA ADICIONAL EM 15/11/2026
+
+**Fontes oficiais, não inferência do chat:**
+- Produção: https://www.gov.br/nfse/pt-br/biblioteca/documentacao-tecnica/documentacao-atual — seção `NFSe-ESQUEMAS_XSD-v1.01-20260209` (atualizada em 04/11/2026).
+- Produção restrita/homologação: https://www.gov.br/nfse/pt-br/biblioteca/documentacao-tecnica/producao-restrita — pacote `NFSe-ESQUEMAS_XSD-PRODREST-v1.01-20261020` (atualizada em 20/10/2026).
+- Comunicado oficial 20/10/2026: https://www.gov.br/nfse/pt-br/noticias/cgnfs-e-informa-disponibilizadas-no-ambiente-de-testes-o-release-1-das-evolucoes-da-nota-tecnica-009 — NT009 Release 1 exclusiva de produção restrita e cronograma de produção futura 01/12/2026. O atributo XML `versao=1.01` por si só **não identifica** qual dos dois pacotes é aplicável.
+
+**CURRENT de engenharia:** `issuance/nfse_dps_builder.py` fixa `_SCHEMA_VERSION="1.01"` + `tpAmb=2`; `xml/nfse_nacional_schema.py` pinou exclusivamente o pacote nacional de **20260209**; `gateway/nfse_national_homologation.py` envia a `sefin.producaorestrita.nfse.gov.br`. Isto configura **risco concreto de incompatibilidade do XML em homologação NT009**, não uma emissão oficial comprovadamente rejeitada (nenhuma rede oficial foi acionada). É trabalho **interno**: adicionar pacote oficial 20261020 hash-pinned, roteamento por perfil/ambiente de layout independente do atributo `versao`, testes dual-XSD e regressão; jamais substituir silenciosamente os arquivos 20260209 que ainda servem a produção.
+
+**Prova negativa de identidade:** comparação literal em 15/11 de `NFSe_v1.01.xsd`, `tiposComplexos_v1.01.xsd`, `tiposSimples_v1.01.xsd` e `xmldsig-core-schema.xsd` do mirror público `nfse-nacional/nfse-php` contra `NFSE_NACIONAL_1.01` e `SANTANA_SIMPLISS_2026`: root NFS-e e assinatura podem coincidir entre mirrors, **mas complexos/simples são diferentes entre as três árvores**. Não tratar root idêntico como pacote integral homologado. A origem espelhada pública também não substitui o pacote oficial zip por SHA.
+
+**Critério novo de aceite:** manifest por **ambiente + revisão de pacote**, hash SHA256 de todos os XSD oficiais originais, teste de cenário que diferencia os campos NT009 entre 20260209/20261020, runtime que pinne o perfil correto e negativo que falhe se schema de homologação for tratado como produção, sem alterar regras de produção sem prova. Prova operacional com SEFIN oficial permanece EXTERNAL_BLOCKED, mas construção interna da compatibilidade é **pendência interna**.
