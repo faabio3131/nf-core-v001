@@ -34,7 +34,7 @@ def _reviewed() -> Sp4ReviewedMunicipalPorts:
 
 def test_all_four_reviewed_city_ports_install_into_canonical_handler_factory() -> None:
     factory = build_runtime_fiscal_handler_factory(
-        reviewed_sp4_municipal_ports={
+        sp4_reviewed_municipalities={
             provider: _reviewed() for provider in SP4_MUNICIPAL_PROVIDERS
         },
         nfse_preaudit=Mock(),
@@ -48,7 +48,7 @@ def test_all_four_reviewed_city_ports_install_into_canonical_handler_factory() -
 
 def test_unknown_city_cannot_enter_real_handler_factory() -> None:
     factory = build_runtime_fiscal_handler_factory(
-        reviewed_sp4_municipal_ports={"fake-global-provider": _reviewed()},
+        sp4_reviewed_municipalities={"fake-global-provider": _reviewed()},
         nfse_preaudit=Mock(),
     )
     with pytest.raises(Sp4CanonicalMunicipalError, match="Unknown SP4"):
@@ -56,19 +56,17 @@ def test_unknown_city_cannot_enter_real_handler_factory() -> None:
 
 
 def test_handler_factory_refuses_two_municipal_provider_authorities() -> None:
-    with pytest.raises(ValueError, match="cannot be duplicated"):
+    with pytest.raises(ValueError, match="cannot coexist"):
         build_runtime_fiscal_handler_factory(
-            reviewed_sp4_municipal_ports={"osasco-rtc-homologation": _reviewed()},
-            sp4_municipal_gateways={
-                "osasco-rtc-homologation": Mock(spec=NfseGatewayClient),
-            },
+            sp4_reviewed_municipalities={"osasco-rtc-homologation": _reviewed()},
+            nfse_gateway=Mock(spec=NfseGatewayClient),
             nfse_preaudit=Mock(),
         )
 
 
 def test_no_reviewed_municipal_provider_does_not_enable_cities_implicitly() -> None:
     factory = build_runtime_fiscal_handler_factory(
-        reviewed_sp4_municipal_ports={},
+        sp4_reviewed_municipalities={},
     )
     handlers = factory(Mock())
     assert "issueFiscalDocument" in handlers

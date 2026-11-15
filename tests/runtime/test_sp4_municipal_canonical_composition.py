@@ -31,6 +31,7 @@ def test_exact_four_provider_contracts_can_be_installed_as_reviewed_optional_cli
     resolver = Mock()
     issue, read = build_sp4_canonical_clients(
         canonical_resolver=resolver,
+        canonical_rps_loader=Mock(),
         configured_municipalities={
             provider: _ports() for provider in SP4_MUNICIPAL_PROVIDERS
         },
@@ -45,6 +46,7 @@ def test_exact_four_provider_contracts_can_be_installed_as_reviewed_optional_cli
 def test_empty_provider_map_leaves_all_four_municipalities_disabled() -> None:
     issue, read = build_sp4_canonical_clients(
         canonical_resolver=Mock(),
+        canonical_rps_loader=Mock(),
         configured_municipalities={},
     )
     assert not issue
@@ -55,7 +57,8 @@ def test_unreviewed_candidate_never_gets_installed_in_runtime() -> None:
     with pytest.raises(Sp4CanonicalMunicipalError, match="Unknown SP4"):
         build_sp4_canonical_clients(
             canonical_resolver=Mock(),
-            configured_municipalities={"generic-ginfes": _ports()},
+            canonical_rps_loader=Mock(),
+        configured_municipalities={"generic-ginfes": _ports()},
         )
 
 
@@ -65,7 +68,8 @@ def test_missing_authenticity_verifier_for_one_city_refuses_entire_install() -> 
     with pytest.raises(Sp4CanonicalMunicipalError, match="proof ports"):
         build_sp4_canonical_clients(
             canonical_resolver=Mock(),
-            configured_municipalities={
+            canonical_rps_loader=Mock(),
+        configured_municipalities={
                 "osasco-rtc-homologation": incomplete,
             },
         )

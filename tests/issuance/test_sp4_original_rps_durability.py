@@ -104,8 +104,10 @@ def _prepare(app: FiscalApplicationService, request: NfseAuthorizationRequest,
     result = app.prepare_nfse_authorization(
         request.document, occurred_at=_NOW, retention=_POLICY,
         sp4_rps_series=series,
-        sp4_intent_builder=lambda reserved: build_sp4_original_from_reservation(
-            request, reserved, rps_series="NF",
+        sp4_original_builder=lambda numbered_request, reserved: (
+            build_sp4_original_from_reservation(
+                numbered_request, reserved, rps_series="NF",
+            )
         ),
     )
     return result, app.load_sp4_original_rps(
