@@ -3879,3 +3879,9 @@ def test_salto_national_101101_cancel_real_portal_signed_event_and_archive(
             if item.kind is FiscalArchiveKind.FISCAL_EVENT
         ]
         assert len(events) == 1
+    replay = browser.post(
+        "/v1/portal/operations/cancelNationalNfse", json=body,
+        headers={CSRF_HEADER: csrf, "Idempotency-Key": "salto-cancel-approval"},
+    )
+    assert replay.status_code == 200, replay.text
+    assert len(provider_posts) == 1, "A confirmed cancellation must never rePOST"
