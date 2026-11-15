@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import base64
+import hashlib
 import json
 from collections.abc import Callable
 from dataclasses import dataclass, replace
@@ -77,7 +78,9 @@ from kordena_fiscal.gateway.jundiai_giss_invoice_interpreter import (
     decode_jundiai_archived_invoice,
 )
 from kordena_fiscal.gateway.nfse_nacional_event_homologation import (
+    NationalNfseCancellationIntent,
     NationalNfseCancellationReceipt,
+    validate_national_event_xml,
 )
 from kordena_fiscal.gateway.nfse_nacional_homologation import (
     NACIONAL_HOMOLOGATION_PROVIDER_ID,
@@ -3616,6 +3619,7 @@ class FiscalApplicationService:
     def cancel_prepared_national_nfse(
         self, *, scope: ExecutionScope, document_id: str,
         reason_code: str, reason_description: str, approval_reference: str,
+        signed_event_xml: bytes,
         submit_verified_cancel: Callable[
             [NfseAuthorizationRequest, str, str, str, str, datetime],
             NationalNfseCancellationReceipt,
@@ -3625,6 +3629,7 @@ class FiscalApplicationService:
         """Commit once-only cancellation claim before calling trusted SEFIN transport."""
         if (
             not callable(submit_verified_cancel)
+            or not isinstance(signed_event_xml, bytes)
             or not isinstance(retention, RetentionPolicyMetadata)
             or not isinstance(occurred_at, datetime) or occurred_at.tzinfo is None
             or reason_code not in ("1", "2", "9")
@@ -3639,6 +3644,29 @@ class FiscalApplicationService:
         request, key = self.preflight_national_nfse_cancellation(
             scope=scope, document_id=document_id,
         )
+        intent = NationalNfseCancellationIntent(
+            scope=scope, issuer=request.document.issuer.cnpj,
+            issuer_jurisdiction=request.document.issuer.address.jurisdiction,
+            invoice_reference=key, human_approval_reference=approval_reference,
+            signed_event_xml=signed_event_xml,
+        )
+        validate_national_event_xml(signed_event_xml, kind="request")
+        parsed = etree.fromstring(
+            signed_event_xml,
+            etree.XMLParser(
+                resolve_entities=False, no_network=True,
+                load_dtd=False, huge_tree=False,
+            ),
+        )
+        tag = "{http://www.sped.fazenda.gov.br/nfse}"
+        cancellation = parsed.find(tag + "infPedReg/" + tag + "e101101")
+        if (
+            cancellation is None
+            or cancellation.findtext(tag + "cMotivo") != reason_code
+            or cancellation.findtext(tag + "xMotivo") != reason_description.strip()
+            or intent.scope.identity_partition_key != scope.identity_partition_key
+        ):
+            raise FiscalValidationError("National signed event does not match approval")
         with self._uow_factory() as uow:
             uow.lifecycle.assert_scope(document_id, scope)
             current = uow.lifecycle.get(document_id)
@@ -3659,8 +3687,16 @@ class FiscalApplicationService:
                     "reason_description": reason_description.strip(),
                     "approval_reference": approval_reference,
                     "event": "101101",
+                    "signed_event_sha256": hashlib.sha256(signed_event_xml).hexdigest(),
                 }, sort_keys=True, separators=(",", ":")).encode("utf-8"),
                 media_type="application/vnd.nfcore.national-cancel-intent.v1+json",
+                archived_at=occurred_at, retention=retention,
+            ))
+            uow.archive.append(FiscalArchiveEntry.build(
+                scope=scope, document_reference=document_id,
+                kind=FiscalArchiveKind.OTHER,
+                content=signed_event_xml,
+                media_type="application/vnd.nfcore.national-cancel-request.v1+xml",
                 archived_at=occurred_at, retention=retention,
             ))
             uow.commit()
