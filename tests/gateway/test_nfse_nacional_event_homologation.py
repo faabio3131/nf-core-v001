@@ -44,6 +44,7 @@ def _signed_event(key: str = _KEY, issuer: str = _CNPJ, environment: str = "2") 
 def _intent(
     signed_event: bytes | None = None,
     key: str = _KEY,
+    issuer_ibge: str = "3509205",
 ) -> NationalNfseCancellationIntent:
     return NationalNfseCancellationIntent(
         scope=ExecutionScope(
@@ -54,7 +55,7 @@ def _intent(
             environment=FiscalEnvironment.HOMOLOGATION,
         ),
         issuer=Cnpj(_CNPJ),
-        issuer_jurisdiction=BrazilianJurisdiction("SP", "3509205"),
+        issuer_jurisdiction=BrazilianJurisdiction("SP", issuer_ibge),
         invoice_reference=key,
         human_approval_reference="approval-12345",
         signed_event_xml=signed_event if signed_event is not None else _signed_event(),
@@ -157,19 +158,24 @@ def test_cancel_requires_official_event_signature_validation(
     official.assert_called_once()
 
 
+@pytest.mark.parametrize("issuer_ibge", ["3509205", "3545209"])
 def test_cancel_returns_official_event_only_after_all_controls(
-    monkeypatch: pytest.MonkeyPatch,
+    monkeypatch: pytest.MonkeyPatch, issuer_ibge: str,
 ) -> None:
     exchange = Mock(return_value=_receipt())
     transport, provider, cert, signed, official, approval, module = _transport(exchange)
     monkeypatch.setattr(module, "validate_a1_for_issuer", lambda *args, **kwargs: None)
     monkeypatch.setattr(module, "build_fiscal_tls_context", lambda material: Mock())
-    result = transport.cancel(_intent())
+    result = transport.cancel(_intent(issuer_ibge=issuer_ibge))
     assert result.confirmed is True
     assert result.invoice_reference == _KEY
     assert b"<evento" in result.event_xml
     provider.resolve_provider_id.assert_called_once()
     assert provider.resolve_provider_id.call_args.kwargs["operation"] == "cancel"
+    assert (
+        provider.resolve_provider_id.call_args.kwargs["jurisdiction"]
+        .municipality_ibge_code == issuer_ibge
+    )
     signed.assert_called_once()
     official.assert_called_once_with(result.event_xml)
     cert.assert_called_once()
