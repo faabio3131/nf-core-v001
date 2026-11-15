@@ -116,8 +116,10 @@ def _verify_nfse_receipt_signature(
         and len(nested) <= 1
         and all(
             node.getparent() is not None
-            and node.getparent().tag
-            == "{http://www.sped.fazenda.gov.br/nfse}pedRegEvento"
+            and (
+                parent := node.getparent()
+            ) is not None
+            and parent.tag == "{http://www.sped.fazenda.gov.br/nfse}pedRegEvento"
             for node in nested
         )
     )
