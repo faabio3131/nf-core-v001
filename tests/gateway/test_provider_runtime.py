@@ -26,7 +26,6 @@ from kordena_fiscal.domain import (
     ExecutionScope,
     FiscalDocumentKind,
     FiscalEnvironment,
-    FiscalValidationError,
 )
 from kordena_fiscal.gateway import (
     ConfiguredProviderAdapter,
