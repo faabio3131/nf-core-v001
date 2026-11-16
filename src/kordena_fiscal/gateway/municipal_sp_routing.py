@@ -45,6 +45,9 @@ from kordena_fiscal.domain import (
     FiscalValidationError,
     TaxRegimeCode,
 )
+from kordena_fiscal.gateway.nfse_nacional_homologation import (
+    NACIONAL_HOMOLOGATION_PROVIDER_ID,
+)
 from kordena_fiscal.gateway.provider import (
     ProviderOperation,
     ProviderSelectionResolver,
@@ -200,7 +203,7 @@ def require_guarulhos_nfse_channel(
         )
         and competence_date >= SIMPLES_NACIONAL_EMISSOR_NACIONAL_MANDATORY_FROM
     ):
-        required = "nfse-nacional-homologation"
+        required = NACIONAL_HOMOLOGATION_PROVIDER_ID
     elif (
         competence_date >= GUARULHOS_GISS_V2_FROM
         and (

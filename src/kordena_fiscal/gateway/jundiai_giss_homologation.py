@@ -354,7 +354,11 @@ class JundiaiGissHomologationTransport:
             operation=_OPERATION_MAP[request.method],
         )
         if selected != self._provider_id:
-            raise JundiaiGissContractError("GissOnline durable binding missing")
+            raise JundiaiGissContractError(
+                "Jundiai durable binding missing"
+                if self._municipality_ibge == JUNDIAI_IBGE
+                else "Guarulhos durable binding missing"
+            )
         _validate_xml_shape(request.signed_xml, request.method)
         self._validate(
             request.signed_xml, contract.xsd_package_sha256, contract.wsdl_sha256,
