@@ -30,6 +30,11 @@ from kordena_fiscal.domain import (
     TaxRegimeCode,
 )
 from kordena_fiscal.gateway.fiscal_tls import RejectFiscalRedirects, build_fiscal_tls_context
+from kordena_fiscal.gateway.municipal_sp_routing import (
+    GUARULHOS_GISS_V2_PROVIDER_ID,
+    GUARULHOS_IBGE,
+    require_guarulhos_nfse_channel,
+)
 from kordena_fiscal.gateway.provider import ProviderSelectionResolver
 from kordena_fiscal.vault import EphemeralCertificateMaterial
 from kordena_fiscal.vault.a1_preflight import validate_a1_for_issuer
@@ -305,17 +310,30 @@ class JundiaiGissHomologationTransport:
         contract_for_method: Callable[[str], JundiaiGissWsdlContract],
         validate_signed_xml: Callable[[bytes, str, str], None],
         exchange: Callable[[bytes, str, ssl.SSLContext, float], bytes] | None = None,
+        municipality_ibge: str = JUNDIAI_IBGE,
+        provider_id: str = JUNDIAI_GISS_PROVIDER_ID,
     ) -> None:
         if not all(callable(x) for x in (
             getattr(resolver, "resolve_provider_id", None),
             resolve_certificate, contract_for_method, validate_signed_xml,
         )):
             raise ValueError("Jundiai requires reviewed WSDL, signature and schema ports")
+        if (municipality_ibge, provider_id) not in {
+            (JUNDIAI_IBGE, JUNDIAI_GISS_PROVIDER_ID),
+            (GUARULHOS_IBGE, GUARULHOS_GISS_V2_PROVIDER_ID),
+        }:
+            raise ValueError("GissOnline V2 requires exact reviewed city/provider pair")
+        self._municipality_ibge = municipality_ibge
+        self._provider_id = provider_id
         self._resolver = resolver
         self._certificate = resolve_certificate
         self._contract = contract_for_method
         self._validate = validate_signed_xml
         self._exchange = exchange or _exchange
+
+    @property
+    def municipality_ibge(self) -> str:
+        return self._municipality_ibge
 
     def invoke(self, request: JundiaiSignedOperation) -> JundiaiGissReceipt:
         if not isinstance(request, JundiaiSignedOperation):
@@ -323,13 +341,24 @@ class JundiaiGissHomologationTransport:
         contract = self._contract(request.method)
         if not isinstance(contract, JundiaiGissWsdlContract) or contract.method != request.method:
             raise JundiaiGissContractError("Jundiai Giss WSDL method mismatch")
+        jurisdiction = BrazilianJurisdiction("SP", self._municipality_ibge)
+        require_guarulhos_nfse_channel(
+            issuer_jurisdiction=jurisdiction,
+            tax_regime=request.tax_regime,
+            competence_date=request.competence_date,
+            provider_id=self._provider_id,
+        )
         selected = self._resolver.resolve_provider_id(
             scope=request.scope, document_kind=FiscalDocumentKind.NFSE,
-            jurisdiction=BrazilianJurisdiction("SP", JUNDIAI_IBGE),
+            jurisdiction=jurisdiction,
             operation=_OPERATION_MAP[request.method],
         )
-        if selected != JUNDIAI_GISS_PROVIDER_ID:
-            raise JundiaiGissContractError("Jundiai durable binding missing")
+        if selected != self._provider_id:
+            raise JundiaiGissContractError(
+                "Jundiai durable binding missing"
+                if self._municipality_ibge == JUNDIAI_IBGE
+                else "Guarulhos durable binding missing"
+            )
         _validate_xml_shape(request.signed_xml, request.method)
         self._validate(
             request.signed_xml, contract.xsd_package_sha256, contract.wsdl_sha256,

@@ -55,11 +55,12 @@ from kordena_fiscal.issuance.nfe_nfse import (
     NfseNationalTaxTreatment,
     NfseServiceLine,
 )
-from kordena_fiscal.issuance.nfse_dps_builder import build_signed_dps
+from kordena_fiscal.issuance.nfse_dps_builder import build_sefin_signed_dps
 from kordena_fiscal.runtime.canonical_fiscal_composition import _GovernedNationalNfseGateway
 from kordena_fiscal.signing.nfse_xmldsig import append_nfse_signature
 from kordena_fiscal.vault import EphemeralCertificateMaterial
 from kordena_fiscal.xml.nfse_nacional_schema import national_dps_validator
+from kordena_fiscal.xml.nfse_national_profiles import NT009_RESTRICTED_PROFILE
 
 _NOW = datetime(2026, 11, 6, 12, 0, tzinfo=UTC)
 _ISSUER_CNPJ = Cnpj("11222333000181")
@@ -179,7 +180,7 @@ def _fake_exchange(payload: bytes, *_args) -> bytes:
 def _governed_gateway(*, resolver_return: str = NACIONAL_HOMOLOGATION_PROVIDER_ID):
     transport = NfseNacionalHomologationGateway(
         resolve_certificate=lambda scope, cnpj: _certificate(),
-        build_signed_dps=build_signed_dps,
+        build_signed_dps=build_sefin_signed_dps,
         exchange=_fake_exchange,
     )
     application = Mock()
@@ -271,12 +272,15 @@ def test_mg_national_channel_generates_signed_schema_valid_dps_envelope(
 ) -> None:
     """Offline synthetic DPS envelope tests: no official transmission claimed."""
     request = _mg_request(ibge, municipality)
-    signed = build_signed_dps(request, _certificate())
-    national_dps_validator("1.01").validate_document(signed)
+    signed = build_sefin_signed_dps(request, _certificate())
+    national_dps_validator(
+        "1.01", profile=NT009_RESTRICTED_PROFILE,
+    ).validate_document(signed)
     payload = encode_signed_dps(
         signed,
         issuer_cnpj=request.document.issuer.cnpj.value,
         issuer_municipality_ibge=ibge,
+        schema_profile=NT009_RESTRICTED_PROFILE,
     )
     restored = gzip.decompress(base64.b64decode(json.loads(payload)["dpsXmlGZipB64"]))
     assert restored == signed
@@ -320,7 +324,7 @@ def test_nfse_national_access_key_without_official_xml_is_not_authorization() ->
     """Never treat a single response field as a fiscal authorization receipt."""
     gateway = NfseNacionalHomologationGateway(
         resolve_certificate=lambda _scope, _cnpj: _certificate(),
-        build_signed_dps=build_signed_dps,
+        build_signed_dps=build_sefin_signed_dps,
         exchange=lambda *_args: json.dumps({
             "tipoAmbiente": 2, "chaveAcesso": "35" + "0" * 42,
         }).encode(),
@@ -341,7 +345,7 @@ def test_nfse_national_reply_requires_explicit_numeric_tpamb2(tp_amb: object) ->
         body["tipoAmbiente"] = tp_amb
     gateway = NfseNacionalHomologationGateway(
         resolve_certificate=lambda _scope, _cnpj: _certificate(),
-        build_signed_dps=build_signed_dps,
+        build_signed_dps=build_sefin_signed_dps,
         exchange=lambda *_args: json.dumps(body).encode(),
     )
     with pytest.raises(FiscalValidationError, match="homologação"):
@@ -369,7 +373,7 @@ def test_contagem_requires_federal_national_channel_for_eligible_simples(
     )
     gateway = NfseNacionalHomologationGateway(
         resolve_certificate=lambda _scope, _cnpj: _certificate(),
-        build_signed_dps=build_signed_dps,
+        build_signed_dps=build_sefin_signed_dps,
         exchange=_fake_exchange,
     )
     result = gateway.authorize(request)

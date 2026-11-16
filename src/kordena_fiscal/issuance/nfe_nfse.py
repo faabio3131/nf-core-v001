@@ -832,6 +832,14 @@ class NfseGatewayClient:
     def __init__(self, gateway: NfseGateway) -> None:
         self._gateway = gateway
 
+    def validate_pre_dispatch(self, request: NfseAuthorizationRequest) -> None:
+        """Run an optional trusted adapter's pure checks before claiming transmission."""
+        validate = getattr(self._gateway, "validate_pre_dispatch", None)
+        if validate is not None:
+            if not callable(validate):
+                raise FiscalValidationError("Invalid NFS-e pre-dispatch validator")
+            validate(request)
+
     def authorize(self, request: NfseAuthorizationRequest) -> NfseAuthorizationResult:
         if not isinstance(request, NfseAuthorizationRequest):
             raise FiscalValidationError("request must be NfseAuthorizationRequest")

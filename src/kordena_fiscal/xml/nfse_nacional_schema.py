@@ -4,6 +4,11 @@ from importlib.resources import files
 
 from kordena_fiscal.domain import FiscalValidationError
 
+from .nfse_national_profiles import (
+    NT009_RESTRICTED_PROFILE,
+    PRODUCTION_PROFILE,
+    national_restricted_validator,
+)
 from .schema import SchemaIntegrityError, SchemaResource, SchemaSet, XmlSchemaValidator
 
 _SOURCE = (
@@ -64,8 +69,16 @@ def _pinned_schema_resource(
     return SchemaResource(name, derived_bytes, _XSD101_SERIE_DERIVED_SHA256)
 
 
-@lru_cache(maxsize=2)
-def national_dps_validator(version: str) -> XmlSchemaValidator:
+@lru_cache(maxsize=4)
+def national_dps_validator(
+    version: str, *, profile: str = PRODUCTION_PROFILE,
+) -> XmlSchemaValidator:
+    if profile == NT009_RESTRICTED_PROFILE:
+        if version != "1.01":
+            raise FiscalValidationError("NT009 requires DPS version 1.01")
+        return national_restricted_validator("DPS_v1.01.xsd")
+    if profile != PRODUCTION_PROFILE:
+        raise FiscalValidationError("Unsupported National DPS schema profile")
     if version not in _HASHES:
         raise FiscalValidationError("Unsupported National DPS schema version")
     directory = files("kordena_fiscal.xml").joinpath("official", f"NFSE_NACIONAL_{version}")
