@@ -3728,6 +3728,23 @@ def test_salto_national_replacement_dps_is_atomic_and_replay_safe(
         replacement.document.national_substitution.original_invoice_reference
         == original_key
     )
+    if issuer_ibge == "3527306":
+        # Prepared while legal; dispatch next month after the 15th cannot
+        # claim the original or POST a replacement to SEFIN.
+        with pytest.raises(FiscalValidationError, match="statutory period"):
+            application.authorize_prepared_document(
+                document_id=replacement_id,
+                request=replacement,
+                gateway=NfseGatewayClient(governed),
+                occurred_at=datetime(2027, 1, 16, tzinfo=UTC),
+            )
+        with db() as uow:
+            assert uow.lifecycle.get(original_id).state is FiscalDocumentState.AUTHORIZED
+            assert (
+                uow.lifecycle.get(replacement_id).state
+                is FiscalDocumentState.READY_TO_TRANSMIT
+            )
+        assert len(captured) == 1
     done = issue(replacement_id, "salto-replacement-once")
     assert done.status_code == 200, done.text
     assert done.json()["status"] == "authorized"
