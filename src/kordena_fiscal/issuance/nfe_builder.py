@@ -1,4 +1,4 @@
-"""Model-55 XML from canonical reviewed facts and canonical calculated taxes.
+"""Model-55/65 XML from canonical reviewed facts and canonical calculated taxes.
 
 This builder does not select tax rates, reserve numbers, sign or transmit. It
 rejects unsupported fiscal families rather than silently omitting their groups.
@@ -94,11 +94,29 @@ def build_nfe_sale(
     options: NfeSaleOptions,
 ) -> bytes:
     issuer, recipient = document.issuer, document.recipient
-    if document.document_kind.value != "nfe" or access_key.value[20:22] != "55":
-        raise FiscalValidationError("sale builder requires NF-e model 55")
+    nfce = document.document_kind.value == "nfce"
+    model = "65" if nfce else "55"
+    if document.document_kind.value not in {"nfe", "nfce"} or access_key.value[20:22] != model:
+        raise FiscalValidationError("sale builder requires matching NF-e/NFC-e model")
+    if nfce and (
+        issuer.address.jurisdiction.state_code != "MG"
+        or options.presence not in {1, 4}
+        or (
+            recipient is not None
+            and (
+                not recipient.final_consumer
+                or recipient.ie_indicator != 9
+                or recipient.address.jurisdiction.state_code != "MG"
+            )
+        )
+        or (options.presence == 4 and recipient is None)
+    ):
+        raise FiscalValidationError("NFC-e requires MG final consumer and reviewed online sale")
     if document.scope.environment is not FiscalEnvironment.HOMOLOGATION:
         raise FiscalValidationError("production fiscal preparation is not activated")
-    if recipient is None or recipient.address.jurisdiction.country_code != "BR":
+    if (recipient is None and not nfce) or (
+        recipient is not None and recipient.address.jurisdiction.country_code != "BR"
+    ):
         raise FiscalValidationError("complete Brazilian recipient snapshot is required")
     if access_key.issuer_identifier != issuer.cnpj.value or access_key.value[34] != "1":
         raise FiscalValidationError("access key differs from issuer or normal emission")
@@ -107,14 +125,15 @@ def build_nfe_sale(
         raise FiscalValidationError("access key differs from issuer jurisdiction")
     if access_key.value[2:6] != document.issued_at.strftime("%y%m"):
         raise FiscalValidationError("access key differs from document month")
-    if document.change_amount.amount:
+    if document.change_amount.amount and not nfce:
         raise FiscalValidationError("sale builder requires payments reconciled without change")
     if document.issued_at.year != 2026 and any(
         line.tax_decision.outcome.ibs_cbs_cst_code is not None for line in document.items
     ):
         raise FiscalValidationError("RTC informational-2026 rule cannot be used outside 2026")
     interstate_final_consumer = (
-        issuer.address.jurisdiction.state_code != recipient.address.jurisdiction.state_code
+        recipient is not None
+        and issuer.address.jurisdiction.state_code != recipient.address.jurisdiction.state_code
         and recipient.final_consumer
         and recipient.ie_indicator == 9
     )
@@ -131,8 +150,17 @@ def build_nfe_sale(
     invoice_total = document.totals.net_amount.amount + sum(
         (tax.ipi_amount + tax.st_amount + tax.fcp_st_amount for tax in taxes), Decimal(0)
     )
-    if not document.payments or document.totals.payment_amount.amount != invoice_total:
+    if (
+        not document.payments
+        or document.totals.payment_amount.amount - document.change_amount.amount != invoice_total
+    ):
         raise FiscalValidationError("explicit reconciled payment snapshots are required")
+    cash = sum(
+        (p.amount.amount for p in document.payments if p.method is PaymentMethodKind.CASH),
+        Decimal(0),
+    )
+    if document.change_amount.amount > cash:
+        raise FiscalValidationError("change must be covered by cash payments")
     root = etree.Element("{" + NS + "}enviNFe", nsmap={"nfe": NS}, versao="4.00")
     _element(root, "idLote", str(int(access_key.value[25:34])))
     _element(root, "indSinc", "1")
@@ -143,10 +171,16 @@ def build_nfe_sale(
     ide = _element(info, "ide")
     destination = (
         "1"
-        if issuer.address.jurisdiction.state_code == recipient.address.jurisdiction.state_code
+        if recipient is None
+        or issuer.address.jurisdiction.state_code == recipient.address.jurisdiction.state_code
         else "2"
     )
-    if destination == "2" and recipient.final_consumer and not interstate_final_consumer:
+    if (
+        destination == "2"
+        and recipient is not None
+        and recipient.final_consumer
+        and not interstate_final_consumer
+    ):
         raise FiscalValidationError("interstate final consumer requires reviewed IE indicator")
     if destination == "2" and any(
         line.tax_decision.outcome.nfe_rates is not None
@@ -158,19 +192,19 @@ def build_nfe_sale(
         ("cUF", access_key.value[:2]),
         ("cNF", access_key.value[35:43]),
         ("natOp", options.nature.strip()),
-        ("mod", "55"),
+        ("mod", model),
         ("serie", str(int(access_key.value[22:25]))),
         ("nNF", str(int(access_key.value[25:34]))),
         ("dhEmi", document.issued_at.isoformat(timespec="seconds")),
         ("tpNF", "1"),
         ("idDest", destination),
         ("cMunFG", municipality),
-        ("tpImp", "1"),
+        ("tpImp", "4" if nfce else "1"),
         ("tpEmis", "1"),
         ("cDV", access_key.value[-1]),
         ("tpAmb", "2"),
         ("finNFe", "1"),
-        ("indFinal", "1" if recipient.final_consumer else "0"),
+        ("indFinal", "1" if nfce or (recipient is not None and recipient.final_consumer) else "0"),
         ("indPres", options.presence),
         ("procEmi", "0"),
         ("verProc", "NFCore-1"),
@@ -186,15 +220,18 @@ def build_nfe_sale(
         raise FiscalValidationError("model-55 issuer requires explicit state registration")
     _element(emit, "IE", issuer.state_registration.number)
     _element(emit, "CRT", int(issuer.tax_regime))
-    dest = _element(info, "dest")
-    _element(
-        dest, "CNPJ" if isinstance(recipient.document, Cnpj) else "CPF", recipient.document.value
-    )
-    _element(dest, "xNome", "NF-E EMITIDA EM AMBIENTE DE HOMOLOGACAO - SEM VALOR FISCAL")
-    _address(dest, "enderDest", recipient.address)
-    _element(dest, "indIEDest", recipient.ie_indicator)
-    if recipient.state_registration is not None and recipient.state_registration.number:
-        _element(dest, "IE", recipient.state_registration.number)
+    if recipient is not None:
+        dest = _element(info, "dest")
+        _element(
+            dest,
+            "CNPJ" if isinstance(recipient.document, Cnpj) else "CPF",
+            recipient.document.value,
+        )
+        _element(dest, "xNome", "NF-E EMITIDA EM AMBIENTE DE HOMOLOGACAO - SEM VALOR FISCAL")
+        _address(dest, "enderDest", recipient.address)
+        _element(dest, "indIEDest", recipient.ie_indicator)
+        if recipient.state_registration is not None and recipient.state_registration.number:
+            _element(dest, "IE", recipient.state_registration.number)
     for line, tax in zip(document.items, taxes, strict=True):
         product = line.product
         if (
@@ -246,7 +283,12 @@ def build_nfe_sale(
         for key, value in (
             ("cProd", product.commercial_code),
             ("cEAN", product.gtin.value),
-            ("xProd", product.description),
+            (
+                "xProd",
+                "NOTA FISCAL EMITIDA EM AMBIENTE DE HOMOLOGACAO - SEM VALOR FISCAL"
+                if nfce and line.line_number == 1
+                else product.description,
+            ),
             ("NCM", product.ncm.value),
         ):
             _element(prod, key, value)
@@ -399,10 +441,22 @@ def build_nfe_sale(
                 _element(card, "cAut", payment.card_authorization)
             elif payment.card_acquirer_cnpj is not None:
                 raise FiscalValidationError("card facts conflict with non-integrated payment")
+    if document.change_amount.amount:
+        _element(pag, "vTroco", _money(document.change_amount.amount))
     if options.intermediary_indicator == 1:
         intermediary = _element(info, "infIntermed")
         _element(intermediary, "CNPJ", Cnpj(str(options.intermediary_cnpj)).value)
         _element(intermediary, "idCadIntTran", options.intermediary_registration)
+    if nfce:
+        supplement = _element(invoice, "infNFeSupl")
+        _element(
+            supplement,
+            "qrCode",
+            "https://portalsped.fazenda.mg.gov.br/portalnfce/sistema/qrcode.xhtml?p="
+            + access_key.value
+            + "|3|2",
+        )
+        _element(supplement, "urlChave", "https://hportalsped.fazenda.mg.gov.br/portalnfce")
     return etree.tostring(root, encoding="utf-8", xml_declaration=True)
 
 

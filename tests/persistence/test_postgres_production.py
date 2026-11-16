@@ -110,6 +110,7 @@ def test_postgres_uow_commit_rollback_and_core_state_parity(
         scope,
         model=ElectronicInvoiceModel.NFCE,
         series=1,
+        issuer_cnpj="12345678000195",
     )
     source = SourceReference("sale", "sale-postgres")
 
@@ -202,6 +203,7 @@ def test_postgres_sequence_allocation_is_safe_under_concurrency(
         _scope(),
         model=ElectronicInvoiceModel.NFCE,
         series=9,
+        issuer_cnpj="12345678000195",
     )
 
     def reserve() -> int:

@@ -2,6 +2,16 @@
 
 O proprietário autorizou nesta conversa reconciliar o trabalho existente, concluir pendências das PRs e atualizar a aplicação web. Essa autorização cobre a integração e o deploy após validação. Emissão oficial e operações destrutivas de dados exigem decisão específica. A auditoria recebida é diagnóstico de entrada, com decisões técnicas a validar.
 
+## CURRENT — retomada MF-09 e integração #516, 16/11/2026
+
+- main549ab3c005d7183ff6c7940236414412ea004b9d; productionea4bdd3bcb9b61e6522081a14e5cc9ad1ced9599, conferidas novamente no GitHub. Nenhuma publicação realizada nesta retomada.
+- #515 integrada: candidata9bd66f7366fad2895df78489f3ca6ca2157120b0.
+- #516 agora MERGED na candidata#468:93534458a4f2e3d4879ead703bf407f346a1fa35. HEAD origem169384489e87ed8e790d349060a7282f202f4689, CI43921916359 SUCCESS:5197Python PASS/1SKIP/71Playwright PASS. Skip somente variante SQLite de teste exclusivamente PG; versão PG executa. T2 fora de Draft43925653026 SUCCESS.
+- CI cumulativa43926134508 em execução no momento deste registro; reconsultar no SHA93534458.
+- PRs abertas após integração:413,423,440,448,453,468,498. Fechamento administrativo não equivale a homologação ou publicação.
+- Delta MF09: formulário manual, regras/perfis do servidor, preparação55/65, numeração legal única, assinatura, arquivo, transmissão/consulta e PDFs existentes. Defeitos de numeração/replay/namespace descobertos e corrigidos conforme plano MF09. Revisão independente163PASS/25PG SKIP/0FAIL; testes locais adicionais de namespace e suíte integral em fechamento. Novo bloco ainda exige PR/CI exata.
+- Pendências globais preservadas: MF04/BH; confiança/cadeia/revogação e histórico de recibos nacionais; ciclo municipal Guarulhos; Louveira PF contrato próprio; revisão das origens/documentação ainda aberta; reconciliação release498 e gates de host/cofre/DPS22/backup/publicação. MG20 e SP22 não são declarados completos.
+
 ## CURRENT — pós-#514, 16/11/2026
 
 Este checkpoint substitui os estados históricos abaixo; pendências não marcadas como resolvidas permanecem abertas.

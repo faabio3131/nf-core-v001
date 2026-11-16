@@ -78,6 +78,7 @@ def test_restart_preserves_all_v2_07_authority_state(tmp_path) -> None:
         scope,
         model=ElectronicInvoiceModel.NFCE,
         series=1,
+        issuer_cnpj="12345678000195",
     )
     source = SourceReference("sale", "sale-100")
 
