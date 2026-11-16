@@ -20,7 +20,7 @@ from kordena_fiscal.xml.nfse_national_profiles import (
     select_national_dps_profile,
 )
 from kordena_fiscal.xml.schema import XmlSchemaValidationError
-from tests.issuance.test_nfse_dps_builder import _certificate, _document, _request, _service
+from test_nfse_dps_builder import _certificate, _document, _request, _service
 
 NS = {"n": "http://www.sped.fazenda.gov.br/nfse"}
 
@@ -122,14 +122,17 @@ def test_invalid_series_does_not_claim_transmission_or_access_a1(tmp_path):
     from kordena_fiscal.issuance.nfe_nfse import NfseGatewayClient
     from kordena_fiscal.lifecycle import FiscalDocumentState
     from kordena_fiscal.persistence import SqliteFiscalDatabase
-    from tests.persistence.test_nfse_dps_numbering import NOW, RETENTION
-    from tests.persistence.test_nfse_dps_numbering import _document as numbered_document
+    from kordena_fiscal.archive import RetentionPolicyMetadata
 
     db = SqliteFiscalDatabase(tmp_path / "profile-series.sqlite")
     db.initialize()
     app = FiscalApplicationService(db)
-    document = numbered_document(1, series=90000)
-    prepared = app.prepare_nfse_authorization(document, occurred_at=NOW, retention=RETENTION)
+    document = replace(_document(), dps_number=None, dps_series=90000)
+    scope = replace(document.scope, host_namespace="nfcore")
+    document = replace(document, scope=scope, issuer=replace(document.issuer, scope=scope))
+    now = document.issued_at
+    retention = RetentionPolicyMetadata("profile-series-test", 1)
+    prepared = app.prepare_nfse_authorization(document, occurred_at=now, retention=retention)
     certificate, builder, exchange = Mock(), Mock(), Mock()
     gateway = NfseNacionalHomologationGateway(
         resolve_certificate=certificate, build_signed_dps=builder, exchange=exchange,
@@ -137,7 +140,7 @@ def test_invalid_series_does_not_claim_transmission_or_access_a1(tmp_path):
     with pytest.raises(FiscalValidationError, match="series"):
         app.authorize_prepared_document(
             document_id=document.document_id, request=prepared.request,
-            gateway=NfseGatewayClient(gateway), occurred_at=NOW,
+            gateway=NfseGatewayClient(gateway), occurred_at=now,
         )
     with db() as uow:
         state = uow.lifecycle.get(document.document_id)
