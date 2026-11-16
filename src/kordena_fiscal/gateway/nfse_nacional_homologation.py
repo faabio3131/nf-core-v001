@@ -8,17 +8,25 @@ from __future__ import annotations
 import json
 import ssl
 from collections.abc import Callable
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from urllib.error import HTTPError, URLError
 from urllib.request import HTTPSHandler, Request, build_opener
 
-from kordena_fiscal.domain import Cnpj, ExecutionScope, FiscalEnvironment, FiscalValidationError
+from kordena_fiscal.domain import (
+    BrazilianJurisdiction,
+    Cnpj,
+    ExecutionScope,
+    FiscalEnvironment,
+    FiscalValidationError,
+    TaxRegimeCode,
+)
 from kordena_fiscal.gateway.authorization import (
     AuthorizationStatus,
     GatewayProviderMetadata,
 )
 from kordena_fiscal.gateway.fiscal_tls import RejectFiscalRedirects, build_fiscal_tls_context
 from kordena_fiscal.gateway.mg_nfse_channel_guard import require_mg_national_channel_eligibility
+from kordena_fiscal.gateway.municipal_sp_routing import classify_sp_national_nfse_eligibility
 from kordena_fiscal.gateway.nfse_national_homologation import (
     SEFIN_HOMOLOGATION_NFSE_URL,
     build_nfse_dps_request,
@@ -75,6 +83,32 @@ def _exchange_http(payload: bytes, context: ssl.SSLContext, timeout: float) -> b
         ) from None
 
 
+def require_nfse_national_issuer_eligibility(
+    *, jurisdiction: BrazilianJurisdiction,
+    tax_regime: TaxRegimeCode, competence_date: date,
+) -> None:
+    """Negative-only federal/municipal eligibility before A1 and network I/O.
+
+    The MG guard deliberately returns for non-MG states. São Paulo must
+    therefore use its own effective-competence rule; a provider binding
+    does not waive an ineligible issuer regime.
+    """
+    if not isinstance(jurisdiction, BrazilianJurisdiction):
+        raise FiscalValidationError("NFS-e issuer jurisdiction is required")
+    if jurisdiction.state_code == "SP":
+        classify_sp_national_nfse_eligibility(
+            issuer_jurisdiction=jurisdiction,
+            tax_regime=tax_regime,
+            competence_date=competence_date,
+        )
+        return
+    require_mg_national_channel_eligibility(
+        jurisdiction=jurisdiction,
+        tax_regime=tax_regime,
+        competence_date=competence_date,
+    )
+
+
 class NfseNacionalHomologationGateway:
     """Real REST/mTLS transport with trusted prepared signed-DPS dependency."""
 
@@ -110,7 +144,7 @@ class NfseNacionalHomologationGateway:
                 "DPS fiscal number not durably reserved; SEFIN dispatch denied"
             )
         try:
-            require_mg_national_channel_eligibility(
+            require_nfse_national_issuer_eligibility(
                 jurisdiction=document.issuer.address.jurisdiction,
                 tax_regime=document.issuer.tax_regime,
                 competence_date=document.competence_date,
