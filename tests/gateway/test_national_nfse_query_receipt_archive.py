@@ -3,26 +3,40 @@ from __future__ import annotations
 
 import base64
 import gzip
+import importlib.util
 import json
-from datetime import UTC, datetime, timedelta
+from pathlib import Path
 
 import pytest
-from cryptography import x509
-from cryptography.hazmat.primitives import hashes
-from cryptography.hazmat.primitives.asymmetric import rsa
-from cryptography.x509.oid import NameOID
 from lxml import etree
 
 from kordena_fiscal.domain import ExecutionScope, FiscalEnvironment, FiscalValidationError
 from kordena_fiscal.gateway.authorization import AuthorizationStatus, GatewayProviderMetadata
 from kordena_fiscal.gateway.nfse_national_homologation import OfficialNfseTransportError
-from kordena_fiscal.gateway.nfse_national_query import _validate_official_nfse
+from kordena_fiscal.gateway.nfse_national_query import _validate_official_nfse as _query_validate
+from kordena_fiscal.gateway.nfse_national_receipt import NationalReceiptIdentity
 from kordena_fiscal.issuance.nfe_nfse import NfseAuthorizationResult
 from kordena_fiscal.lifecycle import IdempotencyKey
-from kordena_fiscal.signing.nfse_xmldsig import append_nfse_signature
+from kordena_fiscal.xml.nfse_national_profiles import NT009_RESTRICTED_PROFILE
 
-_KEY = "35" + "0" * 48
+_receipt_spec = importlib.util.spec_from_file_location(
+    "national_receipt_fixture", Path(__file__).parents[1] / "support/national_receipt_fixture.py",
+)
+assert _receipt_spec and _receipt_spec.loader
+_receipt_fixture = importlib.util.module_from_spec(_receipt_spec)
+_receipt_spec.loader.exec_module(_receipt_fixture)
+
+_KEY = "3550308" + "22" + "12345678000195" + "3" * 27
 _NS = "http://www.sped.fazenda.gov.br/nfse"
+
+
+def _validate_official_nfse(raw, key, **context):
+    # Negative signature tests must fail for malformed XML, not absent context.
+    context.setdefault(
+        'expected', NationalReceiptIdentity.from_request(_receipt_fixture.sample()[0]),
+    )
+    context.setdefault('schema_profile', NT009_RESTRICTED_PROFILE)
+    return _query_validate(raw, key, **context)
 
 
 def _response(xml: bytes) -> bytes:
@@ -32,41 +46,23 @@ def _response(xml: bytes) -> bytes:
 
 
 def _receipt(key: str = _KEY) -> bytes:
-    """Synthetic cryptographic receipt, not an official SEFIN or ICP proof."""
-    signer = rsa.generate_private_key(public_exponent=65537, key_size=2048)
-    name = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, "Synthetic issuer only")])
-    now = datetime.now(UTC)
-    cert = (
-        x509.CertificateBuilder()
-        .subject_name(name).issuer_name(name).public_key(signer.public_key())
-        .serial_number(x509.random_serial_number())
-        .not_valid_before(now - timedelta(minutes=1))
-        .not_valid_after(now + timedelta(days=1))
-        .add_extension(
-            x509.KeyUsage(
-                digital_signature=True, content_commitment=False,
-                key_encipherment=False, data_encipherment=False,
-                key_agreement=False, key_cert_sign=False,
-                crl_sign=False, encipher_only=False, decipher_only=False,
-            ), critical=True,
-        )
-        .sign(signer, hashes.SHA256())
-    )
-    root = etree.Element(f"{{{_NS}}}NFSe", nsmap={None: _NS}, versao="1.01")
-    info = etree.SubElement(root, f"{{{_NS}}}infNFSe")
-    info.set("Id", "NFS" + key)
-    append_nfse_signature(root, info, signer, cert, legacy_abrasf=False)
-    return etree.tostring(root, encoding="utf-8", xml_declaration=True)
+    return _receipt_fixture.sample_receipt(key)[2]
 
 
 def test_query_preserves_original_authorized_receipt_bytes() -> None:
     receipt = _receipt()
-    assert _validate_official_nfse(_response(receipt), _KEY) == receipt
+    assert _validate_official_nfse(
+        _response(receipt), _KEY,
+        expected=NationalReceiptIdentity.from_request(_receipt_fixture.sample()[0]),
+        schema_profile=NT009_RESTRICTED_PROFILE,
+    ) == receipt
 
 
 def test_query_does_not_accept_an_unrelated_document_or_a_bare_key() -> None:
     with pytest.raises(OfficialNfseTransportError, match="different access key"):
-        _validate_official_nfse(_response(_receipt("99" + "0" * 48)), _KEY)
+        _validate_official_nfse(
+            _response(_receipt("3550308" + "22" + "12345678000195" + "4" * 27)), _KEY,
+        )
     with pytest.raises(OfficialNfseTransportError):
         _validate_official_nfse(json.dumps({"chaveAcesso": _KEY}).encode(), _KEY)
 

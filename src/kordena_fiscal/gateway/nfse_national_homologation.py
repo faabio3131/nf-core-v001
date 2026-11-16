@@ -11,14 +11,16 @@ import gzip
 import json
 import ssl
 from collections.abc import Callable
+from datetime import UTC, datetime
 from urllib.error import HTTPError, URLError
 from urllib.request import HTTPSHandler, Request, build_opener
 
 from lxml import etree
 
-from kordena_fiscal.domain import FiscalValidationError
+from kordena_fiscal.domain import FiscalEnvironment, FiscalValidationError
 from kordena_fiscal.gateway.fiscal_tls import RejectFiscalRedirects, build_fiscal_tls_context
 from kordena_fiscal.gateway.nfse_national_receipt import (
+    NationalReceiptIdentity,
     NfseReceiptVerificationError,
     validate_official_nfse_receipt,
 )
@@ -26,6 +28,10 @@ from kordena_fiscal.issuance.nfe_nfse import NfseRejectionDetail
 from kordena_fiscal.signing.nfse_xmldsig import sign_nfse_dps_xml
 from kordena_fiscal.vault import EphemeralCertificateMaterial
 from kordena_fiscal.xml.nfse_nacional_schema import national_dps_validator
+from kordena_fiscal.xml.nfse_national_profiles import (
+    PRODUCTION_PROFILE,
+    select_national_dps_profile,
+)
 
 SEFIN_HOMOLOGATION_NFSE_URL = (
     "https://sefin.producaorestrita.nfse.gov.br/API/SefinNacional/nfse"
@@ -74,6 +80,7 @@ def parse_signed_dps_info(signed_dps_xml: bytes) -> etree._Element:
 def build_nfse_dps_request(
     signed_dps_xml: bytes, *, issuer_cnpj: str | None = None,
     issuer_municipality_ibge: str | None = None,
+    schema_profile: str = PRODUCTION_PROFILE,
 ) -> bytes:
     """Build the public Emissor Nacional API JSON envelope from signed DPS XML."""
     info = parse_signed_dps_info(signed_dps_xml)
@@ -86,7 +93,7 @@ def build_nfse_dps_request(
         if info.findtext(f"{{{_NFSE}}}prest/{{{_NFSE}}}CNPJ") != issuer_cnpj:
             raise OfficialNfseTransportError("DPS issuer disagrees with the scoped A1")
         version = info.getroottree().getroot().get("versao", "")
-        national_dps_validator(version).validate_document(signed_dps_xml)
+        national_dps_validator(version, profile=schema_profile).validate_document(signed_dps_xml)
     return json.dumps(
         {"dpsXmlGZipB64": base64.b64encode(gzip.compress(signed_dps_xml, mtime=0)).decode("ascii")},
         separators=(",", ":"),
@@ -122,7 +129,10 @@ def parse_national_nfse_rejections(payload: object) -> tuple[NfseRejectionDetail
     return tuple(details)
 
 
-def parse_nfse_homologation_response(raw: bytes) -> dict[str, str]:
+def parse_nfse_homologation_response(
+    raw: bytes, *, expected: NationalReceiptIdentity | None = None,
+    schema_profile: str | None = None,
+) -> dict[str, str]:
     """Expose only references and canonical XML; never reflect provider internals."""
     if not raw or len(raw) > _MAX_RESPONSE_BYTES:
         raise OfficialNfseTransportError("Resposta da NFS-e Nacional ausente ou excede limite")
@@ -138,7 +148,9 @@ def parse_nfse_homologation_response(raw: bytes) -> dict[str, str]:
         try:
             # A direct POST acknowledgement and a later GET recovery share
             # exactly one verification contract before AUTHORIZED is returned.
-            document = validate_official_nfse_receipt(raw, access_key)
+            document = validate_official_nfse_receipt(
+                raw, access_key, expected=expected, schema_profile=schema_profile,
+            )
             rendered = document.decode("utf-8")
         except (NfseReceiptVerificationError, UnicodeDecodeError):
             raise OfficialNfseTransportError(
@@ -190,9 +202,20 @@ class NfseNationalHomologationTransport:
 
     def submit_signed_dps(self, signed_dps_xml: bytes) -> dict[str, str]:
         """Send only homologation DPS, without changing business authorization."""
-        body = build_nfse_dps_request(signed_dps_xml)
+        info = parse_signed_dps_info(signed_dps_xml)
+        version = info.getroottree().getroot().get("versao", "")
+        profile = select_national_dps_profile(
+            environment=FiscalEnvironment.HOMOLOGATION, schema_version=version,
+            effective_on=datetime.now(UTC).date(),
+        )
+        # This public HTTP boundary must validate even without optional issuer
+        # correlation. The envelope helper alone is not permission to transmit.
+        national_dps_validator(version, profile=profile).validate_document(signed_dps_xml)
+        expected = NationalReceiptIdentity.from_dps_info(info)
+        body = build_nfse_dps_request(signed_dps_xml, schema_profile=profile)
         return parse_nfse_homologation_response(
-            self._exchange(body, build_fiscal_tls_context(self._certificate), self._timeout)
+            self._exchange(body, build_fiscal_tls_context(self._certificate), self._timeout),
+            expected=expected, schema_profile=profile,
         )
 
     def sign_and_submit_dps(self, unsigned_dps_xml: bytes) -> dict[str, str]:

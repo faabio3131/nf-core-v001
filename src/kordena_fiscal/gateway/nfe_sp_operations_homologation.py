@@ -71,6 +71,19 @@ def _value(node: etree._Element, tag: str) -> str | None:
     return element.text.strip() if element is not None and element.text else None
 
 
+def _correlates(
+    node: etree._Element, expected: tuple[tuple[str, str], ...], *, required: bool = True,
+) -> bool:
+    """Match direct, unique response fields; optional rejection fields may be absent."""
+    for name, value in expected:
+        matches = node.findall(f"{{{NFE_NAMESPACE}}}{name}")
+        if not matches and not required:
+            continue
+        if len(matches) != 1 or (matches[0].text or "").strip() != value:
+            return False
+    return True
+
+
 def _envelope(data: etree._Element, service: str) -> bytes:
     parent = etree.Element(
         f"{{{SOAP12_NAMESPACE}}}Envelope", nsmap={None: SOAP12_NAMESPACE}  # type: ignore[dict-item]
@@ -239,10 +252,10 @@ class SefazHomologationOperationsGateway:
         response = answer.find(f".//{{{NFE_NAMESPACE}}}retConsSitNFe")
         if response is None or _value(response, "tpAmb") != "2":
             raise OfficialNfeOperationsError("Resposta de consulta não é homologação")
-        if self._state == "31" and _value(response, "cUF") != "31":
-            raise OfficialNfeOperationsError("MG query response state mismatch")
-        if self._state == "31" and _value(response, "chNFe") != request.access_key.value:
-            raise OfficialNfeOperationsError("MG query response key mismatch")
+        if not _correlates(response, (("cUF", self._state),)):
+            raise OfficialNfeOperationsError("Fiscal query response state mismatch")
+        if not _correlates(response, (("chNFe", request.access_key.value),)):
+            raise OfficialNfeOperationsError("Fiscal query response key mismatch")
         code = _value(response, "cStat")
         if code == "100":
             protocol = _value(response, "nProt")
@@ -304,14 +317,14 @@ class SefazHomologationOperationsGateway:
         result = answer.find(f".//{{{NFE_NAMESPACE}}}retEvento/{{{NFE_NAMESPACE}}}infEvento")
         if result is None or _value(result, "tpAmb") != "2":
             raise OfficialNfeOperationsError("Resposta de cancelamento inconsistente")
-        if self._state == "31" and any(
-            _value(result, name) != expected for name, expected in (
-                ("cOrgao", "31"), ("chNFe", request.access_key.value),
-                ("tpEvento", "110111"), ("nSeqEvento", "1"),
-            )
-        ):
-            raise OfficialNfeOperationsError("MG cancellation response correlation mismatch")
         code = _value(result, "cStat")
+        if not _correlates(result, (("cOrgao", self._state),)) or not _correlates(
+            result, (
+                ("chNFe", request.access_key.value),
+                ("tpEvento", "110111"), ("nSeqEvento", "1"),
+            ), required=code in {"135", "155"},
+        ):
+            raise OfficialNfeOperationsError("Fiscal cancellation response correlation mismatch")
         if code in {"135", "155"} and _value(result, "nProt"):
             return CancellationResult(
                 status=FiscalEventStatus.ACCEPTED, scope=request.scope,
@@ -366,15 +379,15 @@ class SefazHomologationOperationsGateway:
         result = answer.find(f".//{{{NFE_NAMESPACE}}}retInutNFe/{{{NFE_NAMESPACE}}}infInut")
         if result is None or _value(result, "tpAmb") != "2":
             raise OfficialNfeOperationsError("Resposta de inutilização inconsistente")
-        if self._state == "31" and any(
-            _value(result, name) != expected for name, expected in (
-                ("cUF", "31"), ("ano", year), ("CNPJ", issuer), ("mod", self._model),
+        code = _value(result, "cStat")
+        if not _correlates(result, (("cUF", self._state),)) or not _correlates(
+            result, (
+                ("ano", year), ("CNPJ", issuer), ("mod", self._model),
                 ("serie", str(request.series)), ("nNFIni", str(request.first_number)),
                 ("nNFFin", str(request.last_number)),
-            )
+            ), required=code == "102",
         ):
-            raise OfficialNfeOperationsError("MG inutilization response correlation mismatch")
-        code = _value(result, "cStat")
+            raise OfficialNfeOperationsError("Fiscal inutilization response correlation mismatch")
         if code == "102" and _value(result, "nProt"):
             return InutilizationResult(
                 status=FiscalEventStatus.ACCEPTED, scope=request.scope,

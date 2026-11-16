@@ -25,7 +25,7 @@ from kordena_fiscal.compliance.nfse_preaudit import (
     nfse_preaudit,
 )
 from kordena_fiscal.gateway.production_activation import ProductionExecutionAuthority
-from kordena_fiscal.issuance.nfse_dps_builder import build_signed_dps
+from kordena_fiscal.issuance.nfse_dps_builder import build_sefin_signed_dps
 from kordena_fiscal.persistence.command_commercial import CommandCommercialStore
 from kordena_fiscal.persistence.commercial_fulfillment import (
     postgres_canonical_commercial_database,
@@ -288,7 +288,7 @@ def create_runtime_app(
         fiscal_operation_handler_factory = build_runtime_fiscal_handler_factory(
             certificate_vault=certificate_vault,
             trusted_signed_dps_builder=(
-                build_signed_dps if certificate_vault is not None else None
+                build_sefin_signed_dps if certificate_vault is not None else None
             ),
             nfse_preaudit=(nfse_preaudit if certificate_vault is not None else None),
             cajamar_runtime_ports=cajamar_runtime_ports,
@@ -1241,7 +1241,7 @@ def build_entrypoint_fiscal_handler_factory(
         secrets_factory = None
     configured_factory = build_runtime_fiscal_handler_factory(
         certificate_vault=vault,
-        trusted_signed_dps_builder=build_signed_dps,
+        trusted_signed_dps_builder=build_sefin_signed_dps,
         nfse_preaudit=nfse_preaudit,
         webiss_extrema_exchange=build_extrema_webiss_exchange(environ),
         webiss_service_preaudit=(
@@ -1280,7 +1280,7 @@ app = create_runtime_app(
     certificate_vault=_entrypoint_certificate_vault,
     fiscal_dependency_probe=lambda: fiscal_external_dependency_snapshot(
         certificate_vault=_entrypoint_certificate_vault,
-        trusted_signed_dps_builder=build_signed_dps,
+        trusted_signed_dps_builder=build_sefin_signed_dps,
         nfse_preaudit=nfse_preaudit,
     ),
     command_secret_resolver=development_command_resolver(

@@ -29,6 +29,7 @@ from kordena_fiscal.gateway.authorization import (
 )
 from kordena_fiscal.gateway.municipal_sp_routing import (
     classify_sp_national_nfse_eligibility,
+    require_guarulhos_nfse_channel,
 )
 from kordena_fiscal.gateway.provider import ProviderSelectionResolver
 from kordena_fiscal.issuance.nfe_nfse import (
@@ -41,6 +42,7 @@ SP4_MUNICIPAL_PROVIDERS = MappingProxyType({
     "barueri-pmb004-homologation": "3505708",
     "osasco-rtc-homologation": "3534401",
     "jundiai-giss-v2-homologation": "3525904",
+    "guarulhos-giss-v2-homologation": "3518800",
 })
 
 
@@ -262,6 +264,12 @@ class Sp4MunicipalCanonicalGateway:
             raise Sp4CanonicalMunicipalError(
                 "Issuer must use National NFS-e for service competence"
             )
+        require_guarulhos_nfse_channel(
+            issuer_jurisdiction=jurisdiction,
+            tax_regime=doc.issuer.tax_regime,
+            competence_date=doc.competence_date,
+            provider_id=self._provider_id,
+        )
         # Additional municipal regulation is required for old competences,
         # ordinary corporate regimes and special ISS classifications.
         self._policy(request)

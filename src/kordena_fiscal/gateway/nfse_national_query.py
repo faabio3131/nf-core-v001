@@ -28,7 +28,9 @@ from kordena_fiscal.gateway.nfse_national_homologation import (
     OfficialNfseTransportError,
 )
 from kordena_fiscal.gateway.nfse_national_receipt import (
+    NationalReceiptIdentity,
     NfseReceiptVerificationError,
+    current_national_receipt_profile,
     validate_official_nfse_receipt,
 )
 from kordena_fiscal.gateway.nfse_national_receipt import (
@@ -49,24 +51,12 @@ _MAX_RESPONSE = 4_194_304
 
 
 def _dps_id(request: NfseAuthorizationRequest) -> str:
-    document = request.document
-    cnpj = document.issuer.cnpj.value
-    municipality = document.issuer.address.jurisdiction.municipality_ibge_code
-    number = document.dps_number
-    series = document.dps_series
-    if (
-        municipality is None or len(municipality) != 7
-        or not municipality.isascii() or not municipality.isdecimal()
-        or not cnpj.isascii() or not cnpj.isdecimal() or len(cnpj) != 14
-        or number is None
-        or not isinstance(number, int) or isinstance(number, bool)
-        or not 1 <= number <= 999_999_999_999_999
-        or not 1 <= series <= 99_999
-    ):
+    try:
+        return NationalReceiptIdentity.from_request(request).dps_id
+    except FiscalValidationError:
         raise OfficialNfseTransportError(
             "Official DPS query requires a durably reserved legal issuer serial"
-        )
-    return f"DPS{municipality}1{cnpj}{series:05d}{number:015d}"
+        ) from None
 
 
 def _parse_key(raw: bytes, municipality: str) -> str:
@@ -87,10 +77,15 @@ def _parse_key(raw: bytes, municipality: str) -> str:
 
 
 
-def _validate_official_nfse(raw: bytes, key: str) -> bytes:
+def _validate_official_nfse(
+    raw: bytes, key: str, *, expected: NationalReceiptIdentity | None = None,
+    schema_profile: str | None = None,
+) -> bytes:
     """Compatibility entrypoint for national GET and replay callers."""
     try:
-        return validate_official_nfse_receipt(raw, key)
+        return validate_official_nfse_receipt(
+            raw, key, expected=expected, schema_profile=schema_profile,
+        )
     except NfseReceiptVerificationError as exc:
         raise OfficialNfseTransportError(str(exc)) from None
 
@@ -168,6 +163,8 @@ class NfseNationalHomologationQueryGateway:
         )
         authorized_xml = _validate_official_nfse(
             self._get(f"{_URL_BASE}/nfse/{key}", tls, self._timeout), key,
+            expected=NationalReceiptIdentity.from_request(request),
+            schema_profile=current_national_receipt_profile(),
         )
         return NfseAuthorizationResult(
             status=AuthorizationStatus.AUTHORIZED,

@@ -121,7 +121,8 @@ def _authorized_nfe_proc(
         or not _text(info, "digVal")
     ):
         raise OfficialNfeTransportError("Protocolo SEFAZ não corresponde à NF-e assinada")
-    proc = etree.Element("{" + NFE_NAMESPACE + "}nfeProc", nsmap={None: NFE_NAMESPACE},  # type: ignore[dict-item]
+    # lxml supports None (default namespace); its typing stub omits that key.
+    proc = etree.Element("{" + NFE_NAMESPACE + "}nfeProc", nsmap=signed_envi.nsmap,  # type: ignore[arg-type]
                          versao="4.00")
     proc.append(etree.fromstring(etree.tostring(invoices[0])))
     proc.append(etree.fromstring(etree.tostring(protocol)))
@@ -139,7 +140,15 @@ def _soap_envelope(invoice_batch: etree._Element) -> bytes:
     data = etree.SubElement(
         body, "{" + SERVICE_NAMESPACE + "}nfeDadosMsg", nsmap={None: SERVICE_NAMESPACE}  # type: ignore[dict-item]
     )
-    data.append(invoice_batch)
+    # Keep the validated/signature-bearing tree detached. Moving it under the
+    # service default namespace changes its inherited namespace context and can
+    # corrupt the subsequently archived nfeProc when namespaces are serialized.
+    detached = etree.fromstring(etree.tostring(invoice_batch))
+    if None not in detached.nsmap:
+        # A prefixed NFe batch was signed with an empty default namespace.
+        # Explicitly retain that context under the SOAP service's default.
+        detached.set("xmlns", "")
+    data.append(detached)
     return etree.tostring(envelope, encoding="utf-8", xml_declaration=True)
 
 

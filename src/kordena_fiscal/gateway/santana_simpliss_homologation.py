@@ -33,7 +33,7 @@ from kordena_fiscal.gateway.nfse_nacional_event_homologation import (
     NationalNfseCancellationReceipt,
 )
 from kordena_fiscal.gateway.nfse_nacional_homologation import encode_signed_dps
-from kordena_fiscal.gateway.nfse_national_query import _validate_official_nfse
+from kordena_fiscal.gateway.nfse_national_receipt import validate_nfse_receipt_integrity
 from kordena_fiscal.gateway.provider import ProviderSelectionResolver
 from kordena_fiscal.issuance.nfe_nfse import (
     NfseAuthorizationRequest,
@@ -253,7 +253,7 @@ class SantanaSimplissHomologationGateway:
                 raise SantanaSimplissError("Invalid Santana NFS-e access key")
             assert isinstance(key, str)
             try:
-                invoice_xml = _validate_official_nfse(raw, key)
+                invoice_xml = validate_nfse_receipt_integrity(raw, key)
                 if self._validate_official_invoice is not None:
                     self._validate_official_invoice(invoice_xml)
             except (FiscalValidationError, XmlSchemaValidationError):

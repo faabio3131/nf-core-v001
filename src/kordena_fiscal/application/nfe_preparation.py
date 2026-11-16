@@ -17,7 +17,7 @@ from lxml import etree
 
 from kordena_fiscal.archive import FiscalArchiveEntry, FiscalArchiveKind, RetentionPolicyMetadata
 from kordena_fiscal.documents import CanonicalFiscalDocument, to_canonical_json
-from kordena_fiscal.domain import ElectronicInvoiceModel, FiscalValidationError
+from kordena_fiscal.domain import ElectronicInvoiceModel, FiscalDocumentKind, FiscalValidationError
 from kordena_fiscal.issuance.nfe_builder import NfeSaleOptions, build_nfe_sale
 from kordena_fiscal.lifecycle import (
     FiscalDocumentState,
@@ -55,6 +55,13 @@ def prepare_nfe_sale(
     commit_preparation: Callable[[FiscalUnitOfWork, str], None] | None = None,
 ) -> str:
     """Commit a complete signed preparation, or replay its durable identity."""
+    if document.document_kind not in {FiscalDocumentKind.NFE, FiscalDocumentKind.NFCE}:
+        raise FiscalValidationError("sale preparation requires NF-e or NFC-e")
+    model = (
+        ElectronicInvoiceModel.NFCE
+        if document.document_kind is FiscalDocumentKind.NFCE
+        else ElectronicInvoiceModel.NFE
+    )
     if type(series) is not int or not 0 <= series <= 999:
         raise FiscalValidationError("NF-e series must be between 0 and 999")
     if now.tzinfo is None or now.utcoffset() is None:
@@ -94,7 +101,7 @@ def prepare_nfe_sale(
         )
         number = uow.sequences.reserve_next(
             FiscalSequenceKey.from_scope(
-                document.scope, model=ElectronicInvoiceModel.NFE, series=series
+                document.scope, model=model, series=series, issuer_cnpj=document.issuer.cnpj.value,
             ),
             FiscalSequencePolicy(),
         )
@@ -106,7 +113,7 @@ def prepare_nfe_sale(
                 state_ibge_code=municipality[:2],
                 issued_at=document.issued_at,
                 issuer_cnpj=document.issuer.cnpj,
-                model=ElectronicInvoiceModel.NFE,
+                model=model,
                 series=series,
                 invoice_number=number.number,
                 emission_type=1,

@@ -165,6 +165,7 @@ class NfseServiceLine:
     rule_version: int = 1
     source_normative: str = "external-rule-set"
     nbs_code: str | None = None
+    municipal_taxation_detail: str | None = None
 
     def __post_init__(self) -> None:
         if not isinstance(self.line_number, int) or isinstance(self.line_number, bool):
@@ -204,6 +205,13 @@ class NfseServiceLine:
             or not self.nbs_code.isdecimal()
         ):
             raise FiscalValidationError("NBS service code must have exactly nine ASCII digits")
+        if self.municipal_taxation_detail is not None and (
+            type(self.municipal_taxation_detail) is not str
+            or not self.municipal_taxation_detail.isascii()
+            or not self.municipal_taxation_detail.isdecimal()
+            or len(self.municipal_taxation_detail) != 3
+        ):
+            raise FiscalValidationError("cTribMun requires three reviewed ASCII digits")
         if not isinstance(self.rule_version, int) or isinstance(self.rule_version, bool):
             raise FiscalValidationError("rule_version must be an integer")
         if self.rule_version < 1:
@@ -556,6 +564,8 @@ def build_nfse_request_fingerprint(document: NfseCanonicalDocument) -> str:
                 "municipal_service_code": line.municipal_service_code,
                 "national_taxation_code": line.national_taxation_code,
                 **({"nbs_code": line.nbs_code} if line.nbs_code is not None else {}),
+                **({"municipal_taxation_detail": line.municipal_taxation_detail}
+                   if line.municipal_taxation_detail is not None else {}),
                 "description": line.description,
                 "gross_amount": str(line.gross_amount.amount),
                 "deduction_amount": str(line.deduction_amount.amount),
@@ -831,6 +841,14 @@ class NfseGatewayClient:
 
     def __init__(self, gateway: NfseGateway) -> None:
         self._gateway = gateway
+
+    def validate_pre_dispatch(self, request: NfseAuthorizationRequest) -> None:
+        """Run an optional trusted adapter's pure checks before claiming transmission."""
+        validate = getattr(self._gateway, "validate_pre_dispatch", None)
+        if validate is not None:
+            if not callable(validate):
+                raise FiscalValidationError("Invalid NFS-e pre-dispatch validator")
+            validate(request)
 
     def authorize(self, request: NfseAuthorizationRequest) -> NfseAuthorizationResult:
         if not isinstance(request, NfseAuthorizationRequest):

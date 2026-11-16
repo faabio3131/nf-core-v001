@@ -4,8 +4,10 @@ from __future__ import annotations
 import base64
 import gzip
 import hashlib
+import importlib.util
 import json
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 
 import pytest
 from cryptography import x509
@@ -19,13 +21,33 @@ from kordena_fiscal.domain import FiscalValidationError
 from kordena_fiscal.gateway.nfse_national_homologation import (
     OfficialNfseTransportError,
     build_nfse_dps_request,
-    parse_nfse_homologation_response,
 )
-from kordena_fiscal.signing.nfse_xmldsig import append_nfse_signature, sign_nfse_dps_xml
+from kordena_fiscal.gateway.nfse_national_homologation import (
+    parse_nfse_homologation_response as _parse_response,
+)
+from kordena_fiscal.gateway.nfse_national_receipt import NationalReceiptIdentity
+from kordena_fiscal.signing.nfse_xmldsig import sign_nfse_dps_xml
 from kordena_fiscal.vault import EphemeralCertificateMaterial
+from kordena_fiscal.xml.nfse_national_profiles import NT009_RESTRICTED_PROFILE
+
+_receipt_spec = importlib.util.spec_from_file_location(
+    "national_receipt_fixture", Path(__file__).parent / "support/national_receipt_fixture.py",
+)
+assert _receipt_spec and _receipt_spec.loader
+_receipt_fixture = importlib.util.module_from_spec(_receipt_spec)
+_receipt_spec.loader.exec_module(_receipt_fixture)
 
 _NS = "http://www.sped.fazenda.gov.br/nfse"
 _DS = "http://www.w3.org/2000/09/xmldsig#"
+
+
+def parse_nfse_homologation_response(raw, **context):
+    # Supply valid authorization context even for adversarial receipt fixtures.
+    context.setdefault(
+        'expected', NationalReceiptIdentity.from_request(_receipt_fixture.sample()[0]),
+    )
+    context.setdefault('schema_profile', NT009_RESTRICTED_PROFILE)
+    return _parse_response(raw, **context)
 
 
 def _unsigned_dps(environment: str = "2") -> bytes:
@@ -107,26 +129,20 @@ def test_nfse_rejects_missing_xml_signature() -> None:
 
 
 def _signed_national_receipt(key: str) -> bytes:
-    """Synthetic certificate and XMLDSig; never a real official NFSe receipt."""
-    material, signer = _ephemeral_certificate()
-    _key, cert, _chain = pkcs12.load_key_and_certificates(
-        material.pkcs12_bytes, material.password
-    )
-    assert cert is not None
-    root = etree.Element(f"{{{_NS}}}NFSe", nsmap={None: _NS}, versao="1.01")
-    info = etree.SubElement(root, f"{{{_NS}}}infNFSe", Id="NFS" + key)
-    append_nfse_signature(root, info, signer, cert, legacy_abrasf=False)
-    return etree.tostring(root, encoding="utf-8", xml_declaration=True)
+    return _receipt_fixture.sample_receipt(key)[2]
 
 
 def test_nfse_parses_offline_authorization_receipt() -> None:
-    key = "35" + "0" * 48
+    key = "3550308" + "22" + "12345678000195" + "3" * 27
     xml = _signed_national_receipt(key)
     response = json.dumps({
         "chaveAcesso": key,
         "nfseXmlGZipB64": base64.b64encode(gzip.compress(xml)).decode("ascii"),
     }).encode("utf-8")
-    parsed = parse_nfse_homologation_response(response)
+    parsed = parse_nfse_homologation_response(
+        response, expected=NationalReceiptIdentity.from_request(_receipt_fixture.sample()[0]),
+        schema_profile=NT009_RESTRICTED_PROFILE,
+    )
     assert parsed["status"] == "authorized"
     assert parsed["chaveAcesso"] == key
     assert parsed["xml"] == xml.decode()
@@ -262,7 +278,7 @@ def test_scoped_dps_checks_issuer_municipality_before_envelope(issuer_ibge):
 
 
 def test_direct_issue_rejects_unsigned_xml_even_for_matching_access_key() -> None:
-    key = "35" + "0" * 48
+    key = "3550308" + "22" + "12345678000195" + "3" * 27
     unsigned = (
         f'<NFSe xmlns="{_NS}" versao="1.01"><infNFSe Id="NFS{key}"/></NFSe>'
     ).encode()
@@ -275,7 +291,7 @@ def test_direct_issue_rejects_unsigned_xml_even_for_matching_access_key() -> Non
 
 
 def test_direct_issue_rejects_xml_with_tampered_signed_content() -> None:
-    key = "35" + "0" * 48
+    key = "3550308" + "22" + "12345678000195" + "3" * 27
     receipt = etree.fromstring(_signed_national_receipt(key))
     receipt.find(f"{{{_NS}}}infNFSe").set("extra", "tampered")
     body = json.dumps({

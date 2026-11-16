@@ -1,3 +1,13 @@
+# CURRENT DE RECONCILIAÇÃO — 16/11/2026, pós-#514
+
+Este banner substitui snapshots históricos abaixo. Fonte de continuidade: `docs/audit/NFCORE_PR_RECONCILIATION_LEDGER_CURRENT.md`. Main `549ab3c005d7183ff6c7940236414412ea004b9d`; production `ea4bdd3bcb9b61e6522081a14e5cc9ad1ced9599`. #514 integrada somente à #468 em `2eb7858dfa669b27b2804d846c876ec19b025672`; árvore idêntica ao HEAD de origem bfd5d0d4, CI43912553533 SUCCESS (5111 Python PASS/3 SKIP,71 E2E PASS); T2 aplicado43915564090. CI cumulativa43915895064 ainda em execução neste checkpoint. #515 correlação SP em 9cfe2e07, CI43913718612 em execução. #430/#437 encerradas com prova de incorporação; #508 preservada até fechamento de conferência.
+
+FIS-03 em incremento isolado sobre9cfe2e07: XSD NT009/correlação nacional POST/GET/arquivo e assinatura DPS aninhada. Plano/impacto/limites em `docs/audit/NFCORE_FIS03_RECEIPT_CONTRACT_PLAN_20261116.md`. Revisão independente detectou ordem tardia de validação e chave NFSe divergente; ambos corrigidos com testes negativos. CI final do incremento ainda necessária. Não certifica confiança ICP/revogação, consulta histórica, MF-04/MF-09 ou Guarulhos/BH integrais.
+
+Auditoria Contabo43758223307 attempt2 EXECUTOU em16/11: SHA/API/Portal/backup recente/schema20-21 PASS; gate Bling FAILURE por ativação/política/montagens/worker pendentes. Não está aguardando aprovação. DPSv22, cofre A1/offsite/restore isolado, staging e auto-pull continuam sem evidência. Autorização do proprietário para reconciliação e atualização Web permanece condicionada aos gates; DDL produtivo e emissão real separados. Não promover uma candidata incompleta.
+
+---
+
 # DIRETRIZ SUPERVENIENTE — INTEGRADOR ÚNICO E RELEASE MANAGER (15/11/2026)
 
 > **DECISÃO DO PROPRIETÁRIO — NFCORE-GOV-RELEASE-001 (15/11/2026).** Governança detalhada em [docs/governance/NFCORE_SINGLE_INTEGRATOR_RELEASE_OWNER_2026-11-15.md](docs/governance/NFCORE_SINGLE_INTEGRATOR_RELEASE_OWNER_2026-11-15.md). Checkpoint público de handoff na [issue #447](https://github.com/faabio3131/nf-core-v001/issues/447#issuecomment-6903641344).

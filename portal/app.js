@@ -220,9 +220,172 @@ function appendFiscalFilters(article, viewId) {
   article.append(notice);
 }
 
-/** Prepare one canonical NFS-e National or Cajamar record; no ERP or provider POST.
- * @param {HTMLElement} article
- */
+/** Prepare a sale through the same canonical fiscal runtime used by transmission. */
+/** @param {HTMLElement} article */
+function appendNativeSalePreparation(article) {
+  if (!bootstrapState?.permissions.includes("document.issue")
+    || selectedFiscalEnvironment !== "homologation") return;
+  const form = document.createElement("form");
+  form.id = "native-sale-preparation"; form.className = "panel-form";
+  const heading = document.createElement("h3"); heading.textContent = "Preparar NF-e / NFC-e";
+  const info = document.createElement("p");
+  info.textContent = "Venda manual em homologação. Produtos e regras vêm da configuração fiscal da unidade. Preparar reserva a numeração e assina o documento; a transmissão é uma ação separada.";
+  const result = document.createElement("p"); result.setAttribute("role", "status");
+  form.append(heading, info);
+  /** @param {HTMLElement} parent @param {string} name @param {string} label @param {string} value */
+  const input = (parent, name, label, value = "") => {
+    const wrapper = document.createElement("label"); wrapper.textContent = label;
+    const field = document.createElement("input"); field.name = name; field.value = value;
+    field.required = true; wrapper.append(field); parent.append(wrapper); return field;
+  };
+  /** @param {HTMLElement} parent @param {string} name @param {string} label @param {Array<[string,string]>} values */
+  const select = (parent, name, label, values) => {
+    const wrapper = document.createElement("label"); wrapper.textContent = label;
+    const field = document.createElement("select"); field.name = name;
+    for (const [value, text] of values) {
+      const option = document.createElement("option"); option.value = value; option.textContent = text;
+      field.append(option);
+    }
+    wrapper.append(field); parent.append(wrapper); return field;
+  };
+  const model = select(form, "document_kind", "Documento", [["nfe", "NF-e 55 — SP/MG"], ["nfce", "NFC-e 65 — MG"]]);
+  const reference = input(form, "source_id", "Referência única desta venda");
+  const issued = input(form, "issued_at", "Data e hora da venda com fuso", new Date().toISOString());
+  const review = document.createElement("button"); review.type = "button"; review.textContent = "Carregar configuração fiscal";
+  form.append(review);
+  const recipient = document.createElement("fieldset");
+  const legend = document.createElement("legend"); legend.textContent = "Destinatário"; recipient.append(legend);
+  const anonymousLabel = document.createElement("label");
+  const anonymous = document.createElement("input"); anonymous.type = "checkbox"; anonymous.name = "anonymous";
+  anonymousLabel.append(anonymous, " Consumidor não identificado (somente NFC-e presencial)"); form.append(anonymousLabel);
+  /** @type {Record<string, HTMLInputElement>} */
+  const recipientInputs = {};
+  for (const [name, label] of [
+    ["document", "CPF/CNPJ"], ["name", "Nome / razão social"], ["street", "Logradouro"],
+    ["number", "Número"], ["district", "Bairro"], ["municipality_name", "Cidade"],
+    ["municipality_ibge_code", "Código IBGE"], ["state", "UF"], ["postal_code", "CEP"],
+    ["state_registration", "Inscrição estadual, se contribuinte"],
+  ]) recipientInputs[name] = input(recipient, "recipient_" + name, label);
+  recipientInputs.state_registration.required = false;
+  const ie = select(recipient, "ie_indicator", "Situação da inscrição estadual", [["9", "Não contribuinte"], ["1", "Contribuinte"], ["2", "Isento"]]);
+  const consumer = select(recipient, "final_consumer", "Finalidade", [["true", "Consumidor final"], ["false", "Revenda / outra finalidade"]]);
+  form.append(recipient);
+  const syncRecipient = () => {
+    anonymous.disabled = model.value !== "nfce";
+    if (anonymous.disabled) anonymous.checked = false;
+    recipient.disabled = anonymous.checked; recipient.hidden = anonymous.checked;
+  };
+  anonymous.addEventListener("change", syncRecipient); syncRecipient();
+  const items = document.createElement("fieldset");
+  const itemsLegend = document.createElement("legend"); itemsLegend.textContent = "Itens da venda"; items.append(itemsLegend);
+  const addItem = document.createElement("button"); addItem.type = "button"; addItem.textContent = "Adicionar item"; addItem.disabled = true;
+  form.append(items, addItem);
+  const payments = document.createElement("fieldset");
+  const paymentsLegend = document.createElement("legend"); paymentsLegend.textContent = "Pagamentos"; payments.append(paymentsLegend);
+  const addPayment = document.createElement("button"); addPayment.type = "button"; addPayment.textContent = "Adicionar pagamento";
+  form.append(payments, addPayment);
+  const change = input(form, "change_amount", "Troco em dinheiro (R$)", "0.00");
+  const submit = document.createElement("button"); submit.type = "submit"; submit.textContent = "Preparar documento"; submit.disabled = true;
+  form.append(submit, result); article.append(form);
+  /** @type {null | {digest:string, unit:string, model:string, products:Array<{product_id:string, description:string, unit:string}>}} */
+  let configuration = null;
+  /** @type {Array<{element:HTMLFieldSetElement, product:HTMLSelectElement, fields:Record<string,HTMLInputElement>}>} */
+  let rows = [];
+  /** @type {Array<{element:HTMLFieldSetElement, method:HTMLSelectElement, fields:Record<string,HTMLInputElement>}>} */
+  const paymentRows = [];
+  /** @type {null | {fingerprint:string,key:string}} */
+  let attempt = null;
+  const appendItem = () => {
+    if (!configuration) return;
+    const row = document.createElement("fieldset");
+    const product = select(row, "product_id", "Produto fiscal", configuration.products.map(p => [p.product_id, p.description + " — " + p.unit]));
+    /** @type {Record<string,HTMLInputElement>} */
+    const fields = {};
+    for (const [name, label, value] of [
+      ["quantity", "Quantidade", "1"], ["unit_price", "Valor unitário", ""],
+      ["discount", "Desconto do item", "0.00"], ["freight", "Frete do item", "0.00"], ["other", "Outras despesas", "0.00"],
+      ["taxable_quantity", "Quantidade tributável (se unidade diferente)", ""], ["taxable_unit_price", "Preço por unidade tributável", ""],
+    ]) { fields[name] = input(row, name, label, value); if (name.startsWith("taxable_")) fields[name].required = false; }
+    const remove = document.createElement("button"); remove.type = "button"; remove.textContent = "Remover item";
+    const entry = {element:row, product, fields}; rows.push(entry);
+    remove.addEventListener("click", () => { row.remove(); rows = rows.filter(r => r !== entry); });
+    row.append(remove); items.append(row);
+  };
+  addItem.addEventListener("click", appendItem);
+  addPayment.addEventListener("click", () => {
+    const row = document.createElement("fieldset");
+    const method = select(row, "method", "Meio de pagamento", [["pix", "Pix"], ["cash", "Dinheiro"], ["boleto", "Boleto"], ["credit_card", "Cartão de crédito"], ["debit_card", "Cartão de débito"], ["voucher", "Vale alimentação"]]);
+    /** @type {Record<string,HTMLInputElement>} */
+    const fields = {};
+    for (const [name, label] of [["amount", "Valor pago"], ["acquirer_cnpj", "CNPJ da adquirente (cartão integrado)"], ["brand", "Código da bandeira"], ["authorization", "Autorização do cartão"]]) {
+      fields[name] = input(row, name, label); fields[name].required = name === "amount";
+    }
+    const entry = {element:row, method, fields}; paymentRows.push(entry);
+    const remove = document.createElement("button"); remove.type = "button"; remove.textContent = "Remover pagamento";
+    remove.addEventListener("click", () => { row.remove(); paymentRows.splice(paymentRows.indexOf(entry), 1); });
+    row.append(remove); payments.append(row);
+  });
+  addPayment.click();
+  model.addEventListener("change", () => {
+    configuration = null; submit.disabled = true; addItem.disabled = true; syncRecipient();
+    result.textContent = "Carregue a configuração fiscal do documento selecionado.";
+  });
+  review.addEventListener("click", async () => {
+    if (!selectedFiscalUnit) { result.textContent = "Selecione uma unidade."; return; }
+    const unit = selectedFiscalUnit, kind = model.value;
+    review.disabled = true; submit.disabled = true; result.textContent = "Consultando configuração fiscal...";
+    try {
+      const data = await api("/v1/portal/operations/reviewNativeSale", {
+        method:"POST", headers:{"X-CSRF-Token":csrfToken()},
+        body:JSON.stringify({unit_id:unit, environment:"homologation", document_kind:kind}),
+      });
+      if (selectedFiscalUnit !== unit || model.value !== kind) return;
+      configuration = {digest:String(data.policy_sha256), unit, model:kind, products:data.products};
+      rows.forEach(r => r.element.remove()); rows = []; appendItem();
+      addItem.disabled = false; submit.disabled = false;
+      result.textContent = "Configuração carregada. Confira destinatário, itens e pagamentos antes de preparar.";
+    } catch (error) {
+      configuration = null; addItem.disabled = true;
+      result.textContent = (error instanceof Error ? error.message : "Configuração indisponível") + " Revise perfis, regras e provedor na unidade.";
+    } finally { review.disabled = false; }
+  });
+  form.addEventListener("submit", async event => {
+    event.preventDefault();
+    if (!configuration || configuration.unit !== selectedFiscalUnit || configuration.model !== model.value || !rows.length || !paymentRows.length) {
+      result.textContent = "Carregue a configuração da unidade e inclua itens e pagamentos."; return;
+    }
+    const payload = {
+      unit_id:configuration.unit, environment:"homologation", document_kind:model.value,
+      source_id:reference.value.trim(), issued_at:issued.value.trim(), policy_sha256:configuration.digest,
+      recipient:anonymous.checked ? null : {
+        ...Object.fromEntries(Object.entries(recipientInputs).filter(([k,v]) => k !== "state_registration" || v.value.trim()).map(([k,v]) => [k,v.value.trim()])),
+        ie_indicator:Number(ie.value), final_consumer:consumer.value === "true",
+      },
+      items:rows.map(row => ({product_id:row.product.value, ...Object.fromEntries(Object.entries(row.fields).filter(([k,v]) => !k.startsWith("taxable_") || v.value.trim()).map(([k,v]) => [k,v.value.trim()]))})),
+      payments:paymentRows.map(row => ({method:row.method.value, ...Object.fromEntries(Object.entries(row.fields).filter(([k,v]) => k === "amount" || v.value.trim()).map(([k,v]) => [k,v.value.trim()]))})),
+      change_amount:change.value.trim(),
+    };
+    const fingerprint = JSON.stringify(payload);
+    if (attempt && attempt.fingerprint !== fingerprint) { result.textContent = "Consulte a tentativa anterior antes de alterar esta venda."; return; }
+    attempt ||= {fingerprint,key:crypto.randomUUID()};
+    submit.disabled = true;
+    try {
+      const prepared = await api("/v1/portal/operations/prepareNativeSale", {
+        method:"POST", headers:{"X-CSRF-Token":csrfToken(),"Idempotency-Key":attempt.key}, body:fingerprint,
+      });
+      operationDocument.value = String(prepared.document_id);
+      result.textContent = "Documento preparado: " + String(prepared.document_id) + ". Use a operação Emitir para transmitir ou consulte o documento. Preparação não é autorização fiscal.";
+      attempt = null;
+    } catch (error) {
+      if (error instanceof Error && "status" in error && [400, 403, 422].includes(Number(error.status))) {
+        attempt = null;
+      }
+      result.textContent = (error instanceof Error ? error.message : "Preparação falhou") + " Preserve a referência da venda ao tentar novamente.";
+    } finally { submit.disabled = false; }
+  });
+}
+
+/** @param {HTMLElement} article */
 function appendNativeNfsePreparation(article) {
   if (!bootstrapState?.permissions.includes("configuration.write")
     || !bootstrapState.permissions.includes("document.issue")
@@ -266,7 +429,8 @@ function appendNativeNfsePreparation(article) {
     ["service_state_code", "UF da prestação", "text", "[A-Za-z]{2}"],
     ["service_municipality_ibge", "IBGE do local da prestação", "text", "[0-9]{7}"],
     ["national_taxation_code", "cTribNac oficial (6 dígitos)", "text", "[0-9]{6}"],
-    ["nbs_code", "NBS 2.0 (9 dígitos, obrigatório para Simpliss Santana)", "text", "[0-9]{9}"],
+    ["municipal_taxation_detail", "Desdobramento municipal — cTribMun (3 dígitos)", "text", "[0-9]{3}"],
+    ["nbs_code", "NBS 2.0 revisado (9 dígitos)", "text", "[0-9]{9}"],
     ["municipal_service_code", "Código municipal de serviço", "text", ""],
     ["description", "Descrição do serviço prestado", "text", ""],
     ["gross_amount", "Valor bruto (R$ 0.00)", "text", "[0-9]+\\.[0-9]{2}"],
@@ -288,7 +452,7 @@ function appendNativeNfsePreparation(article) {
     const label = document.createElement("label");
     label.textContent = labelText;
     const input = document.createElement("input");
-    input.type = type; input.name = name; input.required = name !== "nbs_code"; input.autocomplete = "off";
+    input.type = type; input.name = name; input.required = !["nbs_code", "municipal_taxation_detail"].includes(name); input.autocomplete = "off";
     input.id = "native-nfse-" + name.replaceAll("_", "-");
     if (type === "number") { input.min = "1"; input.max = "99999"; input.step = "1"; }
     if (type === "text" && pattern) input.pattern = pattern;
@@ -430,7 +594,7 @@ function appendNativeNfsePreparation(article) {
     const payload = {
       ...Object.fromEntries(Object.entries(inputs)
         .filter(([key, input]) => (identityMode.value === "br" || !domesticOnly.has(key))
-          && (key !== "nbs_code" || Boolean(input.value.trim())))
+          && (!["nbs_code", "municipal_taxation_detail"].includes(key) || Boolean(input.value.trim())))
         .map(([key, input]) => [key, input.value.trim()])),
       ...(identityMode.value === "br" ? {} : Object.fromEntries(
         Object.entries(foreignInputs).filter(([key]) =>
@@ -1710,6 +1874,9 @@ async function api(path, options = {}) {
       PORTAL_RUNTIME_NOT_READY: "Esta capacidade ainda não está disponível no runtime. Tente novamente após a configuração governada.",
       BROWSER_AUTHORITY_REJECTED: "Organização e permissões são definidas pela sessão. Remova campos de autoridade do pedido.",
       INVALID_PREPARED_DOCUMENT: "Referência inválida ou documento ainda não preparado neste escopo. Confira e corrija o campo.",
+      NATIVE_SALE_INVALID_FACTS_OR_CONFIGURATION: "Confira destinatário, valores, pagamentos e configuração fiscal da venda. Nenhum documento foi preparado por esta tentativa.",
+      NATIVE_SALE_CONTENT_CONFLICT: "Esta referência ou tentativa já possui dados diferentes, ou a configuração mudou. Consulte o documento antes de continuar.",
+      NATIVE_SALE_UNIT_FORBIDDEN: "Você não tem permissão para preparar vendas nesta unidade.",
       MISSING_IDEMPOTENCY_KEY: "O pedido precisa de um identificador de tentativa para ser processado com segurança.",
       INVALID_EXTREMA_PREPARATION: "Dados fiscais de Extrema inconsistentes. Verifique o cadastro, valores, competência e classificação RTC.",
       EXTREMA_FISCAL_REVIEW_REQUIRED: "Preparação reservada ao responsável autorizado pela revisão fiscal. Solicite aprovação administrativa.",
@@ -3282,6 +3449,7 @@ async function renderSurface(viewId) {
     if (viewId === "users") appendUserAdministration(article, rows);
     if (viewId === "errors" || viewId === "reconciliation") appendCognitiveAdvisor(article, viewId);
     if (["inutilizations", "documents", "issuances", "reconciliation"].includes(viewId)) await appendFiscalRecovery(article);
+    if (viewId === "issuances") appendNativeSalePreparation(article);
     if (viewId === "issuances") appendNativeNfsePreparation(article);
     if (viewId === "issuances") appendNationalNfseCancellation(article);
     if (viewId === "issuances") appendNationalNfseCancellationRecovery(article);

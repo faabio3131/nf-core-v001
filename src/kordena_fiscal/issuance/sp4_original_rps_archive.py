@@ -30,6 +30,7 @@ _MAXIMUM = {
     "3505708": 9_999_999,             # Barueri PMB004: 7-digit RPS
     "3534401": 999_999_999_999_999,   # Osasco WCF: existing 15-digit sequence
     "3525904": 999_999_999_999_999,   # Jundiai GissOnline: numeric RPS/lot
+    "3518800": 999_999_999_999_999,   # Guarulhos GissOnline V2 shared RPS schema
 }
 
 

@@ -82,7 +82,7 @@ def _gateway(monkeypatch: pytest.MonkeyPatch, *, response: bytes, key: str | Non
         return_value=b'{"dpsXmlGZipB64":"synthetic"}',
     ))
     receipt = Mock(return_value=b"<NFSe>SYNTHETIC-CRYPTO-VERIFIED-BOUNDARY</NFSe>")
-    monkeypatch.setattr(santana, "_validate_official_nfse", receipt)
+    monkeypatch.setattr(santana, "validate_nfse_receipt_integrity", receipt)
     resolver = Mock()
     resolver.resolve_provider_id.return_value = santana.SANTANA_PROVIDER_ID
     sender = Mock(return_value=response)

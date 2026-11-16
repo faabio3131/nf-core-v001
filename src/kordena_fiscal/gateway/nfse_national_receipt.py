@@ -2,7 +2,8 @@
 
 Provider transports may vary, but an AUTHORIZED national receipt must satisfy
 the same bounded payload, exact key/Id, unique reference and XMLDSig policy.
-This verifies signed bytes, not ICP-Brasil path/revocation or official XSD.
+National authorization also requires pinned XSD and canonical DPS correlation.
+This verifies signed bytes, not ICP-Brasil path/revocation.
 Those remain separate mandatory certification gates.
 """
 from __future__ import annotations
@@ -12,6 +13,7 @@ import gzip
 import io
 import json
 import zlib
+from dataclasses import dataclass
 from datetime import UTC, datetime
 
 from cryptography import x509
@@ -20,7 +22,15 @@ from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import padding, rsa
 from lxml import etree
 
-from kordena_fiscal.domain import FiscalValidationError
+from kordena_fiscal.domain import FiscalEnvironment, FiscalValidationError
+from kordena_fiscal.issuance.nfe_nfse import NfseAuthorizationRequest
+from kordena_fiscal.issuance.nfse_dps_identity import national_dps_id
+from kordena_fiscal.xml.nfse_national_profiles import (
+    NT009_RESTRICTED_PROFILE,
+    national_restricted_validator,
+    select_national_dps_profile,
+)
+from kordena_fiscal.xml.schema import XmlSchemaValidationError
 
 _MAX_RESPONSE = 4_194_304
 _NS = "http://www.sped.fazenda.gov.br/nfse"
@@ -50,27 +60,24 @@ def _verify_nfse_receipt_signature(
         node for node in root.findall(f".//{{{_DS}}}Signature")
         if node not in signatures
     ]
-    valid_nested = (
+    dps = info.find(f"{{{_NS}}}DPS") if root.tag == f"{{{_NS}}}NFSe" else None
+    nested_dps = dps.find(f"{{{_DS}}}Signature") if dps is not None else None
+    valid_nested = not nested or (
+        len(nested) == 1 and nested[0] is nested_dps
+    ) or (
         allow_nested_event_signature
-        and root.tag == "{http://www.sped.fazenda.gov.br/nfse}evento"
-        and len(nested) <= 1
-        and all(
-            node.getparent() is not None
-            and (parent := node.getparent()) is not None
-            and parent.tag == "{http://www.sped.fazenda.gov.br/nfse}pedRegEvento"
-            for node in nested
-        )
+        and root.tag == f"{{{_NS}}}evento"
+        and len(nested) == 1
+        and nested[0].getparent() is info.find(f"{{{_NS}}}pedRegEvento")
     )
     if (
         len(signatures) != 1
         or len(root) != 2
         or root[0] is not info
         or root[1] is not signatures[0]
-        or (
-            bool(nested)
-            if not allow_nested_event_signature else not valid_nested
-        )
+        or not valid_nested
         or sum(child.get("Id") == identifier for child in root.iter()) != 1
+        or len(ids := [node.get("Id") for node in root.iter() if node.get("Id")]) != len(set(ids))
     ):
         raise NfseReceiptVerificationError("Invalid national NFS-e receipt signature placement")
     signature = signatures[0]
@@ -137,8 +144,14 @@ def _verify_nfse_receipt_signature(
     ):
         raise NfseReceiptVerificationError("Invalid national NFS-e XMLDSig integrity") from None
 
+    if nested_dps is not None and dps is not None:
+        dps_info = dps.find(f"{{{_NS}}}infDPS")
+        if dps_info is None or not dps_info.get("Id"):
+            raise NfseReceiptVerificationError("Missing nested DPS identity")
+        _verify_nfse_receipt_signature(dps, dps_info, dps_info.get("Id", ""))
 
-def validate_official_nfse_receipt(raw: bytes, key: str) -> bytes:
+
+def validate_nfse_receipt_integrity(raw: bytes, key: str) -> bytes:
     """A bare key or unrelated XML can never produce AUTHORIZED."""
     if (
         not isinstance(key, str) or not key.isascii()
@@ -159,12 +172,7 @@ def validate_official_nfse_receipt(raw: bytes, key: str) -> bytes:
             xml = stream.read(_MAX_RESPONSE + 1)
         if len(xml) > _MAX_RESPONSE:
             raise ValueError
-        root: etree._Element = etree.fromstring(
-            xml, parser=etree.XMLParser(
-                resolve_entities=False, load_dtd=False,
-                no_network=True, huge_tree=False,
-            )
-        )
+
     except (
         EOFError,
         OSError,
@@ -178,6 +186,20 @@ def validate_official_nfse_receipt(raw: bytes, key: str) -> bytes:
         # corrupt deflate block. None of those may escape as an HTTP 500 or
         # be treated as an authorized fiscal document.
         raise NfseReceiptVerificationError("Invalid signed national NFS-e receipt") from None
+    validate_nfse_xml_integrity(xml, key)
+    return xml
+
+
+def validate_nfse_xml_integrity(xml: bytes, key: str) -> etree._Element:
+    """Shared crypto boundary; municipal adapters apply their own XSD policy."""
+    if not isinstance(xml, bytes) or not 0 < len(xml) <= _MAX_RESPONSE:
+        raise NfseReceiptVerificationError("Invalid official NFS-e XML length")
+    try:
+        root = etree.fromstring(xml, etree.XMLParser(
+            resolve_entities=False, load_dtd=False, no_network=True, huge_tree=False,
+        ))
+    except etree.XMLSyntaxError:
+        raise NfseReceiptVerificationError("Invalid official NFS-e XML") from None
     if (
         root.tag != f"{{{_NS}}}NFSe"
         or root.get("versao") != "1.01"
@@ -191,6 +213,96 @@ def validate_official_nfse_receipt(raw: bytes, key: str) -> bytes:
     # Preserve the exact receipt bytes verified against this key for atomic
     # archival with the durable authorization lifecycle. This is not an
     # authorization inference from a bare access key.
+    return root
+
+
+@dataclass(frozen=True, slots=True)
+class NationalReceiptIdentity:
+    """Identity supplied by canonical request or already validated outgoing DPS."""
+
+    municipality: str
+    cnpj: str
+    series: int
+    number: int
+    environment: str
+
+    @property
+    def dps_id(self) -> str:
+        return national_dps_id(self.municipality, self.cnpj, self.series, self.number)
+
+    @classmethod
+    def from_request(cls, request: NfseAuthorizationRequest) -> NationalReceiptIdentity:
+        doc = request.document
+        city = doc.issuer.address.jurisdiction.municipality_ibge_code
+        if city is None or doc.dps_number is None:
+            raise NfseReceiptVerificationError("Receipt requires durably reserved DPS")
+        return cls(city, doc.issuer.cnpj.value, doc.dps_series, doc.dps_number,
+                   "2" if doc.scope.environment is FiscalEnvironment.HOMOLOGATION else "1")
+
+    @classmethod
+    def from_dps_info(cls, info: etree._Element) -> NationalReceiptIdentity:
+        try:
+            result = cls(
+                info.findtext(f"{{{_NS}}}cLocEmi", ""),
+                info.findtext(f"{{{_NS}}}prest/{{{_NS}}}CNPJ", ""),
+                int(info.findtext(f"{{{_NS}}}serie", "")),
+                int(info.findtext(f"{{{_NS}}}nDPS", "")),
+                info.findtext(f"{{{_NS}}}tpAmb", ""),
+            )
+            if result.environment not in ("1", "2") or info.get("Id") != result.dps_id:
+                raise ValueError
+            return result
+        except (ValueError, FiscalValidationError):
+            raise NfseReceiptVerificationError("Invalid canonical DPS receipt identity") from None
+
+
+def current_national_receipt_profile() -> str:
+    return select_national_dps_profile(
+        environment=FiscalEnvironment.HOMOLOGATION, schema_version="1.01",
+        effective_on=datetime.now(UTC).date(),
+    )
+
+
+def validate_national_nfse_xml(
+    xml: bytes, key: str, *, expected: NationalReceiptIdentity, schema_profile: str,
+) -> bytes:
+    """Validate archived or transported NFSe under an explicitly selected contract."""
+    root = validate_nfse_xml_integrity(xml, key)
+    if schema_profile != NT009_RESTRICTED_PROFILE:
+        raise NfseReceiptVerificationError("National NFSe receipt schema profile unsupported")
+    try:
+        national_restricted_validator("NFSe_v1.01.xsd").validate_document(xml)
+    except XmlSchemaValidationError:
+        raise NfseReceiptVerificationError("National NFSe receipt violates official XSD") from None
+    info = root.find(f"{{{_NS}}}infNFSe")
+    assert info is not None
+    dps_info = info.find(f"{{{_NS}}}DPS/{{{_NS}}}infDPS")
+    if (
+        dps_info is None
+        or NationalReceiptIdentity.from_dps_info(dps_info) != expected
+        or dps_info.get("Id") != expected.dps_id
+        or info.findtext(f"{{{_NS}}}emit/{{{_NS}}}CNPJ") != expected.cnpj
+        or info.findtext(f"{{{_NS}}}emit/{{{_NS}}}enderNac/{{{_NS}}}cMun") != expected.municipality
+        # TSIdNFSe: municipality(7), ambGer(1), inscription type(1), CNPJ(14).
+        # ambGer is the generating system, NOT the fiscal environment tpAmb.
+        or key[:7] != expected.municipality
+        or key[7:8] != info.findtext(f"{{{_NS}}}ambGer")
+        or key[8:9] != "2"
+        or key[9:23] != expected.cnpj
+    ):
+        raise NfseReceiptVerificationError("National NFSe receipt differs from canonical DPS")
     return xml
 
 
+def validate_official_nfse_receipt(
+    raw: bytes, key: str, *, expected: NationalReceiptIdentity | None = None,
+    schema_profile: str | None = None,
+) -> bytes:
+    """National POST and GET require schema, integrity and request correlation."""
+    xml = validate_nfse_receipt_integrity(raw, key)
+    if expected is None or schema_profile is None:
+        raise NfseReceiptVerificationError("National receipt requires explicit DPS and schema")
+    payload = json.loads(raw)
+    if "idDps" in payload and payload["idDps"] != expected.dps_id:
+        raise NfseReceiptVerificationError("National receipt envelope DPS mismatch")
+    return validate_national_nfse_xml(xml, key, expected=expected, schema_profile=schema_profile)

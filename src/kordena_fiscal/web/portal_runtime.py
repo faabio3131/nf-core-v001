@@ -862,6 +862,14 @@ class DurableHumanPortalExecutor:
                 payload=payload,
                 idempotency_key=idempotency_key,
             )
+        if operation_id in {"reviewNativeSale", "prepareNativeSale"}:
+            from .native_sale_preparation import native_sale_operation
+
+            return native_sale_operation(
+                factory=self._unit_of_work_factory, authority=authority,
+                payload=payload, idempotency_key=idempotency_key,
+                review_only=operation_id == "reviewNativeSale",
+            )
         if operation_id == "prepareNativeNfse":
             from .native_nfse_preparation import prepare_native_nfse
 

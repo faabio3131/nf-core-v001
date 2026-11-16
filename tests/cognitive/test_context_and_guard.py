@@ -11,7 +11,7 @@ from kordena_fiscal.cognitive import (
 from kordena_fiscal.cognitive.ports import ProviderSection
 from kordena_fiscal.domain import FiscalValidationError
 
-from .conftest import make_request, rejection_evidence
+from .conftest import make_request, make_scope, rejection_evidence
 
 CASES = {
     "model_authored_fact": (SectionKind.FACT, "A rejeição 204 ocorreu.", ("rej-1",)),
@@ -102,6 +102,25 @@ def test_context_hash_is_stable_and_nonce_independent() -> None:
     assert ContextPackBuilder().build(other).prompt.context_hash != first.context_hash
 
 
+def test_context_hash_separates_tenants_units_and_evidence_origin() -> None:
+    first = make_request()
+    baseline = ContextPackBuilder().build(first).prompt.context_hash
+    tenant_b = make_request(
+        scope=make_scope("tenant-b", "unit-a"),
+        evidence=rejection_evidence(tenant="tenant-b"),
+    )
+    unit_b = make_request(
+        scope=make_scope("tenant-a", "unit-b"),
+        evidence=rejection_evidence(unit="unit-b"),
+    )
+    other_origin = make_request(evidence=(
+        dataclasses.replace(first.evidence[0], origin="different-verified-source"),
+        *first.evidence[1:],
+    ))
+    for request in (tenant_b, unit_b, other_origin):
+        assert ContextPackBuilder().build(request).prompt.context_hash != baseline
+
+
 def test_request_validation() -> None:
     with pytest.raises(FiscalValidationError):
         make_request(question="x" * 1001)
@@ -112,9 +131,78 @@ def test_request_validation() -> None:
         make_request().request_id = "x"  # type: ignore[misc]
 
 
+def test_guard_question_cannot_authorize_invented_fiscal_code() -> None:
+    request = make_request(question="Por que houve a rejeição 999?")
+    response = ProviderSection(
+        SectionKind.HYPOTHESIS, "A rejeição 999 indica divergência.", ("rej-1",)
+    )
+    result = OutputGuard().validate((response,), request)
+    assert result.accepted == ()
+    assert "ungrounded_code" in result.findings[0]
+
+
+def test_guard_untrusted_provider_message_cannot_ground_code() -> None:
+    request = make_request(evidence=rejection_evidence(message="Rejeição 999"))
+    response = ProviderSection(
+        SectionKind.HYPOTHESIS, "A rejeição 999 é fiscal.", ("msg-1",)
+    )
+    result = OutputGuard().validate((response,), request)
+    assert result.accepted == ()
+    assert "ungrounded_code" in result.findings[0]
+
+
+def test_guard_rejects_numeric_claim_citing_unrelated_evidence() -> None:
+    request = make_request(evidence=rejection_evidence())
+    response = ProviderSection(
+        SectionKind.HYPOTHESIS, "A rejeição 204 está confirmada.", ("doc-1",)
+    )
+    result = OutputGuard().validate((response,), request)
+    assert result.accepted == ()
+    assert "ungrounded_code" in result.findings[0]
+
+
+def test_guard_numeric_code_requires_exact_evidence_token() -> None:
+    request = make_request(evidence=rejection_evidence(code="2040"))
+    response = ProviderSection(
+        SectionKind.HYPOTHESIS, "Pode ser a rejeição 204.", ("rej-1",)
+    )
+    result = OutputGuard().validate((response,), request)
+    assert result.accepted == ()
+    assert "ungrounded_code" in result.findings[0]
+
+
+def test_guard_monetary_amount_requires_exact_numeric_value() -> None:
+    original = rejection_evidence()
+    trusted = dataclasses.replace(
+        original[0], data={"code": "204", "amount": "R$ 120,00"}
+    )
+    request = make_request(evidence=(trusted,) + original[1:])
+    response = ProviderSection(
+        SectionKind.HYPOTHESIS, "Há uma diferença de R$ 12.", ("rej-1",)
+    )
+    result = OutputGuard().validate((response,), request)
+    assert result.accepted == ()
+    assert "ungrounded_amount" in result.findings[0]
+
+
 def test_guard_blocks_percentages_and_amounts_absent_from_evidence() -> None:
     for text in ("A alíquota é 18%.", "O valor correto seria R$ 1.234,56."):
         result = OutputGuard().validate(
             (ProviderSection(SectionKind.HYPOTHESIS, text, ("rej-1",)),), make_request()
         )
         assert result.accepted == () and "ungrounded_amount" in result.findings[0]
+
+
+@pytest.mark.parametrize("punctuation", [".", ",", ";", "!", ""])
+def test_guard_accepts_exact_amount_followed_by_sentence_punctuation(punctuation: str) -> None:
+    original = rejection_evidence()
+    trusted = dataclasses.replace(
+        original[0], data={"amount": "Valor R$ 120,00" + punctuation}
+    )
+    request = make_request(evidence=(trusted,) + original[1:])
+    section = ProviderSection(
+        SectionKind.HYPOTHESIS, "Verifique o valor de R$ 120,00.", ("rej-1",)
+    )
+    result = OutputGuard().validate((section,), request)
+    assert len(result.accepted) == 1
+    assert result.findings == ()

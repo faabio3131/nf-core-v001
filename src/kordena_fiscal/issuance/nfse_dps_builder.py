@@ -15,21 +15,36 @@ require an effective-dated reviewed treatment, never a provisional fallback.
 """
 from __future__ import annotations
 
-from datetime import UTC
+from datetime import UTC, datetime
 from decimal import ROUND_HALF_UP, Decimal
 
 from lxml import etree
 
-from kordena_fiscal.domain import Cnpj, Cpf, FiscalValidationError, TaxRegimeCode
-from kordena_fiscal.issuance.nfe_nfse import NfseAuthorizationRequest, NfseForeignAddress
+from kordena_fiscal.domain import (
+    Cnpj,
+    Cpf,
+    FiscalEnvironment,
+    FiscalValidationError,
+    TaxRegimeCode,
+)
+from kordena_fiscal.issuance.nfe_nfse import (
+    NfseAuthorizationRequest,
+    NfseCanonicalDocument,
+    NfseForeignAddress,
+)
+from kordena_fiscal.issuance.nfse_dps_identity import national_dps_id
 from kordena_fiscal.signing.nfse_xmldsig import sign_nfse_dps_xml
 from kordena_fiscal.vault import EphemeralCertificateMaterial
 from kordena_fiscal.xml.nfse_nacional_schema import national_dps_validator
+from kordena_fiscal.xml.nfse_national_profiles import (
+    NT009_RESTRICTED_PROFILE,
+    PRODUCTION_PROFILE,
+    select_national_dps_profile,
+)
 
 _NFSE_NS = "http://www.sped.fazenda.gov.br/nfse"
 _SCHEMA_VERSION = "1.01"
 _VER_APLIC = "nfcore-dps-v1"  # TSVerAplic: TSString, maxLength 20
-_FEDERAL_INSCRIPTION_TYPE_CNPJ = "1"
 _CENT = Decimal("0.01")
 
 # National DPS "opSimpNac" is a distinct official code table from our domain's
@@ -69,7 +84,8 @@ def _require_durable_dps_numbering(request: NfseAuthorizationRequest) -> tuple[s
     return str(document.dps_series), str(document.dps_number)
 
 def build_signed_dps(
-    request: NfseAuthorizationRequest, certificate: EphemeralCertificateMaterial
+    request: NfseAuthorizationRequest, certificate: EphemeralCertificateMaterial,
+    *, schema_profile: str = PRODUCTION_PROFILE,
 ) -> bytes:
     """Build, schema-validate and sign the national DPS for ``request``.
 
@@ -79,6 +95,8 @@ def build_signed_dps(
     """
     if not isinstance(request, NfseAuthorizationRequest):
         raise FiscalValidationError("build_signed_dps requires an NfseAuthorizationRequest")
+    is_nt009 = schema_profile == NT009_RESTRICTED_PROFILE
+    validator = national_dps_validator(_SCHEMA_VERSION, profile=schema_profile)
     document = request.document
     issuer = document.issuer
 
@@ -122,14 +140,7 @@ def build_signed_dps(
         )
 
     serie, n_dps = _require_durable_dps_numbering(request)
-    dps_id = (
-        "DPS"
-        + issuer_municipality
-        + _FEDERAL_INSCRIPTION_TYPE_CNPJ
-        + cnpj
-        + serie.zfill(5)
-        + n_dps.zfill(15)
-    )
+    dps_id = national_dps_id(issuer_municipality, cnpj, int(serie), int(n_dps))
 
     root = etree.Element(f"{{{_NFSE_NS}}}DPS", nsmap={None: _NFSE_NS})  # type: ignore[dict-item]
     root.set("versao", _SCHEMA_VERSION)
@@ -146,6 +157,8 @@ def build_signed_dps(
     _child(info, "nDPS", n_dps)
     _child(info, "dCompet", document.competence_date.strftime("%Y-%m-%d"))
     _child(info, "tpEmit", "1")  # Prestador -- this flow always submits on the issuer's own behalf
+    if is_nt009:
+        _child(info, "finNFSe", "0")  # Regular NFS-e; no credit/debit adjustment inferred.
     _child(info, "cLocEmi", issuer_municipality)
 
     if document.national_substitution is not None:
@@ -239,18 +252,25 @@ def build_signed_dps(
     _child(loc_prest, "cLocPrestacao", service_municipality)
     c_serv = etree.SubElement(serv, f"{{{_NFSE_NS}}}cServ")
     _child(c_serv, "cTribNac", service.national_taxation_code)
-    _child(c_serv, "xDescServ", service.description.strip())
+    if service.municipal_taxation_detail is not None:
+        _child(c_serv, "cTribMun", service.municipal_taxation_detail)
+    if not is_nt009:
+        _child(c_serv, "xDescServ", service.description.strip())
     if service.nbs_code is not None:
         # NBS 2.0 required by Santana's official XSD.
         # The user must provide the reviewed classification.
         _child(c_serv, "cNBS", service.nbs_code)
+    if is_nt009:
+        _child(c_serv, "xDescServ", service.description.strip())
 
     valores = etree.SubElement(info, f"{{{_NFSE_NS}}}valores")
     v_serv_prest = etree.SubElement(valores, f"{{{_NFSE_NS}}}vServPrest")
     _child(v_serv_prest, "vServ", _money(service.gross_amount.amount))
     if service.deduction_amount.amount > 0:
-        ded_red = etree.SubElement(valores, f"{{{_NFSE_NS}}}vDedRed")
-        _child(ded_red, "vDR", _money(service.deduction_amount.amount))
+        group = "vAjusteBC" if is_nt009 else "vDedRed"
+        amount_field = "vAjusteBCISSQN" if is_nt009 else "vDR"
+        ded_red = etree.SubElement(valores, f"{{{_NFSE_NS}}}{group}")
+        _child(ded_red, amount_field, _money(service.deduction_amount.amount))
     trib = etree.SubElement(valores, f"{{{_NFSE_NS}}}trib")
     trib_mun = etree.SubElement(trib, f"{{{_NFSE_NS}}}tribMun")
     iss_taxation = treatment.iss_taxation_code if treatment is not None else "1"
@@ -274,5 +294,30 @@ def build_signed_dps(
     _child(tot_trib, "indTotTrib", "0")  # Decreto 8.264/2014: no tax-total estimate declared
 
     unsigned_xml = etree.tostring(root, encoding="utf-8", xml_declaration=False)
-    national_dps_validator(_SCHEMA_VERSION).validate_document(unsigned_xml)
+    validator.validate_document(unsigned_xml)
     return sign_nfse_dps_xml(unsigned_xml, certificate)
+
+
+def validate_sefin_dps_input(document: NfseCanonicalDocument) -> str:
+    """Deterministic profile checks before reservation/dispatch; no A1 or I/O.
+
+    Dispatch uses the active endpoint release, not the backdated competence or
+    issue date. A prepared legacy document is checked again before transmission.
+    """
+    if document.scope.environment is not FiscalEnvironment.HOMOLOGATION:
+        raise FiscalValidationError("SEFIN transport is homologation-only")
+    profile = select_national_dps_profile(
+        environment=document.scope.environment, schema_version=_SCHEMA_VERSION,
+        effective_on=datetime.now(UTC).date(),
+    )
+    if profile == NT009_RESTRICTED_PROFILE and document.dps_series >= 90000:
+        raise FiscalValidationError("NT009 DPS series must be between 1 and 89999")
+    return profile
+
+
+def build_sefin_signed_dps(
+    request: NfseAuthorizationRequest, certificate: EphemeralCertificateMaterial,
+) -> bytes:
+    """SEFIN uses its own dated profile; municipal Simpliss retains its contract."""
+    profile = validate_sefin_dps_input(request.document)
+    return build_signed_dps(request, certificate, schema_profile=profile)
