@@ -154,6 +154,74 @@ def classify_sp_national_nfse_eligibility(
     )
 
 
+# Guarulhos migrated its non-Simples municipal emission to GissOnline V2 on
+# 2026-07-01. Federal CGSN 191/2026 moves Simples ME/EPP competences from
+# 2026-11-01 to Emissor Nacional, irrespective of the municipal provider.
+# This is a NEGATIVE REGIME/COMPETENCE CHECK, never a provider authority.
+# Official municipal vendor: https://guarulhos.giss.com.br/giss-ajuda/desenvolvedores.html
+GUARULHOS_IBGE = "3518800"
+GUARULHOS_GISS_V2_PROVIDER_ID = "guarulhos-giss-v2-homologation"
+GUARULHOS_GISS_V2_FROM = date(2026, 7, 1)
+
+
+def require_guarulhos_nfse_channel(
+    *,
+    issuer_jurisdiction: BrazilianJurisdiction,
+    tax_regime: TaxRegimeCode,
+    competence_date: date,
+    provider_id: str,
+) -> None:
+    """Guard the SAME canonical binding against Guarulhos 2026 issuer regime.
+
+    There is no automatic fallback: older municipal competences need an
+    independently certified historical contract, while current non-Simples
+    emissions still require reviewed GissOnline V2 ports and exact bindings.
+    This guard never opens a web service, issues an invoice or grants RBAC.
+    """
+    if (
+        not isinstance(issuer_jurisdiction, BrazilianJurisdiction)
+        or type(tax_regime) is not TaxRegimeCode
+        or type(competence_date) is not date
+        or not isinstance(provider_id, str)
+    ):
+        raise FiscalValidationError("Guarulhos fiscal channel requires reviewed facts")
+    if (
+        issuer_jurisdiction.state_code != "SP"
+        or issuer_jurisdiction.municipality_ibge_code != GUARULHOS_IBGE
+    ):
+        return
+    if (
+        tax_regime is TaxRegimeCode.MEI
+        and competence_date >= _MEI_NATIONAL_FROM
+    ) or (
+        tax_regime in (
+            TaxRegimeCode.SIMPLES_NACIONAL,
+            TaxRegimeCode.SIMPLES_NACIONAL_EXCESS_SUBLIMIT,
+        )
+        and competence_date >= SIMPLES_NACIONAL_EMISSOR_NACIONAL_MANDATORY_FROM
+    ):
+        required = "nfse-nacional-homologation"
+    elif (
+        competence_date >= GUARULHOS_GISS_V2_FROM
+        and (
+            tax_regime is TaxRegimeCode.NORMAL
+            or tax_regime in (
+                TaxRegimeCode.SIMPLES_NACIONAL,
+                TaxRegimeCode.SIMPLES_NACIONAL_EXCESS_SUBLIMIT,
+            )
+        )
+    ):
+        required = GUARULHOS_GISS_V2_PROVIDER_ID
+    else:
+        raise FiscalValidationError(
+            "Guarulhos pre-V2/MEI legacy channel has no certified provider contract"
+        )
+    if provider_id != required:
+        raise FiscalValidationError(
+            "Guarulhos NFS-e provider conflicts with tax regime and competence"
+        )
+
+
 # Candidate migration/UX catalog: NOT approved municipal provider bindings.
 # Source: executive research candidates; current municipal contracts require
 # independent official verification before creating any durable provider binding.
@@ -162,7 +230,7 @@ SP_MUNICIPAL_CANDIDATES: dict[str, tuple[str, tuple[str, ...]]] = {
     "3550308": ("São Paulo", ("nota-paulistana", "nfse-nacional")),
     "3509502": ("Campinas", ("dsf", "nfse-nacional")),
     "3552205": ("Sorocaba", ("dsf", "nfse-nacional")),
-    "3518800": ("Guarulhos", ("ginfes", "nfse-nacional")),
+    "3518800": ("Guarulhos", ("gissonline-v2", "nfse-nacional")),
     "3548500": ("Santos", ("ginfes", "nfse-nacional")),
     "3548807": ("São Caetano do Sul", ("ginfes", "nfse-nacional")),
     "3525904": ("Jundiaí", ("gissonline", "nfse-nacional")),

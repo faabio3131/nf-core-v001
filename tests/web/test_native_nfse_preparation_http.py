@@ -166,7 +166,7 @@ def _database(
             state_registration=StateRegistration("SP", "123456789"),
             municipal_registration=(
                 MunicipalRegistration("123456") if issuer_ibge == "3534401"
-                else MunicipalRegistration("1234567") if issuer_ibge in ("3505708", "3525904")
+                else MunicipalRegistration("1234567") if issuer_ibge in ("3505708", "3525904", "3518800")
                 else None
             ),
             primary_cnae=CnaeCode("6201501"),
@@ -176,6 +176,7 @@ def _database(
                     "Osasco" if issuer_ibge == "3534401"
                     else "Barueri" if issuer_ibge == "3505708"
                     else "Jundiai" if issuer_ibge == "3525904"
+                    else "Guarulhos" if issuer_ibge == "3518800"
                     else "Salto" if issuer_ibge == "3545209"
                     else "Louveira" if issuer_ibge == "3527306" else "Cajamar"
                 ), jurisdiction=jurisdiction,
@@ -196,6 +197,7 @@ def _database(
                 "cajamar-geisweb-homologation", "osasco-rtc-homologation",
                 "barueri-pmb004-homologation",
                 "jundiai-giss-v2-homologation",
+                "guarulhos-giss-v2-homologation",
                 "santana-simpliss-v1-homologation",
             }:
                 uow.commercial.put_provider_binding(ProviderBinding(
@@ -3959,3 +3961,54 @@ def test_salto_national_101101_cancel_real_portal_signed_event_and_archive(
     )
     assert replay.status_code == 200, replay.text
     assert len(provider_posts) == 1, "A confirmed cancellation must never rePOST"
+
+
+@pytest.mark.parametrize(("regime", "competence", "provider", "accepted"), [
+    (TaxRegimeCode.NORMAL, "2026-11-15", "guarulhos-giss-v2-homologation", True),
+    (TaxRegimeCode.NORMAL, "2026-11-15", NACIONAL_HOMOLOGATION_PROVIDER_ID, False),
+    (TaxRegimeCode.SIMPLES_NACIONAL, "2026-11-15", NACIONAL_HOMOLOGATION_PROVIDER_ID, True),
+    (TaxRegimeCode.SIMPLES_NACIONAL, "2026-11-15", "guarulhos-giss-v2-homologation", False),
+    (TaxRegimeCode.SIMPLES_NACIONAL, "2026-10-31", "guarulhos-giss-v2-homologation", True),
+    (TaxRegimeCode.SIMPLES_NACIONAL, "2026-10-31", NACIONAL_HOMOLOGATION_PROVIDER_ID, False),
+])
+def test_guarulhos_real_portal_preparation_matches_competence_and_binding(
+    tmp_path: Path, regime: TaxRegimeCode, competence: str,
+    provider: str, accepted: bool,
+) -> None:
+    """Portal may reserve a reviewed municipal original, but never transmit by itself."""
+    db = _database(
+        tmp_path / f"guarulhos-{regime.value}-{competence}-{provider}.sqlite",
+        issuer_ibge="3518800", tax_regime=regime, provider_id=provider,
+    )
+    browser = _client(db)
+    payload = _payload() | {
+        "source_id": "guarulhos-" + provider,
+        "service_municipality_ibge": "3518800",
+        "competence_date": competence,
+    }
+    response = _post(browser, payload, "guarulhos-fiscal-reviewed")
+    if not accepted:
+        assert response.status_code == 400, response.text
+        assert response.json()["detail"]["code"] == "NATIVE_NFSE_INVALID_FISCAL_FACTS"
+        return
+    assert response.status_code == 200, response.text
+    original_id = response.json()["document_id"]
+    scope = ExecutionScope(
+        TENANT, UNIT, FiscalEnvironment.HOMOLOGATION,
+        "guarulhos-read", "fm-nfcore",
+    )
+    prepared = FiscalApplicationService(db).load_prepared_nfse_authorization(
+        scope, original_id,
+    )
+    if provider == NACIONAL_HOMOLOGATION_PROVIDER_ID:
+        assert prepared.document.dps_number is not None
+        assert prepared.document.dps_series is not None
+    else:
+        assert prepared.document.dps_number is None
+        with db() as uow:
+            original = uow.archive.list_for_document(scope, original_id)
+            assert any(
+                item.media_type == "application/vnd.nfcore.sp4-original-rps.v1+json"
+                for item in original
+            )
+    assert response.json()["transmitted"] is False
