@@ -149,3 +149,10 @@ Revisor independente `review_legacy_equivalence` examinou #461/#450/#446/#449 e 
 | #434/#437 — Extrema | Funções de substituição/cancelamento preservadas: somente nota substituta 124, nunca original | Testes durable_flow e Web/API atuais passam. PRs permanecem abertas até conclusão documental da equivalência completa. |
 
 GET Nacional ainda aceita fixtures assinadas sem conteúdo fiscal completo: ausência de XSD/trust e correlação com DPS/CNPJ é pendência real de FIS-03, não justificativa para importar o gateway legado. Revisão do patch SP e fontes estão em `NFCORE_SP_RESPONSE_CORRELATION_REVIEW_20261116.md`.
+
+
+## Continuidade — integração documental e mecanismo MF-04, 16/11/2026
+
+#518 MERGED na candidata em0ebb510a, árvore5c92bfc1 igual à prévia; seis fontes do manifesto preservadas. PRs413/448/453 CLOSED com evidências nas descrições; branches mantidas. CI43943547457 SUCCESS. #519 MERGED em81914807 após governança/T2/revisão independente; árvore67a1a070 coincide com merge previsto e recupera dois documentos da main549ab3c. Main agora ancestral da candidata, sem promover main ou production.
+
+Mecanismo tributário nacional implementado em branch `feat/nfcore-national-tax-treatment-20261116` sobre81914807; ainda em validação para PR. Plano/impacto/aceite/revisões: `NFCORE_MF04_GOVERNED_TREATMENT_PLAN_20261116.md`. Instalação e limites: `../operations/NFCORE_NATIONAL_TAX_DECISIONS.md`. Não interpretar isso como fechamento de BH ou tributação universal. Demais lacunas fiscais/operacionais permanecem abertas. Em16/11 o Desktop Commander confirmou0% de cota remota restante; via PC/SSH continua indisponível. Fluxos GitHub de auditoria/promoção são alternativa a verificar, sem contornar aprovações humanas efetivas.

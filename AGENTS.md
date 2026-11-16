@@ -1,3 +1,11 @@
+## CURRENT — reconciliação + tratamento tributário nacional, 16/11/2026
+
+#518 integrada em0ebb510a; seis fontes históricas verificadas por SHA-256; #413/#448/#453 encerradas com prova, branches preservadas. CI43943547457 SUCCESS. #519 integrada em81914807, árvore67a1a070; main549ab3c agora ancestral da candidata. Main/production não promovidas.
+
+Incremento MF-04 na branch `feat/nfcore-national-tax-treatment-20261116`: política de servidor pinada/escopada ligada ao objeto tributário nacional existente, proveniência no fingerprint/arquivo, replay com snapshot, instalação/override. Revisão independente91+6 testes PASS; integrador139 focais PASS; Ruff/Mypy422 PASS; suíte integral local em execução e CI remota ainda necessária. Plano: `docs/audit/NFCORE_MF04_GOVERNED_TREATMENT_PLAN_20261116.md`. Não conclui BH integral, catálogo de incidência/classificação, Guarulhos, confiança ICP/revogação/histórico ou operação. Binding do provider vigente ainda necessário em replay. Proprietário reafirmou conclusão interna seguida de deploy; nenhuma publicação realizada neste incremento.
+
+---
+
 ## CURRENT — MF-09 integrado na candidata, 16/11/2026
 
 - Candidata #468: `cac2a1e38058ca4b6a811d337eea270561cd8223`, após merge da #517. Branch `integration/nfcore-a1-sp2-current-main-20261113`. Árvore `fc9fb39603464db854178136a1b4b6b4d74fc880` idêntica à origem `1bd7449c7204f0ca3992f048c06f679cef0758d5`.
