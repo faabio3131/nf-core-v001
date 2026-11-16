@@ -7,10 +7,12 @@ exact municipality, tenant binding, official XSD and WSDL are reviewed.
 from __future__ import annotations
 
 from datetime import date
+from decimal import Decimal
 from unittest.mock import Mock
 
 import pytest
 
+from kordena_fiscal.application.service import FiscalApplicationService
 from kordena_fiscal.domain import (
     Cnpj,
     ExecutionScope,
@@ -18,6 +20,7 @@ from kordena_fiscal.domain import (
     FiscalValidationError,
     TaxRegimeCode,
 )
+from kordena_fiscal.gateway.jundiai_giss_rps_query_builder import build_jundiai_rps_query
 from kordena_fiscal.gateway.jundiai_giss_homologation import (
     JundiaiGissHomologationTransport,
     JundiaiGissWsdlContract,
@@ -27,7 +30,6 @@ from kordena_fiscal.gateway.municipal_sp_routing import (
     GUARULHOS_GISS_V2_PROVIDER_ID,
     GUARULHOS_IBGE,
 )
-from kordena_fiscal.gateway.jundiai_giss_rps_query_builder import build_jundiai_rps_query
 from kordena_fiscal.gateway.sp4_municipal_canonical import Sp4OriginalRps
 from kordena_fiscal.runtime.guarulhos_giss_operational_composition import (
     GuarulhosGissTrustedRuntimePorts,
@@ -35,8 +37,6 @@ from kordena_fiscal.runtime.guarulhos_giss_operational_composition import (
 from kordena_fiscal.runtime.jundiai_operational_composition import (
     JundiaiTrustedRuntimePorts,
 )
-from kordena_fiscal.application.service import FiscalApplicationService
-from decimal import Decimal
 
 
 def _operation() -> JundiaiSignedOperation:

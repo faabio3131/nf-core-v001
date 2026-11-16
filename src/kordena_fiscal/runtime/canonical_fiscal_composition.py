@@ -94,8 +94,8 @@ from .barueri_cancel_handlers import build_barueri_event_handlers
 from .barueri_operational_composition import BarueriTrustedRuntimePorts
 from .cajamar_operational_composition import CajamarTrustedRuntimePorts
 from .fiscal_runtime import FiscalOperationHandler, PreflightFiscalOperationHandler
-from .jundiai_cancel_handlers import build_jundiai_event_handlers
 from .guarulhos_giss_operational_composition import GuarulhosGissTrustedRuntimePorts
+from .jundiai_cancel_handlers import build_jundiai_event_handlers
 from .jundiai_operational_composition import JundiaiTrustedRuntimePorts
 from .osasco_cancel_handlers import (
     build_osasco_cancel_handler,

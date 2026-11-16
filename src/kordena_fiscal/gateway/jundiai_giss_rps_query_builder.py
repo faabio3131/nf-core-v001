@@ -31,7 +31,10 @@ def build_jundiai_rps_query(
 
     This request retrieves a note without a second POST of the RPS batch.
     """
-    if not isinstance(original, Sp4OriginalRps) or original.issuer_ibge not in {"3525904", "3518800"}:
+    if (
+        not isinstance(original, Sp4OriginalRps)
+        or original.issuer_ibge not in {"3525904", "3518800"}
+    ):
         raise Sp4CanonicalMunicipalError("Original Jundiai RPS not supplied")
     if not isinstance(tax_regime, TaxRegimeCode):
         raise Sp4CanonicalMunicipalError("Jundiai fiscal regime missing")

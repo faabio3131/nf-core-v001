@@ -166,7 +166,8 @@ def _database(
             state_registration=StateRegistration("SP", "123456789"),
             municipal_registration=(
                 MunicipalRegistration("123456") if issuer_ibge == "3534401"
-                else MunicipalRegistration("1234567") if issuer_ibge in ("3505708", "3525904", "3518800")
+                else MunicipalRegistration("1234567")
+                if issuer_ibge in ("3505708", "3525904", "3518800")
                 else None
             ),
             primary_cnae=CnaeCode("6201501"),
