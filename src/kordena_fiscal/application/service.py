@@ -89,7 +89,12 @@ from kordena_fiscal.gateway.nfse_nacional_event_homologation import (
 from kordena_fiscal.gateway.nfse_nacional_homologation import (
     NACIONAL_HOMOLOGATION_PROVIDER_ID,
 )
-from kordena_fiscal.gateway.nfse_national_query import _verify_nfse_receipt_signature
+from kordena_fiscal.gateway.nfse_national_receipt import (
+    NationalReceiptIdentity,
+    _verify_nfse_receipt_signature,
+    current_national_receipt_profile,
+    validate_national_nfse_xml,
+)
 from kordena_fiscal.gateway.osasco_rtc_cancellation_builder import (
     OsascoCancellationDecision,
 )
@@ -3568,7 +3573,10 @@ class FiscalApplicationService:
                 or info.get("Id") != "NFS" + key
             ):
                 raise ValueError("Louveira original invoice identity is invalid")
-            _verify_nfse_receipt_signature(root, info, "NFS" + key)
+            validate_national_nfse_xml(
+                signed[0].content, key, expected=NationalReceiptIdentity.from_request(original),
+                schema_profile=current_national_receipt_profile(),
+            )
             official_issued_at = info.findtext(ns + "dhProc")
             if not official_issued_at:
                 raise ValueError("Louveira signed official emission timestamp missing")
@@ -3683,7 +3691,10 @@ class FiscalApplicationService:
                 or getattr(root.getroottree().docinfo, "doctype", None)
             ):
                 raise PersistenceStateError("National original signed XML identity mismatch")
-            _verify_nfse_receipt_signature(root, info, "NFS" + key)
+            validate_national_nfse_xml(
+                entries[0].content, key, expected=NationalReceiptIdentity.from_request(request),
+                schema_profile=current_national_receipt_profile(),
+            )
             self._enforce_louveira_signed_original_window_in_uow(
                 uow=uow, scope=scope, original_id=document_id,
                 requested_at=datetime.now(UTC),

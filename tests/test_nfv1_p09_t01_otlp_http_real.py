@@ -13,6 +13,7 @@ from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExport
 from opentelemetry.proto.collector.trace.v1.trace_service_pb2 import ExportTraceServiceRequest
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import SimpleSpanProcessor
+from opentelemetry.sdk.trace.sampling import ALWAYS_ON
 
 from kordena_fiscal.runtime.observability import SafeTracer, TraceContext
 from kordena_fiscal.runtime.otel_trace_sink import OtelTraceSink
@@ -36,7 +37,7 @@ def test_real_otlp_http_exports_bounded_span_to_local_receiver() -> None:
     server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
     thread = Thread(target=server.serve_forever, daemon=True)
     thread.start()
-    provider = TracerProvider()
+    provider = TracerProvider(sampler=ALWAYS_ON)
     try:
         exporter = OTLPSpanExporter(endpoint=f"http://127.0.0.1:{server.server_port}/v1/traces")
         provider.add_span_processor(SimpleSpanProcessor(exporter))

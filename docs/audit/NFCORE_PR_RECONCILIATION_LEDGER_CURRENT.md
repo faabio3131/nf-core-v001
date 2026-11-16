@@ -2,6 +2,24 @@
 
 O proprietário autorizou nesta conversa reconciliar o trabalho existente, concluir pendências das PRs e atualizar a aplicação web. Essa autorização cobre a integração e o deploy após validação. Emissão oficial e operações destrutivas de dados exigem decisão específica. A auditoria recebida é diagnóstico de entrada, com decisões técnicas a validar.
 
+## CURRENT — pós-#514, 16/11/2026
+
+Este checkpoint substitui os estados históricos abaixo; pendências não marcadas como resolvidas permanecem abertas.
+
+- #514 MERGED somente na #468: `2eb7858dfa669b27b2804d846c876ec19b025672`. Árvores de origem bfd5d0d4 e integração2eb7858d iguais: `699739fd9df8c732e3627be9902b2a33654b75b7`. [CI43912553533](https://github.com/faabio3131/nf-core-v001/actions/runs/43912553533) SUCCESS,5111 Python PASS/3 SKIP,71 Playwright PASS. [T2 efetivo43915564090](https://github.com/faabio3131/nf-core-v001/actions/runs/43915564090) SUCCESS fora de Draft, log Bloco completo. [CI cumulativa43915895064](https://github.com/faabio3131/nf-core-v001/actions/runs/43915895064) em execução neste registro.
+- #515 correlação SP retargetada para #468, HEAD9cfe2e07, Draft, [CI43913718612](https://github.com/faabio3131/nf-core-v001/actions/runs/43913718612) em execução. Correlação preserva campos opcionais das rejeições. Revisão independente e136 testes focais PASS; integral local sem falhas, com PG pulado.
+- #437 CLOSED WITHOUT MERGE, origem619a051cef2346c835ada4ed5accbf7f8881e7bf, incorporada em #468@ab93ef0d. Quatro arquivos idênticos: gateway/webiss_extrema_canonical.py, tests/e2e/extrema_webiss_ui.spec.js, tests/web/test_extrema_nfse_events_http.py, tests/web/test_extrema_nfse_preparation_http.py. As três funções Portal appendExtremaNfsePreparation/Cancellation/Substitution são idênticas; teste durable_flow só tornou exceção de conflito específica. Prova completa no corpo da PR, branch preservada. #434 ainda aberta; não inferir fechamento dela.
+- #508 origem0f98472ff32731636ef153d9eddaf4fb937b2759:18 caminhos comparados contra2eb7858d.14 idênticos. Deltas restantes: service.py e composition.py adicionam pre-dispatch NT009; native preparation adiciona cTribMun/preflight; testes HTTP passam a NT009 e incluem BH, mantendo jornadas Louveira/Guarulhos. Fechamento administrativo pendente da CI cumulativa; não declara Guarulhos completo.
+- [Auditoria43758223307 tentativa2](https://github.com/faabio3131/nf-core-v001/actions/runs/43758223307) EXECUTOU às16:57UTC em16/11: SSH autenticado/SHA instalado ea4bdd3bcb9b/API/Portal/containers/backup recente/schema20-21 PASS. Falha específica de prontidão Bling: flag API, montagens de segredos/política, artefatos de política e worker PENDING. OAuth, pedido real e A1/SEFAZ UNVERIFIED_EXTERNAL. DPSv22/cofre A1/offsite/restore isolado/staging/auto-pull não são comprovados por esse script. Não aguarda mais revisão humana. Nenhum deploy ou DDL executado por esta rodada.
+
+### Incremento FIS-03 em validação
+
+Base9cfe2e07; plano em `NFCORE_FIS03_RECEIPT_CONTRACT_PLAN_20261116.md`. Núcleo de integridade reaproveitado; nacional exige XSD NFSe NT009, contexto canônico e chave/emitente/DPS coerentes. Assinatura DPS aninhada opcional é verificada quando presente; assinatura em outra posição e IDs duplicados rejeitados. POST verifica identidade antes de TLS/rede; GET divergente não reenvia. Preflights de XML arquivado nacionais usam o mesmo contrato. Simpliss conserva schema municipal e importa diretamente o núcleo de integridade.
+
+Fixtures positivas passaram a NFSe completa contendo a DPS efetivamente enviada.148 testes focais PASS no delta após últimas correções (incluindo25 regressões de contrato e jornadas HTTP), Ruff PASS e Mypy418 fontes PASS no código final. Suíte integral final4677 PASS/521 SKIP (sem DSN PostgreSQL local),2 avisos de depreciação;36 testes antigos de recibo reexecutados com contexto explícito PASS. Revisão independente final:122 testes focais e24 HTTP PASS, sem bloqueador remanescente identificado; não é execução original EGM. CI remota do HEAD publicado ainda necessária. Confiança ICP/SEFIN/cadeia/revogação e perfil histórico persistido continuam pendências explícitas. Número/data/DV da chave não certificados neste incremento.
+
+Próxima ação: reavaliar delta final FIS-03, publicar para CI e integrar sequencialmente na candidata após gates; conferir #515/#468 e atualizar #498 preservando seus5 deltas. Nenhuma promoção main/production até conclusão real de engenharia e operação.
+
 ## Baseline preservado
 
 - main `549ab3c005d7183ff6c7940236414412ea004b9d`.

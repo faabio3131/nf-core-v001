@@ -1,8 +1,10 @@
-# CURRENT DE RECONCILIAÇÃO — 16/11/2026
+# CURRENT DE RECONCILIAÇÃO — 16/11/2026, pós-#514
 
-Este banner substitui somente snapshots históricos de CURRENT abaixo. Fonte de continuidade: `docs/audit/NFCORE_PR_RECONCILIATION_LEDGER_CURRENT.md`. Main confirmada `549ab3c005d7183ff6c7940236414412ea004b9d`; candidata #468 em `ab93ef0d3b03b8e0b41cda686f83fdff2fed808d`, CI #43892521240 SUCCESS após #513. #486 encerrada com prova de incorporação. #514 recupera #508, perfil oficial NT009 e cTribMun; incremento de eventos/imports em validação, sem certificação global.
+Este banner substitui snapshots históricos abaixo. Fonte de continuidade: `docs/audit/NFCORE_PR_RECONCILIATION_LEDGER_CURRENT.md`. Main `549ab3c005d7183ff6c7940236414412ea004b9d`; production `ea4bdd3bcb9b61e6522081a14e5cc9ad1ced9599`. #514 integrada somente à #468 em `2eb7858dfa669b27b2804d846c876ec19b025672`; árvore idêntica ao HEAD de origem bfd5d0d4, CI43912553533 SUCCESS (5111 Python PASS/3 SKIP,71 E2E PASS); T2 aplicado43915564090. CI cumulativa43915895064 ainda em execução neste checkpoint. #515 correlação SP em 9cfe2e07, CI43913718612 em execução. #430/#437 encerradas com prova de incorporação; #508 preservada até fechamento de conferência.
 
-O proprietário autorizou reconciliação, conclusão de pendências e atualização Web nesta conversa; preservar gates técnicos e revisão independente. Migration/DDL produtiva e emissão fiscal oficial continuam gates separados. Auditoria read-only Contabo #43758223307 attempt 2 aguarda revisão humana no environment protegido. Main/production e host ainda não alterados. Próximas tarefas: concluir CI/revisão da #514, integrar apenas o incremento na #468, continuar GET/XSD/ICP, MF-04/MF-09 e reconciliação funcional dos demais blocos.
+FIS-03 em incremento isolado sobre9cfe2e07: XSD NT009/correlação nacional POST/GET/arquivo e assinatura DPS aninhada. Plano/impacto/limites em `docs/audit/NFCORE_FIS03_RECEIPT_CONTRACT_PLAN_20261116.md`. Revisão independente detectou ordem tardia de validação e chave NFSe divergente; ambos corrigidos com testes negativos. CI final do incremento ainda necessária. Não certifica confiança ICP/revogação, consulta histórica, MF-04/MF-09 ou Guarulhos/BH integrais.
+
+Auditoria Contabo43758223307 attempt2 EXECUTOU em16/11: SHA/API/Portal/backup recente/schema20-21 PASS; gate Bling FAILURE por ativação/política/montagens/worker pendentes. Não está aguardando aprovação. DPSv22, cofre A1/offsite/restore isolado, staging e auto-pull continuam sem evidência. Autorização do proprietário para reconciliação e atualização Web permanece condicionada aos gates; DDL produtivo e emissão real separados. Não promover uma candidata incompleta.
 
 ---
 

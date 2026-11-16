@@ -4,6 +4,7 @@ from __future__ import annotations
 import base64
 import gzip
 import hashlib
+import importlib.util
 import json
 from dataclasses import asdict, replace
 from datetime import UTC, date, datetime, timedelta
@@ -123,6 +124,13 @@ from kordena_fiscal.web.human_auth import CSRF_COOKIE, CSRF_HEADER
 from kordena_fiscal.web.portal_runtime import DurableHumanPortalExecutor
 from kordena_fiscal.xml.nfse_nacional_schema import national_dps_validator
 from kordena_fiscal.xml.nfse_national_profiles import NT009_RESTRICTED_PROFILE
+
+_receipt_spec = importlib.util.spec_from_file_location(
+    "national_receipt_fixture", Path(__file__).parents[1] / "support/national_receipt_fixture.py",
+)
+assert _receipt_spec and _receipt_spec.loader
+_receipt_fixture = importlib.util.module_from_spec(_receipt_spec)
+_receipt_spec.loader.exec_module(_receipt_fixture)
 
 TENANT = "tenant-native"
 UNIT = "unit-cajamar"
@@ -1397,19 +1405,12 @@ def test_web_native_nfse_preparation_to_signed_gateway_and_authorized_xml(
     }
     application = FiscalApplicationService(db)
     captured: list[bytes] = []
-    key = "35" + "0" * 48
     a1 = _synthetic_a1_for_native_issuer()
-    private, cert, _chain = pkcs12.load_key_and_certificates(
-        a1.pkcs12_bytes, a1.password
-    )
-    assert isinstance(private, rsa.RSAPrivateKey) and cert is not None
-    ns = "http://www.sped.fazenda.gov.br/nfse"
-    receipt = etree.Element(f"{{{ns}}}NFSe", nsmap={None: ns}, versao="1.01")
-    info = etree.SubElement(receipt, f"{{{ns}}}infNFSe", Id="NFS" + key)
-    append_nfse_signature(receipt, info, private, cert, legacy_abrasf=False)
-    official_xml = etree.tostring(receipt, encoding="utf-8", xml_declaration=True)
+    key = issuer_ibge + "22" + "11222333000181" + "3" * 27
+    official_xml = b""
 
     def fake_sefin(payload: bytes, *_args: object) -> bytes:
+        nonlocal official_xml
         request = json.loads(payload)
         signed = gzip.decompress(base64.b64decode(request["dpsXmlGZipB64"]))
         national_dps_validator(
@@ -1428,8 +1429,9 @@ def test_web_native_nfse_preparation_to_signed_gateway_and_authorized_xml(
             "{http://www.sped.fazenda.gov.br/nfse}cLocEmi"
         ) == issuer_ibge
         captured.append(signed)
+        official_xml = _receipt_fixture.complete_receipt(signed, a1, key=key)
         return json.dumps({
-            "tipoAmbiente": 2, "chaveAcesso": key, "idDps": "synthetic-native-e2e",
+            "tipoAmbiente": 2, "chaveAcesso": key, "idDps": root[0].get("Id"),
             "nfseXmlGZipB64": base64.b64encode(
                 gzip.compress(official_xml, mtime=0)
             ).decode("ascii"),
@@ -2857,7 +2859,7 @@ def test_santana_simpliss_real_portal_uow_issue_archive_and_one_post(
     monkeypatch.setattr(simpliss, "encode_signed_dps", Mock(
         return_value=b'{"dpsXmlGZipB64":"synthetic"}',
     ))
-    monkeypatch.setattr(simpliss, "_validate_official_nfse", verifier)
+    monkeypatch.setattr(simpliss, "validate_nfse_receipt_integrity", verifier)
 
     def build(application: FiscalApplicationService):
         class ScopedBinding:
@@ -2971,7 +2973,7 @@ def test_santana_http_cancellation_or_substitution_durable_single_dispatch(
     monkeypatch.setattr(simpliss, "encode_signed_dps", Mock(
         return_value=b'{"dpsXmlGZipB64":"synthetic"}',
     ))
-    monkeypatch.setattr(simpliss, "_validate_official_nfse", fake_signed_invoice)
+    monkeypatch.setattr(simpliss, "validate_nfse_receipt_integrity", fake_signed_invoice)
     # The official XML cryptographic verifier is deliberately replaced ONLY in
     # this operation-level fixture; dedicated tests exercise actual RSA/XSD.
     monkeypatch.setattr(service_module, "_verify_nfse_receipt_signature", Mock())
@@ -3141,7 +3143,7 @@ def test_santana_unknown_event_post_requires_verified_read_only_recovery(
         return_value=b'{"dpsXmlGZipB64":"synthetic-fixture"}',
     ))
     monkeypatch.setattr(
-        simpliss, "_validate_official_nfse",
+        simpliss, "validate_nfse_receipt_integrity",
         lambda raw, key: (
             '<NFSe xmlns="http://www.sped.fazenda.gov.br/nfse" versao="1.01">'
             f'<infNFSe Id="NFS{key}"/></NFSe>'
@@ -3444,17 +3446,8 @@ def test_salto_sp_national_pending_query_recovers_without_reissuing(
     )
     app = FiscalApplicationService(db)
     a1 = _synthetic_a1_for_native_issuer()
-    private, certificate, _ = pkcs12.load_key_and_certificates(
-        a1.pkcs12_bytes, a1.password,
-    )
-    assert isinstance(private, rsa.RSAPrivateKey)
-    assert certificate is not None
-    key = "35" + "5" * 48
-    ns = "http://www.sped.fazenda.gov.br/nfse"
-    root = etree.Element(f"{{{ns}}}NFSe", nsmap={None: ns}, versao="1.01")
-    info = etree.SubElement(root, f"{{{ns}}}infNFSe", Id="NFS" + key)
-    append_nfse_signature(root, info, private, certificate, legacy_abrasf=False)
-    authorized_xml = etree.tostring(root, encoding="utf-8", xml_declaration=True)
+    key = issuer_ibge + "22" + "11222333000181" + "5" * 27
+    authorized_xml = b""
     get_calls: list[str] = []
 
     def fake_get(url: str, _tls: object, _timeout: float) -> bytes:
@@ -3477,6 +3470,10 @@ def test_salto_sp_national_pending_query_recovers_without_reissuing(
     submitted = Mock()
 
     def pending_authorization(request: NfseAuthorizationRequest) -> NfseAuthorizationResult:
+        nonlocal authorized_xml
+        authorized_xml = _receipt_fixture.complete_receipt(
+            build_sefin_signed_dps(request, a1), a1, key=key,
+        )
         submitted(request)
         return NfseAuthorizationResult(
             status=AuthorizationStatus.PENDING,
@@ -3616,25 +3613,19 @@ def test_salto_national_replacement_dps_is_atomic_and_replay_safe(
     )
     assert isinstance(signing_key, rsa.RSAPrivateKey) and signing_cert is not None
     ns = "{http://www.sped.fazenda.gov.br/nfse}"
-    original_key = "35" + "6" * 48
-    substitute_key = "35" + "7" * 48
+    original_key = issuer_ibge + "22" + "11222333000181" + "6" * 27
+    substitute_key = issuer_ibge + "22" + "11222333000181" + "7" * 27
     captured: list[bytes] = []
     original_id: str | None = None
 
-    def official_xml_for(key: str) -> bytes:
-        root = etree.Element(ns + "NFSe", nsmap={None: ns[1:-1]}, versao="1.01")
-        info = etree.SubElement(root, ns + "infNFSe", Id="NFS" + key)
+    def official_xml_for(key: str, dps: bytes) -> bytes:
         original_emitted = (
             datetime(2026, 1, 15, tzinfo=UTC)
             if expired and key == original_key else datetime.now(UTC)
         )
-        etree.SubElement(info, ns + "dhProc").text = original_emitted.isoformat(
-            timespec="seconds",
+        return _receipt_fixture.complete_receipt(
+            dps, a1, key=key, issued_at=original_emitted,
         )
-        append_nfse_signature(
-            root, info, signing_key, signing_cert, legacy_abrasf=False,
-        )
-        return etree.tostring(root, encoding="utf-8", xml_declaration=True)
 
     def fake_sefin(raw: bytes, *_unused: object) -> bytes:
         nonlocal original_id
@@ -3664,9 +3655,9 @@ def test_salto_national_replacement_dps_is_atomic_and_replay_safe(
         captured.append(signed)
         return json.dumps({
             "tipoAmbiente": 2, "chaveAcesso": key,
-            "idDps": "salto-synthetic-replacement",
+            "idDps": root[0].get("Id"),
             "nfseXmlGZipB64": base64.b64encode(
-                gzip.compress(official_xml_for(key), mtime=0),
+                gzip.compress(official_xml_for(key, signed), mtime=0),
             ).decode("ascii"),
         }).encode()
 
@@ -3811,21 +3802,18 @@ def test_salto_national_101101_cancel_real_portal_signed_event_and_archive(
     ns = "{http://www.sped.fazenda.gov.br/nfse}"
     # Synthetic key follows the official NT009 event Id structure.
     key = issuer_ibge + "2" + "2" + "11222333000181" + "3" * 27
-    original = etree.Element(ns + "NFSe", nsmap={None: ns[1:-1]}, versao="1.01")
-    original_info = etree.SubElement(original, ns + "infNFSe", Id="NFS" + key)
     official_issued_at = (
         datetime(2026, 1, 15, tzinfo=UTC) if expired else datetime.now(UTC)
     )
-    etree.SubElement(original_info, ns + "dhProc").text = official_issued_at.isoformat(
-        timespec="seconds",
-    )
-    append_nfse_signature(original, original_info, private, cert, legacy_abrasf=False)
-    official_xml = etree.tostring(original, encoding="utf-8", xml_declaration=True)
 
-    def fake_issuer(_payload: bytes, *_args: object) -> bytes:
+    def fake_issuer(payload: bytes, *_args: object) -> bytes:
+        dps = gzip.decompress(base64.b64decode(json.loads(payload)["dpsXmlGZipB64"]))
+        official_xml = _receipt_fixture.complete_receipt(
+            dps, a1, key=key, issued_at=official_issued_at,
+        )
         return json.dumps({
             "tipoAmbiente": 2, "chaveAcesso": key,
-            "idDps": "salto-original-synthetic",
+            "idDps": etree.fromstring(dps)[0].get("Id"),
             "nfseXmlGZipB64": base64.b64encode(
                 gzip.compress(official_xml, mtime=0),
             ).decode("ascii"),
