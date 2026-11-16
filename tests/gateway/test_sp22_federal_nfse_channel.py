@@ -12,16 +12,16 @@ from kordena_fiscal.domain import (
     FiscalValidationError,
     TaxRegimeCode,
 )
+from kordena_fiscal.gateway.municipal_sp_routing import (
+    SP_MUNICIPAL_CANDIDATES,
+    classify_sp_national_nfse_eligibility,
+)
 from kordena_fiscal.gateway.nfse_nacional_homologation import (
     NfseNacionalHomologationGateway,
     OfficialNfseTransportError,
     require_nfse_national_issuer_eligibility,
 )
 from kordena_fiscal.issuance.nfe_nfse import NfseAuthorizationRequest
-from kordena_fiscal.gateway.municipal_sp_routing import (
-    SP_MUNICIPAL_CANDIDATES,
-    classify_sp_national_nfse_eligibility,
-)
 
 
 @pytest.mark.parametrize("ibge", SP_MUNICIPAL_CANDIDATES)
