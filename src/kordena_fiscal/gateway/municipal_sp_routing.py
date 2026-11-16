@@ -193,16 +193,19 @@ def require_guarulhos_nfse_channel(
         or issuer_jurisdiction.municipality_ibge_code != GUARULHOS_IBGE
     ):
         return
-    if (
-        tax_regime is TaxRegimeCode.MEI
-        and competence_date >= _MEI_NATIONAL_FROM
-    ) or (
-        tax_regime in (
-            TaxRegimeCode.SIMPLES_NACIONAL,
-            TaxRegimeCode.SIMPLES_NACIONAL_EXCESS_SUBLIMIT,
+    # Reuse the federal classification instead of duplicating its MEI/Simples
+    # regime cutoffs as a second rule in the municipal adapter.
+    try:
+        classify_sp_national_nfse_eligibility(
+            issuer_jurisdiction=issuer_jurisdiction,
+            tax_regime=tax_regime,
+            competence_date=competence_date,
         )
-        and competence_date >= SIMPLES_NACIONAL_EMISSOR_NACIONAL_MANDATORY_FROM
-    ):
+    except FiscalValidationError:
+        national_mandatory = False
+    else:
+        national_mandatory = True
+    if national_mandatory:
         required = NACIONAL_HOMOLOGATION_PROVIDER_ID
     elif (
         competence_date >= GUARULHOS_GISS_V2_FROM
