@@ -1,4 +1,4 @@
-"""COG-02 release upgrade guard: exact schema 19, no DDL or migration."""
+"""COG-02 legacy bridge versus NFCore DPS v22 code-only release gate."""
 from __future__ import annotations
 
 import importlib.util
@@ -36,9 +36,14 @@ class Database:
         self.versions = versions
         self.cakto = cakto
         self.queries: list[str] = []
+        self.schema_checks: list[bool] = []
         self.closed = False
 
     def applied_migrations(self) -> tuple[int, ...]:
+        return self.versions
+
+    def require_current_schema(self, *, require_bling: bool = False) -> tuple[int, ...]:
+        self.schema_checks.append(require_bling)
         return self.versions
 
     @contextmanager
@@ -60,10 +65,11 @@ class Database:
 
 @pytest.fixture
 def setup(monkeypatch: pytest.MonkeyPatch):
-    monkeypatch.setattr(guard, "validate_policy", lambda: tuple(range(1, 20)))
+    monkeypatch.setattr(guard, "validate_policy", lambda: tuple(range(1, 23)))
     monkeypatch.setenv("NFCORE_ENVIRONMENT", "production")
     monkeypatch.setenv("DATABASE_URL", "postgresql://synthetic.invalid/release")
     monkeypatch.delenv("RAILWAY_SERVICE_ID", raising=False)
+    monkeypatch.delenv("NFCORE_BLING_INSTALLATIONS_ENABLED", raising=False)
 
     def set_database(versions: tuple[int, ...], cakto: tuple[int, ...] | None):
         database = Database(versions, cakto)
@@ -73,21 +79,29 @@ def setup(monkeypatch: pytest.MonkeyPatch):
     return set_database
 
 
-@pytest.mark.parametrize("version", [18, 19])
-def test_release_deploy_gate_accepts_19_rejects_18_without_write(
-    setup, capsys: pytest.CaptureFixture[str], version: int,
+@pytest.mark.parametrize(
+    ("fiscal", "allowed"),
+    [
+        (tuple(range(1, 19)), False),
+        (tuple(range(1, 20)), False),
+        ((*tuple(range(1, 20)), 22), True),
+        (tuple(range(1, 23)), True),
+    ],
+)
+def test_release_gate_requires_dps_22_after_cog02_19_without_write(
+    setup, capsys: pytest.CaptureFixture[str],
+    fiscal: tuple[int, ...], allowed: bool,
 ) -> None:
-    database = setup(tuple(range(1, version + 1)), (1, 2, 3))
-    if version == 19:
+    database = setup(fiscal, (1, 2, 3))
+    if allowed:
         guard.assert_current_production()
+        assert database.schema_checks == [False]
     else:
-        with pytest.raises(RuntimeError, match="pending/drifted fiscal migrations"):
+        with pytest.raises(RuntimeError, match="DPS v22 required"):
             guard.assert_current_production()
+        assert database.schema_checks == []
     output = capsys.readouterr().out
-    if version == 19:
-        assert "PASS READ_ONLY" in output
-    else:
-        assert "PASS READ_ONLY" not in output
+    assert ("PASS READ_ONLY" in output) is allowed
     assert database.closed
     assert all(sql.startswith("SELECT") for sql in database.queries)
 
@@ -97,9 +111,9 @@ def test_release_deploy_gate_accepts_19_rejects_18_without_write(
     [
         (tuple(range(1, 18)), (1, 2, 3)),
         (tuple(range(1, 21)), (1, 2, 3)),
-        (tuple(range(1, 20)), None),
-        (tuple(range(1, 20)), (1,)),
-        (tuple(range(1, 20)), (1, 2, 3, 4)),
+        ((*tuple(range(1, 20)), 22), None),
+        ((*tuple(range(1, 20)), 22), (1,)),
+        ((*tuple(range(1, 20)), 22), (1, 2, 3, 4)),
     ],
 )
 def test_release_deploy_gate_rejects_schema_drift(
