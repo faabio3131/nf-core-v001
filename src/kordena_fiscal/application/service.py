@@ -3207,10 +3207,12 @@ class FiscalApplicationService:
 
     def preflight_jundiai_nfse_cancellation(
         self, *, scope: ExecutionScope, document_id: str, reason_code: str,
+        municipality_ibge: str = "3525904",
     ) -> tuple[NfseAuthorizationRequest, Sp4OriginalRps, Sp4VerifiedInvoice]:
         """Read-only original RPS, authorization and archived Giss invoice proof."""
         if (
-            not isinstance(scope, ExecutionScope)
+            municipality_ibge not in {"3525904", "3518800"}
+            or not isinstance(scope, ExecutionScope)
             or scope.environment is not FiscalEnvironment.HOMOLOGATION
             or reason_code not in ("1", "2", "4")
         ):
@@ -3230,7 +3232,7 @@ class FiscalApplicationService:
                 or attempts[-1].document_id != document_id
                 or attempts[-1].request_fingerprint != request.request_fingerprint
                 or request.document.issuer.address.jurisdiction.municipality_ibge_code
-                != "3525904"
+                != municipality_ibge
             ):
                 raise PersistenceStateError(
                     "Jundiai cancellation needs the original authorized fiscal invoice"
@@ -3265,13 +3267,15 @@ class FiscalApplicationService:
             jurisdiction=request.document.issuer.address.jurisdiction,
             operation="cancel",
         )
-        if bound != "jundiai-giss-v2-homologation":
+        if bound != ("jundiai-giss-v2-homologation" if municipality_ibge == "3525904"
+                     else "guarulhos-giss-v2-homologation"):
             raise FiscalValidationError("Jundiai cancellation provider binding differs")
         return request, original, invoice
 
     def preflight_jundiai_nfse_substitution(
         self, *, scope: ExecutionScope, original_id: str,
         replacement_id: str, reason_code: str,
+        municipality_ibge: str = "3525904",
     ) -> tuple[NfseAuthorizationRequest, Sp4OriginalRps, Sp4VerifiedInvoice]:
         """Review an authorized original and a distinct unissued replacement."""
         if (
@@ -3282,6 +3286,7 @@ class FiscalApplicationService:
             raise FiscalValidationError("Jundiai replacement needs two distinct fiscal documents")
         original_request, source, invoice = self.preflight_jundiai_nfse_cancellation(
             scope=scope, document_id=original_id, reason_code=reason_code,
+            municipality_ibge=municipality_ibge,
         )
         with self._uow_factory() as uow:
             candidate = self._load_prepared_from_uow(uow, scope, replacement_id)
@@ -3300,7 +3305,7 @@ class FiscalApplicationService:
                 != source.scope.identity_partition_key
                 or candidate.document.issuer.cnpj != source.issuer_cnpj
                 or candidate.document.issuer.address.jurisdiction.municipality_ibge_code
-                != "3525904"
+                != municipality_ibge
             ):
                 raise PersistenceStateError(
                     "Jundiai replacement needs an unissued same-issuer NFS-e"
@@ -3325,6 +3330,7 @@ class FiscalApplicationService:
         ],
         occurred_at: datetime, retention: RetentionPolicyMetadata,
         replacement_id: str | None = None,
+        municipality_ibge: str = "3525904",
     ) -> DurableJundiaiCancellationOutcome:
         """Claim once before SOAP; archive only correlated official outcome."""
         if (
@@ -3337,11 +3343,12 @@ class FiscalApplicationService:
         if replacement_id is None:
             request, source, invoice = self.preflight_jundiai_nfse_cancellation(
                 scope=scope, document_id=document_id, reason_code=reason_code,
+                municipality_ibge=municipality_ibge,
             )
         else:
             request, source, invoice = self.preflight_jundiai_nfse_substitution(
                 scope=scope, original_id=document_id, replacement_id=replacement_id,
-                reason_code=reason_code,
+                reason_code=reason_code, municipality_ibge=municipality_ibge,
             )
         with self._uow_factory() as uow:
             uow.lifecycle.assert_scope(document_id, scope)
@@ -3397,13 +3404,15 @@ class FiscalApplicationService:
                     scope=scope, document_reference=document_id,
                     kind=FiscalArchiveKind.FISCAL_EVENT,
                     content=json.dumps({
-                        "municipality_ibge": "3525904",
+                        "municipality_ibge": municipality_ibge,
                         "original_id": document_id,
                         "replacement_id": replacement_id,
                         "official_cancel_confirmed": decision.confirmed,
                         "replacement_must_be_issued_separately": True,
                     }, sort_keys=True, separators=(",", ":")).encode("utf-8"),
-                    media_type="application/vnd.nfcore.jundiai-replacement-review.v1+json",
+                    media_type=("application/vnd.nfcore.jundiai-replacement-review.v1+json"
+                                if municipality_ibge == "3525904" else
+                                "application/vnd.nfcore.giss-replacement-review.v1+json"),
                     archived_at=occurred_at, retention=retention,
                 )
                 uow.archive.append(linkage)
@@ -3420,13 +3429,15 @@ class FiscalApplicationService:
             JundiaiGissCancellationDecision,
         ],
         occurred_at: datetime, retention: RetentionPolicyMetadata,
+        municipality_ibge: str = "3525904",
     ) -> DurableJundiaiCancellationOutcome:
         """Recover a claimed Giss cancellation with read-only ConsultarNfsePorRps.
 
         No new cancel POST, no unverified mutation and no second archive owner.
         """
         if (
-            not isinstance(scope, ExecutionScope)
+            municipality_ibge not in {"3525904", "3518800"}
+            or not isinstance(scope, ExecutionScope)
             or scope.environment is not FiscalEnvironment.HOMOLOGATION
             or not isinstance(document_id, str) or not document_id.strip()
             or not callable(query_verified_cancel)
@@ -3453,7 +3464,7 @@ class FiscalApplicationService:
                 or attempts[-1].document_id != document_id
                 or attempts[-1].request_fingerprint != request.request_fingerprint
                 or request.document.issuer.address.jurisdiction.municipality_ibge_code
-                != "3525904"
+                != municipality_ibge
             ):
                 raise PersistenceStateError(
                     "Jundiai reconciliation requires one claimed authorized original"
@@ -3492,7 +3503,8 @@ class FiscalApplicationService:
             jurisdiction=request.document.issuer.address.jurisdiction,
             operation="query",
         )
-        if binding != "jundiai-giss-v2-homologation":
+        if binding != ("jundiai-giss-v2-homologation" if municipality_ibge == "3525904"
+                       else "guarulhos-giss-v2-homologation"):
             raise FiscalValidationError("Jundiai cancellation recovery binding mismatch")
         decision = query_verified_cancel(request, original, invoice)
         if not isinstance(decision, JundiaiGissCancellationDecision):

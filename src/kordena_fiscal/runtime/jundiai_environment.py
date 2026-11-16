@@ -198,10 +198,11 @@ class _Issuer:
     national_service_code: str | None
     # Explicit, source-reviewed classification or null where legally not applicable.
     rtc: dict[str, str] | None
+    municipality_ibge: str = "3525904"
 
     @classmethod
-    def parse(cls, obj: object) -> _Issuer:
-        row = _object(obj, set(cls.__dataclass_fields__), "taxpayer policy")
+    def parse(cls, obj: object, *, municipality_ibge: str = "3525904") -> _Issuer:
+        row = _object(obj, set(cls.__dataclass_fields__) - {"municipality_ibge"}, "taxpayer policy")
         try:
             if not all(
                 isinstance(row[name], str) and 0 < len(row[name].strip()) <= 128
@@ -220,7 +221,7 @@ class _Issuer:
                 type(row["profile_version"]) is not int or row["profile_version"] < 1
                 or type(row["tax_regime"]) is not int
                 or row["tax_regime"] not in (1, 2, 3, 4)
-                or row["incidence_ibge"] != "3525904"
+                or row["incidence_ibge"] != municipality_ibge
                 or row["national_service_code"] is not None
                 and not isinstance(row["national_service_code"], str)
                 or row["rtc"] is not None and not isinstance(row["rtc"], dict)
@@ -234,7 +235,7 @@ class _Issuer:
                 raise ValueError
         except (TypeError, ValueError, InvalidOperation, FiscalValidationError):
             raise RuntimeConfigurationError("Invalid Jundiai issuer fiscal policy") from None
-        return cls(**row)
+        return cls(**row, municipality_ibge=municipality_ibge)
 
     def applies(self, request: NfseAuthorizationRequest) -> bool:
         d = request.document
@@ -245,7 +246,7 @@ class _Issuer:
             and d.issuer.profile_id == self.profile_id
             and d.issuer.version == self.profile_version
             and d.issuer.tax_regime.value == self.tax_regime
-            and d.issuer.address.jurisdiction.municipality_ibge_code == "3525904"
+            and d.issuer.address.jurisdiction.municipality_ibge_code == self.municipality_ibge
         )
 
 
@@ -257,9 +258,14 @@ class JundiaiReviewedStartup:
     validators: Mapping[str, XmlSchemaValidator]
     municipal_signer: x509.Certificate
     issuers: tuple[_Issuer, ...]
+    municipality_ibge: str = "3525904"
 
     @classmethod
-    def load(cls, manifest_path: str) -> JundiaiReviewedStartup:
+    def load(
+        cls, manifest_path: str, *, municipality_ibge: str = "3525904",
+    ) -> JundiaiReviewedStartup:
+        if municipality_ibge not in {"3525904", "3518800"}:
+            raise RuntimeConfigurationError("Unreviewed GISS municipality")
         file = Path(manifest_path)
         if not file.is_absolute() or not file.is_file() or file.stat().st_size > 131_072:
             raise RuntimeConfigurationError("Jundiai requires absolute reviewed manifest")
@@ -267,6 +273,12 @@ class JundiaiReviewedStartup:
             data = json.loads(file.read_text(encoding="utf-8"))
         except (OSError, ValueError, UnicodeError):
             raise RuntimeConfigurationError("Invalid Jundiai operator manifest") from None
+        if (
+            not isinstance(data, dict)
+            or data.get("municipality_ibge", "3525904") != municipality_ibge
+        ):
+            raise RuntimeConfigurationError("GISS manifest municipality differs from channel")
+        data = {key: value for key, value in data.items() if key != "municipality_ibge"}
         spec = _object(data, {
             "mode", "wsdl_file", "wsdl_sha256", "xsd_resources",
             "xsd_package_sha256", "xsd_roots", "service_namespace",
@@ -336,7 +348,9 @@ class JundiaiReviewedStartup:
         issuers_spec = spec["issuers"]
         if not isinstance(issuers_spec, list) or not issuers_spec:
             raise RuntimeConfigurationError("Jundiai requires fiscal issuer review")
-        issuers = tuple(_Issuer.parse(entry) for entry in issuers_spec)
+        issuers = tuple(
+            _Issuer.parse(entry, municipality_ibge=municipality_ibge) for entry in issuers_spec
+        )
         if len({
             (r.tenant_id, r.unit_id, r.issuer_cnpj) for r in issuers
         }) != len(issuers):
@@ -353,6 +367,7 @@ class JundiaiReviewedStartup:
                 ) for name in _METHODS
             },
             validators=validators, municipal_signer=certificate, issuers=issuers,
+            municipality_ibge=municipality_ibge,
         )
 
     def build_ports(
@@ -435,7 +450,7 @@ class JundiaiReviewedStartup:
             doc = req.document
             taker = doc.service_taker
             if (
-                source.issuer_ibge != "3525904"
+                source.issuer_ibge != self.municipality_ibge
                 or source.issuer_cnpj != doc.issuer.cnpj
                 or len(doc.services) != 1
                 or doc.services[0].municipal_service_code != policy.canonical_service_code
@@ -500,14 +515,14 @@ class JundiaiReviewedStartup:
 
         def source_check(source: Sp4OriginalRps) -> None:
             if (
-                source.issuer_ibge != "3525904"
+                source.issuer_ibge != self.municipality_ibge
                 or not source.municipal_batch_id
                 or not source.rps_series
             ):
                 raise FiscalValidationError("Jundiai original reserved RPS unavailable")
 
         def invoice_check(invoice: Sp4VerifiedInvoice) -> None:
-            if invoice.issuer_ibge != "3525904":
+            if invoice.issuer_ibge != self.municipality_ibge:
                 raise FiscalValidationError("Jundiai official invoice city differs")
             validate_xml(invoice.authorized_xml, "ConsultarNfseRpsResposta")
             # The official XMLDSig must be verified against the separately
@@ -558,6 +573,7 @@ class JundiaiReviewedStartup:
             application=application, vault=vault,
             contract_for_method=lambda method: self.contracts[method],
             validate_signed_xml=validate_transport_xml,
+            municipality_ibge=self.municipality_ibge,
         )
         def fiscal_policy(request: NfseAuthorizationRequest) -> None:
             review(request)
@@ -584,7 +600,7 @@ class JundiaiReviewedStartup:
         ) -> JundiaiGissCancellationDecision:
             if (
                 source.issuer_cnpj != request.document.issuer.cnpj
-                or source.issuer_ibge != "3525904"
+                or source.issuer_ibge != self.municipality_ibge
                 or invoice.issuer_cnpj != source.issuer_cnpj
                 or invoice.invoice_number != invoice.invoice_reference
                 or source.scope.identity_partition_key
@@ -618,7 +634,7 @@ class JundiaiReviewedStartup:
             if (
                 request.document.issuer.cnpj != source.issuer_cnpj
                 or invoice.issuer_cnpj != source.issuer_cnpj
-                or invoice.issuer_ibge != "3525904"
+                or invoice.issuer_ibge != self.municipality_ibge
             ):
                 raise FiscalValidationError("Jundiai cancellation recovery scope differs")
             prepared = build_operation(request, source, "ConsultarNfsePorRps")

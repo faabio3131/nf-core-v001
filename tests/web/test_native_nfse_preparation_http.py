@@ -2521,9 +2521,10 @@ def test_barueri_http_portal_issue_recover_and_authorized_xml(
         application.load_sp4_original_rps(different_tenant, identifier)
 
 
+@pytest.mark.parametrize("city", ["3525904", "3518800"])
 @pytest.mark.parametrize(("substitution", "cancel_confirmed"), [(False, False), (True, True)])
 def test_jundiai_http_cancel_or_substitute_officially_scoped_and_idempotent(
-    tmp_path: Path, substitution: bool, cancel_confirmed: bool,
+    tmp_path: Path, substitution: bool, cancel_confirmed: bool, city: str,
 ) -> None:
     """Synthetic GISS response proves HTTP/UoW controls, not municipal atomic substitution."""
     from kordena_fiscal.gateway.jundiai_giss_cancellation_result import (
@@ -2539,9 +2540,14 @@ def test_jundiai_http_cancel_or_substitute_officially_scoped_and_idempotent(
         JundiaiTrustedRuntimePorts,
     )
 
+    provider = (
+        "jundiai-giss-v2-homologation" if city == "3525904"
+        else "guarulhos-giss-v2-homologation"
+    )
+    channel = "Jundiai" if city == "3525904" else "Guarulhos"
     db = _database(
         tmp_path / ("jundiai-substitute.sqlite" if substitution else "jundiai-cancel.sqlite"),
-        issuer_ibge="3525904", provider_id="jundiai-giss-v2-homologation",
+        issuer_ibge=city, provider_id=provider,
         tax_regime=TaxRegimeCode.NORMAL,
     )
     application = FiscalApplicationService(db)
@@ -2598,6 +2604,7 @@ def test_jundiai_http_cancel_or_substitute_officially_scoped_and_idempotent(
     )
     transport = JundiaiGissHomologationTransport(
         resolver=Mock(), resolve_certificate=Mock(),
+        municipality_ibge=city, provider_id=provider,
         contract_for_method=Mock(), validate_signed_xml=Mock(),
         exchange=Mock(side_effect=AssertionError("No real GISS network access")),
     )
@@ -2618,7 +2625,7 @@ def test_jundiai_http_cancel_or_substitute_officially_scoped_and_idempotent(
     )
     handlers = dict(build_runtime_fiscal_handler_factory(
         operations_gateway=FakeFiscalOperationsGateway(),
-        sp4_reviewed_municipalities={"jundiai-giss-v2-homologation": ports},
+        sp4_reviewed_municipalities={provider: ports},
     )(application))
     handlers.update(build_jundiai_event_handlers(
         application=application, reviewed=reviewed,
@@ -2631,7 +2638,7 @@ def test_jundiai_http_cancel_or_substitute_officially_scoped_and_idempotent(
     fields = _payload() | _TAKER_ADDRESS | {
         "competence_date": "2026-11-12",
         "source_id": "jundiai-original-verified-event",
-        "service_municipality_ibge": "3525904",
+        "service_municipality_ibge": city,
     }
     first = _post(web, fields, "jundiai-cancel-preparation")
     assert first.status_code == 200, first.text
@@ -2660,7 +2667,7 @@ def test_jundiai_http_cancel_or_substitute_officially_scoped_and_idempotent(
     assert authorized.status_code == 200, authorized.text
     assert authorized.json()["status"] == FiscalDocumentState.AUTHORIZED.value
 
-    operation = "substituteJundiaiNfse" if substitution else "cancelJundiaiNfse"
+    operation = f"substitute{channel}Nfse" if substitution else f"cancel{channel}Nfse"
     payload = {
         "unit_id": UNIT, "environment": "homologation",
         "human_approval": True, "reason_code": "1",
@@ -2680,6 +2687,7 @@ def test_jundiai_http_cancel_or_substitute_officially_scoped_and_idempotent(
         CSRF_HEADER: csrf, "Idempotency-Key": "jundiai-one-event",
     })
     assert event.status_code == 200, event.text
+    assert event.json()["municipality_ibge"] == city
     cancellation_post.assert_called_once()
     assert posted.call_count == 1
     if substitution:
@@ -2737,13 +2745,13 @@ def test_jundiai_http_cancel_or_substitute_officially_scoped_and_idempotent(
             assert uow.lifecycle.get(replacement_id).state is FiscalDocumentState.AUTHORIZED
     else:
         assert event.json()["status"] == FiscalDocumentState.CANCEL_REQUESTED.value
-        recovered = web.post(root + "reconcileJundiaiNfseCancellation", json=original_body,
+        recovered = web.post(root + f"reconcile{channel}NfseCancellation", json=original_body,
                              headers={CSRF_HEADER: csrf, "Idempotency-Key": "jundiai-cancel-read"})
         assert recovered.status_code == 200, recovered.text
         assert recovered.json()["status"] == FiscalDocumentState.CANCELLED.value
         cancellation_query.assert_called_once()
         cancellation_post.assert_called_once()
-        repeated = web.post(root + "reconcileJundiaiNfseCancellation",
+        repeated = web.post(root + f"reconcile{channel}NfseCancellation",
                             json=original_body, headers={
                                 CSRF_HEADER: csrf, "Idempotency-Key": "jundiai-cancel-read",
                             })

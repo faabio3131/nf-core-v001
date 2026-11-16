@@ -29,7 +29,8 @@ def build_jundiai_original_rps_query_xml(
     rps_type: str = "1",
 ) -> bytes:
     """Giss 2.04 ConsultarNfseRpsEnvio; builder never requests a mutation."""
-    if not isinstance(original, Sp4OriginalRps) or original.issuer_ibge != "3525904":
+    if (not isinstance(original, Sp4OriginalRps)
+            or original.issuer_ibge not in {"3525904", "3518800"}):
         raise JundiaiGissBuilderError("Jundiai original service RPS is unavailable")
     if (
         not isinstance(municipal_registration, str)

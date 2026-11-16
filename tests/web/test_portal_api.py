@@ -351,6 +351,8 @@ def test_fiscal_artifact_download_fails_closed_without_session_or_reader() -> No
     "substituteBarueriNfse",
     "cancelJundiaiNfse",
     "substituteJundiaiNfse",
+    "cancelGuarulhosNfse",
+    "substituteGuarulhosNfse",
 ])
 def test_municipal_fiscal_events_use_existing_portal_csrf_rbac_and_idempotency(
     operation: str,

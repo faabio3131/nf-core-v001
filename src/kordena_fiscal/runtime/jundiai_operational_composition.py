@@ -108,6 +108,7 @@ def build_jundiai_trusted_transport(
     vault: EncryptedA1Vault,
     contract_for_method: Callable[[str], JundiaiGissWsdlContract],
     validate_signed_xml: Callable[[bytes, str, str], None],
+    municipality_ibge: str = "3525904",
 ) -> JundiaiGissHomologationTransport:
     """Resolve persisted provider binding and A1 from existing authorities."""
     if (
@@ -129,7 +130,12 @@ def build_jundiai_trusted_transport(
                 jurisdiction=jurisdiction, operation=operation,
             )
 
+    if municipality_ibge not in {"3525904", "3518800"}:
+        raise FiscalValidationError("Unreviewed GISS municipality")
     return JundiaiGissHomologationTransport(
+        municipality_ibge=municipality_ibge,
+        provider_id=("jundiai-giss-v2-homologation" if municipality_ibge == "3525904"
+                     else "guarulhos-giss-v2-homologation"),
         resolver=CanonicalResolver(),
         resolve_certificate=lambda scope, cnpj: vault.resolve(
             scope=scope, issuer_cnpj=cnpj,

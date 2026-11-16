@@ -804,6 +804,15 @@ def build_runtime_fiscal_handler_factory(
                 if operation in handlers:
                     raise ValueError("Duplicate Jundiai fiscal event authority")
                 handlers[operation] = handler
+        if (selected_guarulhos_ports is not None
+                and selected_guarulhos_ports.shared_giss.supports_events):
+            for operation, handler in build_jundiai_event_handlers(
+                application=application, reviewed=selected_guarulhos_ports.shared_giss,
+                retention=retention,
+            ).items():
+                if operation in handlers:
+                    raise ValueError("Duplicate Guarulhos fiscal event authority")
+                handlers[operation] = handler
         if active_osasco_cancel is not None:
             handlers["cancelOsascoNfse"] = build_osasco_cancel_handler(
                 application=application, verified_cancel=active_osasco_cancel,
