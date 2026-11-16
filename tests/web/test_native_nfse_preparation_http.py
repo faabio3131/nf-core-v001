@@ -3510,7 +3510,7 @@ def test_salto_sp_national_pending_query_recovers_without_reissuing(
     )
     request = app.load_prepared_nfse_authorization(scope, document_id)
     expected_dps = (
-        "/dps/DPS35452091" + request.document.issuer.cnpj.value
+        "/dps/DPS" + issuer_ibge + "1" + request.document.issuer.cnpj.value
         + f"{request.document.dps_series:05d}{request.document.dps_number:015d}"
     )
 
