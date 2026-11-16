@@ -1,3 +1,5 @@
+> **Reconciliação documental — 16/11/2026:** o incidente `NAT-GOV-2026-11-10-01` da PR #413 foi recuperado como falha de acompanhamento técnico, sem atribuição ao proprietário. Publicação de cronograma não comprova cobertura concluída. A auditoria por UF/município/documento/operação/ambiente continua aberta onde falta evidência. Prevalecem a prioridade SP-22 registrada em12/11, a ordem por grupos de engenharia de13/11 e o Integrador único de15/11 em AGENTS; nenhuma dessas decisões é alterada. O T2 posterior está implementado parcialmente, sem comprovação aqui de T1/T3–T6 ou rulesets. Fonte, hashes e documentos recuperados de #413/#448/#453: `docs/audit/NFCORE_DOCUMENT_RECOVERY_20261116.md`.
+
 # NFCore — Cronograma Mestre da Cobertura Nacional (NF-e/NFC-e/NFS-e por UF)
 
 **Documento:** NFV1-NATCOV-MASTER-001

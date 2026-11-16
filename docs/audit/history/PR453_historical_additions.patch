@@ -1,0 +1,30 @@
+diff --git a/docs/NFCORE_NATIONAL_COVERAGE_MASTER_SCHEDULE_2026-11-07.md b/docs/NFCORE_NATIONAL_COVERAGE_MASTER_SCHEDULE_2026-11-07.md
+index 0247a2b2..1be543cd 100644
+--- a/docs/NFCORE_NATIONAL_COVERAGE_MASTER_SCHEDULE_2026-11-07.md
++++ b/docs/NFCORE_NATIONAL_COVERAGE_MASTER_SCHEDULE_2026-11-07.md
+@@ -6,6 +6,17 @@
+ **Autoridade:** decisão expressa do proprietário em 07/11/2026, registrada em `AGENTS.md`.
+ **Fonte superior:** GitHub CURRENT, código, CI e runtime. Este documento rege ORDEM; não substitui `docs/NFV1_NATIONAL_EXPANSION_EXECUTION_LEDGER_2026-11-05.md`, `docs/NFV1_NATIONAL_EXPANSION_MASTER_ARCHITECTURE_2026-11-05.md` nem `docs/NFV1_NATIONAL_EXPANSION_MASTER_EXECUTION_SCHEDULE_2026-11-05.md`, que continuam regendo escopo/critério técnico de cada bloco NAT-xx.
+ 
++## REVISÃO DE PRIORIDADE — 12/11/2026 (SUPERA a ordem de execução das UFs abaixo)
++
++**Decisão do proprietário em 12/11/2026:** a prioridade de cobertura passa a ser **os 22 municípios de SP (SP-22)**, começando por **Cajamar, Osasco, Barueri e Jundiaí** e depois os demais municípios. A sequência anterior (MG-W1 ativa, depois **DF → GO → MT → MS**, Centro-Oeste) foi montada com a premissa de que SP-22 estava pronto. Não estava: a PR #446 mostra 0/22 com prova do contrato WebService atual e do ciclo real de autorização, consulta, cancelamento e substituição.
++
++- **SP-22 vem primeiro.** O dono dessa frente é o executor da PR #446. Cajamar é piloto e está **fora** do catálogo dos 22.
++- **Centro-Oeste (DF → GO → MT → MS)** passa para depois de SP-22 e do gate interno de MG-W1.
++- **MG-W1** não é descartada: fica no checkpoint registrado (PRs #423 e #440) até o proprietário reordenar.
++- Nenhuma implementação ou contrato preexistente é perdido. A regra "uma UF por vez" abaixo continua valendo para a expansão **depois** de SP-22.
++- Ordem completa, blocos de trabalho, gates e decisões pendentes: `docs/NFCORE_FISCAL_ENGINE_EXECUTION_SCHEDULE_2026-11-12.md`.
++- Esta revisão é de ordem. Não certifica nenhum município, não autoriza merge, deploy, migração, homologação externa nem emissão real.
++
+ ## Regra obrigatória de sequenciamento
+ 
+ 1. **Uma UF por vez.** Nenhuma UF nova pode ser iniciada (pesquisa normativa, contrato, envelope, transporte, assinatura ou homologação) enquanto a UF ATIVA não estiver marcada `UF_100_COMPLETA` nesta tabela.
+@@ -53,6 +64,7 @@
+ ## Registro de mudanças
+ 
+ - **2026-11-07:** criação do cronograma, com MG definida como UF ativa (proposta) por ser a que já tinha mais evidência de progresso real na reconciliação de 05/11/2026.
++- **2026-11-12:** inserido o banner "Revisão de prioridade — 12/11/2026": SP-22 passa a ser a prioridade; Centro-Oeste (DF → GO → MT → MS) fica depois. Demais seções preservadas sem alteração.
+ 
+ ---
+ 

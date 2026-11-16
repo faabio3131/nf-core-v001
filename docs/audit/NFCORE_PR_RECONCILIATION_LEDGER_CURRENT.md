@@ -1,3 +1,9 @@
+## Recuperação documental em revisão — 16/11/2026
+
+#468 permanece em93534458, CI43926134508 SUCCESS; main549ab3c0 e productionea4bdd3b inalteradas. #517 MF09 publicada em1bd7449c, árvorefc9fb396 idêntica ao commit localab1a56a0, CI43929948306 em execução neste registro; reconsultar antes de integrar. Revisão independente confirmou equivalência dos24 caminhos e nenhum bloqueador novo.
+
+Auditoria das PRs413/448/453 identificou quatro documentos ausentes e acréscimos históricos não incorporados. Recuperação estritamente documental com fontes/hash/limites em `NFCORE_DOCUMENT_RECOVERY_20261116.md` e manifest JSON. As três PRs permanecem abertas até integração e gates desta recuperação; não rotulá-las como incorporadas antes disso. Pendências fiscais e operacionais não foram resolvidas por recuperar documentos.
+
 # NFCore — reconciliação em execução, 16/11/2026
 
 O proprietário autorizou nesta conversa reconciliar o trabalho existente, concluir pendências das PRs e atualizar a aplicação web. Essa autorização cobre a integração e o deploy após validação. Emissão oficial e operações destrutivas de dados exigem decisão específica. A auditoria recebida é diagnóstico de entrada, com decisões técnicas a validar.
