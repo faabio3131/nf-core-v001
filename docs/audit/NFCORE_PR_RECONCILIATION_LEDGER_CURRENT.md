@@ -1,3 +1,20 @@
+## CURRENT — MF-09 integrado na candidata, 16/11/2026
+
+- Candidata #468: `cac2a1e38058ca4b6a811d337eea270561cd8223`, após merge da #517. Branch `integration/nfcore-a1-sp2-current-main-20261113`. Árvore `fc9fb39603464db854178136a1b4b6b4d74fc880` idêntica à origem `1bd7449c7204f0ca3992f048c06f679cef0758d5`.
+- CI da origem [43929948306](https://github.com/faabio3131/nf-core-v001/actions/runs/43929948306) SUCCESS: 5.240 Python PASS, 1 SKIP, 75 Playwright PASS, gates de segurança/container/restore aprovados. Skip somente variante SQLite exclusiva PG; variante PG executada. T2 efetivo [43933259955](https://github.com/faabio3131/nf-core-v001/actions/runs/43933259955) SUCCESS após tornar explícita a evidência E2E na descrição. Nenhum gate ou teste desabilitado.
+- CI cumulativa [43933409094](https://github.com/faabio3131/nf-core-v001/actions/runs/43933409094) em execução neste checkpoint. Não tratar CI da origem como resultado do merge.
+- Venda manual usa a mesma preparação, domínio, regras e arquivo; NF-e 55 SP/MG e NFC-e 65 MG online em homologação. Adoção da numeração legal requer inventário/reconciliação de legado e parada de writers antigos. Nenhum deploy, DDL ou emissão real.
+- Recuperação histórica na #518: quatro documentos e dois patches, fontes exatas e revisão independente aprovadas. Gates documentais e T2 fora de Draft passaram no HEAD anterior `9e4f846b`; este checkpoint muda o HEAD e exige novos checks aplicáveis. #413/#448/#453 permanecem abertas até integração comprovada.
+- Main `549ab3c0` e production `ea4bdd3b` inalteradas. A aprovação comercial #390 já está na main, mas ainda não é ancestral da candidata: conciliar antes da promoção. #498 continua Draft; cinco deltas de infraestrutura devem ser preservados.
+- Pendências: MF-04/BH, confiança/cadeia/revogação/histórico de recibos, Guarulhos, MG20/SP22, EGM, DPS22/cofre/backup/staging e publicação. Auditoria MF-04 encontrou o objeto tributário canônico existente, mas ausência de resolução governada na preparação HTTP; 21 testes focais PASS não encerram esse bloco. Decisão/proposta e fontes registradas no corpo da #468.
+- Próxima ação: conferir CI cumulativa, integrar recuperação documental sequencialmente, encerrar origens somente com prova e conciliar a release Draft. Produção permanece NO-GO.
+
+## Recuperação documental em revisão — 16/11/2026
+
+#468 permanece em93534458, CI43926134508 SUCCESS; main549ab3c0 e productionea4bdd3b inalteradas. #517 MF09 publicada em1bd7449c, árvorefc9fb396 idêntica ao commit localab1a56a0, CI43929948306 em execução neste registro; reconsultar antes de integrar. Revisão independente confirmou equivalência dos24 caminhos e nenhum bloqueador novo.
+
+Auditoria das PRs413/448/453 identificou quatro documentos ausentes e acréscimos históricos não incorporados. Recuperação estritamente documental com fontes/hash/limites em `NFCORE_DOCUMENT_RECOVERY_20261116.md` e manifest JSON. As três PRs permanecem abertas até integração e gates desta recuperação; não rotulá-las como incorporadas antes disso. Pendências fiscais e operacionais não foram resolvidas por recuperar documentos.
+
 # NFCore — reconciliação em execução, 16/11/2026
 
 O proprietário autorizou nesta conversa reconciliar o trabalho existente, concluir pendências das PRs e atualizar a aplicação web. Essa autorização cobre a integração e o deploy após validação. Emissão oficial e operações destrutivas de dados exigem decisão específica. A auditoria recebida é diagnóstico de entrada, com decisões técnicas a validar.
