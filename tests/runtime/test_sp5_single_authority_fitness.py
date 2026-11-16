@@ -54,8 +54,10 @@ def test_sp5_national_get_and_post_share_signed_receipt_verifier() -> None:
     gateway = _source("src/kordena_fiscal/gateway/nfse_national_homologation.py")
     receipt = _source("src/kordena_fiscal/gateway/nfse_national_receipt.py")
 
-    assert "return validate_official_nfse_receipt(raw, key)" in query
-    assert "document = validate_official_nfse_receipt(raw, access_key)" in gateway
+    assert "return validate_official_nfse_receipt(" in query
+    assert "expected=NationalReceiptIdentity.from_request(request)" in query
+    assert "document = validate_official_nfse_receipt(" in gateway
+    assert "expected=expected, schema_profile=schema_profile" in gateway
     assert "def _verify_nfse_receipt_signature(" in receipt
     assert '_verify_nfse_receipt_signature(root, infos[0], "NFS" + key)' in receipt
 
@@ -69,4 +71,5 @@ def test_sp5_fitness_does_not_hide_nfce_manual_or_icp_trust_gaps() -> None:
         '{document_id: operationDocument.value.trim()}'
         in portal
     )
-    assert "not ICP-Brasil path/revocation or official XSD" in receipt
+    assert "not ICP-Brasil path/revocation" in receipt
+    assert 'national_restricted_validator("NFSe_v1.01.xsd")' in receipt

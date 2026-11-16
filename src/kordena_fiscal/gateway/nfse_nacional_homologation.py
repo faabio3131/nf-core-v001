@@ -24,7 +24,9 @@ from kordena_fiscal.gateway.nfse_national_homologation import (
     build_nfse_dps_request,
     parse_national_nfse_rejections,
     parse_nfse_homologation_response,
+    parse_signed_dps_info,
 )
+from kordena_fiscal.gateway.nfse_national_receipt import NationalReceiptIdentity
 from kordena_fiscal.issuance.nfe_nfse import (
     NfseAuthorizationRequest,
     NfseAuthorizationResult,
@@ -142,13 +144,17 @@ class NfseNacionalHomologationGateway:
             at=datetime.now(UTC),
         )
         signed_dps = self._build_signed_dps(request, material)
+        profile = select_national_dps_profile(
+            environment=document.scope.environment, schema_version="1.01",
+            effective_on=datetime.now(UTC).date(),
+        )
         payload = encode_signed_dps(
             signed_dps, issuer_cnpj=issuer_cnpj, issuer_municipality_ibge=issuer_municipality,
-            schema_profile=select_national_dps_profile(
-                environment=document.scope.environment, schema_version="1.01",
-                effective_on=datetime.now(UTC).date(),
-            ),
+            schema_profile=profile,
         )
+        expected = NationalReceiptIdentity.from_request(request)
+        if NationalReceiptIdentity.from_dps_info(parse_signed_dps_info(signed_dps)) != expected:
+            raise OfficialNfseTransportError("Outgoing DPS differs from canonical request")
         response = self._exchange(payload, build_fiscal_tls_context(material), self._timeout)
         if not isinstance(response, bytes) or len(response) > _MAX_RESPONSE:
             raise OfficialNfseTransportError("Resposta SEFIN inválida")
@@ -168,7 +174,10 @@ class NfseNacionalHomologationGateway:
         if isinstance(key, str) and key:
             # The National access key alone is NOT proof. Require the exact
             # official XML, bounded and bound to infNFSe/@Id in the parser.
-            parsed = parse_nfse_homologation_response(response)
+            parsed = parse_nfse_homologation_response(
+                response, expected=expected,
+                schema_profile=profile,
+            )
             if parsed.get("chaveAcesso") != key:
                 raise OfficialNfseTransportError("NFS-e access key mismatch")
             status = AuthorizationStatus.AUTHORIZED

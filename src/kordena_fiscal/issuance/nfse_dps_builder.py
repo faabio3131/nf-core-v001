@@ -32,6 +32,7 @@ from kordena_fiscal.issuance.nfe_nfse import (
     NfseCanonicalDocument,
     NfseForeignAddress,
 )
+from kordena_fiscal.issuance.nfse_dps_identity import national_dps_id
 from kordena_fiscal.signing.nfse_xmldsig import sign_nfse_dps_xml
 from kordena_fiscal.vault import EphemeralCertificateMaterial
 from kordena_fiscal.xml.nfse_nacional_schema import national_dps_validator
@@ -44,7 +45,6 @@ from kordena_fiscal.xml.nfse_national_profiles import (
 _NFSE_NS = "http://www.sped.fazenda.gov.br/nfse"
 _SCHEMA_VERSION = "1.01"
 _VER_APLIC = "nfcore-dps-v1"  # TSVerAplic: TSString, maxLength 20
-_FEDERAL_INSCRIPTION_TYPE_CNPJ = "1"
 _CENT = Decimal("0.01")
 
 # National DPS "opSimpNac" is a distinct official code table from our domain's
@@ -140,14 +140,7 @@ def build_signed_dps(
         )
 
     serie, n_dps = _require_durable_dps_numbering(request)
-    dps_id = (
-        "DPS"
-        + issuer_municipality
-        + _FEDERAL_INSCRIPTION_TYPE_CNPJ
-        + cnpj
-        + serie.zfill(5)
-        + n_dps.zfill(15)
-    )
+    dps_id = national_dps_id(issuer_municipality, cnpj, int(serie), int(n_dps))
 
     root = etree.Element(f"{{{_NFSE_NS}}}DPS", nsmap={None: _NFSE_NS})  # type: ignore[dict-item]
     root.set("versao", _SCHEMA_VERSION)

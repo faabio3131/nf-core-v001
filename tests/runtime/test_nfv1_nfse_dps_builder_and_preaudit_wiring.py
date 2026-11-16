@@ -13,10 +13,12 @@ from __future__ import annotations
 
 import base64
 import gzip
+import importlib.util
 import json
 from dataclasses import replace
 from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
+from pathlib import Path
 from unittest.mock import Mock
 
 import pytest
@@ -57,10 +59,16 @@ from kordena_fiscal.issuance.nfe_nfse import (
 )
 from kordena_fiscal.issuance.nfse_dps_builder import build_sefin_signed_dps
 from kordena_fiscal.runtime.canonical_fiscal_composition import _GovernedNationalNfseGateway
-from kordena_fiscal.signing.nfse_xmldsig import append_nfse_signature
 from kordena_fiscal.vault import EphemeralCertificateMaterial
 from kordena_fiscal.xml.nfse_nacional_schema import national_dps_validator
 from kordena_fiscal.xml.nfse_national_profiles import NT009_RESTRICTED_PROFILE
+
+_receipt_spec = importlib.util.spec_from_file_location(
+    "national_receipt_fixture", Path(__file__).parents[1] / "support/national_receipt_fixture.py",
+)
+assert _receipt_spec and _receipt_spec.loader
+_receipt_fixture = importlib.util.module_from_spec(_receipt_spec)
+_receipt_spec.loader.exec_module(_receipt_fixture)
 
 _NOW = datetime(2026, 11, 6, 12, 0, tzinfo=UTC)
 _ISSUER_CNPJ = Cnpj("11222333000181")
@@ -153,26 +161,13 @@ def _request(**service_overrides) -> NfseAuthorizationRequest:
     return NfseAuthorizationRequest.build(document)
 
 
-def _signed_nfse_receipt(key: str) -> bytes:
-    """A self-signed, synthetic fixture for canonical signature regression."""
-    material = _certificate()
-    private, cert, _chain = pkcs12.load_key_and_certificates(
-        material.pkcs12_bytes, material.password
-    )
-    assert isinstance(private, rsa.RSAPrivateKey) and cert is not None
-    ns = "http://www.sped.fazenda.gov.br/nfse"
-    root = etree.Element(f"{{{ns}}}NFSe", nsmap={None: ns}, versao="1.01")
-    info = etree.SubElement(root, f"{{{ns}}}infNFSe", Id="NFS" + key)
-    append_nfse_signature(root, info, private, cert, legacy_abrasf=False)
-    return etree.tostring(root, encoding="utf-8", xml_declaration=True)
-
-
 def _fake_exchange(payload: bytes, *_args) -> bytes:
-    json.loads(payload)  # confirms the gateway sent well-formed JSON
-    key = "35" + "0" * 48
-    xml = _signed_nfse_receipt(key)
+    dps = gzip.decompress(base64.b64decode(json.loads(payload)["dpsXmlGZipB64"]))
+    key = _receipt_fixture.key_for(dps)
+    xml = _receipt_fixture.complete_receipt(dps, _certificate(), key=key)
+    identifier = etree.fromstring(dps)[0].get("Id")
     return json.dumps({
-        "tipoAmbiente": 2, "chaveAcesso": key, "idDps": "dps-wiring-ok",
+        "tipoAmbiente": 2, "chaveAcesso": key, "idDps": identifier,
         "nfseXmlGZipB64": base64.b64encode(gzip.compress(xml, mtime=0)).decode("ascii"),
     }).encode()
 
@@ -200,7 +195,7 @@ def test_real_builder_and_preaudit_authorize_a_valid_document_end_to_end() -> No
     gateway = _governed_gateway()
     result = gateway.authorize(_request())
     assert result.status is AuthorizationStatus.AUTHORIZED
-    assert result.invoice_reference == "35" + "0" * 48
+    assert result.invoice_reference == "3550308" + "22" + "11222333000181" + "3" * 27
 
 
 def test_real_preaudit_blocks_before_any_signing_on_rate_divergence() -> None:
