@@ -8,6 +8,7 @@ from __future__ import annotations
 import hashlib
 import re
 from collections.abc import Mapping
+from dataclasses import replace
 from datetime import UTC, date, datetime
 from decimal import Decimal, InvalidOperation
 from typing import Any
@@ -42,6 +43,7 @@ from kordena_fiscal.issuance import (
     NfseAuthorizationRequest,
     NfseCanonicalDocument,
     NfseForeignAddress,
+    NfseNationalSubstitution,
     NfseServiceLine,
     NfseServiceTaker,
 )
@@ -87,12 +89,23 @@ _BASE_ALLOWED_PAYLOADS = frozenset({
     _COMMON_FIELDS | _FOREIGN_ADDRESS_FIELDS | {"taker_nif"},
     _COMMON_FIELDS | _FOREIGN_ADDRESS_FIELDS | {"taker_no_nif_reason"},
 })
-_ALLOWED_PAYLOADS = _BASE_ALLOWED_PAYLOADS | frozenset(
+_SUBSTITUTION_FIELDS = frozenset({
+    "substitution_original_id", "substitution_reason_code",
+    "substitution_reason_description", "substitution_human_approval",
+})
+_ALLOWED_NORMAL = _BASE_ALLOWED_PAYLOADS | frozenset(
     fields | _NBS_FIELD for fields in _BASE_ALLOWED_PAYLOADS
 )
+_ALLOWED_PAYLOADS = _ALLOWED_NORMAL | frozenset(
+    fields | _SUBSTITUTION_FIELDS for fields in _ALLOWED_NORMAL
+)
 _STRING_FIELDS = (
-    (_FIELDS | _TAKER_ADDRESS_FIELDS | _FOREIGN_ADDRESS_FIELDS | _FOREIGN_ID_FIELDS | _NBS_FIELD)
-    - {"iss_withheld", "rule_version", "fiscal_review_approved"}
+    (_FIELDS | _TAKER_ADDRESS_FIELDS | _FOREIGN_ADDRESS_FIELDS | _FOREIGN_ID_FIELDS
+     | _NBS_FIELD | _SUBSTITUTION_FIELDS)
+    - {
+        "iss_withheld", "rule_version", "fiscal_review_approved",
+        "substitution_human_approval",
+    }
 )
 _BARUERI_PROVIDER = "barueri-pmb004-homologation"
 _CAJAMAR_PROVIDER = "cajamar-geisweb-homologation"
@@ -127,6 +140,10 @@ def prepare_native_nfse(
         or type(payload.get("iss_withheld")) is not bool
         or type(payload.get("rule_version")) is not int
         or type(payload.get("fiscal_review_approved")) is not bool
+        or (
+            "substitution_human_approval" in payload
+            and type(payload["substitution_human_approval"]) is not bool
+        )
         or not key or len(key) > 256
     ):
         raise _error(400, "NATIVE_NFSE_INVALID_REQUEST")
@@ -142,6 +159,13 @@ def prepare_native_nfse(
     try:
         authority.assert_permission(PortalPermission.DOCUMENT_ISSUE, unit_id=unit)
         authority.assert_permission(PortalPermission.CONFIGURATION_WRITE, unit_id=unit)
+        if _SUBSTITUTION_FIELDS.issubset(payload):
+            if (
+                payload["substitution_human_approval"] is not True
+                or not 8 <= len(key) <= 128 or not key.isascii()
+            ):
+                raise FiscalValidationError("National replacement requires human approval")
+            authority.assert_permission(PortalPermission.DOCUMENT_CANCEL, unit_id=unit)
         if payload["environment"] != FiscalEnvironment.HOMOLOGATION.value:
             raise FiscalValidationError("Only NFS-e homologation may be prepared")
         source_id = payload["source_id"].strip()
@@ -330,6 +354,34 @@ def prepare_native_nfse(
             service_taker_reference=taker_reference,
             service_taker=taker,
         )
+        if _SUBSTITUTION_FIELDS.issubset(payload):
+            if provider != NACIONAL_HOMOLOGATION_PROVIDER_ID:
+                raise FiscalValidationError("Replacement DPS requires national provider")
+            original_id = payload["substitution_original_id"]
+            existing_link = (
+                previous.document.national_substitution if previous is not None else None
+            )
+            if existing_link is not None:
+                if (
+                    existing_link.original_document_id != original_id
+                    or existing_link.reason_code != payload["substitution_reason_code"]
+                    or existing_link.reason_description
+                    != payload["substitution_reason_description"]
+                    or existing_link.approval_reference != key
+                ):
+                    raise PersistenceConflictError("National replacement review changed")
+                original_key = existing_link.original_invoice_reference
+            else:
+                original_key = app.review_prepared_national_nfse_substitution(
+                    scope=scope, original_id=original_id, replacement=document,
+                )
+            document = replace(document, national_substitution=NfseNationalSubstitution(
+                original_document_id=original_id,
+                original_invoice_reference=original_key,
+                reason_code=payload["substitution_reason_code"],
+                reason_description=payload["substitution_reason_description"],
+                approval_reference=key,
+            ))
         nfse_preaudit(NfseAuthorizationRequest.build(document))
         # Browser cannot choose provider, series or sequence. The same UoW
         # reserves a city's original RPS without creating a second counter.

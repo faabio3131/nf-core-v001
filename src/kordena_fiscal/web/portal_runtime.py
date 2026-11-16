@@ -775,6 +775,7 @@ class DurableHumanPortalExecutor:
             "cancelBarueriNfse", "substituteBarueriNfse",
             "cancelJundiaiNfse", "substituteJundiaiNfse",
             "cancelSantanaNfse", "substituteSantanaNfse",
+            "cancelNationalNfse",
         }:
             # Replay an already-scoped T07 claim without asking the gateway
             # to preflight a note that was successfully cancelled earlier.
@@ -933,6 +934,7 @@ class DurableHumanPortalExecutor:
                     "cancelBarueriNfse", "substituteBarueriNfse",
                     "cancelJundiaiNfse", "substituteJundiaiNfse",
                     "cancelSantanaNfse", "substituteSantanaNfse",
+            "cancelNationalNfse",
                 }:
                     raise
                 raise _portal_error(

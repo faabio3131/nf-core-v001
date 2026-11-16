@@ -175,7 +175,8 @@ def _database(
                 municipality_name=(
                     "Osasco" if issuer_ibge == "3534401"
                     else "Barueri" if issuer_ibge == "3505708"
-                    else "Jundiai" if issuer_ibge == "3525904" else "Cajamar"
+                    else "Jundiai" if issuer_ibge == "3525904"
+                    else "Salto" if issuer_ibge == "3545209" else "Cajamar"
                 ), jurisdiction=jurisdiction,
                 postal_code="07750000",
             ),
@@ -1345,15 +1346,29 @@ def _synthetic_a1_for_native_issuer() -> EphemeralCertificateMaterial:
     )
 
 
+@pytest.mark.parametrize(
+    ("issuer_ibge", "tax_regime"), [
+        ("3509205", TaxRegimeCode.SIMPLES_NACIONAL),
+        ("3545209", TaxRegimeCode.NORMAL),
+    ],
+)
 def test_web_native_nfse_preparation_to_signed_gateway_and_authorized_xml(
-    tmp_path: Path,
+    tmp_path: Path, issuer_ibge: str, tax_regime: TaxRegimeCode,
 ) -> None:
     """HTTP Portal -> durable preparation -> DPS 1.01 -> fake SEFIN -> archive HTTP.
 
     This uses one canonical runtime path and an ephemeral synthetic A1; no
     external gateway, municipality authorization or customer cert is contacted.
     """
-    db = _database(tmp_path / "native-e2e.sqlite")
+    db = _database(
+        tmp_path / f"native-e2e-{issuer_ibge}.sqlite",
+        issuer_ibge=issuer_ibge, tax_regime=tax_regime,
+    )
+    payload = _payload() | {
+        "source_id": f"native-e2e-{issuer_ibge}",
+        "competence_date": "2026-11-15",
+        "service_municipality_ibge": issuer_ibge,
+    }
     application = FiscalApplicationService(db)
     captured: list[bytes] = []
     key = "35" + "0" * 48
@@ -1380,6 +1395,10 @@ def test_web_native_nfse_preparation_to_signed_gateway_and_authorized_xml(
             "{http://www.sped.fazenda.gov.br/nfse}prest/"
             "{http://www.sped.fazenda.gov.br/nfse}CNPJ"
         ) == "11222333000181"
+        assert root.findtext(
+            "{http://www.sped.fazenda.gov.br/nfse}infDPS/"
+            "{http://www.sped.fazenda.gov.br/nfse}cLocEmi"
+        ) == issuer_ibge
         captured.append(signed)
         return json.dumps({
             "tipoAmbiente": 2, "chaveAcesso": key, "idDps": "synthetic-native-e2e",
@@ -1406,7 +1425,7 @@ def test_web_native_nfse_preparation_to_signed_gateway_and_authorized_xml(
         path=CanonicalFiscalOperationPath(application, handlers=handlers),
     )
     browser = _client(db, operation_executor=operation_executor)
-    prepared = _post(browser, _payload())
+    prepared = _post(browser, payload)
     assert prepared.status_code == 200, prepared.text
     document_id = prepared.json()["document_id"]
 
@@ -1485,7 +1504,7 @@ def test_web_native_nfse_preparation_to_signed_gateway_and_authorized_xml(
     )
     assert again.status_code == 200, again.text
     assert len(captured) == 1, "Replay must not retransmit the signed DPS"
-    assert _post(browser, _payload(), "native-after-authorization").status_code == 200
+    assert _post(browser, payload, "native-after-authorization").status_code == 200
 
 
 
@@ -3280,3 +3299,589 @@ def test_santana_unknown_event_post_requires_verified_read_only_recovery(
     assert terminal.json()["official_fiscal_confirmation"] is True
     assert verified_get.call_count == 2, "Terminal replay cannot query or resend"
     assert request_posts.call_count == 1
+
+
+def test_salto_sp_national_portal_reuses_existing_durable_binding_and_dps(
+    tmp_path: Path,
+) -> None:
+    """IBGE 3545209 uses the canonical National issuer: no municipal RPS or API."""
+    db = _database(
+        tmp_path / "salto-national-preparation.sqlite",
+        issuer_ibge="3545209", tax_regime=TaxRegimeCode.NORMAL,
+    )
+    browser = _client(db)
+    payload = _payload() | {
+        "source_id": "salto-reviewed-normal-2026",
+        "service_municipality_ibge": "3545209",
+        "competence_date": "2026-11-15",
+    }
+    first = _post(browser, payload, key="salto-national-first")
+    assert first.status_code == 200, first.text
+    data = first.json()
+    assert data["numbering_authority"] == "national_dps_durable"
+    assert data["transmitted"] is False
+    identifier = data["document_id"]
+    scope = ExecutionScope(
+        TENANT, UNIT, FiscalEnvironment.HOMOLOGATION, "salto-read", "fm-nfcore",
+    )
+    request = FiscalApplicationService(db).load_prepared_nfse_authorization(
+        scope, identifier,
+    )
+    assert request.document.issuer.address.jurisdiction.municipality_ibge_code == "3545209"
+    assert request.document.issuer.tax_regime is TaxRegimeCode.NORMAL
+    assert request.document.service_jurisdiction.municipality_ibge_code == "3545209"
+    same = _post(browser, payload, key="salto-national-second")
+    assert same.status_code == 200, same.text
+    assert same.json()["replay"] is True
+    assert same.json()["document_id"] == identifier
+    modified = _post(
+        browser, payload | {"iss_amount": "4.00"}, key="salto-mutated",
+    )
+    assert modified.status_code == 409
+    assert modified.json()["detail"]["code"] == "NATIVE_NFSE_CONTENT_CONFLICT"
+
+
+def test_salto_sp_national_fails_without_canonical_provider_binding(
+    tmp_path: Path,
+) -> None:
+    """The municipality label alone never creates an authorized provider."""
+    db = _database(
+        tmp_path / "salto-national-unbound.sqlite",
+        issuer_ibge="3545209", tax_regime=TaxRegimeCode.NORMAL,
+        with_binding=False,
+    )
+    web = _client(db)
+    payload = _payload() | {
+        "source_id": "salto-unbound",
+        "service_municipality_ibge": "3545209",
+        "competence_date": "2026-11-15",
+    }
+    result = _post(web, payload, key="salto-unbound")
+    assert result.status_code == 409, result.text
+    assert result.json()["detail"]["code"] == "NATIVE_NFSE_PROVIDER_NOT_CONFIGURED"
+
+
+def test_salto_sp_national_requires_review_and_tenant_unit_authority(
+    tmp_path: Path,
+) -> None:
+    db = _database(
+        tmp_path / "salto-national-auth.sqlite",
+        issuer_ibge="3545209", tax_regime=TaxRegimeCode.NORMAL,
+    )
+    payload = _payload() | {
+        "source_id": "salto-auth-check",
+        "service_municipality_ibge": "3545209",
+        "competence_date": "2026-11-15",
+    }
+    operator = _client(db, PortalRole.OPERATOR)
+    assert _post(operator, payload, "salto-no-owner").status_code == 403
+    owner = _client(db)
+    assert _post(
+        owner, payload | {"fiscal_review_approved": False}, "salto-no-review",
+    ).status_code == 403
+    assert _post(
+        owner, payload | {"unit_id": "another-tenant-unit"}, "salto-spoof",
+    ).status_code == 403
+    assert _post(
+        owner, payload | {"environment": "production"}, "salto-no-prod",
+    ).status_code == 400
+    assert _post(owner, payload, "salto-owner-authorized").status_code == 200
+
+
+
+def test_salto_sp_national_pending_query_recovers_without_reissuing(
+    tmp_path: Path,
+) -> None:
+    """Salto Portal -> pending DPS -> real GET contract -> signed XML, never re-POST.
+
+    All SEFIN responses and certificate material are synthetic; the two GET
+    requests use the National query gateway, not an invented Salto adapter.
+    """
+    from kordena_fiscal.control_plane.commercial import DurableProviderBindingResolver
+    from kordena_fiscal.control_plane.service import ControlPlaneNotFoundError
+    from kordena_fiscal.gateway.authorization import GatewayProviderMetadata
+    from kordena_fiscal.gateway.nfse_national_query import (
+        NfseNationalHomologationQueryGateway,
+    )
+    from kordena_fiscal.issuance import NfseAuthorizationResult, NfseQueryClient
+    from kordena_fiscal.runtime.canonical_fiscal_composition import _GovernedNfseRouter
+
+    db = _database(
+        tmp_path / "salto-national-recovery.sqlite",
+        issuer_ibge="3545209", tax_regime=TaxRegimeCode.NORMAL,
+    )
+    app = FiscalApplicationService(db)
+    a1 = _synthetic_a1_for_native_issuer()
+    private, certificate, _ = pkcs12.load_key_and_certificates(
+        a1.pkcs12_bytes, a1.password,
+    )
+    assert isinstance(private, rsa.RSAPrivateKey)
+    assert certificate is not None
+    key = "35" + "5" * 48
+    ns = "http://www.sped.fazenda.gov.br/nfse"
+    root = etree.Element(f"{{{ns}}}NFSe", nsmap={None: ns}, versao="1.01")
+    info = etree.SubElement(root, f"{{{ns}}}infNFSe", Id="NFS" + key)
+    append_nfse_signature(root, info, private, certificate, legacy_abrasf=False)
+    authorized_xml = etree.tostring(root, encoding="utf-8", xml_declaration=True)
+    get_calls: list[str] = []
+
+    def fake_get(url: str, _tls: object, _timeout: float) -> bytes:
+        get_calls.append(url)
+        if "/dps/" in url:
+            assert url.endswith(expected_dps)
+            return json.dumps({"chaveAcesso": key}).encode()
+        assert url.endswith("/nfse/" + key)
+        return json.dumps({
+            "nfseXmlGZipB64": base64.b64encode(
+                gzip.compress(authorized_xml, mtime=0),
+            ).decode("ascii"),
+        }).encode()
+
+    query = NfseNationalHomologationQueryGateway(
+        provider_resolver=DurableProviderBindingResolver(db),
+        resolve_certificate=lambda _scope, _cnpj: a1,
+        exchange_get=fake_get,
+    )
+    submitted = Mock()
+
+    def pending_authorization(request: NfseAuthorizationRequest) -> NfseAuthorizationResult:
+        submitted(request)
+        return NfseAuthorizationResult(
+            status=AuthorizationStatus.PENDING,
+            scope=request.document.scope,
+            document_id=request.document.document_id,
+            idempotency_key=request.idempotency_key,
+            request_fingerprint=request.request_fingerprint,
+            provider=GatewayProviderMetadata(NACIONAL_HOMOLOGATION_PROVIDER_ID, "1.0"),
+            provider_request_id="synthetic-national-pending",
+        )
+
+    national = Mock()
+    national.authorize.side_effect = pending_authorization
+    router = _GovernedNfseRouter(
+        application=app, national=national, national_query=query, extrema=None,
+    )
+    handlers = build_provider_operation_handlers(
+        FiscalOperationsClient(FakeFiscalOperationsGateway()),
+        application=app,
+        prepared_nfse_gateway=NfseGatewayClient(router),
+        prepared_nfse_query_client=NfseQueryClient(router),
+        archive_retention=RetentionPolicyMetadata("nfcore-fiscal-archive", 1),
+    )
+    browser = _client(db, operation_executor=CanonicalPortalOperationExecutor(
+        unit_of_work_factory=db,
+        path=CanonicalFiscalOperationPath(app, handlers=handlers),
+    ))
+    payload = _payload() | {
+        "source_id": "salto-national-recovery-2026",
+        "service_municipality_ibge": "3545209",
+        "competence_date": "2026-11-15",
+    }
+    prepared = _post(browser, payload, "salto-recovery-prepare")
+    assert prepared.status_code == 200, prepared.text
+    document_id = prepared.json()["document_id"]
+    scope = ExecutionScope(
+        TENANT, UNIT, FiscalEnvironment.HOMOLOGATION,
+        "salto-recovery-check", "fm-nfcore",
+    )
+    request = app.load_prepared_nfse_authorization(scope, document_id)
+    expected_dps = (
+        "/dps/DPS35452091" + request.document.issuer.cnpj.value
+        + f"{request.document.dps_series:05d}{request.document.dps_number:015d}"
+    )
+
+    # Authorizing a national DPS does not automatically grant read-back rights.
+    with pytest.raises(ControlPlaneNotFoundError):
+        query.query(request)
+    assert get_calls == []
+
+    with db() as uow:
+        uow.commercial.put_provider_binding(ProviderBinding(
+            binding_id="salto-national-query-approved",
+            tenant_id=TENANT, unit_id=UNIT,
+            environment=FiscalEnvironment.HOMOLOGATION,
+            document_kind=FiscalDocumentKind.NFSE,
+            jurisdiction=BrazilianJurisdiction("SP", "3545209"),
+            operation=ConfiguredFiscalOperation.QUERY,
+            provider_id=NACIONAL_HOMOLOGATION_PROVIDER_ID,
+        ))
+        uow.commit()
+    csrf = browser.cookies.get(CSRF_COOKIE)
+    assert csrf
+    body = {
+        "unit_id": UNIT, "environment": "homologation",
+        "document_id": document_id,
+    }
+    with patch(
+        "kordena_fiscal.gateway.nfse_national_query.build_fiscal_tls_context",
+        return_value=Mock(),
+    ):
+        first = browser.post(
+            "/v1/portal/operations/issueFiscalDocument", json=body,
+            headers={CSRF_HEADER: csrf, "Idempotency-Key": "salto-pending-submit"},
+        )
+        assert first.status_code == 200, first.text
+        assert first.json()["recovery_required"] is True
+        recovered = browser.post(
+            "/v1/portal/operations/reconcileFiscalOperation", json=body,
+            headers={CSRF_HEADER: csrf, "Idempotency-Key": "salto-read-only-query"},
+        )
+        assert recovered.status_code == 200, recovered.text
+        assert recovered.json()["status"] == FiscalDocumentState.AUTHORIZED.value
+        terminal = browser.post(
+            "/v1/portal/operations/reconcileFiscalOperation", json=body,
+            headers={CSRF_HEADER: csrf, "Idempotency-Key": "salto-query-replay"},
+        )
+        assert terminal.status_code == 200, terminal.text
+        assert terminal.json()["replay"] is True
+
+    assert submitted.call_count == 1
+    assert len(get_calls) == 2, "Terminal replay cannot make new GET or POST calls"
+    authorized = browser.get(
+        f"/v1/portal/documents/{document_id}/artifacts/authorized_xml",
+        params={"unit_id": UNIT, "environment": "homologation"},
+    )
+    assert authorized.status_code == 200, authorized.text
+    assert authorized.content == authorized_xml
+    with db() as uow:
+        xml_entries = [
+            row for row in uow.archive.list_for_document(scope, document_id)
+            if row.kind is FiscalArchiveKind.AUTHORIZED_XML
+        ]
+        assert len(xml_entries) == 1
+
+
+def test_salto_national_replacement_dps_is_atomic_and_replay_safe(
+    tmp_path: Path,
+) -> None:
+    """Salto Portal uses ONE new signed DPS to replace an official national invoice.
+
+    All keys, XML and A1 material are synthetic. Never claim municipality homologation.
+    """
+    db = _database(
+        tmp_path / "salto-national-replacement.sqlite",
+        issuer_ibge="3545209", tax_regime=TaxRegimeCode.NORMAL,
+    )
+    with db() as uow:
+        uow.commercial.put_provider_binding(ProviderBinding(
+            binding_id="salto-cancel-for-replacement",
+            tenant_id=TENANT, unit_id=UNIT,
+            environment=FiscalEnvironment.HOMOLOGATION,
+            document_kind=FiscalDocumentKind.NFSE,
+            jurisdiction=BrazilianJurisdiction("SP", "3545209"),
+            operation=ConfiguredFiscalOperation.CANCEL,
+            provider_id=NACIONAL_HOMOLOGATION_PROVIDER_ID,
+        ))
+        uow.commit()
+    application = FiscalApplicationService(db)
+    a1 = _synthetic_a1_for_native_issuer()
+    signing_key, signing_cert, _ = pkcs12.load_key_and_certificates(
+        a1.pkcs12_bytes, a1.password,
+    )
+    assert isinstance(signing_key, rsa.RSAPrivateKey) and signing_cert is not None
+    ns = "{http://www.sped.fazenda.gov.br/nfse}"
+    original_key = "35" + "6" * 48
+    substitute_key = "35" + "7" * 48
+    captured: list[bytes] = []
+    original_id: str | None = None
+
+    def official_xml_for(key: str) -> bytes:
+        root = etree.Element(ns + "NFSe", nsmap={None: ns[1:-1]}, versao="1.01")
+        info = etree.SubElement(root, ns + "infNFSe", Id="NFS" + key)
+        append_nfse_signature(
+            root, info, signing_key, signing_cert, legacy_abrasf=False,
+        )
+        return etree.tostring(root, encoding="utf-8", xml_declaration=True)
+
+    def fake_sefin(raw: bytes, *_unused: object) -> bytes:
+        nonlocal original_id
+        signed = gzip.decompress(base64.b64decode(json.loads(raw)["dpsXmlGZipB64"]))
+        national_dps_validator("1.01").validate_document(signed)
+        root = etree.fromstring(signed)
+        subst = root.find(ns + "infDPS/" + ns + "subst")
+        if not captured:
+            assert subst is None
+            key = original_key
+        else:
+            assert subst is not None
+            assert subst.findtext(ns + "chSubstda") == original_key
+            assert subst.findtext(ns + "cMotivo") == "99"
+            assert subst.findtext(ns + "xMotivo") == (
+                "Retificacao dos dados revisados pelo responsavel fiscal"
+            )
+            assert original_id is not None
+            with db() as uow:
+                assert (
+                    uow.lifecycle.get(original_id).state
+                    is FiscalDocumentState.CANCEL_REQUESTED
+                )
+            key = substitute_key
+        captured.append(signed)
+        return json.dumps({
+            "tipoAmbiente": 2, "chaveAcesso": key,
+            "idDps": "salto-synthetic-replacement",
+            "nfseXmlGZipB64": base64.b64encode(
+                gzip.compress(official_xml_for(key), mtime=0),
+            ).decode("ascii"),
+        }).encode()
+
+    national = NfseNacionalHomologationGateway(
+        resolve_certificate=lambda _scope, _cnpj: a1,
+        build_signed_dps=build_signed_dps,
+        exchange=fake_sefin,
+    )
+    governed = _GovernedNationalNfseGateway(
+        application=application, preaudit=nfse_preaudit, gateway=national,
+    )
+    handlers = build_provider_operation_handlers(
+        FiscalOperationsClient(FakeFiscalOperationsGateway()),
+        application=application,
+        prepared_nfse_gateway=NfseGatewayClient(governed),
+        archive_retention=RetentionPolicyMetadata("nfcore-fiscal-archive", 1),
+    )
+    web = _client(db, operation_executor=CanonicalPortalOperationExecutor(
+        unit_of_work_factory=db,
+        path=CanonicalFiscalOperationPath(application, handlers=handlers),
+    ))
+    payload = _payload() | {
+        "source_id": "salto-first-national",
+        "service_municipality_ibge": "3545209",
+        "competence_date": "2026-11-15",
+    }
+    first = _post(web, payload, "salto-original-review")
+    assert first.status_code == 200, first.text
+    original_id = first.json()["document_id"]
+    csrf = web.cookies.get(CSRF_COOKIE)
+    assert csrf
+    def issue(doc: str, idem: str):
+        return web.post(
+            "/v1/portal/operations/issueFiscalDocument",
+            json={
+                "unit_id": UNIT, "environment": "homologation", "document_id": doc,
+            },
+            headers={CSRF_HEADER: csrf, "Idempotency-Key": idem},
+        )
+    issued = issue(original_id, "salto-first-national-issue")
+    assert issued.status_code == 200, issued.text
+    assert issued.json()["status"] == "authorized"
+
+    correction = payload | {
+        "source_id": "salto-second-national-replacement",
+        "iss_amount": "4.00",
+        "substitution_original_id": original_id,
+        "substitution_reason_code": "99",
+        "substitution_reason_description": (
+            "Retificacao dos dados revisados pelo responsavel fiscal"
+        ),
+        "substitution_human_approval": True,
+    }
+    prepared = _post(web, correction, "salto-substitution-review")
+    assert prepared.status_code == 200, prepared.text
+    replacement_id = prepared.json()["document_id"]
+    scope = ExecutionScope(
+        TENANT, UNIT, FiscalEnvironment.HOMOLOGATION, "salto-read", "fm-nfcore",
+    )
+    replacement = application.load_prepared_nfse_authorization(scope, replacement_id)
+    assert replacement.document.national_substitution is not None
+    assert (
+        replacement.document.national_substitution.original_invoice_reference
+        == original_key
+    )
+    done = issue(replacement_id, "salto-replacement-once")
+    assert done.status_code == 200, done.text
+    assert done.json()["status"] == "authorized"
+    assert len(captured) == 2
+    with db() as uow:
+        assert uow.lifecycle.get(original_id).state is FiscalDocumentState.CANCELLED
+        assert uow.lifecycle.get(replacement_id).state is FiscalDocumentState.AUTHORIZED
+    replay = issue(replacement_id, "salto-replacement-replay")
+    assert replay.status_code == 200, replay.text
+    assert replay.json()["replay"] is True
+    replay_preparation = _post(web, correction, "salto-substitution-review")
+    assert replay_preparation.status_code == 200, replay_preparation.text
+    assert replay_preparation.json()["replay"] is True
+    assert len(captured) == 2
+    unauthorized = _post(
+        web, correction | {"substitution_human_approval": False},
+        "salto-substitution-not-reviewed",
+    )
+    assert unauthorized.status_code in (400, 403, 409)
+
+
+def test_salto_national_101101_cancel_real_portal_signed_event_and_archive(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Synthetic A1, XSD-signed 101101 and SEFIN reply through the real Portal."""
+    from kordena_fiscal.control_plane.commercial import DurableProviderBindingResolver
+    from kordena_fiscal.runtime.national_event_handlers import build_national_event_handlers
+
+    db = _database(
+        tmp_path / "salto-national-cancellation.sqlite",
+        issuer_ibge="3545209", tax_regime=TaxRegimeCode.NORMAL,
+    )
+    with db() as uow:
+        uow.commercial.put_provider_binding(ProviderBinding(
+            binding_id="salto-cancel-approved",
+            tenant_id=TENANT, unit_id=UNIT,
+            environment=FiscalEnvironment.HOMOLOGATION,
+            document_kind=FiscalDocumentKind.NFSE,
+            jurisdiction=BrazilianJurisdiction("SP", "3545209"),
+            operation=ConfiguredFiscalOperation.CANCEL,
+            provider_id=NACIONAL_HOMOLOGATION_PROVIDER_ID,
+        ))
+        uow.commit()
+    app = FiscalApplicationService(db)
+    a1 = _synthetic_a1_for_native_issuer()
+    private, cert, _ = pkcs12.load_key_and_certificates(
+        a1.pkcs12_bytes, a1.password,
+    )
+    assert isinstance(private, rsa.RSAPrivateKey) and cert is not None
+    ns = "{http://www.sped.fazenda.gov.br/nfse}"
+    key = "35" + "3" * 48
+    original = etree.Element(ns + "NFSe", nsmap={None: ns[1:-1]}, versao="1.01")
+    original_info = etree.SubElement(original, ns + "infNFSe", Id="NFS" + key)
+    append_nfse_signature(original, original_info, private, cert, legacy_abrasf=False)
+    official_xml = etree.tostring(original, encoding="utf-8", xml_declaration=True)
+
+    def fake_issuer(_payload: bytes, *_args: object) -> bytes:
+        return json.dumps({
+            "tipoAmbiente": 2, "chaveAcesso": key,
+            "idDps": "salto-original-synthetic",
+            "nfseXmlGZipB64": base64.b64encode(
+                gzip.compress(official_xml, mtime=0),
+            ).decode("ascii"),
+        }).encode()
+
+    national = NfseNacionalHomologationGateway(
+        resolve_certificate=lambda _scope, _cnpj: a1,
+        build_signed_dps=build_signed_dps,
+        exchange=fake_issuer,
+    )
+    handlers = dict(build_provider_operation_handlers(
+        FiscalOperationsClient(FakeFiscalOperationsGateway()),
+        application=app,
+        prepared_nfse_gateway=NfseGatewayClient(_GovernedNationalNfseGateway(
+            application=app, preaudit=nfse_preaudit, gateway=national,
+        )),
+        archive_retention=RetentionPolicyMetadata("nfcore-fiscal-archive", 1),
+    ))
+    vault = Mock()
+    vault.resolve.return_value = a1
+    handlers.update(build_national_event_handlers(
+        application=app,
+        certificate_vault=vault,
+        provider_resolver=DurableProviderBindingResolver(db),
+        retention=RetentionPolicyMetadata("nfcore-fiscal-archive", 1),
+    ))
+    browser = _client(db, operation_executor=CanonicalPortalOperationExecutor(
+        unit_of_work_factory=db,
+        path=CanonicalFiscalOperationPath(app, handlers=handlers),
+    ))
+    payload = _payload() | {
+        "source_id": "salto-101101-original",
+        "service_municipality_ibge": "3545209",
+        "competence_date": "2026-11-15",
+    }
+    prepared = _post(browser, payload, "salto-cancel-original-review")
+    assert prepared.status_code == 200, prepared.text
+    original_id = prepared.json()["document_id"]
+    csrf = browser.cookies.get(CSRF_COOKIE)
+    assert csrf
+    submitted = browser.post(
+        "/v1/portal/operations/issueFiscalDocument",
+        json={
+            "unit_id": UNIT, "environment": "homologation", "document_id": original_id,
+        },
+        headers={CSRF_HEADER: csrf, "Idempotency-Key": "salto-cancel-original-issue"},
+    )
+    assert submitted.status_code == 200, submitted.text
+    assert submitted.json()["status"] == "authorized"
+    provider_posts: list[bytes] = []
+
+    def fake_event_post(
+        reply_key: str, body: bytes, _tls: object, _timeout: float,
+    ) -> bytes:
+        assert reply_key == key
+        signed = gzip.decompress(
+            base64.b64decode(json.loads(body)["pedidoRegistroEventoXmlGZipB64"]),
+        )
+        from kordena_fiscal.gateway.nfse_nacional_event_homologation import (
+            validate_national_event_xml,
+        )
+        validate_national_event_xml(signed, kind="request")
+        with db() as uow:
+            assert (
+                uow.lifecycle.get(original_id).state
+                is FiscalDocumentState.CANCEL_REQUESTED
+            )
+        provider_posts.append(signed)
+        official = etree.Element(ns + "evento", nsmap={None: ns[1:-1]}, versao="1.01")
+        info = etree.SubElement(
+            official, ns + "infEvento", Id="EVT" + key + "101101001",
+        )
+        etree.SubElement(info, ns + "verAplic").text = "nfcore-synthetic"
+        etree.SubElement(info, ns + "ambGer").text = "2"
+        etree.SubElement(info, ns + "nSeqEvento").text = "1"
+        etree.SubElement(info, ns + "dhProc").text = datetime.now(UTC).isoformat(
+            timespec="seconds",
+        )
+        etree.SubElement(info, ns + "nDFSe").text = "1"
+        info.append(etree.fromstring(signed))
+        append_nfse_signature(official, info, private, cert, legacy_abrasf=False)
+        event_xml = etree.tostring(
+            official, encoding="utf-8", xml_declaration=True,
+        )
+        validate_national_event_xml(event_xml, kind="response")
+        return json.dumps({
+            "tipoAmbiente": 2,
+            "eventoXmlGZipB64": base64.b64encode(
+                gzip.compress(event_xml, mtime=0),
+            ).decode("ascii"),
+        }).encode()
+
+    monkeypatch.setattr(
+        "kordena_fiscal.gateway.nfse_nacional_event_homologation._exchange",
+        fake_event_post,
+    )
+    monkeypatch.setattr(
+        "kordena_fiscal.gateway.nfse_nacional_event_homologation."
+        "build_fiscal_tls_context",
+        lambda _material: Mock(),
+    )
+    body = {
+        "unit_id": UNIT, "environment": "homologation",
+        "document_id": original_id, "human_approval": True,
+        "reason_code": "1",
+        "reason_description": "Cancelamento por erro fiscal revisado pelo emissor",
+    }
+    denied = browser.post(
+        "/v1/portal/operations/cancelNationalNfse", json=body,
+        headers={"Idempotency-Key": "salto-cancel-approval"},
+    )
+    assert denied.status_code == 403
+    cancelled = browser.post(
+        "/v1/portal/operations/cancelNationalNfse", json=body,
+        headers={CSRF_HEADER: csrf, "Idempotency-Key": "salto-cancel-approval"},
+    )
+    assert cancelled.status_code == 200, cancelled.text
+    assert cancelled.json()["status"] == "cancelled"
+    assert cancelled.json()["official_fiscal_confirmation"] is True
+    assert len(provider_posts) == 1
+    with db() as uow:
+        assert uow.lifecycle.get(original_id).state is FiscalDocumentState.CANCELLED
+        events = [
+            item for item in uow.archive.list_for_document(
+                ExecutionScope(
+                    TENANT, UNIT, FiscalEnvironment.HOMOLOGATION,
+                    "salto-event-check", "fm-nfcore",
+                ), original_id,
+            )
+            if item.kind is FiscalArchiveKind.FISCAL_EVENT
+        ]
+        assert len(events) == 1
+    replay = browser.post(
+        "/v1/portal/operations/cancelNationalNfse", json=body,
+        headers={CSRF_HEADER: csrf, "Idempotency-Key": "salto-cancel-approval"},
+    )
+    assert replay.status_code == 200, replay.text
+    assert len(provider_posts) == 1, "A confirmed cancellation must never rePOST"

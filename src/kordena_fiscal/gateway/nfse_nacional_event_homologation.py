@@ -22,7 +22,10 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from urllib.error import HTTPError, URLError
 from urllib.request import HTTPSHandler, Request, build_opener
+from zoneinfo import ZoneInfo
 
+from cryptography.hazmat.primitives.asymmetric import rsa
+from cryptography.hazmat.primitives.serialization import pkcs12
 from lxml import etree
 
 from kordena_fiscal.domain import (
@@ -40,9 +43,13 @@ from kordena_fiscal.gateway.nfse_nacional_homologation import (
 from kordena_fiscal.gateway.nfse_national_homologation import (
     SEFIN_HOMOLOGATION_NFSE_URL,
 )
+from kordena_fiscal.gateway.nfse_national_receipt import _verify_nfse_receipt_signature
 from kordena_fiscal.gateway.provider import ProviderSelectionResolver
+from kordena_fiscal.issuance.nfe_nfse import NfseAuthorizationRequest
+from kordena_fiscal.signing.nfse_xmldsig import append_nfse_signature
 from kordena_fiscal.vault import EphemeralCertificateMaterial
 from kordena_fiscal.vault.a1_preflight import validate_a1_for_issuer
+from kordena_fiscal.xml.nfse_nacional_schema import national_event_validator
 
 _NS = "http://www.sped.fazenda.gov.br/nfse"
 _DS = "http://www.w3.org/2000/09/xmldsig#"
@@ -232,6 +239,30 @@ def _exchange(
     return bytes(raw)
 
 
+def _exchange_event_get(
+    key: str, tls: ssl.SSLContext, timeout: float,
+) -> bytes | None:
+    """Read-only official event 101101, seq=1. HTTP 404 means still pending."""
+    req = Request(
+        _URL + "/" + _key(key) + "/eventos/" + _CANCEL_TYPE + "/1",
+        method="GET", headers={"Accept": "application/json"},
+    )
+    try:
+        with build_opener(HTTPSHandler(context=tls), RejectFiscalRedirects()).open(
+            req, timeout=timeout,
+        ) as result:
+            body = result.read(_MAX_XML + 1)
+    except HTTPError as exc:
+        if exc.code == 404:
+            return None
+        raise NationalNfseEventError("SEFIN event GET could not be verified") from None
+    except (URLError, OSError, TimeoutError, ssl.SSLError):
+        raise NationalNfseEventError("SEFIN event GET status unknown") from None
+    if len(body) > _MAX_XML:
+        raise NationalNfseEventError("SEFIN event GET response exceeds limit")
+    return bytes(body)
+
+
 class NationalNfseCancellationHomologationTransport:
     """A1 + human-approved signed XML + fiscal binding, no automatic retry."""
 
@@ -244,6 +275,7 @@ class NationalNfseCancellationHomologationTransport:
         approve_cancellation: Callable[[NationalNfseCancellationIntent], None],
         validate_official_event: Callable[[bytes], None],
         exchange: Callable[[str, bytes, ssl.SSLContext, float], bytes] | None = None,
+        exchange_get: Callable[[str, ssl.SSLContext, float], bytes | None] | None = None,
         timeout_seconds: float = 15,
     ) -> None:
         if (
@@ -261,7 +293,43 @@ class NationalNfseCancellationHomologationTransport:
         self._approve = approve_cancellation
         self._validate_response = validate_official_event
         self._exchange = exchange or _exchange
+        self._exchange_get = exchange_get or _exchange_event_get
         self._timeout = timeout_seconds
+
+    def query_cancellation(
+        self, intent: NationalNfseCancellationIntent,
+    ) -> NationalNfseCancellationReceipt | None:
+        """Recover an uncertain event solely through official GET; never POST again."""
+        if not isinstance(intent, NationalNfseCancellationIntent):
+            raise NationalNfseEventError("Canonical national cancellation intent required")
+        provider = self._resolver.resolve_provider_id(
+            scope=intent.scope,
+            document_kind=FiscalDocumentKind.NFSE,
+            jurisdiction=intent.issuer_jurisdiction,
+            operation="query",
+        )
+        if provider != NACIONAL_HOMOLOGATION_PROVIDER_ID:
+            raise NationalNfseEventError("National event query provider binding mismatch")
+        self._approve(intent)
+        self._validate(intent.signed_event_xml)
+        material = self._certificate(intent.scope, intent.issuer.value)
+        validate_a1_for_issuer(
+            material.pkcs12_bytes, material.password,
+            issuer_cnpj=intent.issuer, at=datetime.now(UTC),
+        )
+        response = self._exchange_get(
+            intent.invoice_reference,
+            build_fiscal_tls_context(material),
+            self._timeout,
+        )
+        if response is None:
+            return None
+        xml = _validated_response(response, intent)
+        self._validate_response(xml)
+        return NationalNfseCancellationReceipt(
+            invoice_reference=intent.invoice_reference,
+            event_xml=xml,
+        )
 
     def cancel(
         self, intent: NationalNfseCancellationIntent,
@@ -305,3 +373,92 @@ class NationalNfseCancellationHomologationTransport:
             invoice_reference=intent.invoice_reference,
             event_xml=event_xml,
         )
+
+
+def validate_national_event_xml(xml: bytes, *, kind: str) -> None:
+    """Pinned national 1.01 event schema and RSA-SHA256 signed-ID integrity."""
+    if kind not in ("request", "response"):
+        raise NationalNfseEventError("Unsupported national fiscal event")
+    national_event_validator(kind).validate_document(xml)
+    root = _secure_parse(xml)
+    tag = "pedRegEvento" if kind == "request" else "evento"
+    info_name = "infPedReg" if kind == "request" else "infEvento"
+    info = root.find(_NS_TAG + info_name)
+    if root.tag != _NS_TAG + tag or info is None or not info.get("Id"):
+        raise NationalNfseEventError("National fiscal event signed identity is missing")
+    _verify_nfse_receipt_signature(
+        root, info, info.get("Id", ""),
+        allow_nested_event_signature=(kind == "response"),
+    )
+    if kind == "response":
+        nested = info.find(_NS_TAG + "pedRegEvento")
+        if nested is None:
+            raise NationalNfseEventError("Official event lacks signed original request")
+        nested_info = nested.find(_NS_TAG + "infPedReg")
+        if nested_info is None or not nested_info.get("Id"):
+            raise NationalNfseEventError("Official event original identity is invalid")
+        if nested.find("{" + _DS + "}Signature") is not None:
+            _verify_nfse_receipt_signature(
+                nested, nested_info, nested_info.get("Id", ""),
+            )
+
+
+def build_signed_national_cancellation(
+    *, request: NfseAuthorizationRequest, key: str,
+    reason_code: str, reason_description: str,
+    approval_reference: str, occurred_at: datetime,
+    material: EphemeralCertificateMaterial,
+) -> NationalNfseCancellationIntent:
+    """Generate the national 101101 event from a reviewed, durably authorized invoice."""
+    if not isinstance(request, NfseAuthorizationRequest):
+        raise NationalNfseEventError("Canonical NFS-e request required")
+    document = request.document
+    _key(key)
+    if (
+        document.scope.environment is not FiscalEnvironment.HOMOLOGATION
+        or not document.scope.host_namespace
+        or document.issuer.address.jurisdiction.state_code != "SP"
+        or not key.startswith("35")
+        or reason_code not in ("1", "2", "9")
+        or not isinstance(reason_description, str)
+        or not 15 <= len(reason_description.strip()) <= 255
+        or any(ord(char) < 32 for char in reason_description)
+        or not isinstance(occurred_at, datetime) or occurred_at.tzinfo is None
+        or not isinstance(approval_reference, str)
+        or not 8 <= len(approval_reference.strip()) <= 128
+        or not approval_reference.isascii()
+    ):
+        raise NationalNfseEventError("National cancellation requires approved fiscal facts")
+    validate_a1_for_issuer(
+        material.pkcs12_bytes, material.password,
+        issuer_cnpj=document.issuer.cnpj, at=datetime.now(UTC),
+    )
+    private, certificate, _ = pkcs12.load_key_and_certificates(
+        material.pkcs12_bytes, material.password,
+    )
+    if not isinstance(private, rsa.RSAPrivateKey) or certificate is None:
+        raise NationalNfseEventError("National event requires valid A1 RSA identity")
+    root = etree.Element(_NS_TAG + "pedRegEvento", nsmap={None: _NS})  # type: ignore[dict-item]
+    root.set("versao", "1.01")
+    info = etree.SubElement(root, _NS_TAG + "infPedReg")
+    info.set("Id", "PRE" + key + _CANCEL_TYPE)
+    etree.SubElement(info, _NS_TAG + "tpAmb").text = "2"
+    etree.SubElement(info, _NS_TAG + "verAplic").text = "nfcore-event-v1"
+    etree.SubElement(info, _NS_TAG + "dhEvento").text = occurred_at.astimezone(
+        ZoneInfo("America/Sao_Paulo")
+    ).isoformat(timespec="seconds")
+    etree.SubElement(info, _NS_TAG + "CNPJAutor").text = document.issuer.cnpj.value
+    etree.SubElement(info, _NS_TAG + "chNFSe").text = key
+    cancel = etree.SubElement(info, _NS_TAG + "e101101")
+    etree.SubElement(cancel, _NS_TAG + "xDesc").text = "Cancelamento de NFS-e"
+    etree.SubElement(cancel, _NS_TAG + "cMotivo").text = reason_code
+    etree.SubElement(cancel, _NS_TAG + "xMotivo").text = reason_description.strip()
+    append_nfse_signature(root, info, private, certificate, legacy_abrasf=False)
+    signed = etree.tostring(root, encoding="utf-8", xml_declaration=True)
+    validate_national_event_xml(signed, kind="request")
+    return NationalNfseCancellationIntent(
+        scope=document.scope, issuer=document.issuer.cnpj,
+        issuer_jurisdiction=document.issuer.address.jurisdiction,
+        invoice_reference=key, human_approval_reference=approval_reference,
+        signed_event_xml=signed,
+    )

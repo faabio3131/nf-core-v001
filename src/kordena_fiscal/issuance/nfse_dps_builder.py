@@ -148,6 +148,18 @@ def build_signed_dps(
     _child(info, "tpEmit", "1")  # Prestador -- this flow always submits on the issuer's own behalf
     _child(info, "cLocEmi", issuer_municipality)
 
+    if document.national_substitution is not None:
+        # Official 1.01 order: cLocEmi, subst, prest. A replacement is ONE new
+        # DPS with the original key, never a stand-alone cancellation POST.
+        review = document.national_substitution
+        original_key = review.original_invoice_reference
+        if not original_key.startswith(issuer_municipality[:2]):
+            raise FiscalValidationError("National replacement original UF mismatch")
+        subst = etree.SubElement(info, f"{{{_NFSE_NS}}}subst")
+        _child(subst, "chSubstda", original_key)
+        _child(subst, "cMotivo", review.reason_code)
+        _child(subst, "xMotivo", review.reason_description.strip())
+
     prest = etree.SubElement(info, f"{{{_NFSE_NS}}}prest")
     _child(prest, "CNPJ", cnpj)
     if issuer.municipal_registration is not None:
