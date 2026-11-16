@@ -195,6 +195,37 @@ def test_canonical_gateway_rejects_unapproved_provider_before_prepared_rps() -> 
     ports["verify"].assert_not_called()
 
 
+@pytest.mark.parametrize("provider,ibge", sorted(SP4_MUNICIPAL_PROVIDERS.items()))
+@pytest.mark.parametrize("query_binding", [None, "unapproved-query-provider"])
+def test_separate_query_binding_required_after_authorized_municipal_issue(
+    provider: str, ibge: str, query_binding: str | None,
+) -> None:
+    """AUTHORIZE binding never grants QUERY permission for the same document.
+
+    Regression for the historical SP4 query-binding contract (#446/#450):
+    recovery needs a distinct durable operation binding before any GET I/O.
+    """
+    gateway, ports = _ports(provider)
+    ports["resolver"].resolve_provider_id.side_effect = (
+        lambda *, operation, **_kwargs: (
+            provider if operation == "authorize" else query_binding
+        )
+    )
+    request = _request(ibge)
+    assert gateway.authorize(request).status is AuthorizationStatus.AUTHORIZED
+
+    with pytest.raises(Sp4CanonicalMunicipalError, match="provider binding"):
+        gateway.query(request)
+
+    ports["submit"].assert_called_once()
+    ports["query"].assert_not_called()
+    ports["resolver"].resolve_provider_id.assert_called()
+    assert (
+        ports["resolver"].resolve_provider_id.call_args.kwargs["operation"]
+        == "query"
+    )
+
+
 @pytest.mark.parametrize("mutate", [
     {"rps_number": "43"},
     {"issuer_ibge": "3505708"},
