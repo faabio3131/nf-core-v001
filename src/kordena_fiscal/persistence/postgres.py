@@ -196,7 +196,7 @@ class PostgresFiscalSequenceStore(SqliteFiscalSequenceStore):
         policy: FiscalSequencePolicy,
     ) -> FiscalNumberReservation:
         if isinstance(key, FiscalSequenceKey):
-            _advisory_lock(self._connection, f"sequence:{key.canonical_material}")
+            _advisory_lock(self._connection, f"sequence:{self.authority_lock_material(key)}")
         return super().reserve_next(key, policy)
 
 
