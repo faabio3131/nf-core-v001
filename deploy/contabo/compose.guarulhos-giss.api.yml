@@ -1,6 +1,6 @@
 # Opt-in reviewed homologation on the existing API; does not enable fiscal production.
 services:
-  api:
+  nfcore-api:
     environment:
       NFCORE_GUARULHOS_GISS_CONFIG_PATH: /run/nfcore/guarulhos/manifest.json
     volumes:

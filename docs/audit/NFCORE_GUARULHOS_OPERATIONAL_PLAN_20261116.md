@@ -11,3 +11,7 @@ Fonte primária consultada16/11: https://guarulhos.giss.com.br/giss-ajuda/desenv
 ## Evidência local
 
 11 testes HTTP e51 focais PASS; Ruff/Mypy421 PASS; frontend26 PASS/lint/typecheck/build. Startup compila24schemas oficiais para ambas cidades e rejeita canal/emitente divergente. E2E browser local não executado com sucesso: download do Playwright truncado; Chromium do sistema bloqueado por socket/ptrace. Três cenários novos aguardam CI completa. Suíte integral local e revisão independente em execução. Override read-only e runbook adicionados, sem provisionamento no host.
+
+## Correções da revisão independente
+
+Override corrigido para serviço canônico nfcore-api. Invariável de permissão dupla centralizada em FiscalIntentRecovery.allowed para prepare/validate/resume/replay/list de todas as substituições já suportadas.12 testes negativos SQLite verificam6operações e2estados; variantes PG dependem da CI.14gateway PASS incluindo fonte/nota com municípios cruzados e Barueri rejeitado pela família GISS. Prova independente HTTP200 antes de revogar ISSUE,403depois,zero dispatch. Nenhum bloqueador adicional; certificado somente após CI no novo HEAD cumulativo MF04+Guarulhos.

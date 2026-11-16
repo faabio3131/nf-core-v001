@@ -1,3 +1,11 @@
+## CURRENT — MF04 integrado; Guarulhos corrigido após revisão, 16/11/2026
+
+#520 MERGED na candidata `af1f7b58794beba42a92718dea40a44fb1ef90fa`, origem `009c72a1`. CI completa [43947807754](https://github.com/faabio3131/nf-core-v001/actions/runs/43947807754) SUCCESS e T2 efetivo fora de Draft43949507844 SUCCESS. Main/production permanecem `549ab3c0`/`ea4bdd3b`; nenhum deploy.
+
+#521 sincronizada com essa candidata. Revisão independente encontrou dois defeitos: nome de serviço do override (`api`→`nfcore-api`) e dupla permissão ausente em recovery direto. Corrigidos: `FiscalIntentRecovery.allowed()` governa prepare, validate/resume/replay e listagem, inclusive outros canais de substituição já suportados. Papéis atuais agrupam CANCEL+ISSUE; teste de revogação parcial garante a invariável. Cajamar não ganhou endpoint novo: sua revisão não está na superfície recovery e continua bloqueada.
+
+Prova independente: prepare200 com ambas permissões; após retirar ISSUE, resume403/zero dispatch; CANCEL-only bloqueado em prepare e endpoint direto. Testes novos cobrem6operações×2estados (prepared/recorded), listagem e replay. Suite recovery SQLite PASS/variantes PG SKIP;14gateway PASS. Ruff/Mypy421 PASS antes da sincronização; retestar composição MF04+Guarulhos. CI da origem anterior de #521 não certifica este novo HEAD. Revisão sem bloqueador adicional condicionada às correções publicadas/CI exata. Testes locais e browser/PG remotos não são homologação externa. Acesso mutante ao host permanece indisponível; publicação e DPS22/cofre/restore/staging permanecem pendentes.
+
 ## CURRENT — Guarulhos em validação, 16/11/2026
 
 Base confirmada `81914807d3253ebe15e6cce93640f1157f222fe3`; main `549ab3c0` e production `ea4bdd3b` permanecem sem promoção. #519 integrada; main é ancestral da candidata. CI cumulativa [43945724238](https://github.com/faabio3131/nf-core-v001/actions/runs/43945724238) SUCCESS. #518 recuperou seis fontes por SHA256; #413/#448/#453 encerradas com evidência e branches preservadas.
@@ -159,3 +167,10 @@ Revisor independente `review_legacy_equivalence` examinou #461/#450/#446/#449 e 
 | #434/#437 — Extrema | Funções de substituição/cancelamento preservadas: somente nota substituta 124, nunca original | Testes durable_flow e Web/API atuais passam. PRs permanecem abertas até conclusão documental da equivalência completa. |
 
 GET Nacional ainda aceita fixtures assinadas sem conteúdo fiscal completo: ausência de XSD/trust e correlação com DPS/CNPJ é pendência real de FIS-03, não justificativa para importar o gateway legado. Revisão do patch SP e fontes estão em `NFCORE_SP_RESPONSE_CORRELATION_REVIEW_20261116.md`.
+
+
+## Continuidade — integração documental e mecanismo MF-04, 16/11/2026
+
+#518 MERGED na candidata em0ebb510a, árvore5c92bfc1 igual à prévia; seis fontes do manifesto preservadas. PRs413/448/453 CLOSED com evidências nas descrições; branches mantidas. CI43943547457 SUCCESS. #519 MERGED em81914807 após governança/T2/revisão independente; árvore67a1a070 coincide com merge previsto e recupera dois documentos da main549ab3c. Main agora ancestral da candidata, sem promover main ou production.
+
+Mecanismo tributário nacional implementado em branch `feat/nfcore-national-tax-treatment-20261116` sobre81914807; ainda em validação para PR. Plano/impacto/aceite/revisões: `NFCORE_MF04_GOVERNED_TREATMENT_PLAN_20261116.md`. Instalação e limites: `../operations/NFCORE_NATIONAL_TAX_DECISIONS.md`. Não interpretar isso como fechamento de BH ou tributação universal. Demais lacunas fiscais/operacionais permanecem abertas. Em16/11 o Desktop Commander confirmou0% de cota remota restante; via PC/SSH continua indisponível. Fluxos GitHub de auditoria/promoção são alternativa a verificar, sem contornar aprovações humanas efetivas.

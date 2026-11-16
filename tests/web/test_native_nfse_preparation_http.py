@@ -4043,3 +4043,217 @@ def test_bh_reviewed_classifications_use_existing_native_preparation_and_replay(
         "source_id": "invalid-classification", "municipal_taxation_detail": "0010",
     }, "malformed-review")
     assert malformed.status_code == 400
+
+
+def _install_national_decision(tmp_path, monkeypatch, payload, *, code="4", sublimit=False):
+    from kordena_fiscal.runtime.native_nfse_policy import POLICY_ENV
+    from kordena_fiscal.runtime.native_sale_policy import sale_policy_key
+
+    scope = ExecutionScope(TENANT, UNIT, FiscalEnvironment.HOMOLOGATION, "policy", "fm-nfcore")
+    selector = {
+        "issuer_profile_id": "issuer-native", "issuer_profile_version": 1,
+        "issuer_cnpj": "11222333000181", "issuer_tax_regime": 2 if sublimit else 1,
+        "issuer_municipality_ibge": IBGE,
+        **{k: payload[k] for k in (
+            "service_state_code", "service_municipality_ibge", "national_taxation_code",
+            "municipal_service_code", "iss_withheld", "source_normative", "rule_version",
+        )},
+        "taker_country": "BR", "nbs_code": payload.get("nbs_code"),
+        "municipal_taxation_detail": payload.get("municipal_taxation_detail"),
+    }
+    treatment = {
+        "iss_taxation_code": code, "special_regime_code": "0",
+        "normative_reference": "urn:nfcore:synthetic:reviewed-national-decision",
+        "rule_version": 1, "effective_from": "2026-01-01", "effective_to": "2027-01-01",
+        "simples_assessment_code": "2" if sublimit else None,
+        "result_country_code": "US" if code == "3" else None,
+        "immunity_type_code": "1" if code == "2" else None,
+    }
+    data = {
+        "schema_version": 1, "policy_id": "synthetic-national-policy", "version": 1,
+        "host_namespace": "fm-nfcore", "tenant_id": TENANT, "unit_id": UNIT,
+        "environment": "homologation", "document_kind": "nfse",
+        "rules": [{"rule_id": "reviewed-service", "selector": selector, "treatment": treatment}],
+    }
+    folder = tmp_path / "national-policies"
+    folder.mkdir(exist_ok=True)
+    name = sale_policy_key(scope, FiscalDocumentKind.NFSE)
+    path, pin = folder / (name + ".json"), folder / (name + ".sha256")
+
+    def write():
+        raw = json.dumps(data).encode()
+        path.write_bytes(raw)
+        pin.write_text(hashlib.sha256(raw).hexdigest())
+    write()
+    monkeypatch.setenv(POLICY_ENV, str(folder))
+    return scope, data, path, pin, write
+
+
+@pytest.mark.parametrize("code,sublimit", [("1", True), ("2", False), ("3", False), ("4", False)])
+def test_national_reviewed_treatment_http_archive_xml_and_policy_rotation(
+    tmp_path, monkeypatch, code, sublimit,
+):
+    from kordena_fiscal.issuance.nfse_archive import decode_prepared_nfse, encode_prepared_nfse
+
+    db = _database(tmp_path / "reviewed.sqlite", tax_regime=(
+        TaxRegimeCode.SIMPLES_NACIONAL_EXCESS_SUBLIMIT if sublimit
+        else TaxRegimeCode.SIMPLES_NACIONAL
+    ))
+    payload = _payload() | {"iss_amount": "3.00" if code == "1" else "0.00"}
+    scope, data, path, pin, write = _install_national_decision(
+        tmp_path, monkeypatch, payload, code=code, sublimit=sublimit,
+    )
+    web = _client(db)
+    response = _post(web, payload)
+    assert response.status_code == 200, response.text
+    result = response.json()
+    request = FiscalApplicationService(db).load_prepared_nfse_authorization(
+        scope, result["document_id"],
+    )
+    treatment = request.document.national_tax_treatment
+    assert treatment is not None and treatment.iss_taxation_code == code
+    assert treatment.policy_sha256 == pin.read_text()
+    assert treatment.policy_id == "synthetic-national-policy:reviewed-service"
+    restored = decode_prepared_nfse(encode_prepared_nfse(request), scope=scope)
+    assert restored == request
+    a1 = _synthetic_a1_for_native_issuer()
+    signed = build_sefin_signed_dps(request, a1)
+    national_dps_validator("1.01", profile=NT009_RESTRICTED_PROFILE).validate_document(signed)
+    root = etree.fromstring(signed)
+    ns = {"n": "http://www.sped.fazenda.gov.br/nfse"}
+    assert root.xpath("string(//n:tribISSQN)", namespaces=ns) == code
+    if sublimit:
+        assert root.xpath("string(//n:regApTribSN)", namespaces=ns) == "2"
+    # Archived policy bytes retain provenance even when deployment rotates.
+    with db() as uow:
+        policy_key = "native-nfse-policy:" + hashlib.sha256(json.dumps(
+            [data["policy_id"], data["version"]]
+        ).encode()).hexdigest()
+        entries = uow.archive.list_for_document(scope, policy_key)
+        assert len(entries) == 1 and entries[0].content == path.read_bytes()
+    path.unlink()
+    pin.unlink()
+    repeated = _post(web, payload)
+    assert repeated.status_code == 200 and repeated.json()["replay"] is True
+    changed = _post(web, payload | {"description": "Changed service facts"})
+    assert changed.status_code == 409
+    assert FiscalApplicationService(db).load_prepared_nfse_authorization(
+        scope, result["document_id"],
+    ) == request
+
+
+@pytest.mark.parametrize("fault", [
+    "pin", "scope", "profile", "duplicate", "expired", "no_match", "zero_taxable", "municipal",
+])
+def test_national_policy_rejects_invalid_decisions_before_reservation(
+    tmp_path, monkeypatch, fault,
+):
+    db = _database(tmp_path / "invalid-policy.sqlite")
+    payload = _payload() | {"iss_amount": "0.00"}
+    scope, data, path, pin, write = _install_national_decision(tmp_path, monkeypatch, payload)
+    if fault == "pin":
+        path.write_bytes(path.read_bytes() + b" ")
+    else:
+        if fault == "scope":
+            data["tenant_id"] = "another-tenant"
+        elif fault == "profile":
+            data["rules"][0]["selector"]["issuer_profile_version"] = 2
+        elif fault == "duplicate":
+            data["rules"].append({**data["rules"][0], "rule_id": "same-facts"})
+        elif fault == "expired":
+            data["rules"][0]["treatment"]["effective_to"] = "2026-02-01"
+        elif fault == "no_match":
+            data["rules"][0]["selector"]["municipal_service_code"] = "9999"
+        elif fault == "zero_taxable":
+            data["rules"][0]["treatment"]["iss_taxation_code"] = "1"
+        elif fault == "municipal":
+            payload["municipal_taxation_detail"] = "123"
+        write()
+    web = _client(db)
+    with patch.object(FiscalApplicationService, "prepare_nfse_authorization") as prepare:
+        response = _post(web, payload)
+    assert response.status_code == 400, response.text
+    prepare.assert_not_called()
+
+
+def test_national_policy_used_version_is_immutable(tmp_path, monkeypatch):
+    db = _database(tmp_path / "immutable-policy.sqlite")
+    payload = _payload() | {"iss_amount": "0.00"}
+    scope, data, path, pin, write = _install_national_decision(tmp_path, monkeypatch, payload)
+    web = _client(db)
+    assert _post(web, payload).status_code == 200
+    data["rules"][0]["treatment"]["normative_reference"] = "urn:changed-review"
+    write()
+    with patch.object(FiscalApplicationService, "prepare_nfse_authorization") as prepare:
+        response = _post(web, payload | {"source_id": "second-document"}, "second-review")
+    assert response.status_code == 409, response.text
+    prepare.assert_not_called()
+
+
+def test_national_policy_installer_validates_all_rules_and_replay_ignores_current_profile(
+    tmp_path, monkeypatch,
+):
+    from kordena_fiscal.runtime.native_nfse_policy import POLICY_ENV, install_reviewed_policy
+
+    db = _database(tmp_path / "installed-policy.sqlite")
+    payload = _payload() | {"iss_amount": "0.00"}
+    scope, data, path, pin, write = _install_national_decision(tmp_path, monkeypatch, payload)
+    installed = tmp_path / "installed"
+    name = install_reviewed_policy(path, installed)
+    assert (installed / (name + ".json")).read_bytes() == path.read_bytes()
+    monkeypatch.setenv(POLICY_ENV, str(installed))
+    web = _client(db)
+    first = _post(web, payload)
+    assert first.status_code == 200
+    with db() as uow:
+        repository_type = type(uow.control_plane)
+    with patch.object(
+        repository_type, "resolve_profile", side_effect=AssertionError("live profile"),
+    ):
+        again = _post(web, payload)
+    assert again.status_code == 200 and again.json()["replay"] is True
+    data["rules"].append({**data["rules"][0], "rule_id": "overlap"})
+    write()
+    with pytest.raises(FiscalValidationError):
+        install_reviewed_policy(path, installed)
+    assert (installed / (name + ".json")).read_bytes() != path.read_bytes()
+
+
+def test_national_policy_never_changes_municipal_tax_handling(tmp_path, monkeypatch):
+    from kordena_fiscal.runtime.native_nfse_policy import POLICY_ENV
+
+    monkeypatch.setenv(POLICY_ENV, str(tmp_path / "unavailable"))
+    db = _database(tmp_path / "municipal-policy.sqlite", provider_id=_CAJAMAR_PROVIDER,
+                   tax_regime=TaxRegimeCode.NORMAL)
+    web = _client(db)
+    payload = _payload() | _TAKER_ADDRESS
+    assert _post(web, payload | {"iss_amount": "0.00"}).status_code == 400
+    assert _post(web, payload).status_code == 200
+
+
+@pytest.mark.parametrize("fault", ["missing", "empty", "symlink", "duplicate_json"])
+def test_configured_national_policy_never_falls_back(tmp_path, monkeypatch, fault):
+    from kordena_fiscal.runtime.native_nfse_policy import POLICY_ENV
+
+    db = _database(tmp_path / "no-fallback.sqlite")
+    payload = _payload()  # Even ordinary taxable requests cannot bypass invalid configuration.
+    scope, data, path, pin, write = _install_national_decision(
+        tmp_path, monkeypatch, payload, code="1",
+    )
+    if fault == "missing":
+        path.unlink()
+    elif fault == "empty":
+        monkeypatch.setenv(POLICY_ENV, "")
+    elif fault == "symlink":
+        path.rename(path.with_suffix(".real"))
+        path.symlink_to(path.with_suffix(".real"))
+    else:
+        raw = path.read_bytes().replace(
+            b'"schema_version": 1', b'"schema_version": 1, "schema_version": 1',
+        )
+        path.write_bytes(raw)
+        pin.write_text(hashlib.sha256(raw).hexdigest())
+    with patch.object(FiscalApplicationService, "prepare_nfse_authorization") as prepare:
+        response = _post(_client(db), payload)
+    assert response.status_code == 400
+    prepare.assert_not_called()

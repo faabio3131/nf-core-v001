@@ -328,8 +328,20 @@ class NfseNationalTaxTreatment:
     simples_assessment_code: str | None = None
     result_country_code: str | None = None
     immunity_type_code: str | None = None
+    policy_id: str | None = None
+    policy_sha256: str | None = None
 
     def __post_init__(self) -> None:
+        if (self.policy_id is None) != (self.policy_sha256 is None):
+            raise FiscalValidationError("National policy identity and digest must be paired")
+        if self.policy_id is not None:
+            if not isinstance(self.policy_id, str) or not 1 <= len(self.policy_id) <= 128:
+                raise FiscalValidationError("National policy identity is invalid")
+            digest = self.policy_sha256
+            if not isinstance(digest, str) or len(digest) != 64 or any(
+                character not in "0123456789abcdef" for character in digest
+            ):
+                raise FiscalValidationError("National policy SHA-256 is invalid")
         if self.iss_taxation_code not in {"1", "2", "3", "4"}:
             raise FiscalValidationError("National ISSQN taxation requires official code 1..4")
         if self.special_regime_code not in {"0", "1", "2", "3", "4", "5", "6", "9"}:
@@ -579,7 +591,7 @@ def build_nfse_request_fingerprint(document: NfseCanonicalDocument) -> str:
     }
     if document.national_tax_treatment is not None:
         treatment = document.national_tax_treatment
-        payload["national_tax_treatment"] = {
+        treatment_payload: dict[str, object] = {
             "iss_taxation_code": treatment.iss_taxation_code,
             "special_regime_code": treatment.special_regime_code,
             "simples_assessment_code": treatment.simples_assessment_code,
@@ -592,6 +604,10 @@ def build_nfse_request_fingerprint(document: NfseCanonicalDocument) -> str:
                 treatment.effective_to.isoformat() if treatment.effective_to else None
             ),
         }
+        if treatment.policy_id is not None:
+            treatment_payload["policy_id"] = treatment.policy_id
+            treatment_payload["policy_sha256"] = treatment.policy_sha256
+        payload["national_tax_treatment"] = treatment_payload
     if document.service_taker is not None:
         taker = document.service_taker
         address = taker.address

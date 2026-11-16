@@ -101,6 +101,13 @@ def denied(code: str, status: int = 409) -> HTTPException:
     )
 
 
+_ISSUE_AND_CANCEL_OPERATIONS = frozenset({
+    "substituteExtremaNfse", "reviewCajamarSubstitution",
+    "substituteOsascoNfse", "substituteBarueriNfse",
+    "substituteJundiaiNfse", "substituteSantanaNfse", "substituteGuarulhosNfse",
+})
+
+
 class FiscalIntentRecovery:
     def __init__(self, factory: FiscalUnitOfWorkFactory) -> None:
         self.factory = factory
@@ -152,8 +159,16 @@ class FiscalIntentRecovery:
         return "fiscal-intent:" + digest(HOST + ":" + auth.account.account_id) + ":"
 
     @staticmethod
-    def permission(auth: AuthenticatedHuman, operation: str) -> None:
-        if operation not in PERMISSIONS or PERMISSIONS[operation] not in auth.account.permissions:
+    def allowed(auth: AuthenticatedHuman, operation: str) -> bool:
+        required = PERMISSIONS.get(operation)
+        return required is not None and required in auth.account.permissions and (
+            operation not in _ISSUE_AND_CANCEL_OPERATIONS
+            or PortalPermission.DOCUMENT_ISSUE in auth.account.permissions
+        )
+
+    @classmethod
+    def permission(cls, auth: AuthenticatedHuman, operation: str) -> None:
+        if not cls.allowed(auth, operation):
             raise denied("PORTAL_FORBIDDEN", 403)
 
     @staticmethod
@@ -281,7 +296,7 @@ class FiscalIntentRecovery:
             or row.get("environment") != scope.environment.value
         ):
             self.blocked(auth, scope, intent, "FISCAL_INTENT_AUTHORITY_CHANGED", 403)
-        if PERMISSIONS.get(str(row.get("operation"))) not in auth.account.permissions:
+        if not self.allowed(auth, str(row.get("operation"))):
             self.blocked(auth, scope, intent, "PORTAL_FORBIDDEN", 403)
         try:
             expired = datetime.fromisoformat(str(row["expires_at"])) <= datetime.now(UTC)
@@ -379,7 +394,7 @@ class FiscalIntentRecovery:
             for r in rows
             if r.get("policy") == POLICY
             and r.get("session_epoch") == auth.account.session_epoch
-            and PERMISSIONS.get(str(r.get("operation"))) in auth.account.permissions
+            and self.allowed(auth, str(r.get("operation")))
         )
 
     def claim(
