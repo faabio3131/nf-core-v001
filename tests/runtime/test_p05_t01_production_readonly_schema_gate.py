@@ -33,9 +33,14 @@ class ReadOnlyDb:
         self.fiscal = fiscal
         self.cakto = cakto
         self.sql: list[str] = []
+        self.schema_checks: list[bool] = []
         self.closed = False
 
     def applied_migrations(self) -> tuple[int, ...]:
+        return self.fiscal
+
+    def require_current_schema(self, *, require_bling: bool = False) -> tuple[int, ...]:
+        self.schema_checks.append(require_bling)
         return self.fiscal
 
     @contextmanager
@@ -56,12 +61,13 @@ class ReadOnlyDb:
 
 @pytest.fixture
 def setup(monkeypatch):
-    monkeypatch.setattr(guard, "validate_policy", lambda: tuple(range(1, 19)))
+    monkeypatch.setattr(guard, "validate_policy", lambda: tuple(range(1, 23)))
     monkeypatch.setenv("NFCORE_ENVIRONMENT", "production")
     monkeypatch.setenv("DATABASE_URL", "postgresql://synthetic.invalid/test")
     monkeypatch.delenv("RAILWAY_SERVICE_ID", raising=False)
     monkeypatch.delenv("NFCORE_PRODUCTION_APPROVAL", raising=False)
     monkeypatch.delenv("NFCORE_SCHEMA_MIGRATION_APPROVED", raising=False)
+    monkeypatch.delenv("NFCORE_BLING_INSTALLATIONS_ENABLED", raising=False)
 
     def set_db(fiscal: tuple[int, ...], cakto: tuple[int, ...] | None) -> ReadOnlyDb:
         db = ReadOnlyDb(fiscal, cakto)
@@ -72,12 +78,16 @@ def setup(monkeypatch):
 
 
 def test_production_exact_schema_permits_code_only_without_approval(setup, capsys):
-    db = setup(tuple(range(1, 19)), tuple(range(1, guard.CAKTO_SCHEMA_VERSION + 1)))
+    db = setup(
+        (*tuple(range(1, 20)), guard.NFSE_DPS_NUMBERING_VERSION),
+        tuple(range(1, guard.CAKTO_SCHEMA_VERSION + 1)),
+    )
     guard.assert_current_production()
     assert "PASS READ_ONLY CURRENT" in capsys.readouterr().out
     assert db.closed
+    assert db.schema_checks == [False]
     assert db.sql
-    assert all(sql.startswith("SELECT") for sql in db.sql)
+    assert all(sql.startswith("SELECT") for sql in db.sql
 
 
 @pytest.mark.parametrize(
@@ -86,10 +96,10 @@ def test_production_exact_schema_permits_code_only_without_approval(setup, capsy
         (tuple(range(1, 18)), (1, 2, 3), "fiscal"),
         ((1, 3), (1, 2, 3), "fiscal"),
         (tuple(range(1, 20)), (1, 2, 3), "fiscal"),
-        (tuple(range(1, 19)), None, "Cakto"),
-        (tuple(range(1, 19)), (1,), "Cakto"),
-        (tuple(range(1, 19)), (2,), "Cakto"),
-        (tuple(range(1, 19)), (1, 2, 3, 4), "Cakto"),
+        ((*tuple(range(1, 20)), 22), None, "Cakto"),
+        ((*tuple(range(1, 20)), 22), (1,), "Cakto"),
+        ((*tuple(range(1, 20)), 22), (2,), "Cakto"),
+        ((*tuple(range(1, 20)), 22), (1, 2, 3, 4), "Cakto"),
     ],
 )
 def test_production_schema_mismatch_blocks_without_write(setup, fiscal, cakto, reason):
@@ -98,6 +108,43 @@ def test_production_schema_mismatch_blocks_without_write(setup, fiscal, cakto, r
         guard.assert_current_production()
     assert db.closed
     assert all(sql.startswith("SELECT") for sql in db.sql)
+
+
+@pytest.mark.parametrize(
+    "fiscal",
+    [tuple(range(1, 20)), tuple(range(1, 22))],
+)
+def test_production_rejects_legacy_schemas_without_dps_v22(
+    setup, fiscal,
+) -> None:
+    db = setup(fiscal, tuple(range(1, guard.CAKTO_SCHEMA_VERSION + 1)))
+    with pytest.raises(RuntimeError, match="DPS v22 required"):
+        guard.assert_current_production()
+    assert db.closed
+    assert db.schema_checks == []
+
+
+def test_production_bling_opt_in_requires_full_schema_and_catalog(
+    setup, monkeypatch,
+) -> None:
+    monkeypatch.setenv("NFCORE_BLING_INSTALLATIONS_ENABLED", "true")
+    valid = tuple(range(1, guard.NFSE_DPS_NUMBERING_VERSION + 1))
+    db = setup(valid, tuple(range(1, guard.CAKTO_SCHEMA_VERSION + 1)))
+    guard.assert_current_production()
+    assert db.schema_checks == [True]
+
+
+def test_production_bling_opt_in_rejects_dps_without_bling_pair(
+    setup, monkeypatch,
+) -> None:
+    monkeypatch.setenv("NFCORE_BLING_INSTALLATIONS_ENABLED", "true")
+    db = setup(
+        (*tuple(range(1, 20)), guard.NFSE_DPS_NUMBERING_VERSION),
+        tuple(range(1, guard.CAKTO_SCHEMA_VERSION + 1)),
+    )
+    with pytest.raises(RuntimeError, match="fiscal migrations"):
+        guard.assert_current_production()
+    assert db.schema_checks == []
 
 
 @pytest.mark.parametrize("environment", ["staging", "development", ""])
