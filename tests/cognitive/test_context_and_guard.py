@@ -191,3 +191,18 @@ def test_guard_blocks_percentages_and_amounts_absent_from_evidence() -> None:
             (ProviderSection(SectionKind.HYPOTHESIS, text, ("rej-1",)),), make_request()
         )
         assert result.accepted == () and "ungrounded_amount" in result.findings[0]
+
+
+@pytest.mark.parametrize("punctuation", [".", ",", ";", "!", ""])
+def test_guard_accepts_exact_amount_followed_by_sentence_punctuation(punctuation: str) -> None:
+    original = rejection_evidence()
+    trusted = dataclasses.replace(
+        original[0], data={"amount": "Valor R$ 120,00" + punctuation}
+    )
+    request = make_request(evidence=(trusted,) + original[1:])
+    section = ProviderSection(
+        SectionKind.HYPOTHESIS, "Verifique o valor de R$ 120,00.", ("rej-1",)
+    )
+    result = OutputGuard().validate((section,), request)
+    assert len(result.accepted) == 1
+    assert result.findings == ()
