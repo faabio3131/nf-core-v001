@@ -112,12 +112,16 @@ _EVENT_MIRROR_HASHES = {
 }
 
 
-@lru_cache(maxsize=2)
-def national_event_validator(kind: str) -> XmlSchemaValidator:
+@lru_cache(maxsize=4)
+def national_event_validator(kind: str, *, profile: str = PRODUCTION_PROFILE) -> XmlSchemaValidator:
     """Offline validated cancellation request/response (national event 1.01)."""
     if kind not in ("request", "response"):
         raise FiscalValidationError("Unsupported national event schema")
     root_name = "pedRegEvento_v1.01.xsd" if kind == "request" else "evento_v1.01.xsd"
+    if profile == NT009_RESTRICTED_PROFILE:
+        return national_restricted_validator(root_name)
+    if profile != PRODUCTION_PROFILE:
+        raise FiscalValidationError("Unsupported national event schema profile")
     version = "1.01"
     directory = files("kordena_fiscal.xml").joinpath("official", "NFSE_NACIONAL_1.01")
     shared = {

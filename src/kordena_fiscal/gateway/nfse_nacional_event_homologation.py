@@ -50,6 +50,7 @@ from kordena_fiscal.signing.nfse_xmldsig import append_nfse_signature
 from kordena_fiscal.vault import EphemeralCertificateMaterial
 from kordena_fiscal.vault.a1_preflight import validate_a1_for_issuer
 from kordena_fiscal.xml.nfse_nacional_schema import national_event_validator
+from kordena_fiscal.xml.nfse_national_profiles import select_national_dps_profile
 
 _NS = "http://www.sped.fazenda.gov.br/nfse"
 _DS = "http://www.w3.org/2000/09/xmldsig#"
@@ -379,7 +380,13 @@ def validate_national_event_xml(xml: bytes, *, kind: str) -> None:
     """Pinned national 1.01 event schema and RSA-SHA256 signed-ID integrity."""
     if kind not in ("request", "response"):
         raise NationalNfseEventError("Unsupported national fiscal event")
-    national_event_validator(kind).validate_document(xml)
+    # This gateway is exclusively SEFIN production-restricted. Match the
+    # endpoint operational date; event/competence dates may be retroactive.
+    profile = select_national_dps_profile(
+        environment=FiscalEnvironment.HOMOLOGATION, schema_version="1.01",
+        effective_on=datetime.now(UTC).date(),
+    )
+    national_event_validator(kind, profile=profile).validate_document(xml)
     root = _secure_parse(xml)
     tag = "pedRegEvento" if kind == "request" else "evento"
     info_name = "infPedReg" if kind == "request" else "infEvento"

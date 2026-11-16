@@ -3,12 +3,12 @@ from dataclasses import replace
 
 import pytest
 from lxml import etree
+from test_nfse_dps_builder import _certificate, _document, _request, _service
 
 from kordena_fiscal.domain import FiscalValidationError
 from kordena_fiscal.issuance.nfse_archive import decode_prepared_nfse, encode_prepared_nfse
 from kordena_fiscal.issuance.nfse_dps_builder import build_signed_dps
 from kordena_fiscal.xml.nfse_national_profiles import NT009_RESTRICTED_PROFILE, PRODUCTION_PROFILE
-from test_nfse_dps_builder import _certificate, _document, _request, _service
 
 NS = {"n": "http://www.sped.fazenda.gov.br/nfse"}
 

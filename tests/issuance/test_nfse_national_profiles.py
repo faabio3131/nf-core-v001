@@ -8,6 +8,7 @@ from importlib.resources import files
 
 import pytest
 from lxml import etree
+from test_nfse_dps_builder import _certificate, _document, _request, _service
 
 from kordena_fiscal.domain import FiscalEnvironment, FiscalValidationError, Money
 from kordena_fiscal.issuance.nfse_dps_builder import build_signed_dps
@@ -20,7 +21,6 @@ from kordena_fiscal.xml.nfse_national_profiles import (
     select_national_dps_profile,
 )
 from kordena_fiscal.xml.schema import XmlSchemaValidationError
-from test_nfse_dps_builder import _certificate, _document, _request, _service
 
 NS = {"n": "http://www.sped.fazenda.gov.br/nfse"}
 
@@ -118,11 +118,11 @@ def test_invalid_series_does_not_claim_transmission_or_access_a1(tmp_path):
     from unittest.mock import Mock
 
     from kordena_fiscal.application import FiscalApplicationService
+    from kordena_fiscal.archive import RetentionPolicyMetadata
     from kordena_fiscal.gateway.nfse_nacional_homologation import NfseNacionalHomologationGateway
     from kordena_fiscal.issuance.nfe_nfse import NfseGatewayClient
     from kordena_fiscal.lifecycle import FiscalDocumentState
     from kordena_fiscal.persistence import SqliteFiscalDatabase
-    from kordena_fiscal.archive import RetentionPolicyMetadata
 
     db = SqliteFiscalDatabase(tmp_path / "profile-series.sqlite")
     db.initialize()
@@ -162,3 +162,16 @@ def test_low_level_transport_rejects_legacy_layout_before_network():
     with pytest.raises(XmlSchemaValidationError):
         transport.submit_signed_dps(legacy)
     exchange.assert_not_called()
+
+
+@pytest.mark.parametrize("kind,root", [
+    ("request", "pedRegEvento_v1.01.xsd"), ("response", "evento_v1.01.xsd"),
+])
+def test_events_use_the_same_pinned_official_restricted_package(kind, root):
+    from kordena_fiscal.xml.nfse_nacional_schema import national_event_validator
+
+    assert national_event_validator(kind, profile=NT009_RESTRICTED_PROFILE) is (
+        national_restricted_validator(root)
+    )
+    with pytest.raises(FiscalValidationError, match="profile"):
+        national_event_validator(kind, profile="unreviewed-profile")

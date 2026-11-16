@@ -3809,7 +3809,8 @@ def test_salto_national_101101_cancel_real_portal_signed_event_and_archive(
     )
     assert isinstance(private, rsa.RSAPrivateKey) and cert is not None
     ns = "{http://www.sped.fazenda.gov.br/nfse}"
-    key = "35" + "3" * 48
+    # Synthetic key follows the official NT009 event Id structure.
+    key = issuer_ibge + "2" + "2" + "11222333000181" + "3" * 27
     original = etree.Element(ns + "NFSe", nsmap={None: ns[1:-1]}, versao="1.01")
     original_info = etree.SubElement(original, ns + "infNFSe", Id="NFS" + key)
     official_issued_at = (

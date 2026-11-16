@@ -55,7 +55,7 @@ O ZIP foi obtido da [documentação oficial de homologação](https://www.gov.br
 
 O perfil é escolhido pela data operacional do endpoint e pelo ambiente, não pela competência retroativa nem pelo município. O fluxo nacional usa NT009 em homologação desde20/10/2026; a função legada continua disponível para Simpliss municipal. O seletor impede assumir o pacote de produção após a mudança anunciada para01/12/2026 sem nova revisão. O gateway nacional existente permanece exclusivamente homologação.
 
-O novo pacote compila DPS, NFSe, pedido e retorno de evento. Este incremento conecta **DPS** à execução. Conectar NFSe recebido e eventos, confiança ICP/revogação e proveniência persistente de perfil são pendências internas, ainda não concluídas.
+O novo pacote compila DPS, NFSe, pedido e retorno de evento. O incremento inicial conectou DPS à execução. O ajuste de retomada conecta também pedidos e retornos de eventos; NFSe recebido/GET, confiança ICP/revogação e proveniência persistente do perfil continuam pendentes.
 
 ### Acesso operacional
 
@@ -74,3 +74,16 @@ Recuperado de #440 o desdobramento de três dígitos `cTribMun`, usando `municip
 | Ciclo fiscal BH | Preparação/readback não certificam autorização, substituição, cancelamento, recuperação, confiança do recibo ou homologação externa. |
 
 A primeira CI de #514 falhou na coleta por importação de namespace de testes ausente no runner. Corrigido isoladamente em `d1a84e30e0d8409aa9d90e5347fb0640a9b0e74c`: testes de perfil movidos para o diretório de seus helpers e dependência do módulo de testes de persistência removida; 22 testes locais do perfil/cTribMun passaram. Nova CI integral necessária nesse SHA.
+
+
+## Retomada verificada — 16/11/2026
+
+CURRENT remoto: main `549ab3c005d7183ff6c7940236414412ea004b9d`; #468 `ab93ef0d3b03b8e0b41cda686f83fdff2fed808d`; #514 `4deb6f4884757093c09c1d7cc634723ab3aeb092`. CI cumulativa #43892521240 SUCCESS. #486 já encerrada como incorporada pela #513. Permanecem 18 PRs abertas contando a #514.
+
+A CI #43894496103 da #514 falhou no Ruff (ordem de imports dos testes), antes de Mypy/Pytest. Corrigida a ordem sem excluir testes. O incremento em revisão conecta pedido/retorno de cancelamento ao mesmo pacote oficial NT009 de homologação, selecionado pela data operacional do endpoint; preserva o contrato municipal Simpliss. A fixture de Salto foi corrigida para usar a estrutura de chave exigida pelo schema, mantendo assinatura e fluxo HTTP reais com transporte sintético. Ruff/Mypy (417 fontes) aprovados e 101 testes dirigidos passaram localmente. Suíte integral e revisão independente estão em execução; CI deste incremento ainda não comprovada.
+
+Escopo aceito deste incremento: schema/roteamento de DPS e eventos nacionais, recuperação da #508 já implementada, cTribMun na preparação canônica. Não conclui Guarulhos, BH integral, MF-04/MF-09, GET XSD/ICP ou release global. Não confundir merge incremental na candidata com certificação desses blocos.
+
+Auditoria Contabo #43758223307, tentativa 2: WAITING, environment `nfcore-contabo-audit`, revisor requerido `faabio3131`. O SSH não foi executado nesta tentativa enquanto o gate aguarda. A execução #43118619235 é anterior e falhou por SHA esperado obsoleto; não é a auditoria corrente. Nenhum DDL, deploy ou mudança em production realizado nesta retomada.
+
+Revisão independente da retomada (`review_national_delta`, contexto isolado): 112 testes dirigidos e 18 testes HTTP selecionados passaram; nenhum bloqueador ou regressão concreta no delta revisado. Inspeção confirmou seleção nacional por ambiente/data, contrato próprio Simpliss e recusa antecipada da série 90000 sem A1/rede/claim. Não equivale a execução do protocolo EGM original nem a homologação fiscal externa.
