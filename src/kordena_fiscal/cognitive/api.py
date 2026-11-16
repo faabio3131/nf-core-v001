@@ -117,8 +117,14 @@ def create_cognitive_router(
             raise _bad("INVALID_ENVIRONMENT", "Unknown environment") from exc
         subject_id = body.get("subject_id")
         question = body.get("question", "")
-        if subject_id is not None and not isinstance(subject_id, str):
-            raise _bad("INVALID_SUBJECT", "subject_id must be text")
+        if subject_id is not None:
+            if (
+                not isinstance(subject_id, str)
+                or not subject_id.strip()
+                or len(subject_id) > 128
+            ):
+                raise _bad("INVALID_SUBJECT", "subject_id must be 1-128 nonblank characters")
+            subject_id = subject_id.strip()
         if not isinstance(question, str) or len(question) > 1000:
             raise _bad("INVALID_QUESTION", "question must be text up to 1000 characters")
         if advisor is None or evidence is None:
