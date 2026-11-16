@@ -364,23 +364,25 @@ def assert_current_production() -> None:
     database = PostgresFiscalDatabase(dsn)
     try:
         before = database.applied_migrations()
-        # Accept the certified legacy schema, or a FULL optional Bling schema.
-        # Reuse the policy result: the same gate can test historical certified
-        # versions without changing or weakening the deployment guard.
+        # The deployed NFCore now contains native DPS issuance. The previous
+        # legacy 1..19 / Bling 1..21 allowances could report a false PASS
+        # without the durable DPS v22 tables; production would then accept
+        # code that cannot reserve a canonical NFS-e series.
+        # This check is read-only: migrations must be approved separately.
         baseline = expected[:COGNITIVE_QUOTA_VERSION]
         bling_ready = expected[:BLING_WORKER_POLICY_VERSION]
         nfse_baseline = (*baseline, NFSE_DPS_NUMBERING_VERSION)
         nfse_bling = (*bling_ready, NFSE_DPS_NUMBERING_VERSION)
         enable_bling = os.getenv("NFCORE_BLING_INSTALLATIONS_ENABLED") == "true"
-        ready = (bling_ready, nfse_bling) if enable_bling else (
-            baseline, bling_ready, nfse_baseline, nfse_bling,
-        )
+        ready = (nfse_bling,) if enable_bling else (nfse_baseline, nfse_bling)
         if before not in ready:
-            raise RuntimeError("production schema has pending/drifted fiscal migrations")
-        # The original code-only gate remains read-only and compatible with
-        # legacy DB probes. Stronger catalog checks apply when opt-in enabled.
-        if enable_bling:
-            database.require_current_schema(require_bling=True)
+            raise RuntimeError(
+                "production schema has pending/drifted fiscal migrations; "
+                "DPS v22 required for this release"
+            )
+        # Verify both DPS tables exist, not only the version ledger. The
+        # canonical PostgreSQL adapter performs only SELECT catalog queries.
+        database.require_current_schema(require_bling=enable_bling)
         _assert_cakto_current(database)
     finally:
         database.close()
