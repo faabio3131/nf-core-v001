@@ -87,3 +87,20 @@ Escopo aceito deste incremento: schema/roteamento de DPS e eventos nacionais, re
 Auditoria Contabo #43758223307, tentativa 2: WAITING, environment `nfcore-contabo-audit`, revisor requerido `faabio3131`. O SSH não foi executado nesta tentativa enquanto o gate aguarda. A execução #43118619235 é anterior e falhou por SHA esperado obsoleto; não é a auditoria corrente. Nenhum DDL, deploy ou mudança em production realizado nesta retomada.
 
 Revisão independente da retomada (`review_national_delta`, contexto isolado): 112 testes dirigidos e 18 testes HTTP selecionados passaram; nenhum bloqueador ou regressão concreta no delta revisado. Inspeção confirmou seleção nacional por ambiente/data, contrato próprio Simpliss e recusa antecipada da série 90000 sem A1/rede/claim. Não equivale a execução do protocolo EGM original nem a homologação fiscal externa.
+
+## Revisão semântica de origens e correção SP — 16/11/2026
+
+Revisor independente `review_legacy_equivalence` examinou #461/#450/#446/#449 e MG/Extrema. Execuções focais: 269 testes sem falhas; outro conjunto 214 PASS/10 deselected. Worktree evoluiu durante revisão de `4deb6f48` a `c8d1c6b9`; esses números não são certificação imutável da árvore inicial.
+
+| Origem | Decisão por comportamento | Evidência CURRENT / pendência |
+| --- | --- | --- |
+| #461/#450/#446 — gateway `nacional_query` | Superado pelo `national_query`; não copiar fixture sem assinatura ou contador derivado | Binding QUERY, DPS reservado, A1, XMLDSig e recuperação HTTP. Diferença 404→erro ambíguo (antes PENDING) permanece decisão/teste a concluir. |
+| #461/#450/#446 — preflight SP | Não restaurar veto estadual genérico a NORMAL | Canal exige análise municipal; Salto/Louveira NORMAL têm adesão própria. Guard nacional SP municipal permanece em auditoria. |
+| #446 — inutilização SP | Rejeitar proibição universal antiga | Política de transição permanece; encontrado e corrigido defeito de correlação dos retornos SP em delta dedicado. |
+| #449 — DPS/hash e preparo | Numeração derivada substituída por reserva durável canônica; HTTP/codec/arquivo/DANFSe preservados | Testes de serial reservado, replay, CSRF, escopo e codec atuais. Não criar segundo contador. |
+| #423 — MG/RTC | Guard/canais/ordenação e binding preservados | Isso não conclui MG-W1 20/20. Manter PR ativa enquanto escopo municipal continuar incompleto. |
+| #430 — diagnóstico WebISS | Incorporação literal confirmada em #468 `ab93ef0d`, CI #43892521240 SUCCESS | PR encerrada como SUPERSEDED_WITH_PROOF em 16/11; branch original preservada. |
+| #432 — documento upload WebISS | Histórico por SHA; não republicar como CURRENT | Materializar vínculo histórico no manifesto/ledger; pacote e testes posteriores presentes. |
+| #434/#437 — Extrema | Funções de substituição/cancelamento preservadas: somente nota substituta 124, nunca original | Testes durable_flow e Web/API atuais passam. PRs permanecem abertas até conclusão documental da equivalência completa. |
+
+GET Nacional ainda aceita fixtures assinadas sem conteúdo fiscal completo: ausência de XSD/trust e correlação com DPS/CNPJ é pendência real de FIS-03, não justificativa para importar o gateway legado. Revisão do patch SP e fontes estão em `NFCORE_SP_RESPONSE_CORRELATION_REVIEW_20261116.md`.
