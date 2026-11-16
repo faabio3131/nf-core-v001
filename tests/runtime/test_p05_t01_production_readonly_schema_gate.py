@@ -87,7 +87,7 @@ def test_production_exact_schema_permits_code_only_without_approval(setup, capsy
     assert db.closed
     assert db.schema_checks == [False]
     assert db.sql
-    assert all(sql.startswith("SELECT") for sql in db.sql
+    assert all(sql.startswith("SELECT") for sql in db.sql)
 
 
 @pytest.mark.parametrize(
