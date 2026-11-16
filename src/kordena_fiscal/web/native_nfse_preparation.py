@@ -31,6 +31,7 @@ from kordena_fiscal.domain import (
     FiscalValidationError,
     Money,
     SourceReference,
+    TaxRegimeCode,
 )
 from kordena_fiscal.gateway.municipal_sp_routing import (
     classify_sp_national_nfse_eligibility,
@@ -275,6 +276,13 @@ def prepare_native_nfse(
             )
         if profile is None:
             raise FiscalValidationError("Issuer fiscal profile is not effective")
+        # A browser review checkbox is not the effective-dated national tax
+        # treatment required for Simples sublimit. Reject before reserving a
+        # fiscal document that the canonical DPS serializer cannot sign.
+        if profile.tax_regime is TaxRegimeCode.SIMPLES_NACIONAL_EXCESS_SUBLIMIT:
+            raise FiscalValidationError(
+                "Simples sublimit requires an approved national tax decision"
+            )
         app = FiscalApplicationService(factory)
         provider = app.resolve_configured_provider_id(
             scope=scope, document_kind=FiscalDocumentKind.NFSE,
