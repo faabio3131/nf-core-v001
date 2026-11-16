@@ -218,7 +218,7 @@ def build_jundiai_giss_issue_xml(
         raise JundiaiGissIssueError("GissOnline canonical source required")
     doc = request.document
     if (
-        original.issuer_ibge != "3525904"
+        original.issuer_ibge not in {"3525904", "3518800"}
         or original.scope.identity_partition_key != doc.scope.identity_partition_key
         or original.document_id != doc.document_id
         or original.request_fingerprint != request.request_fingerprint

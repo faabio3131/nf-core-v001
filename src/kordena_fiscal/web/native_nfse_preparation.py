@@ -35,6 +35,7 @@ from kordena_fiscal.domain import (
 )
 from kordena_fiscal.gateway.municipal_sp_routing import (
     classify_sp_national_nfse_eligibility,
+    require_guarulhos_nfse_channel,
 )
 from kordena_fiscal.gateway.nfse_nacional_homologation import (
     NACIONAL_HOMOLOGATION_PROVIDER_ID,
@@ -84,6 +85,7 @@ _FOREIGN_ADDRESS_FIELDS = frozenset({
 _FOREIGN_ID_FIELDS = frozenset({"taker_nif", "taker_no_nif_reason"})
 _COMMON_FIELDS = _FIELDS - {"taker_document"}
 _NBS_FIELD = frozenset({"nbs_code"})
+_MUNICIPAL_DETAIL_FIELD = frozenset({"municipal_taxation_detail"})
 _BASE_ALLOWED_PAYLOADS = frozenset({
     _FIELDS,
     _FIELDS | _TAKER_ADDRESS_FIELDS,
@@ -94,15 +96,18 @@ _SUBSTITUTION_FIELDS = frozenset({
     "substitution_original_id", "substitution_reason_code",
     "substitution_reason_description", "substitution_human_approval",
 })
-_ALLOWED_NORMAL = _BASE_ALLOWED_PAYLOADS | frozenset(
-    fields | _NBS_FIELD for fields in _BASE_ALLOWED_PAYLOADS
+_ALLOWED_NORMAL = frozenset(
+    fields | optional
+    for fields in _BASE_ALLOWED_PAYLOADS
+    for optional in (frozenset(), _NBS_FIELD, _MUNICIPAL_DETAIL_FIELD,
+                     _NBS_FIELD | _MUNICIPAL_DETAIL_FIELD)
 )
 _ALLOWED_PAYLOADS = _ALLOWED_NORMAL | frozenset(
     fields | _SUBSTITUTION_FIELDS for fields in _ALLOWED_NORMAL
 )
 _STRING_FIELDS = (
     (_FIELDS | _TAKER_ADDRESS_FIELDS | _FOREIGN_ADDRESS_FIELDS | _FOREIGN_ID_FIELDS
-     | _NBS_FIELD | _SUBSTITUTION_FIELDS)
+     | _NBS_FIELD | _MUNICIPAL_DETAIL_FIELD | _SUBSTITUTION_FIELDS)
     - {
         "iss_withheld", "rule_version", "fiscal_review_approved",
         "substitution_human_approval",
@@ -112,6 +117,7 @@ _BARUERI_PROVIDER = "barueri-pmb004-homologation"
 _CAJAMAR_PROVIDER = "cajamar-geisweb-homologation"
 _OSASCO_PROVIDER = "osasco-rtc-homologation"
 _JUNDIAI_PROVIDER = "jundiai-giss-v2-homologation"
+_GUARULHOS_PROVIDER = "guarulhos-giss-v2-homologation"
 _SANTANA_PROVIDER = "santana-simpliss-v1-homologation"
 _SANTANA_IBGE = "3547304"
 _CENTS = re.compile(r"(?:0|[1-9][0-9]{0,8})\.[0-9]{2}\Z")
@@ -293,9 +299,15 @@ def prepare_native_nfse(
         municipal_cajamar = provider == _CAJAMAR_PROVIDER
         municipal_osasco = provider == _OSASCO_PROVIDER
         municipal_jundiai = provider == _JUNDIAI_PROVIDER
+        municipal_guarulhos = provider == _GUARULHOS_PROVIDER
+        require_guarulhos_nfse_channel(
+            issuer_jurisdiction=profile.address.jurisdiction,
+            tax_regime=profile.tax_regime, competence_date=competence,
+            provider_id=provider,
+        )
         municipal_sp = (
             municipal_barueri or municipal_cajamar
-            or municipal_osasco or municipal_jundiai
+            or municipal_osasco or municipal_jundiai or municipal_guarulhos
         )
         if (
             provider not in (NACIONAL_HOMOLOGATION_PROVIDER_ID, _SANTANA_PROVIDER)
@@ -315,7 +327,8 @@ def prepare_native_nfse(
             expected_city = (
                 "3505708" if municipal_barueri else
                 "3509205" if municipal_cajamar else
-                "3534401" if municipal_osasco else "3525904"
+                "3534401" if municipal_osasco else
+                "3525904" if municipal_jundiai else "3518800"
             )
             if (
                 profile.address.jurisdiction.state_code != "SP"
@@ -354,6 +367,7 @@ def prepare_native_nfse(
             source_normative=payload["source_normative"].strip(),
             rule_version=payload["rule_version"],
             nbs_code=payload.get("nbs_code"),
+            municipal_taxation_detail=payload.get("municipal_taxation_detail"),
         )
         document = NfseCanonicalDocument(
             document_id=document_id, scope=scope, source=source,
@@ -390,6 +404,9 @@ def prepare_native_nfse(
                 reason_description=payload["substitution_reason_description"],
                 approval_reference=key,
             ))
+        if provider == NACIONAL_HOMOLOGATION_PROVIDER_ID:
+            from kordena_fiscal.issuance.nfse_dps_builder import validate_sefin_dps_input
+            validate_sefin_dps_input(document)
         nfse_preaudit(NfseAuthorizationRequest.build(document))
         # Browser cannot choose provider, series or sequence. The same UoW
         # reserves a city's original RPS without creating a second counter.

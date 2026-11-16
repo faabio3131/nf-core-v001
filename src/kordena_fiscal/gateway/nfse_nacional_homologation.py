@@ -30,8 +30,13 @@ from kordena_fiscal.issuance.nfe_nfse import (
     NfseAuthorizationResult,
     NfseRejectionDetail,
 )
+from kordena_fiscal.issuance.nfse_dps_builder import validate_sefin_dps_input
 from kordena_fiscal.vault import EphemeralCertificateMaterial
 from kordena_fiscal.vault.a1_preflight import validate_a1_for_issuer
+from kordena_fiscal.xml.nfse_national_profiles import (
+    PRODUCTION_PROFILE,
+    select_national_dps_profile,
+)
 
 NACIONAL_HOMOLOGATION_NFSE_URL = SEFIN_HOMOLOGATION_NFSE_URL
 _MAX_RESPONSE = 2_097_152
@@ -46,12 +51,14 @@ class OfficialNfseTransportError(FiscalValidationError):
 def encode_signed_dps(
     signed_dps: bytes, *, issuer_cnpj: str | None = None,
     issuer_municipality_ibge: str | None = None,
+    schema_profile: str = PRODUCTION_PROFILE,
 ) -> bytes:
     """Strict DPS envelope for national NFS-e POST /nfse."""
     try:
         return build_nfse_dps_request(
             signed_dps, issuer_cnpj=issuer_cnpj,
             issuer_municipality_ibge=issuer_municipality_ibge,
+            schema_profile=schema_profile,
         )
     except FiscalValidationError as exc:
         raise OfficialNfseTransportError(str(exc)) from None
@@ -95,9 +102,13 @@ class NfseNacionalHomologationGateway:
         self._exchange = exchange or _exchange_http
         self._timeout = timeout_seconds
 
+    def validate_pre_dispatch(self, request: NfseAuthorizationRequest) -> None:
+        validate_sefin_dps_input(request.document)
+
     def authorize(self, request: NfseAuthorizationRequest) -> NfseAuthorizationResult:
         if not isinstance(request, NfseAuthorizationRequest):
             raise OfficialNfseTransportError("Solicitação NFS-e inválida")
+        self.validate_pre_dispatch(request)
         document = request.document
         if document.scope.environment is not FiscalEnvironment.HOMOLOGATION:
             raise OfficialNfseTransportError("NFS-e disponível apenas com tpAmb=2")
@@ -133,6 +144,10 @@ class NfseNacionalHomologationGateway:
         signed_dps = self._build_signed_dps(request, material)
         payload = encode_signed_dps(
             signed_dps, issuer_cnpj=issuer_cnpj, issuer_municipality_ibge=issuer_municipality,
+            schema_profile=select_national_dps_profile(
+                environment=document.scope.environment, schema_version="1.01",
+                effective_on=datetime.now(UTC).date(),
+            ),
         )
         response = self._exchange(payload, build_fiscal_tls_context(material), self._timeout)
         if not isinstance(response, bytes) or len(response) > _MAX_RESPONSE:

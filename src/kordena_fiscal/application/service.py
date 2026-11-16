@@ -26,6 +26,10 @@ from kordena_fiscal.archive import (
 from kordena_fiscal.compliance.cajamar_municipal_legal import (
     validate_cajamar_automatic_cancellation,
 )
+from kordena_fiscal.compliance.louveira_national_legal import (
+    LOUVEIRA_IBGE,
+    enforce_louveira_national_cancellation_window,
+)
 from kordena_fiscal.compliance.osasco_municipal_legal import (
     validate_osasco_automatic_cancellation,
     validate_osasco_substitution_references,
@@ -928,6 +932,10 @@ class FiscalApplicationService:
                         or old.document.service_jurisdiction != document.service_jurisdiction
                     ):
                         raise PersistenceStateError("National original is no longer replaceable")
+                    self._enforce_louveira_signed_original_window_in_uow(
+                        uow=uow, scope=document.scope,
+                        original_id=linked.original_document_id, requested_at=occurred_at,
+                    )
             if extrema_intent_builder is None and sp4_original_builder is None:
                 # The National DPS number and issuance reservation belong to one UoW.
                 dps_serial = uow.dps_sequences.reserve(
@@ -1288,6 +1296,19 @@ class FiscalApplicationService:
         else:
             raise FiscalValidationError("a validated authorization request is required")
 
+        if isinstance(request, NfseAuthorizationRequest):
+            assert isinstance(gateway, NfseGatewayClient)
+            # Binding lookup may open its own read transaction. Complete it
+            # before the dispatch UoW, which rechecks state/fingerprint under lock.
+            # Replays of a completed/uncertain submission must not be reclassified
+            # by today's schema profile or execute a new provider preparation.
+            with self._uow_factory() as preview:
+                preview.lifecycle.assert_scope(document_id, scope)
+                before = preview.lifecycle.get(document_id)
+                ready = before is not None and before.state is FiscalDocumentState.READY_TO_TRANSMIT
+            if ready:
+                gateway.validate_pre_dispatch(request)
+
         with self._uow_factory() as uow:
             uow.lifecycle.assert_scope(document_id, scope)
             attempts = uow.idempotency.attempts(request.idempotency_key)
@@ -1328,6 +1349,10 @@ class FiscalApplicationService:
                     or old_request.document.issuer.cnpj != request.document.issuer.cnpj
                 ):
                     raise PersistenceStateError("National replacement original not authorized")
+                self._enforce_louveira_signed_original_window_in_uow(
+                    uow=uow, scope=scope, original_id=old_id,
+                    requested_at=occurred_at,
+                )
                 claimed_original = self._state_machine.transition(
                     old_state, FiscalDocumentState.CANCEL_REQUESTED,
                     occurred_at=occurred_at,
@@ -3496,6 +3521,67 @@ class FiscalApplicationService:
         )
 
 
+    def _enforce_louveira_signed_original_window_in_uow(
+        self, *, uow: FiscalUnitOfWork, scope: ExecutionScope,
+        original_id: str, requested_at: datetime,
+    ) -> None:
+        """Check official signed dhProc, never taxpayer-provided DPS dates."""
+        original = self._load_prepared_from_uow(uow, scope, original_id)
+        if not isinstance(original, NfseAuthorizationRequest):
+            raise PersistenceStateError("National original NFS-e is missing")
+        jurisdiction = original.document.issuer.address.jurisdiction
+        if jurisdiction.municipality_ibge_code != LOUVEIRA_IBGE:
+            return
+        old_attempts = uow.idempotency.attempts(original.idempotency_key)
+        if (
+            jurisdiction.state_code != "SP"
+            or len(old_attempts) != 1
+            or old_attempts[0].status is not IssuanceAttemptStatus.AUTHORIZED
+        ):
+            raise PersistenceStateError("Louveira requires authorized national original")
+        key = old_attempts[0].result_reference
+        if (
+            not isinstance(key, str) or len(key) != 50
+            or not key.isascii() or not key.isdecimal()
+        ):
+            raise PersistenceStateError("Louveira original official key is invalid")
+        signed = [
+            row for row in uow.archive.list_for_document(scope, original_id)
+            if row.kind is FiscalArchiveKind.AUTHORIZED_XML
+            and row.media_type == "application/xml"
+        ]
+        if len(signed) != 1:
+            raise PersistenceStateError("Louveira original signed XML not unique")
+        FiscalArchiveVerifier().verify_entry(signed[0])
+        ns = "{http://www.sped.fazenda.gov.br/nfse}"
+        try:
+            root = etree.fromstring(
+                signed[0].content,
+                etree.XMLParser(
+                    resolve_entities=False, no_network=True,
+                    load_dtd=False, huge_tree=False,
+                ),
+            )
+            info = root.find(ns + "infNFSe")
+            if (
+                root.tag != ns + "NFSe" or info is None
+                or info.get("Id") != "NFS" + key
+            ):
+                raise ValueError("Louveira original invoice identity is invalid")
+            _verify_nfse_receipt_signature(root, info, "NFS" + key)
+            official_issued_at = info.findtext(ns + "dhProc")
+            if not official_issued_at:
+                raise ValueError("Louveira signed official emission timestamp missing")
+            emitted = datetime.fromisoformat(official_issued_at)
+        except (ValueError, TypeError, etree.XMLSyntaxError) as exc:
+            raise FiscalValidationError(
+                "Louveira needs cryptographically verified official dhProc"
+            ) from exc
+        enforce_louveira_national_cancellation_window(
+            issuer_jurisdiction=jurisdiction,
+            original_issued_at=emitted, requested_at=requested_at,
+        )
+
     def review_prepared_national_nfse_substitution(
         self, *, scope: ExecutionScope,
         original_id: str, replacement: NfseCanonicalDocument,
@@ -3598,6 +3684,10 @@ class FiscalApplicationService:
             ):
                 raise PersistenceStateError("National original signed XML identity mismatch")
             _verify_nfse_receipt_signature(root, info, "NFS" + key)
+            self._enforce_louveira_signed_original_window_in_uow(
+                uow=uow, scope=scope, original_id=document_id,
+                requested_at=datetime.now(UTC),
+            )
         for operation in ("authorize", "cancel"):
             provider = self.resolve_configured_provider_id(
                 scope=scope, document_kind=FiscalDocumentKind.NFSE,
@@ -3702,6 +3792,10 @@ class FiscalApplicationService:
             current = uow.lifecycle.get(document_id)
             if current is None or current.state is not FiscalDocumentState.AUTHORIZED:
                 raise PersistenceConflictError("National cancellation already claimed")
+            self._enforce_louveira_signed_original_window_in_uow(
+                uow=uow, scope=scope, original_id=document_id,
+                requested_at=occurred_at,
+            )
             claim = self._state_machine.transition(
                 current, FiscalDocumentState.CANCEL_REQUESTED,
                 occurred_at=occurred_at, reason="National cancellation durable claim 101101",

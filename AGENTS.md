@@ -1,3 +1,11 @@
+# CURRENT DE RECONCILIAÇÃO — 16/11/2026
+
+Este banner substitui somente snapshots históricos de CURRENT abaixo. Fonte de continuidade: `docs/audit/NFCORE_PR_RECONCILIATION_LEDGER_CURRENT.md`. Main confirmada `549ab3c005d7183ff6c7940236414412ea004b9d`; candidata #468 em `ab93ef0d3b03b8e0b41cda686f83fdff2fed808d`, CI #43892521240 SUCCESS após #513. #486 encerrada com prova de incorporação. #514 recupera #508, perfil oficial NT009 e cTribMun; incremento de eventos/imports em validação, sem certificação global.
+
+O proprietário autorizou reconciliação, conclusão de pendências e atualização Web nesta conversa; preservar gates técnicos e revisão independente. Migration/DDL produtiva e emissão fiscal oficial continuam gates separados. Auditoria read-only Contabo #43758223307 attempt 2 aguarda revisão humana no environment protegido. Main/production e host ainda não alterados. Próximas tarefas: concluir CI/revisão da #514, integrar apenas o incremento na #468, continuar GET/XSD/ICP, MF-04/MF-09 e reconciliação funcional dos demais blocos.
+
+---
+
 # DIRETRIZ SUPERVENIENTE — INTEGRADOR ÚNICO E RELEASE MANAGER (15/11/2026)
 
 > **DECISÃO DO PROPRIETÁRIO — NFCORE-GOV-RELEASE-001 (15/11/2026).** Governança detalhada em [docs/governance/NFCORE_SINGLE_INTEGRATOR_RELEASE_OWNER_2026-11-15.md](docs/governance/NFCORE_SINGLE_INTEGRATOR_RELEASE_OWNER_2026-11-15.md). Checkpoint público de handoff na [issue #447](https://github.com/faabio3131/nf-core-v001/issues/447#issuecomment-6903641344).
