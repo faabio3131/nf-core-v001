@@ -134,11 +134,12 @@ def _database(
     path: Path, *, with_binding: bool = True,
     provider_id: str = NACIONAL_HOMOLOGATION_PROVIDER_ID,
     issuer_ibge: str = IBGE,
+    issuer_state: str = "SP",
     tax_regime: TaxRegimeCode = TaxRegimeCode.SIMPLES_NACIONAL,
 ) -> SqliteFiscalDatabase:
     db = SqliteFiscalDatabase(path)
     db.initialize()
-    jurisdiction = BrazilianJurisdiction("SP", issuer_ibge)
+    jurisdiction = BrazilianJurisdiction(issuer_state, issuer_ibge)
     scope = ExecutionScope(
         TENANT, UNIT, FiscalEnvironment.HOMOLOGATION, "setup", "fm-nfcore"
     )
@@ -164,7 +165,7 @@ def _database(
             profile_id="issuer-native", scope=scope,
             cnpj=Cnpj("11222333000181"), legal_name="Emissor Sintetico Ltda",
             tax_regime=tax_regime,
-            state_registration=StateRegistration("SP", "123456789"),
+            state_registration=StateRegistration(issuer_state, "123456789"),
             municipal_registration=(
                 MunicipalRegistration("123456") if issuer_ibge == "3534401"
                 else MunicipalRegistration("1234567")
@@ -175,7 +176,8 @@ def _database(
             address=FiscalAddress(
                 street="Rua de Homologacao", number="10", district="Centro",
                 municipality_name=(
-                    "Osasco" if issuer_ibge == "3534401"
+                    "Belo Horizonte" if issuer_ibge == "3106200"
+                    else "Osasco" if issuer_ibge == "3534401"
                     else "Barueri" if issuer_ibge == "3505708"
                     else "Jundiai" if issuer_ibge == "3525904"
                     else "Guarulhos" if issuer_ibge == "3518800"
@@ -4020,3 +4022,27 @@ def test_guarulhos_real_portal_preparation_matches_competence_and_binding(
                 for item in original
             )
     assert response.json()["transmitted"] is False
+
+
+def test_bh_reviewed_classifications_use_existing_native_preparation_and_replay(tmp_path):
+    db = _database(tmp_path / "bh-review.sqlite", issuer_ibge="3106200", issuer_state="MG")
+    web = _client(db)
+    payload = _payload() | {
+        "service_state_code": "MG", "service_municipality_ibge": "3106200",
+        "municipal_taxation_detail": "001", "nbs_code": "115021000",
+    }
+    first = _post(web, payload)
+    assert first.status_code == 200, first.text
+    scope = ExecutionScope(TENANT, UNIT, FiscalEnvironment.HOMOLOGATION, "check", "fm-nfcore")
+    prepared = FiscalApplicationService(db).load_prepared_nfse_authorization(
+        scope, first.json()["document_id"],
+    )
+    assert prepared.document.services[0].municipal_taxation_detail == "001"
+    assert prepared.document.services[0].nbs_code == "115021000"
+    assert _post(web, payload, "second-review").json()["replay"] is True
+    changed = _post(web, payload | {"municipal_taxation_detail": "002"}, "different-review")
+    assert changed.status_code == 409
+    malformed = _post(web, payload | {
+        "source_id": "invalid-classification", "municipal_taxation_detail": "0010",
+    }, "malformed-review")
+    assert malformed.status_code == 400

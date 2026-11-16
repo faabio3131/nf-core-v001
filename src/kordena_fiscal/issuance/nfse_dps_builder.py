@@ -259,6 +259,8 @@ def build_signed_dps(
     _child(loc_prest, "cLocPrestacao", service_municipality)
     c_serv = etree.SubElement(serv, f"{{{_NFSE_NS}}}cServ")
     _child(c_serv, "cTribNac", service.national_taxation_code)
+    if service.municipal_taxation_detail is not None:
+        _child(c_serv, "cTribMun", service.municipal_taxation_detail)
     if not is_nt009:
         _child(c_serv, "xDescServ", service.description.strip())
     if service.nbs_code is not None:

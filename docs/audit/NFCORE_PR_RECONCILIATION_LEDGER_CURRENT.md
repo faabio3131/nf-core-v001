@@ -39,3 +39,38 @@ Correções aplicáveis ao trabalho:
 ## Pendências em andamento
 
 Revisão semântica das origens restantes, BH/NT009, Louveira/Guarulhos, MF-09, MF-04, confiança do GET nacional, verificação das operações MG/SP, certificação cumulativa, promoção e verificação do servidor. Nenhuma conclusão global ou publicação foi realizada por este incremento.
+
+
+## Checkpoint de integração — 16/11/2026, 15h UTC
+
+- PR #513 integrada à candidata #468: `ab93ef0d3b03b8e0b41cda686f83fdff2fed808d`. Nenhuma mudança em main/production por este merge.
+- HEAD cognitivo validado: `8ccbe41057507025ff93a6635dddc6a55e1576e7`; [CI43888420172](https://github.com/faabio3131/nf-core-v001/actions/runs/43888420172) SUCCESS:5027 testes Python passaram,3 pulados;69 Playwright passaram; gates PG/imagens/segurança/restore aprovados. [T2 fora de Draft43892327257](https://github.com/faabio3131/nf-core-v001/actions/runs/43892327257) aplicado, log `Bloco completo`. CI pós-merge da candidata [43892521240](https://github.com/faabio3131/nf-core-v001/actions/runs/43892521240) em andamento neste checkpoint.
+- PR #514 publicada em Draft no SHA `4cbbeeb5822ca8c5fcc559cc7f119639bd6b3d03`: #508 recuperada e perfil DPS nacional NT009. Suíte Python local passou, com dependentes de PG pulados por ausência de DSN; Ruff/Mypy417 módulos e Portal lint/typecheck/build/26 testes passaram. Chromium local falhou no download; navegador e PG dependem da CI deste SHA. Isso não encerra as pendências do release.
+- Revisão independente do NT009 encontrou validação tardia de série e bypass no transporte HTTP de baixo nível. Ambos corrigidos; re-revisão não encontrou novo bloqueador no delta. Testes verificam série89999/90000, preservação READY_TO_TRANSMIT e ausência de A1/rede na recusa. Preparação municipal mantém seu próprio contrato.
+- Fontes das96PRs foram recuperadas com paginação completa:2496 ocorrências de caminhos, registradas por blob no manifesto. Comparação automática de arquivos/AST serve à triagem; decisões funcionais ainda pendentes continuam explícitas.
+
+### Contrato NT009 deste incremento
+
+O ZIP foi obtido da [documentação oficial de homologação](https://www.gov.br/nfse/pt-br/biblioteca/documentacao-tecnica/producao-restrita), por sua rota de download `@@download/file`. Os dez membros foram preservados sem normalizar quebras de linha. O manifest está no pacote `NFSE_NACIONAL_1.01_NT009_20261020`. Comparação contra #440: quatro membros idênticos e seis diferentes. Não rotular o espelho anterior como ZIP oficial.
+
+O perfil é escolhido pela data operacional do endpoint e pelo ambiente, não pela competência retroativa nem pelo município. O fluxo nacional usa NT009 em homologação desde20/10/2026; a função legada continua disponível para Simpliss municipal. O seletor impede assumir o pacote de produção após a mudança anunciada para01/12/2026 sem nova revisão. O gateway nacional existente permanece exclusivamente homologação.
+
+O novo pacote compila DPS, NFSe, pedido e retorno de evento. Este incremento conecta **DPS** à execução. Conectar NFSe recebido e eventos, confiança ICP/revogação e proveniência persistente de perfil são pendências internas, ainda não concluídas.
+
+### Acesso operacional
+
+Desktop Commander retornou limite mensal esgotado, impedindo a via anterior ao PC/SSH. Os workflows históricos de auditoria não comprovam o estado atual de migration22, A1, restore ou auto-pull. Nenhum deploy, DDL produtivo ou emissão oficial foi executado. Essa limitação operacional não transforma pendências de código em externas.
+
+### Port seletivo BH — classificação municipal
+
+Recuperado de #440 o desdobramento de três dígitos `cTribMun`, usando `municipal_taxation_detail` no modelo canônico existente. Preservado no fingerprint, arquivo fiscal, formulário nativo e nos dois perfis DPS; ausência mantém a compatibilidade dos arquivos antigos. Nenhuma segunda numeração, rota BH ou campo NBS paralelo foi criado. Revisão independente do delta não encontrou bloqueador introduzido. Testes locais cobrem formato ASCII, XSD dos dois perfis, arquivo e adulteração, replay e conflito autenticado. O teste Playwright novo usa HTTP simulado e comprova apenas apresentação/contrato do formulário.
+
+| Comportamento original #440 | Destino e decisão |
+| --- | --- |
+| cTribMun obrigatório quando local do serviço é BH | Campo recuperado; obrigatoriedade não portada. Depende de política revisada de incidência do ISS, que não pode ser inferida apenas do local do serviço. |
+| NBS obrigatório para BH desde competência 2026 | Campo canônico existente reutilizado. Obrigatoriedade, aplicabilidade e vigência continuam pendência interna. |
+| Regime especial explicitamente revisado em BH | Modelo canônico tem tratamento tributário próprio. Equivalência e prevenção de defaults indevidos ainda pendentes em MF-04. |
+| Combinação cTribNac/cTribMun válida | Formato e XSD verificados; validação contra tabela municipal e município de incidência ainda pendente. |
+| Ciclo fiscal BH | Preparação/readback não certificam autorização, substituição, cancelamento, recuperação, confiança do recibo ou homologação externa. |
+
+A primeira CI de #514 falhou na coleta por importação de namespace de testes ausente no runner. Corrigido isoladamente em `d1a84e30e0d8409aa9d90e5347fb0640a9b0e74c`: testes de perfil movidos para o diretório de seus helpers e dependência do módulo de testes de persistência removida; 22 testes locais do perfil/cTribMun passaram. Nova CI integral necessária nesse SHA.

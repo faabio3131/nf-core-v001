@@ -85,6 +85,7 @@ _FOREIGN_ADDRESS_FIELDS = frozenset({
 _FOREIGN_ID_FIELDS = frozenset({"taker_nif", "taker_no_nif_reason"})
 _COMMON_FIELDS = _FIELDS - {"taker_document"}
 _NBS_FIELD = frozenset({"nbs_code"})
+_MUNICIPAL_DETAIL_FIELD = frozenset({"municipal_taxation_detail"})
 _BASE_ALLOWED_PAYLOADS = frozenset({
     _FIELDS,
     _FIELDS | _TAKER_ADDRESS_FIELDS,
@@ -95,15 +96,18 @@ _SUBSTITUTION_FIELDS = frozenset({
     "substitution_original_id", "substitution_reason_code",
     "substitution_reason_description", "substitution_human_approval",
 })
-_ALLOWED_NORMAL = _BASE_ALLOWED_PAYLOADS | frozenset(
-    fields | _NBS_FIELD for fields in _BASE_ALLOWED_PAYLOADS
+_ALLOWED_NORMAL = frozenset(
+    fields | optional
+    for fields in _BASE_ALLOWED_PAYLOADS
+    for optional in (frozenset(), _NBS_FIELD, _MUNICIPAL_DETAIL_FIELD,
+                     _NBS_FIELD | _MUNICIPAL_DETAIL_FIELD)
 )
 _ALLOWED_PAYLOADS = _ALLOWED_NORMAL | frozenset(
     fields | _SUBSTITUTION_FIELDS for fields in _ALLOWED_NORMAL
 )
 _STRING_FIELDS = (
     (_FIELDS | _TAKER_ADDRESS_FIELDS | _FOREIGN_ADDRESS_FIELDS | _FOREIGN_ID_FIELDS
-     | _NBS_FIELD | _SUBSTITUTION_FIELDS)
+     | _NBS_FIELD | _MUNICIPAL_DETAIL_FIELD | _SUBSTITUTION_FIELDS)
     - {
         "iss_withheld", "rule_version", "fiscal_review_approved",
         "substitution_human_approval",
@@ -363,6 +367,7 @@ def prepare_native_nfse(
             source_normative=payload["source_normative"].strip(),
             rule_version=payload["rule_version"],
             nbs_code=payload.get("nbs_code"),
+            municipal_taxation_detail=payload.get("municipal_taxation_detail"),
         )
         document = NfseCanonicalDocument(
             document_id=document_id, scope=scope, source=source,

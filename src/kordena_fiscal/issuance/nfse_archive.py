@@ -95,6 +95,8 @@ def encode_prepared_nfse(request: NfseAuthorizationRequest) -> bytes:
                 "iss_withheld": line.iss_withheld,
                 "national_taxation_code": line.national_taxation_code,
                 **({"nbs_code": line.nbs_code} if line.nbs_code is not None else {}),
+                **({"municipal_taxation_detail": line.municipal_taxation_detail}
+                   if line.municipal_taxation_detail is not None else {}),
                 "rule_version": line.rule_version,
                 "source_normative": line.source_normative,
             }
@@ -281,6 +283,9 @@ def decode_prepared_nfse(content: bytes, *, scope: ExecutionScope) -> NfseAuthor
                     item.get("national_taxation_code"), "national_taxation_code"
                 ),
                 nbs_code=_optional_text(item.get("nbs_code"), "nbs_code"),
+                municipal_taxation_detail=_optional_text(
+                    item.get("municipal_taxation_detail"), "municipal_taxation_detail",
+                ),
                 rule_version=item["rule_version"],
                 source_normative=_text(item["source_normative"], "source_normative"),
             )
