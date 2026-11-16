@@ -1,3 +1,15 @@
+# DIRETRIZ SUPERVENIENTE — INTEGRADOR ÚNICO E RELEASE MANAGER (15/11/2026)
+
+> **DECISÃO DO PROPRIETÁRIO — NFCORE-GOV-RELEASE-001 (15/11/2026).** Governança detalhada em [docs/governance/NFCORE_SINGLE_INTEGRATOR_RELEASE_OWNER_2026-11-15.md](docs/governance/NFCORE_SINGLE_INTEGRATOR_RELEASE_OWNER_2026-11-15.md). Checkpoint público de handoff na [issue #447](https://github.com/faabio3131/nf-core-v001/issues/447#issuecomment-6903641344).
+
+1. **Agente executor municipal (frente SP-22):** constrói e testa cada município em PR própria, publica HANDOFF + HEAD + CI na issue #447. Não faz merges, promoções, deploy, migration produtiva ou alterações em `main`/`production`.
+2. **Único Agente Integrador/Release Manager:** a frente de arquitetura/core que conduz a #504 e coordena #468/#498 é a **única responsável por conferir, conciliar, aceitar, executar merges nas candidatas e coordenar promoções**. Cada merge exige revisão do diff e CI verde no HEAD atual; após integrar, certificar novamente a árvore cumulativa.
+3. **Autoridade humana e revisão independente preservadas:** o proprietário autoriza por gate `main`/`production`, infra/DB/segredos e Go/No-Go. Revisão independente EGM não pode ser substituída por autocertificação do integrador.
+4. **CURRENT de entrada desta decisão:** #503 MERGED em #468; #468 OPEN/DRAFT `440f4065` com CI pós-Salto SUCCESS; #504 OPEN/DRAFT `4a31471`, CI própria SUCCESS, ainda NÃO integrada; #498 OPEN/DRAFT, não publicada. Revalidar todos os SHAs ao executar.
+5. **Limite:** esta regra é uma atribuição processual, não uma permissão exclusiva tecnicamente imposta no GitHub; enforcement por conta/bot/ruleset depende de configuração administrativa. Não interpretar registro de decisão como merge concluído ou deploy autorizado.
+
+---
+
 # CURRENT — Salto/SP incorporado à candidata cumulativa (15/11/2026)
 
 > **Checkpoint técnico posterior às diretrizes históricas abaixo.** Repositório `faabio3131/nf-core-v001`: PR #503 (Salto/SP IBGE 3545209) **MERGED NA BRANCH CUMULATIVA**, commit de integração `17f1ad3dafe9b86795bae21a0c5fe61a3ac3ff9f`, **NÃO em `main`**. PR #468 continua OPEN/DRAFT. `main` observado em `f23d2a050a4c1555de1bdbe8620bb69b6d983cc8` antes deste checkpoint; revalidar ao retomar.
