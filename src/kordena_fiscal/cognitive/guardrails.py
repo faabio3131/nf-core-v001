@@ -5,7 +5,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 
-from .context import INJECTION_MARKERS, evidence_corpus
+from .context import INJECTION_MARKERS
 from .contracts import MAX_SECTION_CHARS, AdviceRequest, AdviceSection, SectionKind
 from .ports import ProviderSection
 from .redaction import Redactor
@@ -50,12 +50,24 @@ class OutputGuard:
         self, sections: tuple[ProviderSection, ...], request: AdviceRequest
     ) -> GuardResult:
         known_ids = {item.evidence_id for item in request.evidence}
-        corpus = evidence_corpus(request.evidence, request.question)
+        # Only deterministic, trusted evidence may ground numeric fiscal claims.
+        # The user's question and external untrusted provider messages are not
+        # authority for codes, rates or monetary amounts.
+        trusted_corpus_by_id = {
+            item.evidence_id: "\n".join(item.data.values())
+            for item in request.evidence if item.trusted
+        }
         accepted: list[AdviceSection] = []
         findings: list[str] = []
         for index, section in enumerate(sections):
             tag = f"section[{index}]"
-            reason = self._reject_reason(section, known_ids, corpus)
+            # A claim must be supported by its own cited, trusted evidence.
+            # Another unrelated fact in the request cannot launder a citation.
+            cited_corpus = "\n".join(
+                trusted_corpus_by_id.get(item_id, "")
+                for item_id in section.evidence_ids
+            )
+            reason = self._reject_reason(section, known_ids, cited_corpus)
             if reason is not None:
                 findings.append(f"{tag}:{reason}")
                 continue
@@ -95,13 +107,16 @@ class OutputGuard:
             return "config_change_directive"
         if any(pattern.search(text) for pattern in INJECTION_MARKERS):
             return "injection_echo"
-        for token in _CODE_TOKEN.findall(text):
-            if token not in corpus:
-                return "ungrounded_code"
         corpus_numbers = set(_DIGIT_RUN.findall(corpus))
+        for token in _CODE_TOKEN.findall(text):
+            if token not in corpus_numbers:
+                return "ungrounded_code"
         for amount in _AMOUNT.finditer(text):
             figure = amount.group(1) or amount.group(2)
-            if figure.rstrip(".,") not in corpus:
+            figure = figure.rstrip(".,")
+            if not re.search(
+                rf"(?<![0-9,.]){re.escape(figure)}(?![0-9,.])", corpus
+            ):
                 return "ungrounded_amount"
         for match in _CLASSIFICATION_REF.finditer(text):
             if match.group(2) not in corpus_numbers:

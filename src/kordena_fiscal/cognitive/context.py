@@ -82,6 +82,8 @@ class ContextPackBuilder:
             line = f"[{item.evidence_id}] {item.kind.value} ({clean(item.origin)}): {body}"
             hashed.append(
                 {"id": item.evidence_id, "kind": item.kind.value, "trusted": item.trusted,
+                 "origin": clean(item.origin),
+                 "as_of": item.as_of.isoformat() if item.as_of is not None else None,
                  "body": body}
             )
             if item.trusted:
@@ -97,8 +99,17 @@ class ContextPackBuilder:
         boundary = f"DADOS-{self._nonce()}"
         untrusted_text = "\n".join(_defuse(line, boundary) for line in untrusted_lines)
         fenced = f"<<{boundary}>>\n{untrusted_text}\n<</{boundary}>>" if untrusted_lines else ""
+        # A context fingerprint is a scoped provenance key, not just a hash
+        # of text. Identical snapshots from separate tenants, units or fiscal
+        # environments must not share a reference; evidence source and time
+        # also affect the claims that can legitimately be made about it.
         context_hash = stable_hash(
-            {"capability": request.capability.value, "evidence": hashed, "question": question}
+            {
+                "scope": request.scope.identity_material,
+                "capability": request.capability.value,
+                "evidence": hashed,
+                "question": question,
+            }
         )
         prompt = ModelPrompt(
             capability=request.capability,
