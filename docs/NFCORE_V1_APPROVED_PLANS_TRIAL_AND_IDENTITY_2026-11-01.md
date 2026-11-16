@@ -1,3 +1,5 @@
+> **SUPERADO PARA PLANOS/PREÇOS/TRIAL EM 08/11/2026.** A decisão atual do proprietário utiliza quatro planos Starter/Pro/Business/Enterprise e trial de 14 dias. Consultar `docs/checkpoints/NFCORE_COMMERCIAL_OFFER_APPROVAL_2026-11-08.md` e `config/commercial/plans.json`. As demais decisões arquiteturais deste arquivo permanecem históricas e não devem ser interpretadas como autorização de publicação ou produção fiscal.
+
 > **RECONCILIAÇÃO 03/11/2026:** decisão comercial aprovada em 01/11 preservada integralmente. A publicação de preços, trial, checkout, rename técnico e deploy depende de implementação e gates próprios; este documento não ativa nenhuma capacidade.
 
 # FM NFCORE V1 — Decisão comercial: planos, trial e identidade técnica
