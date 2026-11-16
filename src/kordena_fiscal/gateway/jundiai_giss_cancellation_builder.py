@@ -42,7 +42,7 @@ def build_jundiai_cancel_xml(
     if (
         not isinstance(source, Sp4OriginalRps)
         or not isinstance(issued, Sp4VerifiedInvoice)
-        or source.issuer_ibge != "3525904"
+        or source.issuer_ibge not in {"3525904", "3518800"}
         or issued.issuer_ibge != source.issuer_ibge
         or issued.issuer_cnpj != source.issuer_cnpj
         or issued.rps_number != source.rps_number

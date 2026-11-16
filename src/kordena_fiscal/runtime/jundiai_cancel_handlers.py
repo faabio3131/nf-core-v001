@@ -38,6 +38,11 @@ def build_jundiai_event_handlers(
         or not isinstance(retention, RetentionPolicyMetadata)
     ):
         raise ValueError("Jundiai requires one canonical A1 event authority")
+    municipality_ibge = reviewed.transport.municipality_ibge
+    names = {"3525904": "Jundiai", "3518800": "Guarulhos"}
+    if municipality_ibge not in names:
+        raise ValueError("Unreviewed GISS event municipality")
+    channel = names[municipality_ibge]
     submit = reviewed.submit_verified_cancel
     query = reviewed.query_verified_cancel
     assert submit is not None and query is not None
@@ -70,7 +75,7 @@ def build_jundiai_event_handlers(
                     )
                 application.preflight_jundiai_nfse_substitution(
                     scope=scope, original_id=old, replacement_id=new,
-                    reason_code=str(payload["reason_code"]),
+                    reason_code=str(payload["reason_code"]), municipality_ibge=municipality_ibge,
                 )
             else:
                 doc_id = payload.get("document_id")
@@ -78,7 +83,7 @@ def build_jundiai_event_handlers(
                     raise FiscalValidationError("Original Giss note ID missing")
                 application.preflight_jundiai_nfse_cancellation(
                     scope=scope, document_id=doc_id,
-                    reason_code=str(payload["reason_code"]),
+                    reason_code=str(payload["reason_code"]), municipality_ibge=municipality_ibge,
                 )
         except (PersistenceConflictError, PersistenceStateError):
             raise FiscalValidationError(
@@ -96,14 +101,14 @@ def build_jundiai_event_handlers(
         cancel_preflight(scope, payload, key)
         result = application.cancel_prepared_jundiai_nfse(
             scope=scope, document_id=str(payload["document_id"]),
-            reason_code=str(payload["reason_code"]),
+            reason_code=str(payload["reason_code"]), municipality_ibge=municipality_ibge,
             submit_verified_cancel=submit, occurred_at=datetime.now(UTC),
             retention=retention,
         )
         return {
             "document_id": str(payload["document_id"]),
             "status": result.lifecycle.state.value,
-            "municipality_ibge": "3525904",
+            "municipality_ibge": municipality_ibge,
             "event_archive_id": result.archive_reference,
             "official_fiscal_confirmation": result.decision.confirmed is True,
             "recovery_required": result.decision.confirmed is None,
@@ -122,7 +127,7 @@ def build_jundiai_event_handlers(
         outcome = application.cancel_prepared_jundiai_nfse(
             scope=scope, document_id=str(payload["original_id"]),
             replacement_id=str(payload["replacement_id"]),
-            reason_code=str(payload["reason_code"]),
+            reason_code=str(payload["reason_code"]), municipality_ibge=municipality_ibge,
             submit_verified_cancel=submit,
             occurred_at=datetime.now(UTC), retention=retention,
         )
@@ -132,7 +137,7 @@ def build_jundiai_event_handlers(
             "original_status": outcome.lifecycle.state.value,
             "replacement_status": "ready_to_transmit" if outcome.decision.confirmed
             else "awaiting_official_cancellation",
-            "municipality_ibge": "3525904",
+            "municipality_ibge": municipality_ibge,
             "event_archive_id": outcome.archive_reference,
             "official_fiscal_confirmation": outcome.decision.confirmed is True,
             "recovery_required": outcome.decision.confirmed is None,
@@ -155,7 +160,7 @@ def build_jundiai_event_handlers(
         original = application.load_sp4_original_rps(
             scope, str(payload["document_id"]),
         )
-        if original.issuer_ibge != "3525904":
+        if original.issuer_ibge != municipality_ibge:
             raise FiscalValidationError("Jundiai recovery source municipality differs")
 
     def reconcile(
@@ -164,12 +169,12 @@ def build_jundiai_event_handlers(
         recovery_preflight(scope, payload, key)
         outcome = application.reconcile_jundiai_nfse_cancellation(
             scope=scope, document_id=str(payload["document_id"]),
-            query_verified_cancel=query,
+            query_verified_cancel=query, municipality_ibge=municipality_ibge,
             occurred_at=datetime.now(UTC), retention=retention,
         )
         return {
             "document_id": str(payload["document_id"]),
-            "municipality_ibge": "3525904",
+            "municipality_ibge": municipality_ibge,
             "status": outcome.lifecycle.state.value,
             "event_archive_id": outcome.archive_reference,
             "official_fiscal_confirmation": outcome.decision.confirmed is True,
@@ -177,13 +182,13 @@ def build_jundiai_event_handlers(
         }
 
     return {
-        "reconcileJundiaiNfseCancellation": PreflightFiscalOperationHandler(
+        f"reconcile{channel}NfseCancellation": PreflightFiscalOperationHandler(
             reconcile, recovery_preflight,
         ),
-        "cancelJundiaiNfse": PreflightFiscalOperationHandler(
+        f"cancel{channel}Nfse": PreflightFiscalOperationHandler(
             cancel, cancel_preflight,
         ),
-        "substituteJundiaiNfse": PreflightFiscalOperationHandler(
+        f"substitute{channel}Nfse": PreflightFiscalOperationHandler(
             substitute, substitute_preflight,
         ),
     }

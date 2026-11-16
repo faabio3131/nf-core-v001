@@ -1058,6 +1058,10 @@ const reviewedMunicipalWebActions = Object.freeze({
     title: "Conciliar cancelamento — Jundiaí GissOnline", kind: "recovery",
     fields: [["document_id", "ID da nota original"]],
   },
+  reconcileGuarulhosNfseCancellation: {
+    title: "Conciliar cancelamento — Guarulhos GissOnline", kind: "recovery",
+    fields: [["document_id", "ID da nota original"]],
+  },
 });
 
 /** @param {HTMLElement} article @param {keyof typeof reviewedMunicipalWebActions} operation */
@@ -1267,21 +1271,24 @@ function appendCajamarCancellation(article) {
 
 /** Human-reviewed Jundiaí GissOnline v2.04 events on the existing fiscal Portal.
  * @param {HTMLElement} article
- * @param {"cancelJundiaiNfse"|"substituteJundiaiNfse"} operation
+ * @param {"cancelJundiaiNfse"|"substituteJundiaiNfse"|"cancelGuarulhosNfse"|"substituteGuarulhosNfse"} operation
  */
 function appendJundiaiFiscalEvent(article, operation) {
   const available = bootstrapState?.projection.configured_fiscal_operations;
-  const substitution = operation === "substituteJundiaiNfse";
+  const substitution = operation.startsWith("substitute");
+  const guarulhos = operation.includes("Guarulhos");
+  const city = guarulhos ? "Guarulhos" : "Jundiaí";
+  const formPrefix = guarulhos ? "guarulhos" : "jundiai";
   if (!bootstrapState?.permissions.includes("document.cancel")
     || (substitution && !bootstrapState?.permissions.includes("document.issue"))
     || !Array.isArray(available) || !available.includes(operation)) return;
   const form = document.createElement("form");
-  form.id = substitution ? "jundiai-substitute-form" : "jundiai-cancel-form";
+  form.id = formPrefix + (substitution ? "-substitute-form" : "-cancel-form");
   form.className = "panel-form";
   const heading = document.createElement("h3");
   heading.textContent = substitution
-    ? "Revisar substituição — Jundiaí GissOnline 2.04"
-    : "Cancelar NFS-e — Jundiaí GissOnline 2.04";
+    ? "Revisar substituição — " + city + " GissOnline 2.04"
+    : "Cancelar NFS-e — " + city + " GissOnline 2.04";
   const notice = document.createElement("p");
   notice.textContent = substitution
     ? "Confira a NFS-e autorizada e um RPS substituto previamente preparado. A primeira etapa cancela a nota original; a emissão do substituto é separada, após confirmação oficial. O vínculo não representa substituição municipal atômica."
@@ -3458,6 +3465,8 @@ async function renderSurface(viewId) {
     if (viewId === "issuances") appendCajamarCancellation(article);
     if (viewId === "issuances") appendJundiaiFiscalEvent(article, "cancelJundiaiNfse");
     if (viewId === "issuances") appendJundiaiFiscalEvent(article, "substituteJundiaiNfse");
+    if (viewId === "issuances") appendJundiaiFiscalEvent(article, "cancelGuarulhosNfse");
+    if (viewId === "issuances") appendJundiaiFiscalEvent(article, "substituteGuarulhosNfse");
     if (viewId === "issuances") appendBarueriFiscalEvent(article, "cancelBarueriNfse");
     if (viewId === "issuances") appendBarueriFiscalEvent(article, "substituteBarueriNfse");
     if (viewId === "issuances" || viewId === "reconciliation") appendBarueriEventReconciliation(article);
@@ -3471,6 +3480,7 @@ async function renderSurface(viewId) {
       appendReviewedMunicipalWebAction(article, "reconcileSantanaNfseCancellation");
       appendReviewedMunicipalWebAction(article, "reconcileSantanaNfseSubstitution");
       appendReviewedMunicipalWebAction(article, "reconcileJundiaiNfseCancellation");
+      appendReviewedMunicipalWebAction(article, "reconcileGuarulhosNfseCancellation");
     }
     if (viewId === "issuances") appendExtremaSubstitution(article);
     if (viewId === "issuances") appendCajamarSubstitutionReview(article);

@@ -77,6 +77,29 @@ def test_giss_cancel_xml_correlates_nota_and_issuer_with_unique_xml_id() -> None
     assert info.findtext(f"{_T}CodigoCancelamento") == "4"
 
 
+def test_guarulhos_cancel_preserves_exact_city_in_shared_giss_xml() -> None:
+    fields = _fields()
+    fields["source"] = replace(_source(), issuer_ibge="3518800")
+    fields["issued"] = replace(_invoice(), issuer_ibge="3518800")
+    xml = build_jundiai_cancel_xml(**fields)
+    root = etree.fromstring(xml)
+    assert root.findtext(f".//{_T}CodigoMunicipio") == "3518800"
+    assert root.findtext(f".//{_T}IdentificacaoNfse/{_T}Numero") == "8765"
+
+
+@pytest.mark.parametrize("source_city,invoice_city", [
+    ("3518800", "3525904"), ("3525904", "3518800"), ("3505708", "3505708"),
+])
+def test_shared_giss_cancel_rejects_cross_city_and_unreviewed_city(
+    source_city: str, invoice_city: str,
+) -> None:
+    fields = _fields()
+    fields["source"] = replace(_source(), issuer_ibge=source_city)
+    fields["issued"] = replace(_invoice(), issuer_ibge=invoice_city)
+    with pytest.raises(JundiaiGissCancelError):
+        build_jundiai_cancel_xml(**fields)
+
+
 def test_signed_giss_cancel_keeps_source_signature_and_schema() -> None:
     sign = Mock(side_effect=lambda raw: raw)
     validate = Mock()

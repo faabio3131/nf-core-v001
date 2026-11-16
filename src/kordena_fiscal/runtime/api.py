@@ -111,6 +111,7 @@ from .development_commercial_ingress import (
 from .development_fiscal_ingress import development_fiscal_ingress
 from .extrema_webiss_environment import build_extrema_webiss_exchange
 from .fiscal_runtime import FiscalOperationHandler
+from .guarulhos_giss_operational_composition import build_guarulhos_port_builder_from_environ
 from .jundiai_environment import build_jundiai_port_builder_from_environ
 from .jundiai_operational_composition import JundiaiTrustedRuntimePorts
 from .observability import (
@@ -1210,6 +1211,7 @@ def build_entrypoint_fiscal_handler_factory(
     """
     osasco_requested = bool(environ.get("NFCORE_OSASCO_WCF_CONFIG_PATH", "").strip())
     barueri_requested = bool(environ.get("NFCORE_BARUERI_PMB004_CONFIG_PATH", "").strip())
+    guarulhos_requested = bool(environ.get("NFCORE_GUARULHOS_GISS_CONFIG_PATH", "").strip())
     jundiai_requested = bool(environ.get("NFCORE_JUNDIAI_GISS_CONFIG_PATH", "").strip())
     santana_requested = bool(environ.get("NFCORE_SANTANA_SIMPLISS_CONFIG_PATH", "").strip())
     if settings.environment.value not in {"staging", "production"}:
@@ -1218,6 +1220,7 @@ def build_entrypoint_fiscal_handler_factory(
             or osasco_requested
             or barueri_requested
             or jundiai_requested
+            or guarulhos_requested
             or santana_requested
         ):
             raise RuntimeConfigurationError(
@@ -1256,6 +1259,9 @@ def build_entrypoint_fiscal_handler_factory(
             environ, secrets_factory=secrets_factory,
         ),
         barueri_port_builder=build_barueri_port_builder_from_environ(
+            environ, vault=vault,
+        ),
+        guarulhos_port_builder=build_guarulhos_port_builder_from_environ(
             environ, vault=vault,
         ),
         jundiai_port_builder=build_jundiai_port_builder_from_environ(

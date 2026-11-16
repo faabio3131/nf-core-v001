@@ -1,3 +1,21 @@
+## CURRENT — MF04 integrado; Guarulhos corrigido após revisão, 16/11/2026
+
+#520 MERGED na candidata `af1f7b58794beba42a92718dea40a44fb1ef90fa`, origem `009c72a1`. CI completa [43947807754](https://github.com/faabio3131/nf-core-v001/actions/runs/43947807754) SUCCESS e T2 efetivo fora de Draft43949507844 SUCCESS. Main/production permanecem `549ab3c0`/`ea4bdd3b`; nenhum deploy.
+
+#521 sincronizada com essa candidata. Revisão independente encontrou dois defeitos: nome de serviço do override (`api`→`nfcore-api`) e dupla permissão ausente em recovery direto. Corrigidos: `FiscalIntentRecovery.allowed()` governa prepare, validate/resume/replay e listagem, inclusive outros canais de substituição já suportados. Papéis atuais agrupam CANCEL+ISSUE; teste de revogação parcial garante a invariável. Cajamar não ganhou endpoint novo: sua revisão não está na superfície recovery e continua bloqueada.
+
+Prova independente: prepare200 com ambas permissões; após retirar ISSUE, resume403/zero dispatch; CANCEL-only bloqueado em prepare e endpoint direto. Testes novos cobrem6operações×2estados (prepared/recorded), listagem e replay. Suite recovery SQLite PASS/variantes PG SKIP;14gateway PASS. Ruff/Mypy421 PASS antes da sincronização; retestar composição MF04+Guarulhos. CI da origem anterior de #521 não certifica este novo HEAD. Revisão sem bloqueador adicional condicionada às correções publicadas/CI exata. Testes locais e browser/PG remotos não são homologação externa. Acesso mutante ao host permanece indisponível; publicação e DPS22/cofre/restore/staging permanecem pendentes.
+
+## CURRENT — Guarulhos em validação, 16/11/2026
+
+Base confirmada `81914807d3253ebe15e6cce93640f1157f222fe3`; main `549ab3c0` e production `ea4bdd3b` permanecem sem promoção. #519 integrada; main é ancestral da candidata. CI cumulativa [43945724238](https://github.com/faabio3131/nf-core-v001/actions/runs/43945724238) SUCCESS. #518 recuperou seis fontes por SHA256; #413/#448/#453 encerradas com evidência e branches preservadas.
+
+#520 implementa decisão tributária nacional governada; HEAD `009c72a172b7ab065c70faebbb492aa045e08024`, CI [43947807754](https://github.com/faabio3131/nf-core-v001/actions/runs/43947807754) em execução. Não integrada neste checkpoint. Lacuna de trigger corrigida: PRs para `integration/nfcore-*` executam todos os mesmos gates, sem redução.
+
+Guarulhos: composição opt-in da família GISS, 24 schemas compartilhados por hash, município explícito, eventos e Portal/RBAC/recovery existentes. Plano `docs/audit/NFCORE_GUARULHOS_OPERATIONAL_PLAN_20261116.md`; runbook `docs/operations/NFCORE_GUARULHOS_REVIEWED_GISS.md`. 11 testes HTTP Jundiaí/Guarulhos e 51 testes focais PASS; Ruff/Mypy421 PASS; frontend26 PASS/lint/typecheck/build. Suíte integral local em execução. Três testes browser adicionados; execução local bloqueada pelo download truncado e pela restrição de socket do Chromium instalado. CI remota obrigatória; NÃO COMPROVADO até executar. Revisão independente em andamento.
+
+O usuário reiterou concluir e depois publicar. Desktop Commander retorna cota de chamadas0; único canal SSH GitHub auditado é somente leitura. Driver Contabo de promoção não está provisionado na árvore (existem Railway/unconfigured). Não usar credencial restrita para mutação nem mover production com auto-pull sem controle. Nenhum deploy ou migration realizado. DPS22/cofre/restore/staging, homologações reais, confiança ICP/revogação e cobertura fiscal ampliada permanecem pendentes; não declarar lançamento pronto.
+
 ## CURRENT — MF-09 integrado na candidata, 16/11/2026
 
 - Candidata #468: `cac2a1e38058ca4b6a811d337eea270561cd8223`, após merge da #517. Branch `integration/nfcore-a1-sp2-current-main-20261113`. Árvore `fc9fb39603464db854178136a1b4b6b4d74fc880` idêntica à origem `1bd7449c7204f0ca3992f048c06f679cef0758d5`.
