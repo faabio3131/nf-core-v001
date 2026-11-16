@@ -95,6 +95,7 @@ from .barueri_operational_composition import BarueriTrustedRuntimePorts
 from .cajamar_operational_composition import CajamarTrustedRuntimePorts
 from .fiscal_runtime import FiscalOperationHandler, PreflightFiscalOperationHandler
 from .jundiai_cancel_handlers import build_jundiai_event_handlers
+from .guarulhos_giss_operational_composition import GuarulhosGissTrustedRuntimePorts
 from .jundiai_operational_composition import JundiaiTrustedRuntimePorts
 from .osasco_cancel_handlers import (
     build_osasco_cancel_handler,
@@ -408,6 +409,10 @@ def build_runtime_fiscal_handler_factory(
     jundiai_port_builder: Callable[
         [FiscalApplicationService], JundiaiTrustedRuntimePorts
     ] | None = None,
+    guarulhos_runtime_ports: GuarulhosGissTrustedRuntimePorts | None = None,
+    guarulhos_port_builder: Callable[
+        [FiscalApplicationService], GuarulhosGissTrustedRuntimePorts
+    ] | None = None,
     santana_port_builder: Callable[
         [FiscalApplicationService], SantanaSimplissHomologationGateway
     ] | None = None,
@@ -586,6 +591,22 @@ def build_runtime_fiscal_handler_factory(
             active_municipalities = {
                 **(active_municipalities or {}),
                 "jundiai-giss-v2-homologation": selected_jundiai_ports.attach(application),
+            }
+        selected_guarulhos_ports = (
+            guarulhos_port_builder(application)
+            if guarulhos_port_builder is not None else guarulhos_runtime_ports
+        )
+        if selected_guarulhos_ports is not None:
+            if not isinstance(selected_guarulhos_ports, GuarulhosGissTrustedRuntimePorts):
+                raise ValueError("Guarulhos operator provisioning returned invalid ports")
+            if active_municipalities and (
+                "guarulhos-giss-v2-homologation" in active_municipalities
+            ):
+                raise ValueError("Duplicate Guarulhos provider authority")
+            active_municipalities = {
+                **(active_municipalities or {}),
+                "guarulhos-giss-v2-homologation":
+                    selected_guarulhos_ports.attach(application),
             }
         gateway = selected_operations or UnprovisionedFiscalGateway()
         if operations_gateway is None and certificate_vault is not None:
