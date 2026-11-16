@@ -148,6 +148,10 @@ def encode_prepared_nfse(request: NfseAuthorizationRequest) -> bytes:
         "schema_version": document.schema_version,
         "national_tax_treatment": (
             None if document.national_tax_treatment is None else {
+                **({
+                    "policy_id": document.national_tax_treatment.policy_id,
+                    "policy_sha256": document.national_tax_treatment.policy_sha256,
+                } if document.national_tax_treatment.policy_id is not None else {}),
                 "iss_taxation_code": document.national_tax_treatment.iss_taxation_code,
                 "special_regime_code": document.national_tax_treatment.special_regime_code,
                 "simples_assessment_code": (
@@ -353,6 +357,8 @@ def decode_prepared_nfse(content: bytes, *, scope: ExecutionScope) -> NfseAuthor
         if root.get("national_tax_treatment") is not None:
             decision = _mapping(root["national_tax_treatment"], "national_tax_treatment")
             treatment = NfseNationalTaxTreatment(
+                policy_id=decision.get("policy_id"),
+                policy_sha256=decision.get("policy_sha256"),
                 iss_taxation_code=_text(
                     decision["iss_taxation_code"], "tax_treatment.iss_taxation_code"
                 ),

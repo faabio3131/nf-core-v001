@@ -6,6 +6,8 @@ claim can choose the tenant, provider, A1, signed XML, numbering or environment.
 from __future__ import annotations
 
 import hashlib
+import json
+import os
 import re
 from collections.abc import Mapping
 from dataclasses import replace
@@ -16,7 +18,7 @@ from typing import Any
 from fastapi import HTTPException
 
 from kordena_fiscal.application.service import FiscalApplicationService
-from kordena_fiscal.archive import RetentionPolicyMetadata
+from kordena_fiscal.archive import FiscalArchiveEntry, FiscalArchiveKind, RetentionPolicyMetadata
 from kordena_fiscal.compliance.nfse_preaudit import nfse_preaudit
 from kordena_fiscal.control_plane.commercial import ConfiguredFiscalOperation
 from kordena_fiscal.control_plane.service import ControlPlaneNotFoundError
@@ -59,6 +61,7 @@ from kordena_fiscal.persistence.ports import (
     PersistenceConflictError,
     PersistenceStateError,
 )
+from kordena_fiscal.runtime.native_nfse_policy import resolve_national_treatment
 from kordena_fiscal.security.human_identity import (
     AuthenticatedHuman,
     HumanAuthorizationError,
@@ -250,12 +253,9 @@ def prepare_native_nfse(
         gross = Decimal(payload["gross_amount"])
         deductions = Decimal(payload["deduction_amount"])
         iss = Decimal(payload["iss_amount"])
-        # No tax assumption: the present DPS builder hardcodes taxed ISS.
-        # Non-incidence, exemption, zero ISS and special regimes remain blocked
-        # until an explicit normative classification is modeled.
         if not (Decimal("0") < gross and Decimal("0") <= deductions < gross and
-                Decimal("0") < iss <= gross - deductions):
-            raise FiscalValidationError("This preparer only supports reviewed taxable ISS")
+                Decimal("0") <= iss <= gross - deductions):
+            raise FiscalValidationError("Invalid reviewed service amounts")
         now = datetime.now(UTC)
         scope = ExecutionScope(
             host_namespace="fm-nfcore", tenant_id=authority.tenant_id,
@@ -268,6 +268,12 @@ def prepare_native_nfse(
         document_id = "native-nfse-" + hashlib.sha256(
             (repr(scope.identity_partition_key) + ":" + source_id).encode()
         ).hexdigest()[:40]
+        app = FiscalApplicationService(factory)
+        previous = None
+        try:
+            previous = app.load_prepared_nfse_authorization(scope, document_id)
+        except (PersistenceConflictError, PersistenceStateError):
+            pass
         with factory() as uow:
             registration = uow.control_plane.get_unit(authority.tenant_id, unit)
             if (
@@ -275,21 +281,13 @@ def prepare_native_nfse(
                 or FiscalEnvironment.HOMOLOGATION not in registration.enabled_environments
             ):
                 raise FiscalValidationError("Unit is not enabled in homologation")
-            profile = uow.control_plane.resolve_profile(
+            profile = previous.document.issuer if previous else uow.control_plane.resolve_profile(
                 host_namespace="fm-nfcore", tenant_id=authority.tenant_id,
                 unit_id=unit, environment=FiscalEnvironment.HOMOLOGATION,
                 instant=now,
             )
         if profile is None:
             raise FiscalValidationError("Issuer fiscal profile is not effective")
-        # A browser review checkbox is not the effective-dated national tax
-        # treatment required for Simples sublimit. Reject before reserving a
-        # fiscal document that the canonical DPS serializer cannot sign.
-        if profile.tax_regime is TaxRegimeCode.SIMPLES_NACIONAL_EXCESS_SUBLIMIT:
-            raise FiscalValidationError(
-                "Simples sublimit requires an approved national tax decision"
-            )
-        app = FiscalApplicationService(factory)
         provider = app.resolve_configured_provider_id(
             scope=scope, document_kind=FiscalDocumentKind.NFSE,
             jurisdiction=profile.address.jurisdiction,
@@ -350,11 +348,39 @@ def prepare_native_nfse(
                 raise FiscalValidationError(
                     "National NFS-e is mandatory for this regime and competence"
                 )
-        previous = None
-        try:
-            previous = app.load_prepared_nfse_authorization(scope, document_id)
-        except (PersistenceConflictError, PersistenceStateError):
-            pass
+        policy = None
+        treatment = previous.document.national_tax_treatment if previous else None
+        if previous is None and provider == NACIONAL_HOMOLOGATION_PROVIDER_ID:
+            policy = resolve_national_treatment(os.environ, scope, {
+                "issuer_profile_id": profile.profile_id,
+                "issuer_profile_version": profile.version,
+                "issuer_cnpj": profile.cnpj.value,
+                "issuer_tax_regime": int(profile.tax_regime),
+                "issuer_municipality_ibge": profile.address.jurisdiction.municipality_ibge_code,
+                "service_state_code": service_jurisdiction.state_code,
+                "service_municipality_ibge": service_jurisdiction.municipality_ibge_code,
+                "national_taxation_code": payload["national_taxation_code"],
+                "municipal_service_code": payload["municipal_service_code"],
+                "taker_country": (
+                    taker_address.country_code
+                    if isinstance(taker_address, NfseForeignAddress) else "BR"
+                ),
+                "iss_withheld": payload["iss_withheld"],
+                "nbs_code": payload.get("nbs_code"),
+                "municipal_taxation_detail": payload.get("municipal_taxation_detail"),
+                "source_normative": payload["source_normative"].strip(),
+                "rule_version": payload["rule_version"],
+            }, competence)
+            treatment = policy.treatment if policy is not None else None
+        if treatment is not None and provider != NACIONAL_HOMOLOGATION_PROVIDER_ID:
+            raise FiscalValidationError("National decision cannot change municipal treatment")
+        if (treatment is None or treatment.iss_taxation_code == "1") and iss <= 0:
+            raise FiscalValidationError("Taxable service requires positive reviewed ISS")
+        if profile.tax_regime is TaxRegimeCode.SIMPLES_NACIONAL_EXCESS_SUBLIMIT and (
+            provider != NACIONAL_HOMOLOGATION_PROVIDER_ID
+            or treatment is None or treatment.simples_assessment_code is None
+        ):
+            raise FiscalValidationError("Simples sublimit requires an approved national decision")
         issued_at = previous.document.issued_at if previous else now
         profile = previous.document.issuer if previous else profile
         line = NfseServiceLine(
@@ -374,7 +400,7 @@ def prepare_native_nfse(
             issued_at=issued_at, competence_date=competence, issuer=profile,
             service_jurisdiction=service_jurisdiction, services=(line,),
             service_taker_reference=taker_reference,
-            service_taker=taker,
+            service_taker=taker, national_tax_treatment=treatment,
         )
         if _SUBSTITUTION_FIELDS.issubset(payload):
             if provider != NACIONAL_HOMOLOGATION_PROVIDER_ID:
@@ -420,6 +446,29 @@ def prepare_native_nfse(
                     "NF" if municipal_cajamar else "R1"
                 ),
             )
+
+        if policy is not None:
+            # Pin the deployed configuration version in the same scoped durable
+            # authority already used by sale policies. A version cannot mutate.
+            policy_key = "native-nfse-policy:" + hashlib.sha256(json.dumps(
+                [policy.policy_id, policy.version]
+            ).encode()).hexdigest()
+            with factory() as uow:
+                replay = uow.commercial.reserve_configuration_command(
+                    scope, policy_key, policy.digest,
+                )
+                if replay is None:
+                    uow.archive.append(FiscalArchiveEntry.build(
+                        scope=scope, document_reference=policy_key,
+                        kind=FiscalArchiveKind.OTHER, content=policy.content,
+                        media_type="application/vnd.nfcore.nfse-fiscal-policy.v1+json",
+                        archived_at=now,
+                        retention=RetentionPolicyMetadata("nfcore-fiscal-policy", 1),
+                    ))
+                uow.commercial.complete_configuration_command(
+                    scope, policy_key, {"sha256": policy.digest},
+                )
+                uow.commit()
 
         result = app.prepare_nfse_authorization(
             document, occurred_at=now,
