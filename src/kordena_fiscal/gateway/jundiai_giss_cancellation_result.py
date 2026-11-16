@@ -75,7 +75,7 @@ def verify_jundiai_cancel_reply(
         or not isinstance(source, Sp4OriginalRps)
         or not isinstance(issued, Sp4VerifiedInvoice)
         or not callable(validate_official_response)
-        or source.issuer_ibge != "3525904"
+        or source.issuer_ibge not in {"3525904", "3518800"}
         or issued.issuer_ibge != source.issuer_ibge
         or issued.issuer_cnpj != source.issuer_cnpj
         or issued.invoice_number != issued.invoice_reference
@@ -161,7 +161,7 @@ def verify_jundiai_cancel_query(
         or receipt.method != "ConsultarNfsePorRps"
         or not isinstance(source, Sp4OriginalRps)
         or not isinstance(issued, Sp4VerifiedInvoice)
-        or source.issuer_ibge != "3525904"
+        or source.issuer_ibge not in {"3525904", "3518800"}
         or issued.issuer_ibge != source.issuer_ibge
         or issued.issuer_cnpj != source.issuer_cnpj
         or issued.rps_number != source.rps_number

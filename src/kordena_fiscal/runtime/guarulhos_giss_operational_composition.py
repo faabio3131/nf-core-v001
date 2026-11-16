@@ -8,7 +8,7 @@ no new rule engine, database or authentication is introduced.
 """
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 
 from kordena_fiscal.application.service import FiscalApplicationService
@@ -87,4 +87,22 @@ def build_guarulhos_giss_trusted_transport(
         validate_signed_xml=validate_signed_xml,
         municipality_ibge=GUARULHOS_IBGE,
         provider_id=GUARULHOS_GISS_V2_PROVIDER_ID,
+    )
+
+
+def build_guarulhos_port_builder_from_environ(
+    environ: Mapping[str, str], *, vault: EncryptedA1Vault | None,
+) -> Callable[[FiscalApplicationService], GuarulhosGissTrustedRuntimePorts] | None:
+    """Use the shared reviewed startup, requiring Guarulhos' explicit manifest identity."""
+    from .config import RuntimeConfigurationError
+    from .jundiai_environment import JundiaiReviewedStartup
+
+    manifest = environ.get("NFCORE_GUARULHOS_GISS_CONFIG_PATH", "").strip()
+    if not manifest:
+        return None
+    if vault is None:
+        raise RuntimeConfigurationError("Guarulhos requested without canonical A1 vault")
+    reviewed = JundiaiReviewedStartup.load(manifest, municipality_ibge=GUARULHOS_IBGE)
+    return lambda application: GuarulhosGissTrustedRuntimePorts(
+        reviewed.build_ports(application, vault)
     )

@@ -2,13 +2,16 @@
 from __future__ import annotations
 
 import hashlib
+import json
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 from unittest.mock import Mock
 
 import pytest
 from cryptography import x509
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import rsa
+from cryptography.hazmat.primitives.serialization import Encoding
 from cryptography.x509.oid import NameOID
 from lxml import etree
 
@@ -24,6 +27,7 @@ from kordena_fiscal.runtime.jundiai_environment import (
 )
 from kordena_fiscal.runtime.jundiai_operational_composition import JundiaiTrustedRuntimePorts
 from kordena_fiscal.signing.nfse_xmldsig import append_nfse_signature
+from kordena_fiscal.xml.schema import SchemaResource, SchemaSet
 
 
 def _certificate() -> tuple[rsa.RSAPrivateKey, x509.Certificate]:
@@ -109,3 +113,93 @@ def test_reviewed_adapter_attaches_only_canonical_fiscal_original_rps() -> None:
     assert ports.verify_official_invoice_xml == check
     assert callable(ports.submit_official_rps)
     assert callable(ports.query_official_rps)
+
+
+@pytest.mark.parametrize("municipality", ["3525904", "3518800"])
+def test_reviewed_startup_compiles_shared_official_schemas_and_binds_city(
+    tmp_path, municipality,
+) -> None:
+    """Official XSD bytes, synthetic WSDL/certificate; no external homologation."""
+    folder = Path(__file__).resolve().parents[2] / (
+        "contracts/official/jundiai/giss_v2_04/xsd/Schemas_XSD-Servicos_Prestados"
+    )
+    resources = []
+    for source in sorted(folder.glob("*.xsd")):
+        raw = source.read_bytes()
+        (tmp_path / source.name).write_bytes(raw)
+        resources.append(SchemaResource.from_bytes(source.name, raw))
+    assert len(resources) == 24
+    roots = {
+        "RecepcionarLoteRps": "enviar-lote-rps-envio-v2_04.xsd",
+        "ConsultarLoteRps": "consultar-lote-rps-envio-v2_04.xsd",
+        "ConsultarNfsePorRps": "consultar-nfse-rps-envio-v2_04.xsd",
+        "CancelarNfse": "cancelar-nfse-envio-v2_04.xsd",
+        "ConsultarNfseRpsResposta": "consultar-nfse-rps-resposta-v2_04.xsd",
+        "CancelarNfseResposta": "cancelar-nfse-reposta-v2_04.xsd",
+    }
+    actions = {name: "https://example.invalid/" + name for name in list(roots)[:4]}
+    wsdl = (
+        '<definitions xmlns="http://schemas.xmlsoap.org/wsdl/" '
+        'xmlns:s="http://schemas.xmlsoap.org/wsdl/soap/" '
+        'targetNamespace="https://example.invalid/giss"><binding>'
+        + "".join(
+            f'<operation name="{name}"><s:operation soapAction="{action}"/></operation>'
+            for name, action in actions.items()
+        ) + '</binding></definitions>'
+    ).encode()
+    (tmp_path / "contract.wsdl").write_bytes(wsdl)
+    _, certificate = _certificate()
+    pem = certificate.public_bytes(Encoding.PEM)
+    (tmp_path / "municipal.pem").write_bytes(pem)
+    policy = {
+        "tenant_id": "tenant", "unit_id": "unit", "issuer_cnpj": "11222333000181",
+        "profile_id": "issuer", "profile_version": 1, "tax_regime": 3,
+        "municipal_registration": "1234567", "canonical_service_code": "010701",
+        "item_lista_servico": "01.07", "municipal_taxation_code": "0107",
+        "iss_exigibility": "1", "incidence_ibge": municipality, "iss_rate": "0.02",
+        "issuer_special_regime": "0", "optante_simples": "2", "fiscal_incentive": "2",
+        "national_service_code": None, "rtc": None,
+    }
+    spec = {
+        "municipality_ibge": municipality, "mode": "reviewed-homologation",
+        "wsdl_file": "contract.wsdl", "wsdl_sha256": hashlib.sha256(wsdl).hexdigest(),
+        "xsd_resources": {r.name: r.sha256 for r in resources},
+        "xsd_package_sha256": SchemaSet(
+            version="test", root_schema=roots["CancelarNfse"],
+            resources=tuple(resources), source_uri="https://example.invalid",
+        ).package_sha256,
+        "xsd_roots": roots, "service_namespace": "https://example.invalid/giss",
+        "method_actions": actions, "municipal_signer_pem": "municipal.pem",
+        "municipal_signer_sha256": hashlib.sha256(pem).hexdigest(),
+        "signature_profile": "rsa-sha1-abrasf-2.04", "issuers": [policy],
+    }
+    manifest = tmp_path / "manifest.json"
+    manifest.write_text(json.dumps(spec))
+    startup = JundiaiReviewedStartup.load(str(manifest), municipality_ibge=municipality)
+    assert startup.municipality_ibge == municipality
+    assert startup.issuers[0].municipality_ibge == municipality
+    assert set(startup.validators) == set(roots)
+    other_city = "3518800" if municipality == "3525904" else "3525904"
+    with pytest.raises(RuntimeConfigurationError, match="municipality"):
+        JundiaiReviewedStartup.load(str(manifest), municipality_ibge=other_city)
+    policy["incidence_ibge"] = other_city
+    manifest.write_text(json.dumps(spec))
+    with pytest.raises(RuntimeConfigurationError, match="fiscal policy"):
+        JundiaiReviewedStartup.load(str(manifest), municipality_ibge=municipality)
+
+
+def test_guarulhos_startup_requires_explicit_city_and_canonical_vault(tmp_path) -> None:
+    from kordena_fiscal.runtime.guarulhos_giss_operational_composition import (
+        build_guarulhos_port_builder_from_environ,
+    )
+
+    assert build_guarulhos_port_builder_from_environ({}, vault=None) is None
+    with pytest.raises(RuntimeConfigurationError, match="canonical A1 vault"):
+        build_guarulhos_port_builder_from_environ(
+            {"NFCORE_GUARULHOS_GISS_CONFIG_PATH": str(tmp_path / "missing.json")},
+            vault=None,
+        )
+    manifest = tmp_path / "manifest.json"
+    manifest.write_text('{}')
+    with pytest.raises(RuntimeConfigurationError, match="municipality"):
+        JundiaiReviewedStartup.load(str(manifest), municipality_ibge="3518800")

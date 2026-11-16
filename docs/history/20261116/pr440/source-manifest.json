@@ -1,0 +1,10 @@
+{
+  "classification": "HISTORICAL_SOURCE_NOT_CURRENT_CERTIFICATION",
+  "source_pr": 440,
+  "source_commit": "2e30447d66e184be6e3fbdb2baf04db75be4b451",
+  "source_path": "docs/NFCORE_BH_NATIONAL_INTERNAL_CHECKPOINT_2026-11-11.md",
+  "source_blob": "c12d3a4d7106a6466b74d9aa8c7f21a93d71a624",
+  "sha256": "1ab52db8eec614af1585bba5d67149277a1e325d740d5594c9b7e587ec7b1aeb",
+  "bytes": 4157,
+  "note": "Exact source preservation. Runtime evolved through the canonical candidate; this does not import old duplicate DPS authority or close BH functional gaps."
+}

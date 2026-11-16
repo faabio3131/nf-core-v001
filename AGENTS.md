@@ -1,3 +1,52 @@
+## CURRENT — release Web conciliada, 16/11/2026
+
+Esta entrega une a release #498 `f4a94926d3ceff7d66203eef270372177052fd91` à candidata #468 `e1632e646e3ed8e960ba51c88d24facf3177ffc7`. A candidata integra #520 e #521; sua árvore é idêntica à origem de Guarulhos `d7fd30ee411ac12f691a957a9a204b9c1f46d737`. SHA resultante e CI final registrados na PR #498; não herdar certificação de outra revisão.
+
+- #520: CI43947807754 SUCCESS, 5.259 Python PASS / 1 SKIP / 75 Playwright PASS; T2 efetivo SUCCESS. Integrada em af1f7b58.
+- #521: CI43950288422 SUCCESS, 5.294 Python PASS / 1 SKIP / 78 Playwright PASS; T2 efetivo43950367595 SUCCESS. Integrada em e1632e64. Skip somente variante SQLite exclusiva PostgreSQL; variante PG executada. Segurança, containers, SBOM e backup/restore passaram no runner; não comprovam o host produtivo.
+- Revisão independente Guarulhos encontrou e confirmou correções do serviço Compose e da dupla permissão em recovery; nenhum bloqueador adicional nesse delta. Reemissão sequencial não é substituição municipal atômica; homologação real não executada.
+- Cinco deltas exclusivos da release preservados: worker host-db overrides, testes, workflow e restore-test.sh com modo100755. Revisão confirmou blobs/modos e ausência de perda da candidata. Checkpoint histórico BH preservado por SHA256; mapas de sucessores documentam as origens423/440.
+- #423: mecanismos MG/WebISS/nacional preservados, 176 testes focais PASS. #440: sucessores canônicos, sem segunda API/contador. Podem ser encerradas como SUBSTITUÍDAS após publicação/gates desta reconciliação, nunca como MG20/BH concluídos. Pendências normativas, E2E operacional, EGM e homologação permanecem na issue426 ABERTA.
+- Main549ab3c0 e productionea4bdd3b não promovidas. O proprietário autorizou concluir e publicar; Desktop Commander tem cota0 e o SSH GitHub conhecido é somente leitura. Sem acesso operacional, não comprovar schema DPS22/cofre/backup/restore/staging nem controlar auto-pull. Nenhum deploy, migration ou emissão real realizado. Não declarar lançamento comercial pronto.
+
+## CURRENT — MF04 integrado; Guarulhos corrigido após revisão, 16/11/2026
+
+#520 MERGED na candidata `af1f7b58794beba42a92718dea40a44fb1ef90fa`, origem `009c72a1`. CI completa [43947807754](https://github.com/faabio3131/nf-core-v001/actions/runs/43947807754) SUCCESS e T2 efetivo fora de Draft43949507844 SUCCESS. Main/production permanecem `549ab3c0`/`ea4bdd3b`; nenhum deploy.
+
+#521 sincronizada com essa candidata. Revisão independente encontrou dois defeitos: nome de serviço do override (`api`→`nfcore-api`) e dupla permissão ausente em recovery direto. Corrigidos: `FiscalIntentRecovery.allowed()` governa prepare, validate/resume/replay e listagem, inclusive outros canais de substituição já suportados. Papéis atuais agrupam CANCEL+ISSUE; teste de revogação parcial garante a invariável. Cajamar não ganhou endpoint novo: sua revisão não está na superfície recovery e continua bloqueada.
+
+Prova independente: prepare200 com ambas permissões; após retirar ISSUE, resume403/zero dispatch; CANCEL-only bloqueado em prepare e endpoint direto. Testes novos cobrem6operações×2estados (prepared/recorded), listagem e replay. Suite recovery SQLite PASS/variantes PG SKIP;14gateway PASS. Ruff/Mypy421 PASS antes da sincronização; retestar composição MF04+Guarulhos. CI da origem anterior de #521 não certifica este novo HEAD. Revisão sem bloqueador adicional condicionada às correções publicadas/CI exata. Testes locais e browser/PG remotos não são homologação externa. Acesso mutante ao host permanece indisponível; publicação e DPS22/cofre/restore/staging permanecem pendentes.
+
+## CURRENT — Guarulhos em validação, 16/11/2026
+
+Base confirmada `81914807d3253ebe15e6cce93640f1157f222fe3`; main `549ab3c0` e production `ea4bdd3b` permanecem sem promoção. #519 integrada; main é ancestral da candidata. CI cumulativa [43945724238](https://github.com/faabio3131/nf-core-v001/actions/runs/43945724238) SUCCESS. #518 recuperou seis fontes por SHA256; #413/#448/#453 encerradas com evidência e branches preservadas.
+
+#520 implementa decisão tributária nacional governada; HEAD `009c72a172b7ab065c70faebbb492aa045e08024`, CI [43947807754](https://github.com/faabio3131/nf-core-v001/actions/runs/43947807754) em execução. Não integrada neste checkpoint. Lacuna de trigger corrigida: PRs para `integration/nfcore-*` executam todos os mesmos gates, sem redução.
+
+Guarulhos: composição opt-in da família GISS, 24 schemas compartilhados por hash, município explícito, eventos e Portal/RBAC/recovery existentes. Plano `docs/audit/NFCORE_GUARULHOS_OPERATIONAL_PLAN_20261116.md`; runbook `docs/operations/NFCORE_GUARULHOS_REVIEWED_GISS.md`. 11 testes HTTP Jundiaí/Guarulhos e 51 testes focais PASS; Ruff/Mypy421 PASS; frontend26 PASS/lint/typecheck/build. Suíte integral local em execução. Três testes browser adicionados; execução local bloqueada pelo download truncado e pela restrição de socket do Chromium instalado. CI remota obrigatória; NÃO COMPROVADO até executar. Revisão independente em andamento.
+
+O usuário reiterou concluir e depois publicar. Desktop Commander retorna cota de chamadas0; único canal SSH GitHub auditado é somente leitura. Driver Contabo de promoção não está provisionado na árvore (existem Railway/unconfigured). Não usar credencial restrita para mutação nem mover production com auto-pull sem controle. Nenhum deploy ou migration realizado. DPS22/cofre/restore/staging, homologações reais, confiança ICP/revogação e cobertura fiscal ampliada permanecem pendentes; não declarar lançamento pronto.
+## CURRENT — reconciliação + tratamento tributário nacional, 16/11/2026
+
+#518 integrada em0ebb510a; seis fontes históricas verificadas por SHA-256; #413/#448/#453 encerradas com prova, branches preservadas. CI43943547457 SUCCESS. #519 integrada em81914807, árvore67a1a070; main549ab3c agora ancestral da candidata. Main/production não promovidas.
+
+Incremento MF-04 na branch `feat/nfcore-national-tax-treatment-20261116`: política de servidor pinada/escopada ligada ao objeto tributário nacional existente, proveniência no fingerprint/arquivo, replay com snapshot, instalação/override. Revisão independente91+6 testes PASS; integrador139 focais PASS; Ruff/Mypy422 PASS; suíte integral local em execução e CI remota ainda necessária. Plano: `docs/audit/NFCORE_MF04_GOVERNED_TREATMENT_PLAN_20261116.md`. Não conclui BH integral, catálogo de incidência/classificação, Guarulhos, confiança ICP/revogação/histórico ou operação. Binding do provider vigente ainda necessário em replay. Proprietário reafirmou conclusão interna seguida de deploy; nenhuma publicação realizada neste incremento.
+
+---
+
+## CURRENT — MF-09 integrado na candidata, 16/11/2026
+
+- Candidata #468: `cac2a1e38058ca4b6a811d337eea270561cd8223`, após merge da #517. Branch `integration/nfcore-a1-sp2-current-main-20261113`. Árvore `fc9fb39603464db854178136a1b4b6b4d74fc880` idêntica à origem `1bd7449c7204f0ca3992f048c06f679cef0758d5`.
+- CI da origem [43929948306](https://github.com/faabio3131/nf-core-v001/actions/runs/43929948306) SUCCESS: 5.240 Python PASS, 1 SKIP, 75 Playwright PASS, gates de segurança/container/restore aprovados. Skip somente variante SQLite exclusiva PG; variante PG executada. T2 efetivo [43933259955](https://github.com/faabio3131/nf-core-v001/actions/runs/43933259955) SUCCESS após tornar explícita a evidência E2E na descrição. Nenhum gate ou teste desabilitado.
+- CI cumulativa [43933409094](https://github.com/faabio3131/nf-core-v001/actions/runs/43933409094) em execução neste checkpoint. Não tratar CI da origem como resultado do merge.
+- Venda manual usa a mesma preparação, domínio, regras e arquivo; NF-e 55 SP/MG e NFC-e 65 MG online em homologação. Adoção da numeração legal requer inventário/reconciliação de legado e parada de writers antigos. Nenhum deploy, DDL ou emissão real.
+- Recuperação histórica na #518: quatro documentos e dois patches, fontes exatas e revisão independente aprovadas. Gates documentais e T2 fora de Draft passaram no HEAD anterior `9e4f846b`; este checkpoint muda o HEAD e exige novos checks aplicáveis. #413/#448/#453 permanecem abertas até integração comprovada.
+- Main `549ab3c0` e production `ea4bdd3b` inalteradas. A aprovação comercial #390 já está na main, mas ainda não é ancestral da candidata: conciliar antes da promoção. #498 continua Draft; cinco deltas de infraestrutura devem ser preservados.
+- Pendências: MF-04/BH, confiança/cadeia/revogação/histórico de recibos, Guarulhos, MG20/SP22, EGM, DPS22/cofre/backup/staging e publicação. Auditoria MF-04 encontrou o objeto tributário canônico existente, mas ausência de resolução governada na preparação HTTP; 21 testes focais PASS não encerram esse bloco. Decisão/proposta e fontes registradas no corpo da #468.
+- Próxima ação: conferir CI cumulativa, integrar recuperação documental sequencialmente, encerrar origens somente com prova e conciliar a release Draft. Produção permanece NO-GO.
+
+> **Reconciliação documental — 16/11/2026:** o incidente `NAT-GOV-2026-11-10-01` da PR #413 foi recuperado como falha de acompanhamento técnico, sem atribuição ao proprietário. Publicação de cronograma não comprova cobertura concluída. A auditoria por UF/município/documento/operação/ambiente continua aberta onde falta evidência. Prevalecem a prioridade SP-22 registrada em12/11, a ordem por grupos de engenharia de13/11 e o Integrador único de15/11 em AGENTS; nenhuma dessas decisões é alterada. O T2 posterior está implementado parcialmente, sem comprovação aqui de T1/T3–T6 ou rulesets. Fonte, hashes e documentos recuperados de #413/#448/#453: `docs/audit/NFCORE_DOCUMENT_RECOVERY_20261116.md`.
+
 # CURRENT DE RECONCILIAÇÃO — 16/11/2026, pós-#514
 
 Este banner substitui snapshots históricos abaixo. Fonte de continuidade: `docs/audit/NFCORE_PR_RECONCILIATION_LEDGER_CURRENT.md`. Main `549ab3c005d7183ff6c7940236414412ea004b9d`; production `ea4bdd3bcb9b61e6522081a14e5cc9ad1ced9599`. #514 integrada somente à #468 em `2eb7858dfa669b27b2804d846c876ec19b025672`; árvore idêntica ao HEAD de origem bfd5d0d4, CI43912553533 SUCCESS (5111 Python PASS/3 SKIP,71 E2E PASS); T2 aplicado43915564090. CI cumulativa43915895064 ainda em execução neste checkpoint. #515 correlação SP em 9cfe2e07, CI43913718612 em execução. #430/#437 encerradas com prova de incorporação; #508 preservada até fechamento de conferência.

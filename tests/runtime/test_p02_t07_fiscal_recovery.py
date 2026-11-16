@@ -35,7 +35,7 @@ PREPARE = "/v1/portal/fiscal-intents/prepare/inutilizeFiscalRange"
 LIST = "/v1/portal/fiscal-intents?unit_id=unit-a&environment=homologation"
 
 
-def harness(database, *, loss=False, handler=None):
+def harness(database, *, loss=False, handler=None, operation="inutilizeFiscalRange"):
     accounts = InMemoryHumanAccountRepository()
     identity = base.fixture.identity(accounts)
     calls = []
@@ -48,7 +48,7 @@ def harness(database, *, loss=False, handler=None):
     executor = CanonicalPortalOperationExecutor(
         unit_of_work_factory=database,
         path=CanonicalFiscalOperationPath(
-            FiscalApplicationService(database), handlers={"inutilizeFiscalRange": dispatch}
+            FiscalApplicationService(database), handlers={operation: dispatch}
         ),
     )
     application = create_app(
@@ -235,6 +235,45 @@ def test_revoked_session_epoch_permission_and_csrf(database):
     accounts.save(replace(account, role=PortalRole.AUDITOR))
     assert resume(login(app), intent).status_code == 403
     assert calls == []
+
+
+@pytest.mark.parametrize("operation", [
+    "substituteGuarulhosNfse", "substituteJundiaiNfse", "substituteSantanaNfse",
+    "substituteBarueriNfse", "substituteOsascoNfse", "substituteExtremaNfse",
+])
+@pytest.mark.parametrize("recorded", [False, True])
+def test_substitution_intent_prepare_resume_and_replay_require_issue_and_cancel(
+    database, monkeypatch, operation, recorded,
+):
+    from kordena_fiscal.security import human_identity
+    from kordena_fiscal.security.human_identity import PortalPermission
+
+    app, _, _, calls = harness(
+        database, operation=operation, handler=lambda *args: {"status": "synthetic"},
+    )
+    http = login(app)
+    body = {"unit_id": "unit-a", "environment": "homologation",
+            "original_id": "original", "replacement_id": "replacement",
+            "document_id": "original", "reason_code": "4", "human_approval": True}
+    path = "/v1/portal/fiscal-intents/prepare/" + operation
+    intent = prepare(http, path=path, body=body)
+    if recorded:
+        assert resume(http, intent, body=body).status_code == 200
+        assert len(calls) == 1
+    # Existing roles bundle both permissions. Simulate revocation of ISSUE only,
+    # with the same session epoch, to verify the invariant on every entry point.
+    monkeypatch.setitem(
+        human_identity._ROLE_PERMISSIONS, PortalRole.OPERATOR,
+        human_identity._ROLE_PERMISSIONS[PortalRole.OPERATOR]
+        - {PortalPermission.DOCUMENT_ISSUE},
+    )
+    assert PortalPermission.DOCUMENT_CANCEL in human_identity._ROLE_PERMISSIONS[PortalRole.OPERATOR]
+    assert post(http, path=path, body=body).status_code == 403
+    assert resume(http, intent, body=body).status_code == 403
+    assert post(http, path="/v1/portal/operations/" + operation, body=body).status_code == 403
+    assert http.get(LIST).json()["rows"] == []
+    assert len(calls) == int(recorded)
+    assert stored(database, intent)["state"] == ("recorded" if recorded else "prepared")
 
 
 def test_audit_failure_rolls_back_prepare_and_claim_before_effect(database, monkeypatch):

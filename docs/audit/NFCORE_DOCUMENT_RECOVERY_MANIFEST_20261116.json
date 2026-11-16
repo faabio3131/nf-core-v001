@@ -1,0 +1,63 @@
+{
+  "date": "2026-11-16",
+  "candidate_base": "93534458a4f2e3d4879ead703bf407f346a1fa35",
+  "classification": "HISTORICAL_CONTENT_RECOVERED_NOT_CURRENT_CERTIFICATION",
+  "entries": [
+    {
+      "pr": 448,
+      "source_commit": "aa7ce1553d260a13fc105e3b1b324af964e72cca",
+      "path": "docs/checkpoints/NFCORE_FISCAL_ENGINE_REPORT_RECONCILIATION_2026-11-12.md",
+      "source_blob": "80edab3d5315e9831225c5929694126c977bead6",
+      "source_sha256": "a6ffa1fbaf890bae44d9d4be90c6be237c67f52d1f42b4cb5a540085cf820a5d",
+      "prefix_bytes": 746
+    },
+    {
+      "pr": 448,
+      "source_commit": "aa7ce1553d260a13fc105e3b1b324af964e72cca",
+      "path": "docs/checkpoints/NFCORE_MOTOR_FISCAL_GAP_AUDIT_2026-11-12.md",
+      "source_blob": "f965ed2f6634d61e6806b28e268a73e609d8360e",
+      "source_sha256": "98162e9ab6b700a885658cabddd794b859c0b0f348f6d5fe77cdc607c7a23f31",
+      "prefix_bytes": 746
+    },
+    {
+      "pr": 453,
+      "source_commit": "e04005ad7a8c82ab016c167c90f5404e9e83c43d",
+      "path": "docs/NFCORE_EXECUTION_CLOSING_RULES_AND_LOCKS_SPEC_2026-11-12.md",
+      "source_blob": "cedaf1d69ed9b6bf4be09004e96a8cc72611bec5",
+      "source_sha256": "9d4a91de56f08d28806f10d75e724e4fdbb06f9f8df94a888cecd3813071d7f5",
+      "prefix_bytes": 746
+    },
+    {
+      "pr": 453,
+      "source_commit": "e04005ad7a8c82ab016c167c90f5404e9e83c43d",
+      "path": "docs/NFCORE_FISCAL_ENGINE_EXECUTION_SCHEDULE_2026-11-12.md",
+      "source_blob": "727862c9de4595eded1a7b6b75f2a73da9bcb13c",
+      "source_sha256": "975926d20ef0223edabddfc8cf429596be5685b4db35cd37524a2d4fe7559c9a",
+      "prefix_bytes": 746
+    },
+    {
+      "pr": 413,
+      "source_commit": "6af3d020e445fcc2159fa5b0218df9d9332e3366",
+      "base_commit": "2d6ba3d1c32d70923a473b37950769b19511c52d",
+      "path": "docs/audit/history/PR413_historical_additions.patch",
+      "source_sha256": "2da8ac1f848dcf995ace7fd0efafd8894d21aa4e3ad0cab05b3427bf5badfa76",
+      "kind": "historical_patch_do_not_apply",
+      "original_paths": [
+        "AGENTS.md",
+        "docs/NFCORE_NATIONAL_COVERAGE_MASTER_SCHEDULE_2026-11-07.md",
+        "docs/NFV1_NATIONAL_EXPANSION_EXECUTION_LEDGER_2026-11-05.md"
+      ]
+    },
+    {
+      "pr": 453,
+      "source_commit": "e04005ad7a8c82ab016c167c90f5404e9e83c43d",
+      "base_commit": "ef7ebe7e104f0e49897075cd961d51a052948b43",
+      "path": "docs/audit/history/PR453_historical_additions.patch",
+      "source_sha256": "eb4ab9d0f742f33b847c00567f2258ce611af13994c85041bc3849ed7c766cc3",
+      "kind": "historical_patch_do_not_apply",
+      "original_paths": [
+        "docs/NFCORE_NATIONAL_COVERAGE_MASTER_SCHEDULE_2026-11-07.md"
+      ]
+    }
+  ]
+}

@@ -774,6 +774,7 @@ class DurableHumanPortalExecutor:
             "cancelCajamarNfse", "cancelOsascoNfse", "substituteOsascoNfse",
             "cancelBarueriNfse", "substituteBarueriNfse",
             "cancelJundiaiNfse", "substituteJundiaiNfse",
+            "cancelGuarulhosNfse", "substituteGuarulhosNfse",
             "cancelSantanaNfse", "substituteSantanaNfse",
             "cancelNationalNfse",
         }:
@@ -904,6 +905,7 @@ class DurableHumanPortalExecutor:
             "substituteExtremaNfse", "reviewCajamarSubstitution",
             "substituteOsascoNfse", "substituteBarueriNfse",
             "substituteJundiaiNfse", "substituteSantanaNfse",
+            "substituteGuarulhosNfse",
         }:
             try:
                 unit = payload.get("unit_id")
@@ -941,6 +943,7 @@ class DurableHumanPortalExecutor:
                     "cancelCajamarNfse", "cancelOsascoNfse", "substituteOsascoNfse",
                     "cancelBarueriNfse", "substituteBarueriNfse",
                     "cancelJundiaiNfse", "substituteJundiaiNfse",
+                    "cancelGuarulhosNfse", "substituteGuarulhosNfse",
                     "cancelSantanaNfse", "substituteSantanaNfse",
             "cancelNationalNfse",
                 }:
