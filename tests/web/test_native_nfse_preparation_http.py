@@ -3982,7 +3982,9 @@ def test_guarulhos_real_portal_preparation_matches_competence_and_binding(
         issuer_ibge="3518800", tax_regime=regime, provider_id=provider,
     )
     browser = _client(db)
-    payload = _payload() | {
+    payload = _payload() | (
+        _TAKER_ADDRESS if provider == "guarulhos-giss-v2-homologation" else {}
+    ) | {
         "source_id": "guarulhos-" + provider,
         "service_municipality_ibge": "3518800",
         "competence_date": competence,

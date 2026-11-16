@@ -1,7 +1,7 @@
 """SP4 original RPS / batch share one canonical numbering UoW.
 
 Tests are entirely offline and use synthetic fiscal identifiers. They
-exercise all four municipal paths without an A1 or municipal endpoint.
+exercise all reviewed municipal paths without an A1 or municipal endpoint.
 """
 from __future__ import annotations
 
@@ -117,7 +117,7 @@ def _prepare(app: FiscalApplicationService, request: NfseAuthorizationRequest,
 
 
 @pytest.mark.parametrize("ibge", sorted(SP4_MUNICIPAL_PROVIDERS.values()))
-def test_all_four_municipalities_archive_one_original_rps_in_same_transaction(
+def test_all_reviewed_municipalities_archive_one_original_rps_in_same_transaction(
     tmp_path: Path, ibge: str,
 ) -> None:
     db = SqliteFiscalDatabase(tmp_path / (ibge + ".sqlite"))
@@ -252,7 +252,7 @@ def test_bad_reviewed_source_rolls_back_rps_reservation(tmp_path: Path) -> None:
 
 
 @pytest.mark.parametrize("provider,ibge", sorted(SP4_MUNICIPAL_PROVIDERS.items()))
-def test_four_real_canonical_gateway_clients_load_original_from_same_app_uow(
+def test_all_real_canonical_gateway_clients_load_original_from_same_app_uow(
     tmp_path: Path, provider: str, ibge: str,
 ) -> None:
     db = SqliteFiscalDatabase(tmp_path / (ibge + "-gateway.sqlite"))
