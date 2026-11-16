@@ -20,12 +20,12 @@ from kordena_fiscal.domain import (
     FiscalValidationError,
     TaxRegimeCode,
 )
-from kordena_fiscal.gateway.jundiai_giss_rps_query_builder import build_jundiai_rps_query
 from kordena_fiscal.gateway.jundiai_giss_homologation import (
     JundiaiGissHomologationTransport,
     JundiaiGissWsdlContract,
     JundiaiSignedOperation,
 )
+from kordena_fiscal.gateway.jundiai_giss_rps_query_builder import build_jundiai_rps_query
 from kordena_fiscal.gateway.municipal_sp_routing import (
     GUARULHOS_GISS_V2_PROVIDER_ID,
     GUARULHOS_IBGE,
