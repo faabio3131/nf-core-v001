@@ -12,6 +12,7 @@ import base64
 import gzip
 import io
 import json
+import os
 import zlib
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -39,10 +40,55 @@ _C14N = "http://www.w3.org/TR/2001/REC-xml-c14n-20010315"
 _RSA_SHA256 = "http://www.w3.org/2001/04/xmldsig-more#rsa-sha256"
 _SHA256 = "http://www.w3.org/2001/04/xmlenc#sha256"
 _ENVELOPED = "http://www.w3.org/2000/09/xmldsig#enveloped-signature"
+_TRUST_PINS_ENV = "NFCORE_NFSE_RECEIPT_SIGNER_SHA256"
 
 
 class NfseReceiptVerificationError(FiscalValidationError):
     """Sanitized unsigned, malformed, or cryptographically invalid receipt."""
+
+
+def require_national_receipt_signer_pins() -> frozenset[str]:
+    """Require an explicit, bounded operator allowlist before live SEFIN traffic.
+
+    Pins are SHA-256 fingerprints of DER end-entity signing certificates,
+    not a substitute for ICP-Brasil chain/CRL/OCSP or historical validation.
+    Empty, malformed or ambiguous configuration always fails closed.
+    """
+    value = os.environ.get(_TRUST_PINS_ENV)
+    if value is None or not value or len(value) > 519:
+        raise NfseReceiptVerificationError("National NFS-e signer trust pins unavailable")
+    parts = value.split(",")
+    allowed = frozenset("0123456789abcdefABCDEF")
+    if (
+        not 1 <= len(parts) <= 8
+        or any(len(part) != 64 or not set(part) <= allowed for part in parts)
+        or len({part.lower() for part in parts}) != len(parts)
+    ):
+        raise NfseReceiptVerificationError("Invalid national NFS-e signer trust pins")
+    return frozenset(part.lower() for part in parts)
+
+
+def _enforce_national_receipt_signer_pin(root: etree._Element) -> None:
+    """Bind the verified outer XMLDSig certificate to the operator's exact pin."""
+    if _TRUST_PINS_ENV not in os.environ:
+        # Synthetic callers have no live transport; real HTTP POST/GET
+        # require pins *before* network access. See both gateway guards.
+        return
+    pins = require_national_receipt_signer_pins()
+    node = root.find(
+        f"{{{_DS}}}Signature/{{{_DS}}}KeyInfo/{{{_DS}}}X509Data/"
+        f"{{{_DS}}}X509Certificate"
+    )
+    if node is None or not node.text:
+        raise NfseReceiptVerificationError("National NFS-e signer certificate absent")
+    try:
+        data = base64.b64decode("".join(node.text.split()), validate=True)
+        certificate = x509.load_der_x509_certificate(data)
+    except (ValueError, TypeError):
+        raise NfseReceiptVerificationError("Invalid national NFS-e signer certificate") from None
+    if certificate.fingerprint(hashes.SHA256()).hex() not in pins:
+        raise NfseReceiptVerificationError("Untrusted national NFS-e signer certificate")
+
 
 
 def _verify_nfse_receipt_signature(
@@ -291,6 +337,7 @@ def validate_national_nfse_xml(
         or key[9:23] != expected.cnpj
     ):
         raise NfseReceiptVerificationError("National NFSe receipt differs from canonical DPS")
+    _enforce_national_receipt_signer_pin(root)
     return xml
 
 
