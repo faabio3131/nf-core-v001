@@ -78,3 +78,15 @@ A partir de 01/12 o bloqueio por esta exceção deixa de valer.
 Simples/MEI e competências anteriores conservam guardas próprios.
 Este gate não autoriza emissão real, nem confunde obrigação federal
 IBS/CBS com homologação municipal por contribuinte.
+
+## Deduções documentais — proteção negativa
+
+O aviso BHISS 14/08/2026 exige comprovantes das deduções relativas
+aos subitens LC116 7.02, 7.05, 9.01, 10.01–10.05, 10.08 e 17.06.
+Enquanto o formulário canônico não captar comprovante e o XML DPS
+não representar a evidência na estrutura oficial exigida, o runtime
+recusa dedução positiva nesses subitens **antes de reservar** emissão.
+Sem dedução, o serviço não é bloqueado por esta regra. Outras
+modalidades de redução de base seguem seus próprios requisitos
+tributários e não são declaradas automaticamente certificadas.
+Fonte: https://prefeitura.pbh.gov.br/fazenda/bhiss/avisos
