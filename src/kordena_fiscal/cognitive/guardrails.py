@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
+from decimal import Decimal
 
 from .context import INJECTION_MARKERS
 from .contracts import MAX_SECTION_CHARS, AdviceRequest, AdviceSection, SectionKind
@@ -17,8 +18,14 @@ _CLASSIFICATION_REF = re.compile(
     r"(?i)\b(cst|csosn|cfop|ncm|cclasstrib|cclass)\b[^\d\n]{0,12}(\d{2,8})"
 )
 _DIGIT_RUN = re.compile(r"\d+")
-_NUMERIC_VALUE = re.compile(r"\d+(?:[.,]\d+)*")
-_AMOUNT = re.compile(r"(?i)(\d+(?:[.,]\d+)?)\s*%|R\$\s*(\d[\d.,]*)")
+# Money and percentages are different fiscal dimensions. Matching the same
+# digits in an unrelated field (or another unit) is not valid grounding.
+_PERCENTAGE = re.compile(r"(?<![\w.,])(?P<value>-?\d+(?:[.,]\d+)?)[ \t]*%(?!\w)")
+_BRL_AMOUNT = re.compile(
+    r"(?i)(?<!\w)(?P<leading_minus>-)?R\$[ \t]*(?P<value>-?"
+    r"(?:\d{1,3}(?:\.\d{3})+|\d+)(?:,\d{1,2})?)(?!\d|,\d|\.\d)"
+)
+_BRL_MARKER = re.compile(r"(?i)R\$")
 _EXECUTION_CLAIM = re.compile(
     r"(?i)\b(eu\s+)?(emiti|cancelei|inutilizei|transmiti|assinei|alterei|corrigi|apliquei|"
     r"reenviei|autorizei|salvei|atualizei|reprocessei)\b"
@@ -35,6 +42,15 @@ _CONFIG_DIRECTIVE = re.compile(
     r"(?i)\b(altere|mude|troque|configure|defina|ajuste)\s+(a\s+|o\s+)?"
     r"(al[ií]quota|cst|cfop|ncm|cclasstrib|regime)\b"
 )
+
+
+def _percent_value(match: re.Match[str]) -> Decimal:
+    return Decimal(match.group("value").replace(",", "."))
+
+
+def _brl_value(match: re.Match[str]) -> Decimal:
+    value = Decimal(match.group("value").replace(".", "").replace(",", "."))
+    return -value if match.group("leading_minus") else value
 
 
 @dataclass(frozen=True, slots=True)
@@ -108,16 +124,26 @@ class OutputGuard:
             return "config_change_directive"
         if any(pattern.search(text) for pattern in INJECTION_MARKERS):
             return "injection_echo"
+        percentages = tuple(_PERCENTAGE.finditer(text))
+        money = tuple(_BRL_AMOUNT.finditer(text))
+        # Reject malformed or ambiguous amounts, not just absent ones.
+        if text.count("%") != len(percentages) or len(_BRL_MARKER.findall(text)) != len(money):
+            return "ungrounded_amount"
+        # Monetary digits and rate digits are not fiscal classification codes.
+        # Still require exact codes elsewhere in the cited trusted corpus.
+        codes_only = _BRL_AMOUNT.sub("", _PERCENTAGE.sub("", text))
         corpus_numbers = set(_DIGIT_RUN.findall(corpus))
-        for token in _CODE_TOKEN.findall(text):
+        for token in _CODE_TOKEN.findall(codes_only):
             if token not in corpus_numbers:
                 return "ungrounded_code"
-        corpus_values = set(_NUMERIC_VALUE.findall(corpus))
-        for amount in _AMOUNT.finditer(text):
-            figure = amount.group(1) or amount.group(2)
-            figure = figure.rstrip(".,")
-            if figure not in corpus_values:
-                return "ungrounded_amount"
+        trusted_percentages = {
+            _percent_value(match) for match in _PERCENTAGE.finditer(corpus)
+        }
+        trusted_money = {_brl_value(match) for match in _BRL_AMOUNT.finditer(corpus)}
+        if any(_percent_value(match) not in trusted_percentages for match in percentages):
+            return "ungrounded_amount"
+        if any(_brl_value(match) not in trusted_money for match in money):
+            return "ungrounded_amount"
         for match in _CLASSIFICATION_REF.finditer(text):
             if match.group(2) not in corpus_numbers:
                 return "ungrounded_classification_code"

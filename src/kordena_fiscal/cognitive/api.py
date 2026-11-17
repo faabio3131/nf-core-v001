@@ -28,7 +28,7 @@ from kordena_fiscal.web.portal_api import (
     _reject_browser_authority,
 )
 
-from .contracts import AdviceRequest, AdviceResult, AdviceStatus, Capability, Evidence
+from .contracts import AdviceRequest, AdviceResult, AdviceStatus, Capability, Evidence, stable_hash
 from .service import CognitiveAdviceService
 
 HOST_NAMESPACE = "fm-nfcore"
@@ -51,6 +51,24 @@ class EvidenceProvider(Protocol):
         environment: FiscalEnvironment,
         subject_id: str | None,
     ) -> tuple[Evidence, ...]: ...
+
+
+def _scoped_advice_request_id(
+    *, tenant_id: str, unit_id: str, account_id: str,
+    environment: FiscalEnvironment, capability: Capability,
+    subject_id: str | None, key: str,
+) -> str:
+    """Prevent cross-account/unit/capability replay collisions in usage accounting."""
+    return stable_hash({
+        "version": "cognitive-idempotency/v2",
+        "tenant": tenant_id,
+        "unit": unit_id,
+        "account": account_id,
+        "environment": environment.value,
+        "capability": capability.value,
+        "subject": subject_id,
+        "key": key,
+    })
 
 
 def _bad(code: str, message: str, http: int = status.HTTP_400_BAD_REQUEST) -> HTTPException:
@@ -154,13 +172,23 @@ def create_cognitive_router(
         )
         advice = AdviceRequest(
             scope=scope,
-            # Scoped by tenant so two tenants can never collide on usage idempotency.
-            request_id=hashlib.sha256(f"{auth.tenant_id}\x00{key}".encode()).hexdigest(),
+            # The browser key is not the scope authority; bind all server-derived
+            # identity and request dimensions before checking usage idempotency.
+            request_id=_scoped_advice_request_id(
+                tenant_id=auth.tenant_id,
+                unit_id=unit_id.strip(),
+                account_id=auth.account.account_id,
+                environment=environment,
+                capability=capability,
+                subject_id=subject_id,
+                key=key,
+            ),
             actor_id="portal-" + hashlib.sha256(auth.account.account_id.encode()).hexdigest()[:24],
             granted_capabilities=granted,
             capability=capability,
             evidence=facts,
             question=question,
+            subject_id=subject_id,
         )
         result = await run_in_threadpool(advisor.advise, advice)
         if result.status is AdviceStatus.DENIED:
