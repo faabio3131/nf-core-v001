@@ -91,27 +91,38 @@ def _load() -> tuple[list[x509.Certificate], list[x509.CertificateRevocationList
 
 
 def require_national_receipt_pki_ready() -> None:
-    """Deny real SEFIN HTTP until the root, CA and current CRL proofs verify."""
+    """Deny real SEFIN HTTP until every bundled CA and signed CRL is valid."""
     try:
         cas, crls, root_pin = _load()
         now = datetime.now(UTC)
-        if root_pin not in {
-            ca.fingerprint(hashes.SHA256()).hex() for ca in cas
-        }:
-            raise NationalReceiptPkiError("Pinned ICP root missing")
+        roots = [ca for ca in cas if ca.fingerprint(hashes.SHA256()).hex() == root_pin]
+        if len(roots) != 1 or roots[0].issuer != roots[0].subject:
+            raise NationalReceiptPkiError("Pinned receipt ICP root missing")
+        root = roots[0]
+        _verify_cert(root, root)
         for ca in cas:
             _check_ca(ca, now)
-        for crl in crls:
-            issuers = [ca for ca in cas if ca.subject == crl.issuer]
-            if len(issuers) != 1 or crl.next_update_utc is None or not (
+            candidates = [item for item in crls if item.issuer == ca.subject]
+            if len(candidates) != 1:
+                raise NationalReceiptPkiError("Missing or ambiguous signed CA CRL")
+            crl = candidates[0]
+            if crl.next_update_utc is None or not (
                 crl.last_update_utc <= now < crl.next_update_utc
             ):
-                raise NationalReceiptPkiError("National receipt CRL invalid or stale")
-            issuer = issuers[0]
+                raise NationalReceiptPkiError("Stale national receipt CA CRL")
             _verify_signed_data(
-                issuer.public_key(), crl.signature, crl.tbs_certlist_bytes,
+                ca.public_key(), crl.signature, crl.tbs_certlist_bytes,
                 crl.signature_hash_algorithm,
             )
+        for ca in cas:
+            if ca is root:
+                continue
+            issuers = [issuer for issuer in cas if issuer.subject == ca.issuer]
+            if len(issuers) != 1:
+                raise NationalReceiptPkiError("Receipt intermediate CA has no parent")
+            issuer = issuers[0]
+            _verify_cert(ca, issuer)
+            _check_revocation(ca, issuer, crls, now)
     except (
         ValueError, TypeError, OSError, InvalidSignature, x509.ExtensionNotFound,
     ):
