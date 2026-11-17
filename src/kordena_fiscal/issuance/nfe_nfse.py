@@ -328,6 +328,7 @@ class NfseNationalTaxTreatment:
     simples_assessment_code: str | None = None
     result_country_code: str | None = None
     immunity_type_code: str | None = None
+    municipal_benefit_id: str | None = None
     policy_id: str | None = None
     policy_sha256: str | None = None
 
@@ -349,6 +350,14 @@ class NfseNationalTaxTreatment:
         # SEFIN E0172: immunity/export/non-incidence use regEspTrib=0.
         if self.iss_taxation_code != "1" and self.special_regime_code != "0":
             raise FiscalValidationError("Non-taxable national ISS cannot use special regime")
+        if self.municipal_benefit_id is not None and (
+            type(self.municipal_benefit_id) is not str
+            or len(self.municipal_benefit_id) != 14
+            or not self.municipal_benefit_id.isascii()
+            or not self.municipal_benefit_id.isdecimal()
+            or self.iss_taxation_code != "1"
+        ):
+            raise FiscalValidationError("Reviewed municipal benefit ID is invalid")
         if self.simples_assessment_code not in {None, "1", "2", "3"}:
             raise FiscalValidationError("National Simples assessment requires code 1..3")
         if type(self.effective_from) is not date:
@@ -482,6 +491,18 @@ class NfseCanonicalDocument:
                 }
             ):
                 raise FiscalValidationError("Simples assessment conflicts with issuer tax regime")
+            benefit_id = treatment.municipal_benefit_id
+            if benefit_id is not None:
+                jurisdiction_ibge = self.service_jurisdiction.municipality_ibge_code
+                if not benefit_id.startswith(jurisdiction_ibge or ""):
+                    raise FiscalValidationError("Municipal benefit belongs to another city")
+                if jurisdiction_ibge == "3106200":
+                    approved = (
+                        "31062000200004" if self.scope.environment.value == "homologation"
+                        else "31062000200002"
+                    )
+                    if benefit_id != approved or treatment.special_regime_code != "0":
+                        raise FiscalValidationError("BH cooperative benefit requires exact ID")
             no_iss_highlight = treatment.special_regime_code == "2" or (
                 self.issuer.address.jurisdiction.municipality_ibge_code == "3106200"
                 and treatment.special_regime_code == "1"
