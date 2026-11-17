@@ -283,6 +283,10 @@ def build_signed_dps(
         if treatment.immunity_type_code is None:
             raise FiscalValidationError("Immune ISS service requires immunity type")
         _child(trib_mun, "tpImunidade", treatment.immunity_type_code)
+    # The pinned 1.01 XSD orders the optional BM before tpRetISSQN.
+    if treatment is not None and treatment.municipal_benefit_id is not None:
+        benefit = etree.SubElement(trib_mun, f"{{{_NFSE_NS}}}BM")
+        _child(benefit, "nBM", treatment.municipal_benefit_id)
     taxable = service.taxable_amount.amount
     iss_amount = service.iss_amount.amount
     # XSD 1.01 changed TCTribMunicipal field order: tpRetISSQN before pAliq.
