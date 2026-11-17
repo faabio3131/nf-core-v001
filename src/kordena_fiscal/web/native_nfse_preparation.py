@@ -374,17 +374,17 @@ def prepare_native_nfse(
             treatment = policy.treatment if policy is not None else None
         if treatment is not None and provider != NACIONAL_HOMOLOGATION_PROVIDER_ID:
             raise FiscalValidationError("National decision cannot change municipal treatment")
-        # A reviewed national special regime (e.g. BH Estimativa) is still
-        # tribISSQN=1 but does not highlight or withhold ISS on the DPS.
+        # Only reviewed Estimativa (regEspTrib=2) permits a taxable DPS
+        # without ISS highlight; other regimes keep their existing handling.
         ordinary_taxable = treatment is None or (
-            treatment.iss_taxation_code == "1" and treatment.special_regime_code == "0"
+            treatment.iss_taxation_code == "1" and treatment.special_regime_code != "2"
         )
         if ordinary_taxable and iss <= 0:
             raise FiscalValidationError("Taxable service requires positive reviewed ISS")
-        if treatment is not None and treatment.special_regime_code != "0" and (
+        if treatment is not None and treatment.special_regime_code == "2" and (
             iss > 0 or payload["iss_withheld"]
         ):
-            raise FiscalValidationError("Special ISS regime cannot highlight or withhold ISS")
+            raise FiscalValidationError("Estimativa regime cannot highlight or withhold ISS")
         if profile.tax_regime is TaxRegimeCode.SIMPLES_NACIONAL_EXCESS_SUBLIMIT and (
             provider != NACIONAL_HOMOLOGATION_PROVIDER_ID
             or treatment is None or treatment.simples_assessment_code is None
