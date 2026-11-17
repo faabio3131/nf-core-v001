@@ -20,11 +20,15 @@ from kordena_fiscal.gateway.mg_nfse_channel_guard import (
 )
 
 
-def _check(municipality: str, regime: TaxRegimeCode, competence: date) -> None:
+def _check(
+    municipality: str, regime: TaxRegimeCode, competence: date,
+    code: str | None = "010701",
+) -> None:
     require_mg_national_channel_eligibility(
         jurisdiction=BrazilianJurisdiction("MG", municipality),
         tax_regime=regime,
         competence_date=competence,
+        national_taxation_code=code,
     )
 
 
@@ -123,3 +127,29 @@ def test_bh_normal_national_issuer_from_october_2026_notice() -> None:
     _check("3106200", TaxRegimeCode.NORMAL, date(2026, 11, 1))
     with pytest.raises(FiscalValidationError, match="municipio, regime"):
         _check("3106200", TaxRegimeCode.NORMAL, date(2026, 9, 30))
+
+
+@pytest.mark.parametrize("code", [
+    "010301", "010501", "010901", "160101",
+])
+def test_bh_deferred_subitems_reject_october_november_but_allow_december(
+    code: str,
+) -> None:
+    for competence in (date(2026, 10, 1), date(2026, 11, 30)):
+        with pytest.raises(FiscalValidationError, match="effective competence"):
+            _check("3106200", TaxRegimeCode.NORMAL, competence, code)
+    _check("3106200", TaxRegimeCode.NORMAL, date(2026, 12, 1), code)
+
+
+@pytest.mark.parametrize("code", [None, "", "0107", "01070A", "0107🙂"])
+def test_bh_october_normal_requires_explicit_six_digit_service_code(
+    code: str | None,
+) -> None:
+    with pytest.raises(FiscalValidationError, match="service code"):
+        _check("3106200", TaxRegimeCode.NORMAL, date(2026, 10, 31), code)
+    _check("3106200", TaxRegimeCode.NORMAL, date(2026, 12, 1), code)
+
+
+def test_bh_ordinary_service_can_use_october_channel_and_simples_is_separate() -> None:
+    _check("3106200", TaxRegimeCode.NORMAL, date(2026, 10, 1), "010701")
+    _check("3106200", TaxRegimeCode.SIMPLES_NACIONAL, date(2026, 10, 1), "010301")
