@@ -4047,6 +4047,7 @@ def test_bh_reviewed_classifications_use_existing_native_preparation_and_replay(
 
 def _install_national_decision(
     tmp_path, monkeypatch, payload, *, code="4", sublimit=False, issuer_ibge=IBGE,
+    issuer_tax_regime=None,
 ):
     from kordena_fiscal.runtime.native_nfse_policy import POLICY_ENV
     from kordena_fiscal.runtime.native_sale_policy import sale_policy_key
@@ -4054,7 +4055,8 @@ def _install_national_decision(
     scope = ExecutionScope(TENANT, UNIT, FiscalEnvironment.HOMOLOGATION, "policy", "fm-nfcore")
     selector = {
         "issuer_profile_id": "issuer-native", "issuer_profile_version": 1,
-        "issuer_cnpj": "11222333000181", "issuer_tax_regime": 2 if sublimit else 1,
+        "issuer_cnpj": "11222333000181",
+        "issuer_tax_regime": issuer_tax_regime or (2 if sublimit else 1),
         "issuer_municipality_ibge": issuer_ibge,
         **{k: payload[k] for k in (
             "service_state_code", "service_municipality_ibge", "national_taxation_code",
@@ -4264,20 +4266,22 @@ def test_configured_national_policy_never_falls_back(tmp_path, monkeypatch, faul
 def test_bh_estimativa_reviewed_policy_zero_iss_keeps_taxable_dps(tmp_path, monkeypatch):
     """BH Estimativa: valid reviewed code 2, taxable service, no ISS highlight."""
     db = _database(tmp_path / "bh-estimativa.sqlite", issuer_ibge="3106200",
-                   issuer_state="MG")
+                   issuer_state="MG", tax_regime=TaxRegimeCode.NORMAL)
     payload = _payload() | {
         "service_state_code": "MG", "service_municipality_ibge": "3106200",
         "iss_amount": "0.00", "iss_withheld": False,
     }
     scope, data, path, _, write = _install_national_decision(
         tmp_path, monkeypatch, payload, code="1", issuer_ibge="3106200",
+        issuer_tax_regime=3,
     )
     data["rules"][0]["treatment"]["special_regime_code"] = "2"
     data["rules"][0]["treatment"]["normative_reference"] = (
         "https://prefeitura.pbh.gov.br/fazenda/bhiss/avisos"
     )
     write()
-    result = _post(_client(db), payload)
+    browser = _client(db)
+    result = _post(browser, payload)
     assert result.status_code == 200, result.text
     prepared = FiscalApplicationService(db).load_prepared_nfse_authorization(
         scope, result.json()["document_id"],
@@ -4294,7 +4298,7 @@ def test_bh_estimativa_reviewed_policy_zero_iss_keeps_taxable_dps(tmp_path, monk
     assert root.xpath("string(//n:regEspTrib)", namespaces=ns) == "2"
     assert root.xpath("string(//n:tribISSQN)", namespaces=ns) == "1"
     assert not root.xpath("//n:tribMun/n:pAliq", namespaces=ns)
-    assert _post(_client(db), payload).json()["replay"] is True
+    assert _post(browser, payload).json()["replay"] is True
 
 
 @pytest.mark.parametrize("special", ["0", "1", "2", "4", "5", "6", "9"])
