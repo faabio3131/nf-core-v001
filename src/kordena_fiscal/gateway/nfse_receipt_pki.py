@@ -91,10 +91,30 @@ def _load() -> tuple[list[x509.Certificate], list[x509.CertificateRevocationList
 
 
 def require_national_receipt_pki_ready() -> None:
-    """No real SEFIN HTTP before explicit parseable pinned CA and CRL assets."""
+    """Deny real SEFIN HTTP until the root, CA and current CRL proofs verify."""
     try:
-        _load()
-    except (ValueError, TypeError, OSError):
+        cas, crls, root_pin = _load()
+        now = datetime.now(UTC)
+        if root_pin not in {
+            ca.fingerprint(hashes.SHA256()).hex() for ca in cas
+        }:
+            raise NationalReceiptPkiError("Pinned ICP root missing")
+        for ca in cas:
+            _check_ca(ca, now)
+        for crl in crls:
+            issuers = [ca for ca in cas if ca.subject == crl.issuer]
+            if len(issuers) != 1 or crl.next_update_utc is None or not (
+                crl.last_update_utc <= now < crl.next_update_utc
+            ):
+                raise NationalReceiptPkiError("National receipt CRL invalid or stale")
+            issuer = issuers[0]
+            _verify_signed_data(
+                issuer.public_key(), crl.signature, crl.tbs_certlist_bytes,
+                crl.signature_hash_algorithm,
+            )
+    except (
+        ValueError, TypeError, OSError, InvalidSignature, x509.ExtensionNotFound,
+    ):
         raise NationalReceiptPkiError("National receipt ICP/CRL trust unavailable") from None
 
 
