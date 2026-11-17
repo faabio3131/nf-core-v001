@@ -66,6 +66,10 @@ temporal dos certificados, LCR emitida pela AC correta, assinatura
 e frescor da LCR, e serial revogado em qualquer ligação não raiz.
 Material ausente, corrompido, expirado, sem raiz pinada ou com revogação
 fecha a emissão/consulta; não existe fallback para apenas XMLDSig.
+O preflight antes de rede exige **uma LCR verificável e vigente por AC**
+do bundle, raiz assinada por si própria e certificados intermediários
+assinados pela AC superior sem revogação. LCR de emissora ausente
+não pode disparar POST e ser descoberta só depois da resposta.
 
 **Limites de certificação pendentes:** não há ainda validação completa
 RFC 5280 (name constraints, políticas/OIDs e pathLen), consulta OCSP
