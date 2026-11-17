@@ -170,7 +170,31 @@ def _verify_cert(child: x509.Certificate, issuer: x509.Certificate) -> None:
     )
 
 
+def _require_supported_cert_extensions(cert: x509.Certificate) -> None:
+    """RFC 5280: never ignore an unprocessed critical certificate constraint.
+
+    Until name-constrained paths and any critical policy/EKU profiles are
+    independently implemented and reviewed, they cannot authorize receipts.
+    Noncritical informational extensions remain permitted.
+    """
+    supported = {ExtensionOID.BASIC_CONSTRAINTS, ExtensionOID.KEY_USAGE}
+    for extension in cert.extensions:
+        if extension.oid == ExtensionOID.NAME_CONSTRAINTS:
+            raise NationalReceiptPkiError(
+                "National receipt NameConstraints require full path validation"
+            )
+        if extension.oid == ExtensionOID.EXTENDED_KEY_USAGE:
+            raise NationalReceiptPkiError(
+                "National receipt EKU requires reviewed usage validation"
+            )
+        if extension.critical and extension.oid not in supported:
+            raise NationalReceiptPkiError(
+                "Unsupported critical national receipt certificate extension"
+            )
+
+
 def _check_ca(certificate: x509.Certificate, instant: datetime) -> None:
+    _require_supported_cert_extensions(certificate)
     if not certificate.not_valid_before_utc <= instant <= certificate.not_valid_after_utc:
         raise NationalReceiptPkiError("Expired national receipt CA")
     basic = certificate.extensions.get_extension_for_class(x509.BasicConstraints).value
@@ -262,6 +286,7 @@ def verify_national_receipt_pki(
         now = instant or datetime.now(UTC)
         if now.tzinfo is None or now.utcoffset() is None:
             raise NationalReceiptPkiError("PKI instant must have timezone")
+        _require_supported_cert_extensions(leaf)
         if not leaf.not_valid_before_utc <= now <= leaf.not_valid_after_utc:
             raise NationalReceiptPkiError("National receipt leaf expired")
         leaf_usage = leaf.extensions.get_extension_for_class(x509.KeyUsage).value

@@ -8,10 +8,11 @@ import pytest
 from cryptography import x509
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
-from cryptography.x509.oid import NameOID, ObjectIdentifier
+from cryptography.x509.oid import ExtendedKeyUsageOID, NameOID, ObjectIdentifier
 
 from kordena_fiscal.gateway.nfse_receipt_pki import (
     NationalReceiptPkiError,
+    _require_supported_cert_extensions,
     require_national_receipt_pki_ready,
     verify_national_receipt_pki,
 )
@@ -32,9 +33,10 @@ def _key() -> rsa.RSAPrivateKey:
 def _certificate(
     name: x509.Name, issuer: x509.Name, public_key: rsa.RSAPublicKey,
     signing_key: rsa.RSAPrivateKey, *, ca: bool, path_length: int | None = 2,
+    extra_extension: x509.ExtensionType | None = None, critical: bool = False,
 ) -> x509.Certificate:
     now = datetime.now(UTC)
-    return (
+    builder = (
         x509.CertificateBuilder()
         .subject_name(name).issuer_name(issuer).public_key(public_key)
         .serial_number(x509.random_serial_number())
@@ -49,8 +51,10 @@ def _certificate(
             key_encipherment=False, data_encipherment=False, key_agreement=False,
             key_cert_sign=ca, crl_sign=ca, encipher_only=False, decipher_only=False,
         ), critical=True)
-        .sign(signing_key, hashes.SHA256())
     )
+    if extra_extension is not None:
+        builder = builder.add_extension(extra_extension, critical=critical)
+    return builder.sign(signing_key, hashes.SHA256())
 
 
 def _crl(
@@ -358,3 +362,122 @@ def test_user_only_intermediate_crl_and_ca_only_root_are_allowed(chain) -> None:
     ], root)
     require_national_receipt_pki_ready()
     verify_national_receipt_pki(leaf)
+
+
+def test_critical_unknown_leaf_extension_fails_closed(chain) -> None:
+    path, monkeypatch, root, intermediate, leaf, root_key, intermediate_key = chain
+    different_leaf = _certificate(
+        leaf.subject, intermediate.subject, _key().public_key(),
+        intermediate_key, ca=False,
+        extra_extension=x509.UnrecognizedExtension(
+            ObjectIdentifier("1.2.3.999.1"), b"\x05\x00"
+        ),
+        critical=True,
+    )
+    _write(path, monkeypatch, [intermediate, root], [
+        _crl(intermediate, intermediate_key), _crl(root, root_key),
+    ], root)
+    require_national_receipt_pki_ready()
+    with pytest.raises(NationalReceiptPkiError):
+        verify_national_receipt_pki(different_leaf)
+
+
+def test_critical_unknown_ca_extension_blocks_preflight_and_leaf(chain) -> None:
+    path, monkeypatch, root, intermediate, leaf, root_key, intermediate_key = chain
+    bad_ca = _certificate(
+        intermediate.subject, root.subject, intermediate_key.public_key(),
+        root_key, ca=True,
+        extra_extension=x509.UnrecognizedExtension(
+            ObjectIdentifier("1.2.3.999.2"), b"\x05\x00"
+        ),
+        critical=True,
+    )
+    _write(path, monkeypatch, [bad_ca, root], [
+        _crl(bad_ca, intermediate_key), _crl(root, root_key),
+    ], root)
+    with pytest.raises(NationalReceiptPkiError):
+        require_national_receipt_pki_ready()
+    with pytest.raises(NationalReceiptPkiError):
+        verify_national_receipt_pki(leaf)
+
+
+@pytest.mark.parametrize("critical", [True, False])
+def test_name_constrained_ca_is_not_accepted_without_full_path_processor(
+    chain, critical,
+) -> None:
+    path, monkeypatch, root, intermediate, leaf, root_key, intermediate_key = chain
+    constrained = _certificate(
+        intermediate.subject, root.subject, intermediate_key.public_key(),
+        root_key, ca=True,
+        extra_extension=x509.NameConstraints(
+            permitted_subtrees=[x509.DNSName("example.invalid")],
+            excluded_subtrees=None,
+        ),
+        critical=critical,
+    )
+    _write(path, monkeypatch, [constrained, root], [
+        _crl(constrained, intermediate_key), _crl(root, root_key),
+    ], root)
+    with pytest.raises(NationalReceiptPkiError):
+        require_national_receipt_pki_ready()
+    with pytest.raises(NationalReceiptPkiError):
+        verify_national_receipt_pki(leaf)
+
+
+def test_noncritical_unknown_ca_information_does_not_revoke_valid_chain(chain) -> None:
+    path, monkeypatch, root, intermediate, leaf, root_key, intermediate_key = chain
+    reviewed = _certificate(
+        intermediate.subject, root.subject, intermediate_key.public_key(),
+        root_key, ca=True,
+        extra_extension=x509.UnrecognizedExtension(
+            ObjectIdentifier("1.2.3.999.3"), b"\x05\x00"
+        ),
+        critical=False,
+    )
+    _write(path, monkeypatch, [reviewed, root], [
+        _crl(reviewed, intermediate_key), _crl(root, root_key),
+    ], root)
+    require_national_receipt_pki_ready()
+    verify_national_receipt_pki(leaf)
+
+
+@pytest.mark.parametrize("critical", [False, True])
+def test_unprocessed_eku_leaf_fails_even_when_noncritical(chain, critical) -> None:
+    """EKU constrains certificate usage even if the extension is noncritical."""
+    path, monkeypatch, root, intermediate, leaf, root_key, intermediate_key = chain
+    restricted_leaf = _certificate(
+        leaf.subject, intermediate.subject, _key().public_key(),
+        intermediate_key, ca=False,
+        extra_extension=x509.ExtendedKeyUsage([ExtendedKeyUsageOID.SERVER_AUTH]),
+        critical=critical,
+    )
+    _write(path, monkeypatch, [intermediate, root], [
+        _crl(intermediate, intermediate_key), _crl(root, root_key),
+    ], root)
+    require_national_receipt_pki_ready()
+    with pytest.raises(NationalReceiptPkiError, match="EKU"):
+        _require_supported_cert_extensions(restricted_leaf)
+    # Public verification deliberately sanitizes internal PKI rejection reasons.
+    with pytest.raises(NationalReceiptPkiError, match="ICP path or CRL rejected"):
+        verify_national_receipt_pki(restricted_leaf)
+
+
+@pytest.mark.parametrize("critical", [False, True])
+def test_unprocessed_eku_ca_blocks_preflight_and_receipt(chain, critical) -> None:
+    path, monkeypatch, root, intermediate, leaf, root_key, intermediate_key = chain
+    restricted_ca = _certificate(
+        intermediate.subject, root.subject, intermediate_key.public_key(),
+        root_key, ca=True,
+        extra_extension=x509.ExtendedKeyUsage([ExtendedKeyUsageOID.SERVER_AUTH]),
+        critical=critical,
+    )
+    _write(path, monkeypatch, [restricted_ca, root], [
+        _crl(restricted_ca, intermediate_key), _crl(root, root_key),
+    ], root)
+    with pytest.raises(NationalReceiptPkiError, match="EKU"):
+        _require_supported_cert_extensions(restricted_ca)
+    # Both public entrypoints sanitize the internal extension-specific reason.
+    with pytest.raises(NationalReceiptPkiError, match="ICP/CRL trust unavailable"):
+        require_national_receipt_pki_ready()
+    with pytest.raises(NationalReceiptPkiError, match="ICP path or CRL rejected"):
+        verify_national_receipt_pki(leaf)
