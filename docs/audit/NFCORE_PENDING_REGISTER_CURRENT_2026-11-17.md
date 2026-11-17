@@ -21,6 +21,8 @@ Categorias: IMPLEMENTED_BRANCH ≠ INTEGRATED_CANDIDATE ≠ MAIN ≠ PRODUCTION 
 
 **Regressão identificada:** [run #43999832959](https://github.com/faabio3131/nf-core-v001/actions/runs/43999832959) da #468 falhou em tests/web/test_staging_gsm_administration.py::test_commercial_trial_binding_is_platform_only_and_replay_safe; HTTP 409 em lugar de 200 após expiração da janela. Patch testado em #522 e #523 congela o tempo do cenário legítimo e testa recusa após expiração; integrar uma vez e executar CI no HEAD combinado. Não alterar validade de produção, não desativar testes.
 
+**PR documental criada nesta retomada:** [#525](https://github.com/faabio3131/nf-core-v001/pull/525) OPEN/DRAFT, exclusivamente para o anexo e os índices CURRENT. Não é mais uma frente de engenharia nem está integrada à #468; após sua abertura há cinco PRs abertas (quatro operacionais + uma documental). CI da PR #525 deve ser consultada no HEAD final antes de seu aceite.
+
 **Entregas confirmadas na candidata, sem promover a main:** #513 correção cognitiva (#486), #514 perfil NT009/#508, #515 correlação SP, #516 contrato do recibo nacional, #517 venda manual, #518 recuperação histórica, #519 aprovação comercial ancestral, #520 política tributária governada, #521 Guarulhos GISS. #504/#505/#506/#511 integram o histórico anterior. Esses merges não encerram EGM, homologação, cobertura, Contabo ou release.
 
 **Origens encerradas sem merge direto:** #413/#448/#453 com fontes recuperadas pela #518; #423/#440 com mapas de sucessor e histórico preservado; #486 recuperada em #513; #508 recuperada funcionalmente por #514/#521. Conferir equivalência por função, não por título/ancestralidade. O manifesto de 16/11 registra 96 origens mas preserva estados anteriores aos merges tardios; reconciliar valores, sem apagar dados históricos.
@@ -146,6 +148,13 @@ Nenhuma issue acima foi fechada por este documento. Quando um bloco foi parcialm
 - #524: IRON multi-tenant/cross-host, A1 delegado sem expor PFX, autorizações owner/step-up, metering por unidade e rollback de integração; projeto vinculado, não pré-condição artificial de todo o piloto.
 - #168/#181: separar status de build interno, staging GSM, trial, operações e homologação externa; os planos históricos não são recontabilizados silenciosamente.
 - Prontidão comercial do produto: planos/preços aprovados, status de checkout/billing, assinatura, onboarding, recuperação de senha, observabilidade, suporte e LGPD devem ser verificados contra os 59 IDs e evidência do deploy. Não autorizar compra, trial fiscal ou marketing de municípios sem fonte operacional.
+
+### 7.1 Core Cognitivo, guardrails e Sentinela normativa — REC-22
+
+- [ ] Reconfrontar o patch #513/#486 já integrado à candidata: auditoria obrigatória antes de chamar LLM; grounding dos números frente à evidência citada; filtragem tenant/unidade/documento; hashes/proveniência e redaction; não permitir instrução de emissão/autoridade fiscal.
+- [ ] Residual documentado pela própria #513: grounding hoje lexical (sem tipagem semântica robusta para moeda/percentual), subject não incorporado à identidade canônica da requisição e cache local de resposta inexistente. Classificar relevância para a V1 antes de exigir nova implementação; não presumir que cache é requisito crítico.
+- [ ] Auditar `src/kordena_fiscal/compliance/normative_sentinel.py`: é sentinela **offline**, verifica SHA de artefato pinado; define explicitamente `official_provenance_verified=false` e `fiscal_production_approved=false`. Não afirmar pesquisa normativa contínua, verificação de autenticidade governamental ou ativação fiscal por checksum. Reutilizar `rtc_evidence.verify_regulatory_artifact_bytes`, sem segunda fonte autoritativa.
+- [ ] Verificar contratos do Core com Portal/API, políticas de audit sink, baseline sem IA, quotas, consumo, proteção contra prompt injection, classificação normativa/atualidade, logs e testes adversariais; revisão EGM independente e critérios de aceite explícitos por requisito. Evitar expandir escopo sem comprovar necessidade e sem decisão de arquitetura.
 
 ## 8. Controle de atualização e aceite
 
