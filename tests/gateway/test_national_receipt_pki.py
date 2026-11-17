@@ -220,3 +220,17 @@ def test_preflight_rejects_intermediate_signed_by_unrelated_key(chain) -> None:
     ], root)
     with pytest.raises(NationalReceiptPkiError):
         require_national_receipt_pki_ready()
+
+
+def test_preflight_rejects_unrelated_self_signed_ca_even_with_fresh_crl(chain) -> None:
+    path, monkeypatch, root, _, _, root_key, _ = chain
+    rogue_key = _key()
+    rogue_name = _name("Untrusted unrelated authority")
+    rogue = _certificate(
+        rogue_name, rogue_name, rogue_key.public_key(), rogue_key, ca=True,
+    )
+    _write(path, monkeypatch, [root, rogue], [
+        _crl(root, root_key), _crl(rogue, rogue_key),
+    ], root)
+    with pytest.raises(NationalReceiptPkiError):
+        require_national_receipt_pki_ready()
