@@ -4282,6 +4282,69 @@ def test_reviewed_national_policy_installer_refuses_untrusted_prior_state(
     assert data["version"] == 2
 
 
+def test_reviewed_national_policy_install_lock_refuses_symlink_and_unsafe_mode(
+    tmp_path, monkeypatch,
+) -> None:
+    """Operator installation must refuse a symlinked or unsafe lock."""
+    from kordena_fiscal.runtime.native_nfse_policy import install_reviewed_policy
+
+    _, _, source, _, _ = _install_national_decision(
+        tmp_path, monkeypatch, _payload() | {"iss_amount": "0.00"},
+    )
+    target_dir = tmp_path / "locks"
+    name = install_reviewed_policy(source, target_dir)
+    lock = target_dir / (name + ".lock")
+    assert lock.is_file() and lock.stat().st_mode & 0o077 == 0
+    lock.chmod(0o644)
+    with pytest.raises(FiscalValidationError, match="install lock"):
+        install_reviewed_policy(source, target_dir)
+    lock.unlink()
+    lock.symlink_to(source)
+    with pytest.raises(OSError):
+        install_reviewed_policy(source, target_dir)
+    assert (target_dir / (name + ".json")).read_bytes() == source.read_bytes()
+
+
+def test_reviewed_national_policy_concurrent_versions_never_roll_back(
+    tmp_path, monkeypatch,
+) -> None:
+    """Concurrent writers must leave the highest approved policy version."""
+    from concurrent.futures import ThreadPoolExecutor
+
+    from kordena_fiscal.runtime.native_nfse_policy import install_reviewed_policy
+
+    _, data, source, _, _ = _install_national_decision(
+        tmp_path, monkeypatch, _payload() | {"iss_amount": "0.00"},
+    )
+    target_dir = tmp_path / "concurrent-policy"
+    name = install_reviewed_policy(source, target_dir)
+    inputs = []
+    for version in (2, 3):
+        revision = json.loads(json.dumps(data))
+        revision["version"] = version
+        candidate = tmp_path / f"candidate-v{version}.json"
+        candidate.write_text(json.dumps(revision), encoding="utf-8")
+        inputs.append(candidate)
+
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        futures = [
+            executor.submit(install_reviewed_policy, candidate, target_dir)
+            for candidate in inputs
+        ]
+        outcomes = []
+        for future in futures:
+            try:
+                outcomes.append(future.result())
+            except FiscalValidationError:
+                outcomes.append(None)
+    assert name in outcomes
+    final = (target_dir / (name + ".json")).read_bytes()
+    assert json.loads(final)["version"] == 3
+    assert (target_dir / (name + ".sha256")).read_text().strip() == (
+        hashlib.sha256(final).hexdigest()
+    )
+
+
 def test_national_policy_never_changes_municipal_tax_handling(tmp_path, monkeypatch):
     from kordena_fiscal.runtime.native_nfse_policy import POLICY_ENV
 
