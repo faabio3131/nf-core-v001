@@ -4299,6 +4299,13 @@ def test_bh_estimativa_reviewed_policy_zero_iss_keeps_taxable_dps(tmp_path, monk
     assert root.xpath("string(//n:tribISSQN)", namespaces=ns) == "1"
     assert not root.xpath("//n:tribMun/n:pAliq", namespaces=ns)
     assert _post(browser, payload).json()["replay"] is True
+    # A reviewed Estimativa decision must not accept ISS highlights.
+    with patch.object(FiscalApplicationService, "prepare_nfse_authorization") as prepare:
+        denied = _post(browser, payload | {
+            "source_id": "bh-estimativa-invalid-iss", "iss_amount": "3.00",
+        }, "bh-denied-highlight")
+    assert denied.status_code == 400
+    prepare.assert_not_called()
 
 
 @pytest.mark.parametrize("special", ["0", "1", "2", "4", "5", "6", "9"])
