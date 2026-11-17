@@ -63,3 +63,18 @@ fiscal independente. Este bloco não altera Web de produção nem DDL.
 A Prefeitura indica explicitamente `regEspTrib=1` sem imposto destacado para o ato cooperado auxiliar; uma segunda NFS-e sem regime especial corresponde ao serviço próprio. O benefício de 3% para a cooperativa corresponde ao identificador municipal `31062000200004` na produção restrita e `31062000200002` em produção.
 
 Fonte primária: https://prefeitura.pbh.gov.br/fazenda/bhiss/avisos (bloco COOPERATIVAS). O documento não declara aprovado o enquadramento de nenhum CNPJ.
+
+## Exceções do cronograma federal de emissão
+
+O comunicado oficial PBH de 31/07/2026 separa as atividades
+da LC116 1.03, 1.05, 1.09 e 16.01: início da exigência
+federal documentária IBS/CBS em 01/12/2026, enquanto serviços
+ISS em geral passaram a ter prazo de 01/10/2026.
+Fonte: https://prefeitura.pbh.gov.br/fazenda/bhiss/avisos?page=1
+
+O gate negativo BH NORMAL exige cTribNac canônico de 6 dígitos
+para outubro/novembro e bloqueia essas quatro classes antes de 01/12.
+A partir de 01/12 o bloqueio por esta exceção deixa de valer.
+Simples/MEI e competências anteriores conservam guardas próprios.
+Este gate não autoriza emissão real, nem confunde obrigação federal
+IBS/CBS com homologação municipal por contribuinte.
