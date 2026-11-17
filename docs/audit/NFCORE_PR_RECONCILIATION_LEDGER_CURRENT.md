@@ -1,3 +1,15 @@
+## CURRENT EXECUTADO — 17/11/2026 (checkpoint pós-reconciliação; substitui snapshots anteriores)
+
+- **Repositório ativo:** faabio3131/nf-core-v001. **main** `549ab3c005d7183ff6c7940236414412ea004b9d`; **production** `ea4bdd3bcb9b61e6522081a14e5cc9ad1ced9599`; ambas **inalteradas**.
+- **#468 OPEN/DRAFT HEAD funcional** `1237c96021286f82d4f473dbd27bf90dce89ca37`. Integrações de fato: #522 FIS-03 `56a7d50a`, #523 MF-04/BH `287f0856`, #525 cronograma/registro `2ef57d6a` e #526 caminho PKI `1237c960`, todas MERGED na candidata somente. #522/#523/#525/#526 não estão mais abertas.
+- **#498 OPEN/DRAFT HEAD Web** `41dad4fab6e892a904b5f3afa94f2806b507ed29`. Mesma implementação fiscal/Portal da #468; **11 diferenças intencionais** da release para infraestrutura/histórico, incluindo backup/restore/testes de Compose e sobrescritas operacionais preservadas por blob/mode.
+- **Evidência verificada:** CI integral #44105708197 SUCCESS após #522/#523; CI #44105962170 SUCCESS da #525; CI #44108045887 SUCCESS da #526 (5.364 Python PASS, 1 SKIP justificado, 78 Playwright PASS); T2/governança/Compose atuais verdes. **CIs dos SHAs finais #468 [#44110731608](https://github.com/faabio3131/nf-core-v001/actions/runs/44110731608) e #498 [#44110843645](https://github.com/faabio3131/nf-core-v001/actions/runs/44110843645) ainda requerem conclusão**, sem herdar selo de commits antigos.
+- **Quantidade de PRs abertas na captura:** 2 (#468 e #498), ambas Draft. O cronograma e registro originais de 17/11 capturavam quatro PRs de engenharia antes destes merges; suas listas abaixo são **SNAPSHOTS HISTÓRICOS**, não o CURRENT.
+- **ENGINEERING NOT DONE:** FIS-03 confiança oficial SEFIN/policies/NameConstraints/LTV; MF-04/BH retenções/deduções/catálogo por competência; SP-22 e MG-W1 matriz fiscal por operação; Louveira PF contrato 2026 não comprovado (issue #509); Core Cognitivo/Sentinela adequações remanescentes; EGM independente; Contabo DPSv22/cofre A1/backup/restore/staging e acesso mutante; testes contábeis e homologação externa. Não declarar V1 100% interna nem produção aprovada.
+- **Regra de continuidade:** código CURRENT + PR/CI no SHA > esta nota > checkpoints antigos. **Não houve merge main, promotion production, deploy, DDL, DNS, segredo A1 real ou transmissão fiscal oficial.** Integrador único NFCORE-GOV-RELEASE-001 preservado.
+
+---
+
 # CURRENT verificado — 17/11/2026 — índice de continuidade (sem promoção)
 
 **Nota documental:** [PR #525](https://github.com/faabio3131/nf-core-v001/pull/525) OPEN/DRAFT de documentação, criada após a captura das quatro PRs de engenharia; agora existem 5 PRs abertas (4 funcionais/release + 1 documental). REC-22 registra verificação pendente do Core Cognitivo/Sentinela sem presumir capacidade normativa automática. A documentação ainda não foi integrada à #468.

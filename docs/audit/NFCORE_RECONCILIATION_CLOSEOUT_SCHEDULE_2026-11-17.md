@@ -1,3 +1,5 @@
+> **EXECUÇÃO CURRENT — 17/11/2026:** #522, #523, #525 e #526 foram incorporadas à candidata #468@1237c960. REC-01 (integração) executado; REC-02 (CI combinada) tem evidência #44105708197 SUCCESS na revisão anterior e está em certificação no novo HEAD [#44110731608](https://github.com/faabio3131/nf-core-v001/actions/runs/44110731608); REC-03 (FIS-03) recebeu pathLenConstraint, **sem fechamento total**; REC-12 (Web) reconciliado em #498@41dad4fa, CI [#44110843645](https://github.com/faabio3131/nf-core-v001/actions/runs/44110843645) em execução; REC-13 (documentação) incorporada, mas a auditoria semântica das 96 origens e matrizes municipais permanece. Não alterar os 59 IDs, não promover cobertura/produção, não dar DONE a outras REC. A tabela de estados abaixo é o baseline da criação do cronograma, prevalecendo este checkpoint para tarefas movimentadas.
+
 # NFCore — Anexo Executivo de Reconciliação e Cronograma de Fechamento (17/11/2026)
 
 **ID:** NFCORE-REC-CLOSEOUT-20261117 • **Classificação:** ANEXO OPERACIONAL CURRENT • **Status:** PLANEJAMENTO/RECONCILIAÇÃO DOCUMENTAL, não certificação • **Referência de fuso:** America/Sao_Paulo.

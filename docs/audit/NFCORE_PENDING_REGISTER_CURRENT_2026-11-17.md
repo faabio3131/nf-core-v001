@@ -1,3 +1,5 @@
+> **ATUALIZAÇÃO SUPERVENIENTE — 17/11/2026:** após as quatro integrações na candidata #468, #522/#523/#525/#526 estão **MERGED**; restam **somente #468 e #498 OPEN/DRAFT** no snapshot GitHub. #468@1237c960, #498@41dad4fa; CI final de ambos em execução. O inventário de quatro PRs e as descrições individuais abaixo referem-se à captura ANTERIOR a esses merges e foram preservados como histórico. A matriz de 22 SP/20 MG **não** foi promovida; continuam as 14 issues de escopo e os bloqueios internos/externos. Pesquisas de Louveira PF registradas na issue #509. O estado de CURRENT técnico superior é o GitHub e o ledger de reconciliação deste mesmo commit.
+
 # NFCore — Registro Único de Pendências CURRENT e Origem Histórica (17/11/2026)
 
 **ID:** NFCORE-REC-PENDING-20261117 • **Estado do documento:** INVENTÁRIO / NÃO É CERTIFICAÇÃO • **Repositório:** faabio3131/nf-core-v001 (mesmo repo da URL histórica kordena-fiscal-engine-v2). Data-base 17/11/2026 BRT.
