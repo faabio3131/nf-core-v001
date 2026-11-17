@@ -117,6 +117,7 @@ def require_national_receipt_pki_ready() -> None:
         for ca in cas:
             current = ca
             seen: set[bytes] = set()
+            subordinate_ca_count = 0
             for _ in range(_MAX_DEPTH):
                 if current.fingerprint(hashes.SHA256()) == root.fingerprint(
                     hashes.SHA256()
@@ -130,6 +131,9 @@ def require_national_receipt_pki_ready() -> None:
                 if len(issuers) != 1:
                     raise NationalReceiptPkiError("Receipt intermediate CA has no parent")
                 issuer = issuers[0]
+                if current.subject != current.issuer:
+                    subordinate_ca_count += 1
+                _check_ca_path_length(issuer, subordinate_ca_count)
                 _verify_cert(current, issuer)
                 _check_revocation(current, issuer, crls, now)
                 current = issuer
@@ -173,6 +177,20 @@ def _check_ca(certificate: x509.Certificate, instant: datetime) -> None:
         raise NationalReceiptPkiError("National receipt issuer not authorized as CA")
 
 
+def _check_ca_path_length(
+    issuer: x509.Certificate, subordinate_ca_count: int,
+) -> None:
+    """Enforce RFC 5280 pathLenConstraint for non-self-issued subordinate CAs."""
+    constraints = issuer.extensions.get_extension_for_class(
+        x509.BasicConstraints
+    ).value
+    if (
+        constraints.path_length is not None
+        and subordinate_ca_count > constraints.path_length
+    ):
+        raise NationalReceiptPkiError("Receipt CA path length constraint violated")
+
+
 def _check_revocation(
     child: x509.Certificate, issuer: x509.Certificate,
     crls: list[x509.CertificateRevocationList], instant: datetime,
@@ -212,6 +230,7 @@ def verify_national_receipt_pki(
             raise NationalReceiptPkiError("National receipt leaf is not a signer")
         current = leaf
         seen: set[bytes] = set()
+        subordinate_ca_count = 0
         for _ in range(_MAX_DEPTH):
             fingerprint = current.fingerprint(hashes.SHA256())
             if fingerprint in seen:
@@ -222,6 +241,9 @@ def verify_national_receipt_pki(
                 raise NationalReceiptPkiError("Ambiguous or missing receipt issuer CA")
             issuer = candidates[0]
             _check_ca(issuer, now)
+            if current is not leaf and current.subject != current.issuer:
+                subordinate_ca_count += 1
+            _check_ca_path_length(issuer, subordinate_ca_count)
             _verify_cert(current, issuer)
             _check_revocation(current, issuer, crls, now)
             if issuer.fingerprint(hashes.SHA256()).hex() == root_pin:

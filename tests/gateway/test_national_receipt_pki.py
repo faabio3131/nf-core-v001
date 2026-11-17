@@ -31,7 +31,7 @@ def _key() -> rsa.RSAPrivateKey:
 
 def _certificate(
     name: x509.Name, issuer: x509.Name, public_key: rsa.RSAPublicKey,
-    signing_key: rsa.RSAPrivateKey, *, ca: bool,
+    signing_key: rsa.RSAPrivateKey, *, ca: bool, path_length: int | None = 2,
 ) -> x509.Certificate:
     now = datetime.now(UTC)
     return (
@@ -40,7 +40,9 @@ def _certificate(
         .serial_number(x509.random_serial_number())
         .not_valid_before(now - timedelta(days=1))
         .not_valid_after(now + timedelta(days=30))
-        .add_extension(x509.BasicConstraints(ca=ca, path_length=2 if ca else None),
+        .add_extension(x509.BasicConstraints(
+            ca=ca, path_length=path_length if ca else None,
+        ),
                        critical=True)
         .add_extension(x509.KeyUsage(
             digital_signature=True, content_commitment=False,
@@ -234,3 +236,35 @@ def test_preflight_rejects_unrelated_self_signed_ca_even_with_fresh_crl(chain) -
     ], root)
     with pytest.raises(NationalReceiptPkiError):
         require_national_receipt_pki_ready()
+
+
+def test_path_length_zero_at_root_denies_subordinate_ca(chain) -> None:
+    """Pinned root pathLen=0 must not authorize even one intermediate CA."""
+    path, monkeypatch, root, intermediate, leaf, root_key, intermediate_key = chain
+    restricted_root = _certificate(
+        root.subject, root.subject, root_key.public_key(), root_key,
+        ca=True, path_length=0,
+    )
+    _write(path, monkeypatch, [intermediate, restricted_root], [
+        _crl(intermediate, intermediate_key),
+        _crl(restricted_root, root_key),
+    ], restricted_root)
+    with pytest.raises(NationalReceiptPkiError):
+        require_national_receipt_pki_ready()
+    with pytest.raises(NationalReceiptPkiError):
+        verify_national_receipt_pki(leaf)
+
+
+def test_path_length_zero_at_intermediate_accepts_signer_only(chain) -> None:
+    """An intermediate with pathLen=0 may sign a leaf, but not another CA."""
+    path, monkeypatch, root, intermediate, leaf, root_key, intermediate_key = chain
+    restricted_intermediate = _certificate(
+        intermediate.subject, root.subject, intermediate_key.public_key(),
+        root_key, ca=True, path_length=0,
+    )
+    _write(path, monkeypatch, [restricted_intermediate, root], [
+        _crl(restricted_intermediate, intermediate_key),
+        _crl(root, root_key),
+    ], root)
+    require_national_receipt_pki_ready()
+    verify_national_receipt_pki(leaf)
