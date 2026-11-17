@@ -4223,6 +4223,65 @@ def test_national_policy_installer_validates_all_rules_and_replay_ignores_curren
     assert (installed / (name + ".json")).read_bytes() != path.read_bytes()
 
 
+def test_reviewed_national_policy_installer_is_version_monotonic(
+    tmp_path, monkeypatch,
+):
+    from kordena_fiscal.runtime.native_nfse_policy import install_reviewed_policy
+
+    payload = _payload() | {"iss_amount": "0.00"}
+    _, data, source, _, write = _install_national_decision(
+        tmp_path, monkeypatch, payload,
+    )
+    directory = tmp_path / "reviewed-versions"
+    name = install_reviewed_policy(source, directory)
+    original = (directory / (name + ".json")).read_bytes()
+    original_pin = (directory / (name + ".sha256")).read_bytes()
+    # Identical installation must not rotate the approved version or contents.
+    assert install_reviewed_policy(source, directory) == name
+    assert (directory / (name + ".json")).read_bytes() == original
+    data["rules"][0]["treatment"]["normative_reference"] = "urn:reviewed:changed"
+    write()
+    with pytest.raises(FiscalValidationError, match="higher reviewed version"):
+        install_reviewed_policy(source, directory)
+    assert (directory / (name + ".json")).read_bytes() == original
+    assert (directory / (name + ".sha256")).read_bytes() == original_pin
+
+    data["version"] = 2
+    write()
+    assert install_reviewed_policy(source, directory) == name
+    assert (directory / (name + ".json")).read_bytes() == source.read_bytes()
+    data["version"] = 1
+    write()
+    with pytest.raises(FiscalValidationError, match="higher reviewed version"):
+        install_reviewed_policy(source, directory)
+
+
+@pytest.mark.parametrize("broken", ["missing_pin", "modified_bytes", "invalid_pin"])
+def test_reviewed_national_policy_installer_refuses_untrusted_prior_state(
+    tmp_path, monkeypatch, broken,
+):
+    from kordena_fiscal.runtime.native_nfse_policy import install_reviewed_policy
+
+    payload = _payload() | {"iss_amount": "0.00"}
+    _, data, source, _, write = _install_national_decision(
+        tmp_path, monkeypatch, payload,
+    )
+    directory = tmp_path / "tampered-policy"
+    name = install_reviewed_policy(source, directory)
+    target, pin = directory / (name + ".json"), directory / (name + ".sha256")
+    if broken == "missing_pin":
+        pin.unlink()
+    elif broken == "modified_bytes":
+        target.write_bytes(target.read_bytes() + b"altered")
+    else:
+        pin.write_text("invalid")
+    data["version"] = 2
+    write()
+    with pytest.raises(FiscalValidationError):
+        install_reviewed_policy(source, directory)
+    assert data["version"] == 2
+
+
 def test_national_policy_never_changes_municipal_tax_handling(tmp_path, monkeypatch):
     from kordena_fiscal.runtime.native_nfse_policy import POLICY_ENV
 
