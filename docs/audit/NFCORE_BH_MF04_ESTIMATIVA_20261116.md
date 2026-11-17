@@ -29,7 +29,8 @@ compatível; implementação fiscal **interna sintética**, sem homologação of
 2. Tratamento `tribISSQN=1` e `regEspTrib=2`, com decisão revisada/pinada
    por SHA-256, pode passar pela preparação canônica com ISS 0 e sem
    retenção. O builder existente não produz pAliq quando valor ISS é zero.
-3. O domínio impede ISS destacado/retido em regime especial. A restrição
+3. O domínio impede ISS destacado/retido apenas no regime Estimativa
+   (código 2); outros regimes mantêm tratamento fiscal próprio. A restrição
    nacional E0172 impede regime especial em não incidência, imunidade ou
    exportação. O instalador restringe BH à lista publicada.
 4. Testes sintéticos HTTP→numeração→arquivo→DPS assinado/XSD e replay,
