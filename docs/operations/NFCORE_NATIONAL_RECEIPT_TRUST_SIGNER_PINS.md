@@ -1,6 +1,6 @@
 # FIS-03 — pinning de certificados signatários de recibos nacionais
 
-**Status:** incremento defensivo interno; **não encerra FIS-03 nem autoriza deploy/emissão real**.
+**Status:** proteção de pinagem + validação offline de caminho/CRL para transporte real; **não encerra FIS-03 nem autoriza deploy/emissão real**.
 
 ## Fronteira de segurança
 
@@ -45,14 +45,36 @@ O arquivo de configuração de produção permanece fora do repositório.
 
 ## Evidência e limitações obrigatórias
 
-**Este mecanismo é uma pinagem de certificado de assinatura, não uma
-validação PKI completa.** Ainda devem ser implementados, revisados e
-comprovados separadamente: cadeia de confiança ICP-Brasil/SEFIN,
-autorização do signatário no período, finalidade e políticas de certificado,
-LCR/OCSP assinadas com estado de revogação fresco, vigência no instante
-comprovado de autorização (não apenas no relógio atual), provas históricas
-de revogação e trilha imutável de política/consulta para replay e auditoria.
-Além disso, consultar o contrato SEFIN vigente e a fonte exata do certificado.
+**Validação adicional de cadeia e revogação (incremento interno).** Os
+transportes HTTP nacionais padrão exigem, além dos pins de signatário, os
+três parâmetros a seguir **antes de TLS ou rede**:
+
+```text
+NFCORE_NFSE_RECEIPT_CA_BUNDLE=/caminho-absoluto/protegido/acs-autorizadas.pem
+NFCORE_NFSE_RECEIPT_CRL_BUNDLE=/caminho-absoluto/protegido/lcrs-assinadas.pem
+NFCORE_NFSE_RECEIPT_ROOT_SHA256=<fingerprint-64-hex-da-raiz-oficial>
+```
+
+O conteúdo deve vir de fontes oficiais autenticadas, verificadas fora do
+XML recebido. O bundle de AC contém certificados PEM de raízes e
+intermediárias autorizadas (sem segredo); o bundle de LCR contém PEM
+assinado pela AC emissora de cada certificado não raiz. Ambos devem
+ter permissões de leitura restritas ao runtime e substituição atômica.
+A aplicação verifica: integridade criptográfica de cada ligação da
+cadeia, raiz exata SHA-256, BasicConstraints/KeyUsage de AC, validade
+temporal dos certificados, LCR emitida pela AC correta, assinatura
+e frescor da LCR, e serial revogado em qualquer ligação não raiz.
+Material ausente, corrompido, expirado, sem raiz pinada ou com revogação
+fecha a emissão/consulta; não existe fallback para apenas XMLDSig.
+
+**Limites de certificação pendentes:** não há ainda validação completa
+RFC 5280 (name constraints, políticas/OIDs e pathLen), consulta OCSP
+alternativa, identificação formal do signatário SEFIN em todas as
+competências, validação histórica no instante de autorização e pacote
+de evidências da situação de revogação no momento do registro.
+Não afirmar FIS-03 100% encerrado sem esses requisitos e testes externos.
+O mecanismo atual aplica verificação de LCR vigente no relógio atual;
+revalidação histórica pode precisar LTV e provas imutáveis adicionais.
 
 Referências oficiais para instalação e atualização de raízes e regras de
 revogação: [ITI — certificados das ACs ICP-Brasil](https://www.gov.br/iti/pt-br/assuntos/repositorio/certificados-das-acs-da-icp-brasil-arquivo-unico-compactado)
