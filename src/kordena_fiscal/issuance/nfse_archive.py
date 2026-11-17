@@ -159,6 +159,9 @@ def encode_prepared_nfse(request: NfseAuthorizationRequest) -> bytes:
                 ),
                 "result_country_code": document.national_tax_treatment.result_country_code,
                 "immunity_type_code": document.national_tax_treatment.immunity_type_code,
+                "municipal_benefit_id": (
+                    document.national_tax_treatment.municipal_benefit_id
+                ),
                 "normative_reference": document.national_tax_treatment.normative_reference,
                 "rule_version": document.national_tax_treatment.rule_version,
                 "effective_from": document.national_tax_treatment.effective_from.isoformat(),
@@ -386,6 +389,10 @@ def decode_prepared_nfse(content: bytes, *, scope: ExecutionScope) -> NfseAuthor
                 ),
                 immunity_type_code=_optional_text(
                     decision.get("immunity_type_code"), "tax_treatment.immunity_type_code",
+                ),
+                municipal_benefit_id=_optional_text(
+                    decision.get("municipal_benefit_id"),
+                    "tax_treatment.municipal_benefit_id",
                 ),
             )
         substitution = None

@@ -134,6 +134,10 @@ class NfseNacionalHomologationGateway:
                 jurisdiction=document.issuer.address.jurisdiction,
                 tax_regime=document.issuer.tax_regime,
                 competence_date=document.competence_date,
+                national_taxation_code=(
+                    document.services[0].national_taxation_code
+                    if len(document.services) == 1 else None
+                ),
             )
         except FiscalValidationError:
             issuer_state = document.issuer.address.jurisdiction.state_code
