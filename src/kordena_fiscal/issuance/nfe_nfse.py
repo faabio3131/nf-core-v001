@@ -346,6 +346,9 @@ class NfseNationalTaxTreatment:
             raise FiscalValidationError("National ISSQN taxation requires official code 1..4")
         if self.special_regime_code not in {"0", "1", "2", "3", "4", "5", "6", "9"}:
             raise FiscalValidationError("National NFS-e special regime code is not official")
+        # SEFIN E0172: immunity/export/non-incidence use regEspTrib=0.
+        if self.iss_taxation_code != "1" and self.special_regime_code != "0":
+            raise FiscalValidationError("Non-taxable national ISS cannot use special regime")
         if self.simples_assessment_code not in {None, "1", "2", "3"}:
             raise FiscalValidationError("National Simples assessment requires code 1..3")
         if type(self.effective_from) is not date:
@@ -479,6 +482,12 @@ class NfseCanonicalDocument:
                 }
             ):
                 raise FiscalValidationError("Simples assessment conflicts with issuer tax regime")
+            if treatment.special_regime_code != "0" and any(
+                line.iss_amount.amount > 0 or line.iss_withheld for line in self.services
+            ):
+                raise FiscalValidationError(
+                    "National special regime must not charge or withhold highlighted ISS"
+                )
             if treatment.iss_taxation_code != "1" and any(
                 line.iss_amount.amount > 0 or line.iss_withheld for line in self.services
             ):
