@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 import sqlite3
 import tomllib
 from datetime import UTC, datetime, timedelta
@@ -697,7 +698,14 @@ def test_v2_12_structural_secret_dependency_architecture_and_product_neutrality(
         for path in src.rglob("*.py")
     )
     assert "BEGIN " + "PRIVATE KEY" not in source_text
-    assert "BEGIN " + "CERTIFICATE" not in source_text
+    # PEM parser delimiters are public format constants, not credentials.
+    # Reject an embedded certificate only when actual base64 material follows
+    # its header (including Python-escaped newlines), without weakening the
+    # existing rejection of private-key PEM material.
+    pem_certificate = re.compile(
+        r"-----BEGIN CERTIFICATE-----(?:\\r?\\n|\r?\n)[A-Za-z0-9+/=]{64,}"
+    )
+    assert pem_certificate.search(source_text) is None
 
     domain_text = "\n".join(
         path.read_text(encoding="utf-8")

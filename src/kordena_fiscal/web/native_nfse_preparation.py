@@ -374,8 +374,38 @@ def prepare_native_nfse(
             treatment = policy.treatment if policy is not None else None
         if treatment is not None and provider != NACIONAL_HOMOLOGATION_PROVIDER_ID:
             raise FiscalValidationError("National decision cannot change municipal treatment")
-        if (treatment is None or treatment.iss_taxation_code == "1") and iss <= 0:
+        # Estimativa (2) and BH ato cooperado (1) are explicitly permitted
+        # by a scoped, reviewed policy to avoid ISS highlighting.
+        no_iss_highlight = treatment is not None and (
+            treatment.special_regime_code == "2" or (
+                profile.address.jurisdiction.municipality_ibge_code == "3106200"
+                and treatment.special_regime_code == "1"
+            )
+        )
+        ordinary_taxable = treatment is None or (
+            treatment.iss_taxation_code == "1" and not no_iss_highlight
+        )
+        if ordinary_taxable and iss <= 0:
             raise FiscalValidationError("Taxable service requires positive reviewed ISS")
+        if no_iss_highlight and (
+            iss > 0 or payload["iss_withheld"]
+        ):
+            raise FiscalValidationError("Reviewed special regime cannot highlight or withhold ISS")
+        # PBH BHISS: these LC116 subitems allow deductions only against
+        # supporting documents. The current native contract has no document
+        # evidence fields; never silently emit an unsupported deduction.
+        if (
+            previous is None and provider == NACIONAL_HOMOLOGATION_PROVIDER_ID
+            and profile.address.jurisdiction.municipality_ibge_code == "3106200"
+            and deductions > 0
+            and payload["national_taxation_code"][:4] in {
+                "0702", "0705", "0901", "1001", "1002", "1003",
+                "1004", "1005", "1008", "1706",
+            }
+        ):
+            raise FiscalValidationError(
+                "BH documentary deduction requires evidence not yet supported"
+            )
         if profile.tax_regime is TaxRegimeCode.SIMPLES_NACIONAL_EXCESS_SUBLIMIT and (
             provider != NACIONAL_HOMOLOGATION_PROVIDER_ID
             or treatment is None or treatment.simples_assessment_code is None

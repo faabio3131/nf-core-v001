@@ -26,7 +26,10 @@ from kordena_fiscal.gateway.nfse_national_homologation import (
     parse_nfse_homologation_response,
     parse_signed_dps_info,
 )
-from kordena_fiscal.gateway.nfse_national_receipt import NationalReceiptIdentity
+from kordena_fiscal.gateway.nfse_national_receipt import (
+    NationalReceiptIdentity,
+    require_national_receipt_signer_pins,
+)
 from kordena_fiscal.issuance.nfe_nfse import (
     NfseAuthorizationRequest,
     NfseAuthorizationResult,
@@ -84,6 +87,10 @@ def _exchange_http(payload: bytes, context: ssl.SSLContext, timeout: float) -> b
         ) from None
 
 
+# Stable reference: monkeypatched/injected test transports are not the live network.
+_LIVE_EXCHANGE = _exchange_http
+
+
 class NfseNacionalHomologationGateway:
     """Real REST/mTLS transport with trusted prepared signed-DPS dependency."""
 
@@ -127,6 +134,10 @@ class NfseNacionalHomologationGateway:
                 jurisdiction=document.issuer.address.jurisdiction,
                 tax_regime=document.issuer.tax_regime,
                 competence_date=document.competence_date,
+                national_taxation_code=(
+                    document.services[0].national_taxation_code
+                    if len(document.services) == 1 else None
+                ),
             )
         except FiscalValidationError:
             issuer_state = document.issuer.address.jurisdiction.state_code
@@ -155,6 +166,14 @@ class NfseNacionalHomologationGateway:
         expected = NationalReceiptIdentity.from_request(request)
         if NationalReceiptIdentity.from_dps_info(parse_signed_dps_info(signed_dps)) != expected:
             raise OfficialNfseTransportError("Outgoing DPS differs from canonical request")
+        # Never send a real fiscal DPS without a configured receipt signer pin.
+        # Missing pins cannot be compensated by TLS, XMLDSig or a self-signed leaf.
+        if self._exchange is _LIVE_EXCHANGE:
+            require_national_receipt_signer_pins()
+            from kordena_fiscal.gateway.nfse_receipt_pki import (
+                require_national_receipt_pki_ready,
+            )
+            require_national_receipt_pki_ready()
         response = self._exchange(payload, build_fiscal_tls_context(material), self._timeout)
         if not isinstance(response, bytes) or len(response) > _MAX_RESPONSE:
             raise OfficialNfseTransportError("Resposta SEFIN inválida")
