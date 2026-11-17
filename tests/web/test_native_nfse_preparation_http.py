@@ -4419,7 +4419,8 @@ def test_bh_cooperative_act_has_no_highlight_and_preserves_replay(tmp_path, monk
 def test_bh_cooperative_benefit_is_scope_pinned_archived_and_signed(tmp_path, monkeypatch):
     """PBH: 3% cooperativa benefit nBM is staging-specific and not regEspTrib 1."""
     from kordena_fiscal.issuance.nfse_archive import (
-        encode_prepared_nfse, decode_prepared_nfse,
+        decode_prepared_nfse,
+        encode_prepared_nfse,
     )
 
     db = _database(tmp_path / "bh-nbm.sqlite", issuer_ibge="3106200",
