@@ -31,6 +31,7 @@ from kordena_fiscal.gateway.nfse_national_receipt import (
     NationalReceiptIdentity,
     NfseReceiptVerificationError,
     current_national_receipt_profile,
+    require_national_receipt_signer_pins,
     validate_official_nfse_receipt,
 )
 from kordena_fiscal.gateway.nfse_national_receipt import (
@@ -109,6 +110,9 @@ def _read_only_get(path: str, context: ssl.SSLContext, timeout: float) -> bytes:
     return bytes(result)
 
 
+_LIVE_GET = _read_only_get
+
+
 class NfseNationalHomologationQueryGateway:
     """Retrieve an existing DPS only; binding and A1 must match exact issuer unit."""
 
@@ -150,6 +154,9 @@ class NfseNationalHomologationQueryGateway:
         )
         if bound != _PROVIDER_ID:
             raise OfficialNfseTransportError("National NFS-e query provider is not bound")
+        # A read-only recovery must not trust an arbitrary XMLDSig leaf either.
+        if self._get is _LIVE_GET:
+            require_national_receipt_signer_pins()
         issuer_cnpj = document.issuer.cnpj.value
         material = self._resolve_certificate(scope, issuer_cnpj)
         validate_a1_for_issuer(
