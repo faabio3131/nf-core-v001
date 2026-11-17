@@ -4045,7 +4045,9 @@ def test_bh_reviewed_classifications_use_existing_native_preparation_and_replay(
     assert malformed.status_code == 400
 
 
-def _install_national_decision(tmp_path, monkeypatch, payload, *, code="4", sublimit=False):
+def _install_national_decision(
+    tmp_path, monkeypatch, payload, *, code="4", sublimit=False, issuer_ibge=IBGE,
+):
     from kordena_fiscal.runtime.native_nfse_policy import POLICY_ENV
     from kordena_fiscal.runtime.native_sale_policy import sale_policy_key
 
@@ -4053,7 +4055,7 @@ def _install_national_decision(tmp_path, monkeypatch, payload, *, code="4", subl
     selector = {
         "issuer_profile_id": "issuer-native", "issuer_profile_version": 1,
         "issuer_cnpj": "11222333000181", "issuer_tax_regime": 2 if sublimit else 1,
-        "issuer_municipality_ibge": IBGE,
+        "issuer_municipality_ibge": issuer_ibge,
         **{k: payload[k] for k in (
             "service_state_code", "service_municipality_ibge", "national_taxation_code",
             "municipal_service_code", "iss_withheld", "source_normative", "rule_version",
@@ -4257,3 +4259,88 @@ def test_configured_national_policy_never_falls_back(tmp_path, monkeypatch, faul
         response = _post(_client(db), payload)
     assert response.status_code == 400
     prepare.assert_not_called()
+
+
+def test_bh_estimativa_reviewed_policy_zero_iss_keeps_taxable_dps(tmp_path, monkeypatch):
+    """BH Estimativa: valid reviewed code 2, taxable service, no ISS highlight."""
+    db = _database(tmp_path / "bh-estimativa.sqlite", issuer_ibge="3106200",
+                   issuer_state="MG")
+    payload = _payload() | {
+        "service_state_code": "MG", "service_municipality_ibge": "3106200",
+        "iss_amount": "0.00", "iss_withheld": False,
+    }
+    scope, data, path, _, write = _install_national_decision(
+        tmp_path, monkeypatch, payload, code="1", issuer_ibge="3106200",
+    )
+    data["rules"][0]["treatment"]["special_regime_code"] = "2"
+    data["rules"][0]["treatment"]["normative_reference"] = (
+        "https://prefeitura.pbh.gov.br/fazenda/bhiss/avisos"
+    )
+    write()
+    result = _post(_client(db), payload)
+    assert result.status_code == 200, result.text
+    prepared = FiscalApplicationService(db).load_prepared_nfse_authorization(
+        scope, result.json()["document_id"],
+    )
+    treatment = prepared.document.national_tax_treatment
+    assert treatment is not None
+    assert treatment.special_regime_code == "2"
+    signed = build_sefin_signed_dps(prepared, _synthetic_a1_for_native_issuer())
+    national_dps_validator("1.01", profile=NT009_RESTRICTED_PROFILE).validate_document(
+        signed,
+    )
+    root = etree.fromstring(signed)
+    ns = {"n": "http://www.sped.fazenda.gov.br/nfse"}
+    assert root.xpath("string(//n:regEspTrib)", namespaces=ns) == "2"
+    assert root.xpath("string(//n:tribISSQN)", namespaces=ns) == "1"
+    assert not root.xpath("//n:tribMun/n:pAliq", namespaces=ns)
+    assert _post(_client(db), payload).json()["replay"] is True
+
+
+@pytest.mark.parametrize("special", ["0", "1", "2", "4", "5", "6", "9"])
+def test_bh_policy_installer_accepts_only_published_regimes(
+    tmp_path, monkeypatch, special,
+):
+    from kordena_fiscal.runtime.native_nfse_policy import install_reviewed_policy
+
+    payload = _payload() | {"service_state_code": "MG",
+                            "service_municipality_ibge": "3106200"}
+    _, data, path, _, write = _install_national_decision(
+        tmp_path, monkeypatch, payload, code="1", issuer_ibge="3106200",
+    )
+    data["rules"][0]["treatment"]["special_regime_code"] = special
+    write()
+    installed = tmp_path / "installed-bh"
+    assert install_reviewed_policy(path, installed)
+
+
+def test_bh_policy_installer_rejects_unsupported_regime_three(
+    tmp_path, monkeypatch,
+):
+    from kordena_fiscal.runtime.native_nfse_policy import install_reviewed_policy
+
+    payload = _payload() | {"service_state_code": "MG",
+                            "service_municipality_ibge": "3106200"}
+    _, data, path, _, write = _install_national_decision(
+        tmp_path, monkeypatch, payload, code="1", issuer_ibge="3106200",
+    )
+    data["rules"][0]["treatment"]["special_regime_code"] = "3"
+    write()
+    with pytest.raises(FiscalValidationError, match="national NFS-e policy"):
+        install_reviewed_policy(path, tmp_path / "invalid-bh")
+
+
+def test_non_taxable_national_cannot_use_special_regime(
+    tmp_path, monkeypatch,
+):
+    from kordena_fiscal.runtime.native_nfse_policy import install_reviewed_policy
+
+    payload = _payload() | {"service_state_code": "MG",
+                            "service_municipality_ibge": "3106200"}
+    _, data, path, _, write = _install_national_decision(
+        tmp_path, monkeypatch, payload, code="4", issuer_ibge="3106200",
+    )
+    data["rules"][0]["treatment"]["special_regime_code"] = "2"
+    write()
+    with pytest.raises(FiscalValidationError):
+        install_reviewed_policy(path, tmp_path / "invalid-nontax")
