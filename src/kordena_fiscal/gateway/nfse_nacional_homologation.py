@@ -166,6 +166,10 @@ class NfseNacionalHomologationGateway:
         # Missing pins cannot be compensated by TLS, XMLDSig or a self-signed leaf.
         if self._exchange is _LIVE_EXCHANGE:
             require_national_receipt_signer_pins()
+            from kordena_fiscal.gateway.nfse_receipt_pki import (
+                require_national_receipt_pki_ready,
+            )
+            require_national_receipt_pki_ready()
         response = self._exchange(payload, build_fiscal_tls_context(material), self._timeout)
         if not isinstance(response, bytes) or len(response) > _MAX_RESPONSE:
             raise OfficialNfseTransportError("Resposta SEFIN inválida")
