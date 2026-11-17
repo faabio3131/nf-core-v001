@@ -8,7 +8,7 @@ import pytest
 from cryptography import x509
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
-from cryptography.x509.oid import NameOID
+from cryptography.x509.oid import NameOID, ObjectIdentifier
 
 from kordena_fiscal.gateway.nfse_receipt_pki import (
     NationalReceiptPkiError,
@@ -56,6 +56,8 @@ def _certificate(
 def _crl(
     certificate: x509.Certificate, key: rsa.RSAPrivateKey,
     *, revoke: int | None = None, stale: bool = False,
+    idp: x509.IssuingDistributionPoint | None = None,
+    delta: bool = False, unknown_critical: bool = False,
 ) -> x509.CertificateRevocationList:
     now = datetime.now(UTC)
     before = now - timedelta(days=3) if stale else now - timedelta(hours=1)
@@ -65,6 +67,15 @@ def _crl(
         .issuer_name(certificate.subject)
         .last_update(before).next_update(after)
     )
+    if idp is not None:
+        builder = builder.add_extension(idp, critical=True)
+    if delta:
+        builder = builder.add_extension(x509.DeltaCRLIndicator(7), critical=True)
+    if unknown_critical:
+        builder = builder.add_extension(
+            x509.UnrecognizedExtension(ObjectIdentifier("1.2.3.4"), b"\x05\x00"),
+            critical=True,
+        )
     if revoke is not None:
         builder = builder.add_revoked_certificate(
             x509.RevokedCertificateBuilder()
@@ -265,6 +276,85 @@ def test_path_length_zero_at_intermediate_accepts_signer_only(chain) -> None:
     _write(path, monkeypatch, [restricted_intermediate, root], [
         _crl(restricted_intermediate, intermediate_key),
         _crl(root, root_key),
+    ], root)
+    require_national_receipt_pki_ready()
+    verify_national_receipt_pki(leaf)
+
+
+
+def _idp(
+    *, user_only: bool = False, ca_only: bool = False,
+    reasons: bool = False, indirect: bool = False, named: bool = False,
+) -> x509.IssuingDistributionPoint:
+    return x509.IssuingDistributionPoint(
+        full_name=([x509.UniformResourceIdentifier("https://example.invalid/crl")]
+                   if named else None),
+        relative_name=None,
+        only_contains_user_certs=user_only,
+        only_contains_ca_certs=ca_only,
+        only_some_reasons=(
+            frozenset({x509.ReasonFlags.key_compromise}) if reasons else None
+        ),
+        indirect_crl=indirect,
+        only_contains_attribute_certs=False,
+    )
+
+
+@pytest.mark.parametrize("variant", [
+    "partial_reasons", "indirect", "named", "delta", "critical_unknown",
+])
+def test_unreconciled_or_ambiguous_signed_crl_fails_closed_preflight(chain, variant) -> None:
+    path, monkeypatch, root, intermediate, leaf, root_key, intermediate_key = chain
+    kwargs: dict[str, object] = {}
+    if variant == "partial_reasons":
+        kwargs["idp"] = _idp(reasons=True)
+    elif variant == "indirect":
+        kwargs["idp"] = _idp(indirect=True)
+    elif variant == "named":
+        kwargs["idp"] = _idp(named=True)
+    elif variant == "delta":
+        kwargs["delta"] = True
+    elif variant == "critical_unknown":
+        kwargs["unknown_critical"] = True
+    candidate = _crl(intermediate, intermediate_key, **kwargs)
+    _write(path, monkeypatch, [intermediate, root], [
+        candidate, _crl(root, root_key),
+    ], root)
+    with pytest.raises(NationalReceiptPkiError):
+        require_national_receipt_pki_ready()
+    with pytest.raises(NationalReceiptPkiError):
+        verify_national_receipt_pki(leaf)
+
+
+def test_user_only_root_crl_does_not_prove_intermediate_ca_not_revoked(chain) -> None:
+    path, monkeypatch, root, intermediate, leaf, root_key, intermediate_key = chain
+    _write(path, monkeypatch, [intermediate, root], [
+        _crl(intermediate, intermediate_key),
+        _crl(root, root_key, idp=_idp(user_only=True)),
+    ], root)
+    with pytest.raises(NationalReceiptPkiError):
+        require_national_receipt_pki_ready()
+    with pytest.raises(NationalReceiptPkiError):
+        verify_national_receipt_pki(leaf)
+
+
+def test_ca_only_intermediate_crl_does_not_prove_leaf_signer_not_revoked(chain) -> None:
+    path, monkeypatch, root, intermediate, leaf, root_key, intermediate_key = chain
+    _write(path, monkeypatch, [intermediate, root], [
+        _crl(intermediate, intermediate_key, idp=_idp(ca_only=True)),
+        _crl(root, root_key),
+    ], root)
+    require_national_receipt_pki_ready()
+    with pytest.raises(NationalReceiptPkiError):
+        verify_national_receipt_pki(leaf)
+
+
+def test_user_only_intermediate_crl_and_ca_only_root_are_allowed(chain) -> None:
+    """Positive proof that legitimate complete per-type CRL scopes still work."""
+    path, monkeypatch, root, intermediate, leaf, root_key, intermediate_key = chain
+    _write(path, monkeypatch, [intermediate, root], [
+        _crl(intermediate, intermediate_key, idp=_idp(user_only=True)),
+        _crl(root, root_key, idp=_idp(ca_only=True)),
     ], root)
     require_national_receipt_pki_ready()
     verify_national_receipt_pki(leaf)

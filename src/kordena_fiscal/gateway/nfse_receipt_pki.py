@@ -17,6 +17,7 @@ from cryptography import x509
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import ec, padding, rsa
+from cryptography.x509.oid import ExtensionOID
 
 _CA_PATH = "NFCORE_NFSE_RECEIPT_CA_BUNDLE"
 _CRL_PATH = "NFCORE_NFSE_RECEIPT_CRL_BUNDLE"
@@ -106,6 +107,7 @@ def require_national_receipt_pki_ready() -> None:
             if len(candidates) != 1:
                 raise NationalReceiptPkiError("Missing or ambiguous signed CA CRL")
             crl = candidates[0]
+            _validate_crl_scope(crl, cert_is_ca=None)
             if crl.next_update_utc is None or not (
                 crl.last_update_utc <= now < crl.next_update_utc
             ):
@@ -191,6 +193,42 @@ def _check_ca_path_length(
         raise NationalReceiptPkiError("Receipt CA path length constraint violated")
 
 
+def _validate_crl_scope(
+    crl: x509.CertificateRevocationList, *, cert_is_ca: bool | None,
+) -> None:
+    """Refuse incomplete or unsupported CRL scopes, never infer non-revocation."""
+    allowed_critical = {
+        ExtensionOID.ISSUING_DISTRIBUTION_POINT,
+        ExtensionOID.CRL_NUMBER,
+    }
+    for extension in crl.extensions:
+        if extension.oid == ExtensionOID.DELTA_CRL_INDICATOR:
+            raise NationalReceiptPkiError("Delta receipt CRL requires complete base reconciliation")
+        if extension.critical and extension.oid not in allowed_critical:
+            raise NationalReceiptPkiError("Unsupported critical receipt CRL extension")
+    try:
+        idp = crl.extensions.get_extension_for_class(
+            x509.IssuingDistributionPoint
+        ).value
+    except x509.ExtensionNotFound:
+        return
+    # Relative/name-constrained, indirect and reason-limited CRLs need
+    # additional CRLDistributionPoints or delegated-signer logic. Until that
+    # is independently certified, treating an unlisted serial as valid is unsafe.
+    if (
+        idp.indirect_crl
+        or idp.only_contains_attribute_certs
+        or idp.only_some_reasons is not None
+        or idp.full_name is not None
+        or idp.relative_name is not None
+    ):
+        raise NationalReceiptPkiError("Partial or indirect national receipt CRL unsupported")
+    if cert_is_ca is True and idp.only_contains_user_certs:
+        raise NationalReceiptPkiError("User-only receipt CRL cannot prove CA status")
+    if cert_is_ca is False and idp.only_contains_ca_certs:
+        raise NationalReceiptPkiError("CA-only receipt CRL cannot prove signer status")
+
+
 def _check_revocation(
     child: x509.Certificate, issuer: x509.Certificate,
     crls: list[x509.CertificateRevocationList], instant: datetime,
@@ -205,6 +243,8 @@ def _check_revocation(
     if len(matching) != 1:
         raise NationalReceiptPkiError("Missing or stale signed receipt CA CRL")
     crl = matching[0]
+    basic = child.extensions.get_extension_for_class(x509.BasicConstraints).value
+    _validate_crl_scope(crl, cert_is_ca=basic.ca)
     _verify_signed_data(
         issuer.public_key(), crl.signature, crl.tbs_certlist_bytes,
         crl.signature_hash_algorithm,
