@@ -244,11 +244,21 @@ def _mg_request(
         if tax_regime is TaxRegimeCode.SIMPLES_NACIONAL_EXCESS_SUBLIMIT
         else None
     )
+    # The MEI synthetic case must model fixed DAS-SIMEI, never per-invoice ISS.
+    # Keep the channel-routing assertion unchanged; only correct its fiscal fact.
+    services = (
+        tuple(
+            replace(line, iss_amount=Money.zero(), iss_withheld=False)
+            for line in base.document.services
+        )
+        if tax_regime is TaxRegimeCode.MEI else base.document.services
+    )
     document = replace(
         base.document,
         issuer=issuer,
         service_jurisdiction=municipality,
         competence_date=competence_date or base.document.competence_date,
+        services=services,
         national_tax_treatment=treatment,
     )
     return NfseAuthorizationRequest.build(document)
