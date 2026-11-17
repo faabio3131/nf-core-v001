@@ -4308,6 +4308,29 @@ def test_bh_estimativa_reviewed_policy_zero_iss_keeps_taxable_dps(tmp_path, monk
     prepare.assert_not_called()
 
 
+def test_bh_other_reviewed_special_regime_keeps_positive_iss(tmp_path, monkeypatch):
+    """Do not broaden Estimativa zero-ISS rule to unrelated special regimes."""
+    db = _database(tmp_path / "bh-other-special.sqlite", issuer_ibge="3106200",
+                   issuer_state="MG", tax_regime=TaxRegimeCode.NORMAL)
+    payload = _payload() | {
+        "service_state_code": "MG", "service_municipality_ibge": "3106200",
+        "iss_amount": "3.00",
+    }
+    scope, data, _, _, write = _install_national_decision(
+        tmp_path, monkeypatch, payload, code="1", issuer_ibge="3106200",
+        issuer_tax_regime=3,
+    )
+    data["rules"][0]["treatment"]["special_regime_code"] = "1"
+    write()
+    response = _post(_client(db), payload, "bh-other-special")
+    assert response.status_code == 200, response.text
+    prepared = FiscalApplicationService(db).load_prepared_nfse_authorization(
+        scope, response.json()["document_id"],
+    )
+    assert prepared.document.services[0].iss_amount.amount == Decimal("3.00")
+    assert prepared.document.national_tax_treatment is not None
+    assert prepared.document.national_tax_treatment.special_regime_code == "1"
+
 @pytest.mark.parametrize("special", ["0", "1", "2", "4", "5", "6", "9"])
 def test_bh_policy_installer_accepts_only_published_regimes(
     tmp_path, monkeypatch, special,
