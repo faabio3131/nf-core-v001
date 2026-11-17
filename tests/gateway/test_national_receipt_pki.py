@@ -166,3 +166,25 @@ def test_malformed_pem_and_symlink_are_rejected(chain) -> None:
     pem_path.symlink_to(path / "signed-crls.pem")
     with pytest.raises(NationalReceiptPkiError):
         require_national_receipt_pki_ready()
+
+
+def test_preflight_rejects_wrong_root_and_stale_or_forged_crls(chain) -> None:
+    path, monkeypatch, root, intermediate, _, root_key, intermediate_key = chain
+    _write(path, monkeypatch, [root, intermediate], [
+        _crl(root, root_key), _crl(intermediate, intermediate_key),
+    ], root)
+    require_national_receipt_pki_ready()
+    monkeypatch.setenv(_ROOT, "f" * 64)
+    with pytest.raises(NationalReceiptPkiError):
+        require_national_receipt_pki_ready()
+    monkeypatch.setenv(_ROOT, root.fingerprint(hashes.SHA256()).hex())
+    _write(path, monkeypatch, [root, intermediate], [
+        _crl(root, root_key), _crl(intermediate, intermediate_key, stale=True),
+    ], root)
+    with pytest.raises(NationalReceiptPkiError):
+        require_national_receipt_pki_ready()
+    _write(path, monkeypatch, [root, intermediate], [
+        _crl(root, root_key), _crl(intermediate, root_key),
+    ], root)
+    with pytest.raises(NationalReceiptPkiError):
+        require_national_receipt_pki_ready()
