@@ -238,7 +238,6 @@ def test_preflight_rejects_unrelated_self_signed_ca_even_with_fresh_crl(chain) -
         require_national_receipt_pki_ready()
 
 
-
 def test_path_length_zero_at_root_denies_subordinate_ca(chain) -> None:
     """Pinned root pathLen=0 must not authorize even one intermediate CA."""
     path, monkeypatch, root, intermediate, leaf, root_key, intermediate_key = chain
