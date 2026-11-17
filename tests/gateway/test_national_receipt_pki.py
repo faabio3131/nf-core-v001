@@ -8,7 +8,7 @@ import pytest
 from cryptography import x509
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
-from cryptography.x509.oid import NameOID, ObjectIdentifier
+from cryptography.x509.oid import ExtendedKeyUsageOID, NameOID, ObjectIdentifier
 
 from kordena_fiscal.gateway.nfse_receipt_pki import (
     NationalReceiptPkiError,
@@ -438,3 +438,39 @@ def test_noncritical_unknown_ca_information_does_not_revoke_valid_chain(chain) -
     ], root)
     require_national_receipt_pki_ready()
     verify_national_receipt_pki(leaf)
+
+
+@pytest.mark.parametrize("critical", [False, True])
+def test_unprocessed_eku_leaf_fails_even_when_noncritical(chain, critical) -> None:
+    """EKU constrains certificate usage even if the extension is noncritical."""
+    path, monkeypatch, root, intermediate, leaf, root_key, intermediate_key = chain
+    restricted_leaf = _certificate(
+        leaf.subject, intermediate.subject, _key().public_key(),
+        intermediate_key, ca=False,
+        extra_extension=x509.ExtendedKeyUsage([ExtendedKeyUsageOID.SERVER_AUTH]),
+        critical=critical,
+    )
+    _write(path, monkeypatch, [intermediate, root], [
+        _crl(intermediate, intermediate_key), _crl(root, root_key),
+    ], root)
+    require_national_receipt_pki_ready()
+    with pytest.raises(NationalReceiptPkiError, match="EKU"):
+        verify_national_receipt_pki(restricted_leaf)
+
+
+@pytest.mark.parametrize("critical", [False, True])
+def test_unprocessed_eku_ca_blocks_preflight_and_receipt(chain, critical) -> None:
+    path, monkeypatch, root, intermediate, leaf, root_key, intermediate_key = chain
+    restricted_ca = _certificate(
+        intermediate.subject, root.subject, intermediate_key.public_key(),
+        root_key, ca=True,
+        extra_extension=x509.ExtendedKeyUsage([ExtendedKeyUsageOID.SERVER_AUTH]),
+        critical=critical,
+    )
+    _write(path, monkeypatch, [restricted_ca, root], [
+        _crl(restricted_ca, intermediate_key), _crl(root, root_key),
+    ], root)
+    with pytest.raises(NationalReceiptPkiError, match="EKU"):
+        require_national_receipt_pki_ready()
+    with pytest.raises(NationalReceiptPkiError, match="EKU"):
+        verify_national_receipt_pki(leaf)

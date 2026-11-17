@@ -183,6 +183,10 @@ def _require_supported_cert_extensions(cert: x509.Certificate) -> None:
             raise NationalReceiptPkiError(
                 "National receipt NameConstraints require full path validation"
             )
+        if extension.oid == ExtensionOID.EXTENDED_KEY_USAGE:
+            raise NationalReceiptPkiError(
+                "National receipt EKU requires reviewed usage validation"
+            )
         if extension.critical and extension.oid not in supported:
             raise NationalReceiptPkiError(
                 "Unsupported critical national receipt certificate extension"
