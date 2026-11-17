@@ -1,5 +1,7 @@
 # CURRENT verificado — 17/11/2026 — índice de continuidade (sem promoção)
 
+**Nota documental:** [PR #525](https://github.com/faabio3131/nf-core-v001/pull/525) OPEN/DRAFT de documentação, criada após a captura das quatro PRs de engenharia; agora existem 5 PRs abertas (4 funcionais/release + 1 documental). REC-22 registra verificação pendente do Core Cognitivo/Sentinela sem presumir capacidade normativa automática. A documentação ainda não foi integrada à #468.
+
 **Cronograma de fechamento:** [NFCORE_RECONCILIATION_CLOSEOUT_SCHEDULE_2026-11-17.md](NFCORE_RECONCILIATION_CLOSEOUT_SCHEDULE_2026-11-17.md). **Inventário completo:** [NFCORE_PENDING_REGISTER_CURRENT_2026-11-17.md](NFCORE_PENDING_REGISTER_CURRENT_2026-11-17.md), com 4 PRs, 14 issues e matrizes SP-22/MG-W1. Este registro novo PREVALECE para CURRENT sobre os snapshots datados de 16/11 abaixo; os anteriores ficam preservados integralmente como histórico.
 
 - main 549ab3c005d7183ff6c7940236414412ea004b9d; production ea4bdd3bcb9b61e6522081a14e5cc9ad1ced9599. **Nenhuma promoção/deploy/DDL**.
