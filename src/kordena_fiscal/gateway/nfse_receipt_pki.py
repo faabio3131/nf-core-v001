@@ -115,14 +115,26 @@ def require_national_receipt_pki_ready() -> None:
                 crl.signature_hash_algorithm,
             )
         for ca in cas:
-            if ca is root:
-                continue
-            issuers = [issuer for issuer in cas if issuer.subject == ca.issuer]
-            if len(issuers) != 1:
-                raise NationalReceiptPkiError("Receipt intermediate CA has no parent")
-            issuer = issuers[0]
-            _verify_cert(ca, issuer)
-            _check_revocation(ca, issuer, crls, now)
+            current = ca
+            seen: set[bytes] = set()
+            for _ in range(_MAX_DEPTH):
+                if current.fingerprint(hashes.SHA256()) == root.fingerprint(
+                    hashes.SHA256()
+                ):
+                    break
+                fingerprint = current.fingerprint(hashes.SHA256())
+                if fingerprint in seen:
+                    raise NationalReceiptPkiError("Cyclic receipt CA trust path")
+                seen.add(fingerprint)
+                issuers = [issuer for issuer in cas if issuer.subject == current.issuer]
+                if len(issuers) != 1:
+                    raise NationalReceiptPkiError("Receipt intermediate CA has no parent")
+                issuer = issuers[0]
+                _verify_cert(current, issuer)
+                _check_revocation(current, issuer, crls, now)
+                current = issuer
+            else:
+                raise NationalReceiptPkiError("CA trust path does not reach pinned root")
     except (
         ValueError, TypeError, OSError, InvalidSignature, x509.ExtensionNotFound,
     ):
