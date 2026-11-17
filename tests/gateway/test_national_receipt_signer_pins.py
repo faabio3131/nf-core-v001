@@ -144,3 +144,56 @@ def test_live_canonical_get_refuses_without_pins_before_a1(
     with pytest.raises(NfseReceiptVerificationError, match="signer trust pins unavailable"):
         gateway.query(request)
     resolve_cert.assert_not_called()
+
+
+def test_valid_signer_pin_without_operator_ca_crl_still_blocks_live_post(
+    receipt: tuple[object, object, bytes, bytes, str, str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from kordena_fiscal.gateway import nfse_national_homologation as transport
+    from kordena_fiscal.gateway.nfse_receipt_pki import NationalReceiptPkiError
+
+    _, material, dps, _, _, pin = receipt
+    monkeypatch.setenv(_ENV, pin)
+    for key in (
+        "NFCORE_NFSE_RECEIPT_CA_BUNDLE", "NFCORE_NFSE_RECEIPT_CRL_BUNDLE",
+        "NFCORE_NFSE_RECEIPT_ROOT_SHA256",
+    ):
+        monkeypatch.delenv(key, raising=False)
+    tls = Mock()
+    monkeypatch.setattr(transport, "build_fiscal_tls_context", tls)
+    gateway = transport.NfseNationalHomologationTransport(certificate=material)
+    with pytest.raises(NationalReceiptPkiError, match="unavailable"):
+        gateway.submit_signed_dps(dps)
+    tls.assert_not_called()
+
+
+def test_valid_signer_pin_without_ca_crl_blocks_live_get_before_a1(
+    receipt: tuple[object, object, bytes, bytes, str, str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from kordena_fiscal.gateway import nfse_national_query as query
+    from kordena_fiscal.gateway.nfse_receipt_pki import NationalReceiptPkiError
+    from kordena_fiscal.issuance.nfe_nfse import NfseAuthorizationRequest
+
+    request, material, _, _, _, pin = receipt
+    scope = replace(request.document.scope, host_namespace="synthetic-pki-host")
+    request = NfseAuthorizationRequest.build(replace(
+        request.document, scope=scope,
+        issuer=replace(request.document.issuer, scope=scope),
+    ))
+    monkeypatch.setenv(_ENV, pin)
+    for key in (
+        "NFCORE_NFSE_RECEIPT_CA_BUNDLE", "NFCORE_NFSE_RECEIPT_CRL_BUNDLE",
+        "NFCORE_NFSE_RECEIPT_ROOT_SHA256",
+    ):
+        monkeypatch.delenv(key, raising=False)
+    resolver = Mock()
+    resolver.resolve_provider_id.return_value = "nfse-nacional-producao-restrita"
+    resolve_cert = Mock(return_value=material)
+    gateway = query.NfseNationalHomologationQueryGateway(
+        provider_resolver=resolver, resolve_certificate=resolve_cert,
+    )
+    with pytest.raises(NationalReceiptPkiError, match="unavailable"):
+        gateway.query(request)
+    resolve_cert.assert_not_called()
