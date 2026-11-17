@@ -88,6 +88,23 @@ def _enforce_national_receipt_signer_pin(root: etree._Element) -> None:
         raise NfseReceiptVerificationError("Invalid national NFS-e signer certificate") from None
     if certificate.fingerprint(hashes.SHA256()).hex() not in pins:
         raise NfseReceiptVerificationError("Untrusted national NFS-e signer certificate")
+    # Synthetic validation may run without operational trust files. The default
+    # real HTTP transports require these files before any network dispatch.
+    # If ANY PKI setting is present, partial configuration cannot silently pass.
+    from kordena_fiscal.gateway.nfse_receipt_pki import (
+        NationalReceiptPkiError,
+        verify_national_receipt_pki,
+    )
+    if any(name in os.environ for name in (
+        "NFCORE_NFSE_RECEIPT_CA_BUNDLE", "NFCORE_NFSE_RECEIPT_CRL_BUNDLE",
+        "NFCORE_NFSE_RECEIPT_ROOT_SHA256",
+    )):
+        try:
+            verify_national_receipt_pki(certificate)
+        except NationalReceiptPkiError:
+            raise NfseReceiptVerificationError(
+                "National NFS-e ICP path or revocation invalid"
+            ) from None
 
 
 
