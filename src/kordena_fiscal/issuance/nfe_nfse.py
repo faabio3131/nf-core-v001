@@ -482,11 +482,15 @@ class NfseCanonicalDocument:
                 }
             ):
                 raise FiscalValidationError("Simples assessment conflicts with issuer tax regime")
-            if treatment.special_regime_code == "2" and any(
+            no_iss_highlight = treatment.special_regime_code == "2" or (
+                self.issuer.address.jurisdiction.municipality_ibge_code == "3106200"
+                and treatment.special_regime_code == "1"
+            )
+            if no_iss_highlight and any(
                 line.iss_amount.amount > 0 or line.iss_withheld for line in self.services
             ):
                 raise FiscalValidationError(
-                    "Reviewed Estimativa regime cannot highlight or withhold ISS"
+                    "Reviewed special regime cannot highlight or withhold ISS"
                 )
             if treatment.iss_taxation_code != "1" and any(
                 line.iss_amount.amount > 0 or line.iss_withheld for line in self.services
