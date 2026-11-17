@@ -22,6 +22,7 @@ from kordena_fiscal.gateway.fiscal_tls import RejectFiscalRedirects, build_fisca
 from kordena_fiscal.gateway.nfse_national_receipt import (
     NationalReceiptIdentity,
     NfseReceiptVerificationError,
+    require_national_receipt_signer_pins,
     validate_official_nfse_receipt,
 )
 from kordena_fiscal.issuance.nfe_nfse import NfseRejectionDetail
@@ -179,6 +180,7 @@ class NfseNationalHomologationTransport:
         self._certificate = certificate
         self._timeout = timeout_seconds
         self._exchange = exchange or self._https_exchange
+        self._requires_receipt_trust = exchange is None
 
     @staticmethod
     def _https_exchange(body: bytes, context: ssl.SSLContext, timeout: float) -> bytes:
@@ -213,6 +215,8 @@ class NfseNationalHomologationTransport:
         national_dps_validator(version, profile=profile).validate_document(signed_dps_xml)
         expected = NationalReceiptIdentity.from_dps_info(info)
         body = build_nfse_dps_request(signed_dps_xml, schema_profile=profile)
+        if self._requires_receipt_trust:
+            require_national_receipt_signer_pins()
         return parse_nfse_homologation_response(
             self._exchange(body, build_fiscal_tls_context(self._certificate), self._timeout),
             expected=expected, schema_profile=profile,
