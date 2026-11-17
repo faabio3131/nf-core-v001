@@ -202,6 +202,44 @@ def install_reviewed_policy(source: Path, directory: Path) -> str:
     target, pin = directory / (name + ".json"), directory / (name + ".sha256")
     if target.is_symlink() or pin.is_symlink():
         raise FiscalValidationError("National policy destination cannot be a symlink")
+    # A reviewed decision's version is an audit invariant. Reinstalling identical
+    # bytes is idempotent; changing any decision, selector or rule at the same
+    # version (or rolling back to an older version) is not.
+    if target.exists() or pin.exists():
+        if not target.is_file() or not pin.is_file():
+            raise FiscalValidationError("National policy installation is incomplete")
+        with target.open("rb") as stream:
+            previous_raw = stream.read(1_048_577)
+        with pin.open("rb") as stream:
+            previous_pin = stream.read(66)
+        if (
+            not previous_raw or len(previous_raw) > 1_048_576
+            or not re.fullmatch(rb"[0-9a-f]{64}\n?", previous_pin)
+            or hashlib.sha256(previous_raw).hexdigest().encode()
+            != previous_pin.strip()
+        ):
+            raise FiscalValidationError("Existing national policy integrity failed")
+        try:
+            previous = json.loads(previous_raw, object_pairs_hook=_unique)
+        except (TypeError, ValueError, RecursionError):
+            raise FiscalValidationError("Existing national policy is invalid") from None
+        if (
+            not isinstance(previous, dict)
+            or type(previous.get("version")) is not int
+            or type(previous.get("schema_version")) is not int
+            or previous["schema_version"] != 1
+            or any(previous.get(k) != data.get(k) for k in (
+                "host_namespace", "tenant_id", "unit_id",
+                "environment", "document_kind",
+            ))
+        ):
+            raise FiscalValidationError("Existing national policy scope is invalid")
+        if previous_raw == raw:
+            return name
+        if data["version"] <= previous["version"]:
+            raise FiscalValidationError(
+                "National tax policy changes require a higher reviewed version"
+            )
     suffix = "." + uuid4().hex + ".tmp"
     staged, staged_pin = directory / (name + suffix), directory / (name + suffix + ".sha256")
     try:
