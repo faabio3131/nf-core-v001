@@ -188,3 +188,35 @@ def test_preflight_rejects_wrong_root_and_stale_or_forged_crls(chain) -> None:
     ], root)
     with pytest.raises(NationalReceiptPkiError):
         require_national_receipt_pki_ready()
+
+
+def test_preflight_requires_crl_for_every_ca_and_valid_intermediate(chain) -> None:
+    path, monkeypatch, root, intermediate, _, root_key, intermediate_key = chain
+    _write(path, monkeypatch, [root, intermediate], [
+        _crl(root, root_key),
+    ], root)
+    with pytest.raises(NationalReceiptPkiError):
+        require_national_receipt_pki_ready()
+    _write(path, monkeypatch, [root, intermediate], [
+        _crl(root, root_key), _crl(intermediate, intermediate_key),
+    ], root)
+    require_national_receipt_pki_ready()
+    _write(path, monkeypatch, [root, intermediate], [
+        _crl(root, root_key, revoke=intermediate.serial_number),
+        _crl(intermediate, intermediate_key),
+    ], root)
+    with pytest.raises(NationalReceiptPkiError):
+        require_national_receipt_pki_ready()
+
+
+def test_preflight_rejects_intermediate_signed_by_unrelated_key(chain) -> None:
+    path, monkeypatch, root, intermediate, _, root_key, intermediate_key = chain
+    bad = _certificate(
+        intermediate.subject, root.subject, intermediate_key.public_key(),
+        intermediate_key, ca=True,
+    )
+    _write(path, monkeypatch, [root, bad], [
+        _crl(root, root_key), _crl(bad, intermediate_key),
+    ], root)
+    with pytest.raises(NationalReceiptPkiError):
+        require_national_receipt_pki_ready()
