@@ -41,6 +41,13 @@ class MgNationalIssuerRule:
 # national emission for the relevant taxpayers. Other cities remain denied for
 # non-Simples until a regime/competence-specific contract is verified.
 _EXCLUSIVE_CHANNELS = (
+    # PBH BHISS 02/10/2026: estimativa and ordinary non-Simples services
+    # are documented by the National NFS-e from the October 2026 competence;
+    # this is issuer-channel eligibility only, never tax or provider approval.
+    (
+        "3106200", date(2026, 10, 1),
+        "https://prefeitura.pbh.gov.br/fazenda/bhiss",
+    ),
     (
         "3106705", date(2026, 1, 1),
         "https://www.betim.mg.gov.br/portal/noticias/0/3/14975/"
