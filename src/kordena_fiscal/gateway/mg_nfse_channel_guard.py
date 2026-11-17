@@ -105,6 +105,7 @@ def require_mg_national_channel_eligibility(
     jurisdiction: BrazilianJurisdiction,
     tax_regime: TaxRegimeCode,
     competence_date: date,
+    national_taxation_code: str | None = None,
 ) -> None:
     """Refuse incompatible national issuance before certificate access or network I/O.
 
@@ -138,6 +139,23 @@ def require_mg_national_channel_eligibility(
         )
         if competence_date >= cutoff:
             return
+    # PBH 31/07/2026: federal IBS/CBS documentary obligation for LC116
+    # subitems 1.03/1.05/1.09/16.01 starts only on 01/12/2026.
+    # A negative eligibility guard cannot confer municipal authorization.
+    if (
+        municipality == "3106200" and tax_regime is TaxRegimeCode.NORMAL
+        and date(2026, 10, 1) <= competence_date < date(2026, 12, 1)
+    ):
+        if (
+            not isinstance(national_taxation_code, str)
+            or len(national_taxation_code) != 6
+            or not national_taxation_code.isascii()
+            or not national_taxation_code.isdecimal()
+            or national_taxation_code[:4] in {"0103", "0105", "0109", "1601"}
+        ):
+            raise FiscalValidationError(
+                "BH national issuer service code or effective competence unverified"
+            )
     exclusive = MG_NATIONAL_CHANNEL_RULES.get(municipality)
     if exclusive is not None and competence_date >= exclusive.effective_competence_from:
         return
