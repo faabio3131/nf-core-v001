@@ -145,6 +145,13 @@ def resolve_national_treatment(
             treatment = _treatment(
                 rule["treatment"], data["policy_id"] + ":" + rule["rule_id"], digest,
             )
+            # PBH BHISS notice (updated 14 Aug 2026) lists only 1,2,4,5,6,9;
+            # zero means no special regime. Code 3 is not admitted by BH.
+            if (
+                rule["selector"]["issuer_municipality_ibge"] == "3106200"
+                and treatment.special_regime_code not in {"0", "1", "2", "4", "5", "6", "9"}
+            ):
+                raise ValueError("Belo Horizonte does not authorize this special regime")
             if (
                 rule["selector"] == facts and competence >= treatment.effective_from
                 and (treatment.effective_to is None or competence < treatment.effective_to)
