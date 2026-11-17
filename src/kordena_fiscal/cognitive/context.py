@@ -106,6 +106,8 @@ class ContextPackBuilder:
         context_hash = stable_hash(
             {
                 "scope": request.scope.identity_material,
+                "actor": request.actor_id,
+                "subject": request.subject_id,
                 "capability": request.capability.value,
                 "evidence": hashed,
                 "question": question,
