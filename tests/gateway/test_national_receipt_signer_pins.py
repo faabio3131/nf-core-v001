@@ -24,7 +24,8 @@ from kordena_fiscal.issuance.nfse_dps_builder import build_sefin_signed_dps
 from kordena_fiscal.xml.nfse_national_profiles import NT009_RESTRICTED_PROFILE
 
 _spec = importlib.util.spec_from_file_location(
-    "nfse_receipt_synthetic_fixture", Path(__file__).parents[1] / "support/national_receipt_fixture.py",
+    "nfse_receipt_synthetic_fixture",
+    Path(__file__).parents[1] / "support/national_receipt_fixture.py",
 )
 assert _spec and _spec.loader
 _fixture = importlib.util.module_from_spec(_spec)
