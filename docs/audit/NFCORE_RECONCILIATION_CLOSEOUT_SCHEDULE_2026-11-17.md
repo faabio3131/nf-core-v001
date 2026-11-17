@@ -12,7 +12,7 @@
 - [PR #498](https://github.com/faabio3131/nf-core-v001/pull/498), OPEN/DRAFT, HEAD **fbdb33843103d25c44b1e1896629c588c4a1b423**, base production. Incorpora a #468 anterior e diferenças exclusivas de implantação/documentação. Última CI [#43954553537](https://github.com/faabio3131/nf-core-v001/actions/runs/43954553537) SUCCESS nesse SHA; nova integração exige recertificação.
 - [PR #522](https://github.com/faabio3131/nf-core-v001/pull/522), OPEN, HEAD **42fa40fb5cd8a7e6748f9834c679f66744659cbc**, FIS-03 PKI/CRL e teste temporal; [CI #44081550101](https://github.com/faabio3131/nf-core-v001/actions/runs/44081550101) SUCCESS.
 - [PR #523](https://github.com/faabio3131/nf-core-v001/pull/523), OPEN, HEAD **7962fe7b81c8f23cbbc84865fa7705819fcddd38**, BH MF-04; [CI #44015740152](https://github.com/faabio3131/nf-core-v001/actions/runs/44015740152) SUCCESS.
-- **Somente quatro PRs abertas** no snapshot; **14 issues operacionais abertas** permanecem separadas. A redução de PRs não é evidência de conclusão de 22 municípios, 20 polos MG ou homologação.
+- **Quatro PRs de engenharia abertas** no snapshot inicial, além desta PR documental #525 criada posteriormente (5 PRs no total após a abertura); **14 issues operacionais abertas** permanecem separadas. A redução de PRs não é evidência de conclusão de 22 municípios, 20 polos MG ou homologação.
 - Não houve, nesta auditoria documental, merge em main/production, deploy, migration produtiva, transmissão fiscal real nem validação de host. Proteção contra deploy prematuro permanece ativa.
 
 ## 2. Ordem de execução — janelas relativas por dependência, não promessa de calendário
@@ -47,6 +47,7 @@ Nenhuma janela tem duração fixa atribuída: faltam capacidade de execução, c
 | REC-19 | backlog vinculado · IBS/CBS | Auditar RTC/IBS/CBS por leiaute, vigência, regras fiscais e provedores sem reescrever base; issue #210 permanece rastreada | Fiscal/Compliance | REC-00, priorização aprovada | mapa Current→Target/ADR e testes futuros; não alegar conformidade antecipada | BACKLOG |
 | REC-20 | backlog governança | Conservar #184 skill/fitness de rastreabilidade, #168 disciplina interna e P05 #181 e 59 IDs sem fechar por inferência | Governança + QA | REC-13 | responsável/critério e reavaliação dos itens históricos | BACKLOG |
 | REC-21 | go/no-go final | Reconciliar operabilidade SaaS (Portal/Auth/RBAC/tenant, billing/onboarding, observabilidade, backup, suporte, LGPD, seguranca, homologação), apenas liberar com evidências de ambiente | Release + Produto + Humano | REC-15, REC-16 e demais requisitos comercialmente aplicáveis | matriz A-E e Go/No-Go explícito; nunca 100% por CI isolada | NÃO CERTIFICADO |
+| REC-22 | S2-S4 · Core Cognitivo / Sentinela | Reavaliar a integração cognitiva #513, grounding de números/proveniência, audit sink, identidade de subject/tenant, custos/quotas, ações estritamente consultivas; sentinela normativa offline comprova integridade de bytes, NÃO autenticidade oficial ou aprovação de regra; auditar detecção de desatualização e governança sem criar segundo motor/autoridade | Core + Compliance + Segurança + QA | REC-00, REC-02 | matriz funcional e negativa, fontes normativas verificáveis, CI/EGM e classificação precisa de gaps | PARCIAL / AUDITORIA PENDENTE |
 
 ## 4. Gates obrigatórios
 
