@@ -44,7 +44,9 @@ def _text(value: object, limit: int = 128) -> bool:
 
 
 def _treatment(data: Any, identity: str, digest: str) -> NfseNationalTaxTreatment:
-    if not isinstance(data, dict) or set(data) != _TREATMENT:
+    if not isinstance(data, dict) or set(data) not in (
+        _TREATMENT, _TREATMENT | {"municipal_benefit_id"},
+    ):
         raise ValueError("national treatment fields")
     converted = dict(data)
     for key in ("effective_from", "effective_to"):
