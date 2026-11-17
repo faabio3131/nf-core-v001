@@ -29,10 +29,21 @@ compatível; implementação fiscal **interna sintética**, sem homologação of
 2. Tratamento `tribISSQN=1` e `regEspTrib=2`, com decisão revisada/pinada
    por SHA-256, pode passar pela preparação canônica com ISS 0 e sem
    retenção. O builder existente não produz pAliq quando valor ISS é zero.
-3. O domínio impede ISS destacado/retido apenas no regime Estimativa
-   (código 2); outros regimes mantêm tratamento fiscal próprio. A restrição
-   nacional E0172 impede regime especial em não incidência, imunidade ou
-   exportação. O instalador restringe BH à lista publicada.
+3. O domínio impede ISS destacado/retido no regime Estimativa (2) e nos atos
+   cooperados (1) de Belo Horizonte; outros regimes mantêm tratamento
+   próprio. A regra E0172 impede regime especial nas hipóteses não tributáveis.
+   O instalador restringe BH à lista municipal publicada.
+4. A cooperativa pode emitir sua segunda nota para o serviço próprio
+   com `regEspTrib=0`, alíquota de 3% e benefício municipal `nBM`
+   `31062000200004` em produção restrita. O valor diferente
+   `31062000200002` é exclusivo de produção e é rejeitado no ambiente
+   de homologação. `nBM` é campo opcional estruturado no XSD nacional,
+   não dado controlado pelo navegador: ele vem de política fiscal
+   versionada por contribuinte/competência/serviço e fica arquivado.
+5. Testes sintéticos cobrem regime Estimativa (2), ato cooperado (1)
+   sem ISS, nota própria (0) com benefício de 3%, XSD assinado,
+   idempotência, arquivo imutável, código de benefício incorreto e
+   confusão de ambiente. Estes testes não substituem o aceite fiscal.
 4. Testes sintéticos HTTP→numeração→arquivo→DPS assinado/XSD e replay,
    bem como recusa de classificação/regime/competência incompatíveis.
 
@@ -46,3 +57,9 @@ de emissão por contribuinte nem valida credencial real, LCR/OCSP, histórico
 de autorização ou homologação externa. MG20/BH completo permanece dependente
 da matriz positiva/negativa de outras hipóteses de tributação e da revisão
 fiscal independente. Este bloco não altera Web de produção nem DDL.
+
+## Referência adicional de cooperativas
+
+A Prefeitura indica explicitamente `regEspTrib=1` sem imposto destacado para o ato cooperado auxiliar; uma segunda NFS-e sem regime especial corresponde ao serviço próprio. O benefício de 3% para a cooperativa corresponde ao identificador municipal `31062000200004` na produção restrita e `31062000200002` em produção.
+
+Fonte primária: https://prefeitura.pbh.gov.br/fazenda/bhiss/avisos (bloco COOPERATIVAS). O documento não declara aprovado o enquadramento de nenhum CNPJ.
