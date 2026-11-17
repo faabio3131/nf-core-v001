@@ -1,3 +1,17 @@
+# CURRENT verificado — 17/11/2026 — índice de continuidade (sem promoção)
+
+**Cronograma de fechamento:** [NFCORE_RECONCILIATION_CLOSEOUT_SCHEDULE_2026-11-17.md](NFCORE_RECONCILIATION_CLOSEOUT_SCHEDULE_2026-11-17.md). **Inventário completo:** [NFCORE_PENDING_REGISTER_CURRENT_2026-11-17.md](NFCORE_PENDING_REGISTER_CURRENT_2026-11-17.md), com 4 PRs, 14 issues e matrizes SP-22/MG-W1. Este registro novo PREVALECE para CURRENT sobre os snapshots datados de 16/11 abaixo; os anteriores ficam preservados integralmente como histórico.
+
+- main 549ab3c005d7183ff6c7940236414412ea004b9d; production ea4bdd3bcb9b61e6522081a14e5cc9ad1ced9599. **Nenhuma promoção/deploy/DDL**.
+- #468 OPEN/DRAFT e1632e646e3ed8e960ba51c88d24facf3177ffc7; #498 OPEN/DRAFT fbdb33843103d25c44b1e1896629c588c4a1b423. #520/#521 integradas à #468; #498 conserva infraestrutura da release anterior.
+- #522 OPEN 42fa40fb5cd8a7e6748f9834c679f66744659cbc, CI [44081550101](https://github.com/faabio3131/nf-core-v001/actions/runs/44081550101) SUCCESS; #523 OPEN 7962fe7b81c8f23cbbc84865fa7705819fcddd38, CI [44015740152](https://github.com/faabio3131/nf-core-v001/actions/runs/44015740152) SUCCESS. **Ainda não integradas à #468**; passam a REC-01.
+- #468 no MESMO SHA teve CI [43952570819](https://github.com/faabio3131/nf-core-v001/actions/runs/43952570819) SUCCESS seguida da [43999832959](https://github.com/faabio3131/nf-core-v001/actions/runs/43999832959) FAILURE: 5.293 PASS/1 FAIL/1 SKIP, teste de trial expirado (200 esperado, 409 recebido). As duas branches #522/#523 contêm o mesmo teste temporal reparado, sem abrir trial expirado; aplicar uma vez e provar na CI cumulativa.
+- #498 possui CI própria anterior SUCCESS no seu SHA; após novos merges precisa de CI renovada. **CI verde individual não certifica release cumulativo**.
+- **Pendências internas ainda abertas:** FIS-03 confiança/revogação/LTV/credenciamento, MF-04 BH normativo, SP-22, MG-W1, Louveira PF, revisão EGM, cobertura e semântica das 96 origens, conciliação da Web, release/host. **Separar bloqueios externos** (contratos municipais/credenciais/certificados/homologações) dos internos.
+- **Próximo gate:** integrador único reconcilia #522/#523 na #468, resolve drift de CI e testa HEAD; depois fecha engenharia + EGM, recompõe #498, audita Contabo e prepara promoção protegida, na ordem do anexo. Nenhum checkbox antigo ou cobertura municipal foi promovido por este índice.
+
+---
+
 ## CURRENT — MF04 integrado; Guarulhos corrigido após revisão, 16/11/2026
 
 #520 MERGED na candidata `af1f7b58794beba42a92718dea40a44fb1ef90fa`, origem `009c72a1`. CI completa [43947807754](https://github.com/faabio3131/nf-core-v001/actions/runs/43947807754) SUCCESS e T2 efetivo fora de Draft43949507844 SUCCESS. Main/production permanecem `549ab3c0`/`ea4bdd3b`; nenhum deploy.
