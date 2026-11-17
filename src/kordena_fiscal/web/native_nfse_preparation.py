@@ -391,6 +391,21 @@ def prepare_native_nfse(
             iss > 0 or payload["iss_withheld"]
         ):
             raise FiscalValidationError("Reviewed special regime cannot highlight or withhold ISS")
+        # PBH BHISS: these LC116 subitems allow deductions only against
+        # supporting documents. The current native contract has no document
+        # evidence fields; never silently emit an unsupported deduction.
+        if (
+            previous is None and provider == NACIONAL_HOMOLOGATION_PROVIDER_ID
+            and profile.address.jurisdiction.municipality_ibge_code == "3106200"
+            and deductions > 0
+            and payload["national_taxation_code"][:4] in {
+                "0702", "0705", "0901", "1001", "1002", "1003",
+                "1004", "1005", "1008", "1706",
+            }
+        ):
+            raise FiscalValidationError(
+                "BH documentary deduction requires evidence not yet supported"
+            )
         if profile.tax_regime is TaxRegimeCode.SIMPLES_NACIONAL_EXCESS_SUBLIMIT and (
             provider != NACIONAL_HOMOLOGATION_PROVIDER_ID
             or treatment is None or treatment.simples_assessment_code is None
