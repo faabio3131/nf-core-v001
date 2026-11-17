@@ -4478,3 +4478,37 @@ def test_bh_benefit_invalid_scope_or_environment_refuses_before_reservation(
         denied = _post(_client(db), payload, "bh-bad-nbm")
     assert denied.status_code == 400
     prepare.assert_not_called()
+
+
+@pytest.mark.parametrize("national_code", [
+    "070201", "070501", "090101", "100101", "100201",
+    "100301", "100401", "100501", "100801", "170601",
+])
+def test_bh_requires_documentary_deduction_evidence_before_reservation(
+    tmp_path, national_code,
+) -> None:
+    """BH documents-backed LC116 deductions are not silently assumed."""
+    db = _database(tmp_path / "bh-doc-deduction.sqlite",
+                   issuer_ibge="3106200", issuer_state="MG")
+    payload = _payload() | {
+        "service_state_code": "MG", "service_municipality_ibge": "3106200",
+        "national_taxation_code": national_code,
+        "deduction_amount": "10.00", "iss_amount": "3.00",
+        "source_id": "deduction-" + national_code,
+    }
+    with patch.object(FiscalApplicationService, "prepare_nfse_authorization") as prepare:
+        result = _post(_client(db), payload, "bh-document-guard")
+    assert result.status_code == 400, result.text
+    prepare.assert_not_called()
+
+
+def test_bh_no_deduction_must_not_be_blocked_by_document_guard(tmp_path) -> None:
+    db = _database(tmp_path / "bh-no-deduction.sqlite",
+                   issuer_ibge="3106200", issuer_state="MG")
+    payload = _payload() | {
+        "service_state_code": "MG", "service_municipality_ibge": "3106200",
+        "national_taxation_code": "070201",
+        "deduction_amount": "0.00", "source_id": "no-deduction",
+    }
+    result = _post(_client(db), payload, "bh-no-deduction")
+    assert result.status_code == 200, result.text
