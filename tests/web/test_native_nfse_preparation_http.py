@@ -4045,15 +4045,19 @@ def test_bh_reviewed_classifications_use_existing_native_preparation_and_replay(
     assert malformed.status_code == 400
 
 
-def _install_national_decision(tmp_path, monkeypatch, payload, *, code="4", sublimit=False):
+def _install_national_decision(
+    tmp_path, monkeypatch, payload, *, code="4", sublimit=False, issuer_ibge=IBGE,
+    issuer_tax_regime=None,
+):
     from kordena_fiscal.runtime.native_nfse_policy import POLICY_ENV
     from kordena_fiscal.runtime.native_sale_policy import sale_policy_key
 
     scope = ExecutionScope(TENANT, UNIT, FiscalEnvironment.HOMOLOGATION, "policy", "fm-nfcore")
     selector = {
         "issuer_profile_id": "issuer-native", "issuer_profile_version": 1,
-        "issuer_cnpj": "11222333000181", "issuer_tax_regime": 2 if sublimit else 1,
-        "issuer_municipality_ibge": IBGE,
+        "issuer_cnpj": "11222333000181",
+        "issuer_tax_regime": issuer_tax_regime or (2 if sublimit else 1),
+        "issuer_municipality_ibge": issuer_ibge,
         **{k: payload[k] for k in (
             "service_state_code", "service_municipality_ibge", "national_taxation_code",
             "municipal_service_code", "iss_withheld", "source_normative", "rule_version",
@@ -4257,3 +4261,254 @@ def test_configured_national_policy_never_falls_back(tmp_path, monkeypatch, faul
         response = _post(_client(db), payload)
     assert response.status_code == 400
     prepare.assert_not_called()
+
+
+def test_bh_estimativa_reviewed_policy_zero_iss_keeps_taxable_dps(tmp_path, monkeypatch):
+    """BH Estimativa: valid reviewed code 2, taxable service, no ISS highlight."""
+    db = _database(tmp_path / "bh-estimativa.sqlite", issuer_ibge="3106200",
+                   issuer_state="MG", tax_regime=TaxRegimeCode.NORMAL)
+    payload = _payload() | {
+        "service_state_code": "MG", "service_municipality_ibge": "3106200",
+        "iss_amount": "0.00", "iss_withheld": False,
+    }
+    scope, data, path, _, write = _install_national_decision(
+        tmp_path, monkeypatch, payload, code="1", issuer_ibge="3106200",
+        issuer_tax_regime=3,
+    )
+    data["rules"][0]["treatment"]["special_regime_code"] = "2"
+    data["rules"][0]["treatment"]["normative_reference"] = (
+        "https://prefeitura.pbh.gov.br/fazenda/bhiss/avisos"
+    )
+    write()
+    browser = _client(db)
+    result = _post(browser, payload)
+    assert result.status_code == 200, result.text
+    prepared = FiscalApplicationService(db).load_prepared_nfse_authorization(
+        scope, result.json()["document_id"],
+    )
+    treatment = prepared.document.national_tax_treatment
+    assert treatment is not None
+    assert treatment.special_regime_code == "2"
+    signed = build_sefin_signed_dps(prepared, _synthetic_a1_for_native_issuer())
+    national_dps_validator("1.01", profile=NT009_RESTRICTED_PROFILE).validate_document(
+        signed,
+    )
+    root = etree.fromstring(signed)
+    ns = {"n": "http://www.sped.fazenda.gov.br/nfse"}
+    assert root.xpath("string(//n:regEspTrib)", namespaces=ns) == "2"
+    assert root.xpath("string(//n:tribISSQN)", namespaces=ns) == "1"
+    assert not root.xpath("//n:tribMun/n:pAliq", namespaces=ns)
+    assert _post(browser, payload).json()["replay"] is True
+    # A reviewed Estimativa decision must not accept ISS highlights.
+    with patch.object(FiscalApplicationService, "prepare_nfse_authorization") as prepare:
+        denied = _post(browser, payload | {
+            "source_id": "bh-estimativa-invalid-iss", "iss_amount": "3.00",
+        }, "bh-denied-highlight")
+    assert denied.status_code == 400
+    prepare.assert_not_called()
+
+
+def test_bh_other_reviewed_special_regime_keeps_positive_iss(tmp_path, monkeypatch):
+    """Do not broaden Estimativa zero-ISS rule to unrelated special regimes."""
+    db = _database(tmp_path / "bh-other-special.sqlite", issuer_ibge="3106200",
+                   issuer_state="MG", tax_regime=TaxRegimeCode.NORMAL)
+    payload = _payload() | {
+        "service_state_code": "MG", "service_municipality_ibge": "3106200",
+        "iss_amount": "3.00",
+    }
+    scope, data, _, _, write = _install_national_decision(
+        tmp_path, monkeypatch, payload, code="1", issuer_ibge="3106200",
+        issuer_tax_regime=3,
+    )
+    data["rules"][0]["treatment"]["special_regime_code"] = "9"
+    write()
+    response = _post(_client(db), payload, "bh-other-special")
+    assert response.status_code == 200, response.text
+    prepared = FiscalApplicationService(db).load_prepared_nfse_authorization(
+        scope, response.json()["document_id"],
+    )
+    assert prepared.document.services[0].iss_amount.amount == Decimal("3.00")
+    assert prepared.document.national_tax_treatment is not None
+    assert prepared.document.national_tax_treatment.special_regime_code == "9"
+
+@pytest.mark.parametrize("special", ["0", "1", "2", "4", "5", "6", "9"])
+def test_bh_policy_installer_accepts_only_published_regimes(
+    tmp_path, monkeypatch, special,
+):
+    from kordena_fiscal.runtime.native_nfse_policy import install_reviewed_policy
+
+    payload = _payload() | {"service_state_code": "MG",
+                            "service_municipality_ibge": "3106200"}
+    _, data, path, _, write = _install_national_decision(
+        tmp_path, monkeypatch, payload, code="1", issuer_ibge="3106200",
+    )
+    data["rules"][0]["treatment"]["special_regime_code"] = special
+    write()
+    installed = tmp_path / "installed-bh"
+    assert install_reviewed_policy(path, installed)
+
+
+def test_bh_policy_installer_rejects_unsupported_regime_three(
+    tmp_path, monkeypatch,
+):
+    from kordena_fiscal.runtime.native_nfse_policy import install_reviewed_policy
+
+    payload = _payload() | {"service_state_code": "MG",
+                            "service_municipality_ibge": "3106200"}
+    _, data, path, _, write = _install_national_decision(
+        tmp_path, monkeypatch, payload, code="1", issuer_ibge="3106200",
+    )
+    data["rules"][0]["treatment"]["special_regime_code"] = "3"
+    write()
+    with pytest.raises(FiscalValidationError, match="national NFS-e policy"):
+        install_reviewed_policy(path, tmp_path / "invalid-bh")
+
+
+def test_non_taxable_national_cannot_use_special_regime(
+    tmp_path, monkeypatch,
+):
+    from kordena_fiscal.runtime.native_nfse_policy import install_reviewed_policy
+
+    payload = _payload() | {"service_state_code": "MG",
+                            "service_municipality_ibge": "3106200"}
+    _, data, path, _, write = _install_national_decision(
+        tmp_path, monkeypatch, payload, code="4", issuer_ibge="3106200",
+    )
+    data["rules"][0]["treatment"]["special_regime_code"] = "2"
+    write()
+    with pytest.raises(FiscalValidationError):
+        install_reviewed_policy(path, tmp_path / "invalid-nontax")
+
+
+def test_bh_cooperative_act_has_no_highlight_and_preserves_replay(tmp_path, monkeypatch):
+    """PBH: regEspTrib 1 for ato cooperado, without highlighted ISS."""
+    db = _database(tmp_path / "bh-ato-cooperado.sqlite", issuer_ibge="3106200",
+                   issuer_state="MG", tax_regime=TaxRegimeCode.NORMAL)
+    payload = _payload() | {
+        "service_state_code": "MG", "service_municipality_ibge": "3106200",
+        "iss_amount": "0.00",
+    }
+    scope, data, _, _, write = _install_national_decision(
+        tmp_path, monkeypatch, payload, code="1", issuer_ibge="3106200",
+        issuer_tax_regime=3,
+    )
+    data["rules"][0]["treatment"]["special_regime_code"] = "1"
+    write()
+    client = _client(db)
+    reply = _post(client, payload, "bh-cooperated")
+    assert reply.status_code == 200, reply.text
+    prepared = FiscalApplicationService(db).load_prepared_nfse_authorization(
+        scope, reply.json()["document_id"],
+    )
+    signed = build_sefin_signed_dps(prepared, _synthetic_a1_for_native_issuer())
+    national_dps_validator("1.01", profile=NT009_RESTRICTED_PROFILE).validate_document(
+        signed,
+    )
+    root = etree.fromstring(signed)
+    ns = {"n": "http://www.sped.fazenda.gov.br/nfse"}
+    assert root.xpath("string(//n:regEspTrib)", namespaces=ns) == "1"
+    assert root.xpath("string(//n:tribISSQN)", namespaces=ns) == "1"
+    assert not root.xpath("//n:tribMun/n:pAliq", namespaces=ns)
+    assert _post(client, payload, "bh-cooperated").json()["replay"] is True
+    denied = _post(client, payload | {
+        "source_id": "bh-cooperated-bad", "iss_amount": "3.00",
+    }, "bh-cooperated-bad")
+    assert denied.status_code == 400
+
+
+def test_bh_cooperative_benefit_is_scope_pinned_archived_and_signed(tmp_path, monkeypatch):
+    """PBH: 3% cooperativa benefit nBM is staging-specific and not regEspTrib 1."""
+    from kordena_fiscal.issuance.nfse_archive import (
+        decode_prepared_nfse,
+        encode_prepared_nfse,
+    )
+
+    db = _database(tmp_path / "bh-nbm.sqlite", issuer_ibge="3106200",
+                   issuer_state="MG", tax_regime=TaxRegimeCode.NORMAL)
+    payload = _payload() | {
+        "service_state_code": "MG", "service_municipality_ibge": "3106200",
+        "iss_amount": "3.00",
+    }
+    scope, data, _, _, write = _install_national_decision(
+        tmp_path, monkeypatch, payload, code="1", issuer_ibge="3106200",
+        issuer_tax_regime=3,
+    )
+    data["rules"][0]["treatment"]["special_regime_code"] = "0"
+    data["rules"][0]["treatment"]["municipal_benefit_id"] = "31062000200004"
+    write()
+    client = _client(db)
+    ok = _post(client, payload, "bh-nbm")
+    assert ok.status_code == 200, ok.text
+    prepared = FiscalApplicationService(db).load_prepared_nfse_authorization(
+        scope, ok.json()["document_id"],
+    )
+    assert prepared.document.national_tax_treatment is not None
+    assert prepared.document.national_tax_treatment.municipal_benefit_id == "31062000200004"
+    assert decode_prepared_nfse(encode_prepared_nfse(prepared), scope=scope) == prepared
+    signed = build_sefin_signed_dps(prepared, _synthetic_a1_for_native_issuer())
+    national_dps_validator("1.01", profile=NT009_RESTRICTED_PROFILE).validate_document(
+        signed,
+    )
+    root = etree.fromstring(signed)
+    ns = {"n": "http://www.sped.fazenda.gov.br/nfse"}
+    assert root.xpath("string(//n:tribMun/n:BM/n:nBM)", namespaces=ns) == "31062000200004"
+    assert root.xpath("string(//n:regEspTrib)", namespaces=ns) == "0"
+    assert root.xpath("string(//n:tribMun/n:pAliq)", namespaces=ns) == "3.00"
+    assert _post(client, payload, "bh-nbm").json()["replay"] is True
+
+
+@pytest.mark.parametrize("benefit", [
+    "31062000200002", "35092050200004", "3106200020000X",
+])
+def test_bh_benefit_invalid_scope_or_environment_refuses_before_reservation(
+    tmp_path, monkeypatch, benefit,
+):
+    db = _database(tmp_path / "bh-invalid-nbm.sqlite", issuer_ibge="3106200",
+                   issuer_state="MG", tax_regime=TaxRegimeCode.NORMAL)
+    payload = _payload() | {
+        "service_state_code": "MG", "service_municipality_ibge": "3106200",
+    }
+    _, data, _, _, write = _install_national_decision(
+        tmp_path, monkeypatch, payload, code="1", issuer_ibge="3106200",
+        issuer_tax_regime=3,
+    )
+    data["rules"][0]["treatment"]["municipal_benefit_id"] = benefit
+    write()
+    with patch.object(FiscalApplicationService, "prepare_nfse_authorization") as prepare:
+        denied = _post(_client(db), payload, "bh-bad-nbm")
+    assert denied.status_code == 400
+    prepare.assert_not_called()
+
+
+@pytest.mark.parametrize("national_code", [
+    "070201", "070501", "090101", "100101", "100201",
+    "100301", "100401", "100501", "100801", "170601",
+])
+def test_bh_requires_documentary_deduction_evidence_before_reservation(
+    tmp_path, national_code,
+) -> None:
+    """BH documents-backed LC116 deductions are not silently assumed."""
+    db = _database(tmp_path / "bh-doc-deduction.sqlite",
+                   issuer_ibge="3106200", issuer_state="MG")
+    payload = _payload() | {
+        "service_state_code": "MG", "service_municipality_ibge": "3106200",
+        "national_taxation_code": national_code,
+        "deduction_amount": "10.00", "iss_amount": "3.00",
+        "source_id": "deduction-" + national_code,
+    }
+    with patch.object(FiscalApplicationService, "prepare_nfse_authorization") as prepare:
+        result = _post(_client(db), payload, "bh-document-guard")
+    assert result.status_code == 400, result.text
+    prepare.assert_not_called()
+
+
+def test_bh_no_deduction_must_not_be_blocked_by_document_guard(tmp_path) -> None:
+    db = _database(tmp_path / "bh-no-deduction.sqlite",
+                   issuer_ibge="3106200", issuer_state="MG")
+    payload = _payload() | {
+        "service_state_code": "MG", "service_municipality_ibge": "3106200",
+        "national_taxation_code": "070201",
+        "deduction_amount": "0.00", "source_id": "no-deduction",
+    }
+    result = _post(_client(db), payload, "bh-no-deduction")
+    assert result.status_code == 200, result.text
