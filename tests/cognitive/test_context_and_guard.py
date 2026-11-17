@@ -206,3 +206,75 @@ def test_guard_accepts_exact_amount_followed_by_sentence_punctuation(punctuation
     result = OutputGuard().validate((section,), request)
     assert len(result.accepted) == 1
     assert result.findings == ()
+
+
+
+@pytest.mark.parametrize(("trusted_fact", "model_text"), [
+    ("R$ 18,00", "A alíquota provável é 18%."),
+    ("18%", "O valor provável é R$ 18,00."),
+    ("18", "A alíquota provável é 18%."),
+    ("R$ 1.234,56", "A diferença provável é R$ 1.234,65."),
+    ("18,5%", "A alíquota provável é 18%."),
+])
+def test_guard_does_not_launder_numeric_claim_across_units_or_values(
+    trusted_fact: str, model_text: str,
+) -> None:
+    original = rejection_evidence()
+    trusted = dataclasses.replace(original[0], data={"verified_value": trusted_fact})
+    request = make_request(evidence=(trusted, *original[1:]))
+    output = ProviderSection(SectionKind.HYPOTHESIS, model_text, ("rej-1",))
+    result = OutputGuard().validate((output,), request)
+    assert result.accepted == ()
+    assert result.findings == ("section[0]:ungrounded_amount",)
+
+
+def test_guard_accepts_same_typed_amounts_with_normalized_br_formatting() -> None:
+    original = rejection_evidence()
+    trusted = dataclasses.replace(original[0], data={
+        "verified_amount": "Total R$ 1.234,56.",
+        "verified_rate": "Alíquota 18,50%.",
+    })
+    request = make_request(evidence=(trusted, *original[1:]))
+    response = ProviderSection(
+        SectionKind.HYPOTHESIS,
+        "Confira a hipótese de valor R$ 1234,56 e alíquota 18.5%.",
+        ("rej-1",),
+    )
+    result = OutputGuard().validate((response,), request)
+    assert len(result.accepted) == 1
+    assert result.findings == ()
+
+
+@pytest.mark.parametrize("malformed", [
+    "R$ 1,234", "R$ 1.234.56", "R$ 1.234,560",
+])
+def test_guard_rejects_malformed_or_ambiguous_currency_notation(malformed: str) -> None:
+    original = rejection_evidence()
+    trusted = dataclasses.replace(original[0], data={"amount": "R$ 1.234,56"})
+    request = make_request(evidence=(trusted, *original[1:]))
+    output = ProviderSection(SectionKind.HYPOTHESIS, f"Confira {malformed}.", ("rej-1",))
+    result = OutputGuard().validate((output,), request)
+    assert result.accepted == ()
+    assert result.findings == ("section[0]:ungrounded_amount",)
+
+
+def test_guard_preserves_money_sign_when_grounding() -> None:
+    original = rejection_evidence()
+    trusted = dataclasses.replace(original[0], data={"amount": "R$ -10,00"})
+    request = make_request(evidence=(trusted, *original[1:]))
+    negative = ProviderSection(SectionKind.HYPOTHESIS, "A diferença é -R$ 10,00.", ("rej-1",))
+    positive = ProviderSection(SectionKind.HYPOTHESIS, "A diferença é R$ 10,00.", ("rej-1",))
+    result = OutputGuard().validate((negative, positive), request)
+    assert len(result.accepted) == 1
+    assert result.accepted[0].text == negative.text
+    assert result.findings == ("section[1]:ungrounded_amount",)
+
+
+def test_guard_typed_numbers_must_come_from_the_section_citation() -> None:
+    original = rejection_evidence()
+    trusted = dataclasses.replace(original[0], data={"amount": "R$ 120,00"})
+    request = make_request(evidence=(trusted, *original[1:]))
+    output = ProviderSection(SectionKind.HYPOTHESIS, "Valor R$ 120,00.", ("doc-1",))
+    result = OutputGuard().validate((output,), request)
+    assert result.accepted == ()
+    assert result.findings == ("section[0]:ungrounded_amount",)

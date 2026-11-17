@@ -23,7 +23,7 @@ _DIGIT_RUN = re.compile(r"\d+")
 _PERCENTAGE = re.compile(r"(?<![\w.,])(?P<value>-?\d+(?:[.,]\d+)?)[ \t]*%(?!\w)")
 _BRL_AMOUNT = re.compile(
     r"(?i)(?<!\w)(?P<leading_minus>-)?R\$[ \t]*(?P<value>-?"
-    r"(?:\d{1,3}(?:\.\d{3})+|\d+)(?:,\d{1,2})?)(?![\d,]|\.\d)"
+    r"(?:\d{1,3}(?:\.\d{3})+|\d+)(?:,\d{1,2})?)(?!\d|,\d|\.\d)"
 )
 _BRL_MARKER = re.compile(r"(?i)R\$")
 _EXECUTION_CLAIM = re.compile(
