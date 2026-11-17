@@ -12,6 +12,7 @@ from cryptography.x509.oid import ExtendedKeyUsageOID, NameOID, ObjectIdentifier
 
 from kordena_fiscal.gateway.nfse_receipt_pki import (
     NationalReceiptPkiError,
+    _require_supported_cert_extensions,
     require_national_receipt_pki_ready,
     verify_national_receipt_pki,
 )
@@ -455,6 +456,9 @@ def test_unprocessed_eku_leaf_fails_even_when_noncritical(chain, critical) -> No
     ], root)
     require_national_receipt_pki_ready()
     with pytest.raises(NationalReceiptPkiError, match="EKU"):
+        _require_supported_cert_extensions(restricted_leaf)
+    # Public verification deliberately sanitizes internal PKI rejection reasons.
+    with pytest.raises(NationalReceiptPkiError, match="ICP path or CRL rejected"):
         verify_national_receipt_pki(restricted_leaf)
 
 
@@ -471,6 +475,9 @@ def test_unprocessed_eku_ca_blocks_preflight_and_receipt(chain, critical) -> Non
         _crl(restricted_ca, intermediate_key), _crl(root, root_key),
     ], root)
     with pytest.raises(NationalReceiptPkiError, match="EKU"):
+        _require_supported_cert_extensions(restricted_ca)
+    # Both public entrypoints sanitize the internal extension-specific reason.
+    with pytest.raises(NationalReceiptPkiError, match="ICP/CRL trust unavailable"):
         require_national_receipt_pki_ready()
-    with pytest.raises(NationalReceiptPkiError, match="EKU"):
+    with pytest.raises(NationalReceiptPkiError, match="ICP path or CRL rejected"):
         verify_national_receipt_pki(leaf)
