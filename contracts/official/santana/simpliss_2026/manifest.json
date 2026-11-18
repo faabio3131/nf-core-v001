@@ -1,0 +1,162 @@
+{
+  "municipality": "Santana de Parnaiba/SP",
+  "municipality_ibge": "3547304",
+  "provider": "Simpliss",
+  "retrieved_via": "HTTPS public DownloadArquivo",
+  "schemas": [
+    {
+      "path": "contracts/official/santana/simpliss_2026/xsd/nfse-esquemas_xsd-anexos_i_ii_iv-sefin_adn-prod-v1-00-20251210/CNC_v1.00.xsd",
+      "sha256": "7032188bb6f137d52b16512583b739a361e6b1434c42cb539a29b8efa32f8321",
+      "size_bytes": 674,
+      "target_namespace": "http://www.sped.fazenda.gov.br/nfse"
+    },
+    {
+      "path": "contracts/official/santana/simpliss_2026/xsd/nfse-esquemas_xsd-anexos_i_ii_iv-sefin_adn-prod-v1-00-20251210/DPS_v1.00_anexo_i_ii_iv.xsd",
+      "sha256": "66f9b9ee1a5e0a78ce40da15577366ab8dda5f9ea6349fc7e0748c1be2fef8e8",
+      "size_bytes": 691,
+      "target_namespace": "http://www.sped.fazenda.gov.br/nfse"
+    },
+    {
+      "path": "contracts/official/santana/simpliss_2026/xsd/nfse-esquemas_xsd-anexos_i_ii_iv-sefin_adn-prod-v1-00-20251210/DPS_v1.01.xsd",
+      "sha256": "fe45e5250a48e519aba89fc6a472863b8e602ed957778fb64692804933a00d0c",
+      "size_bytes": 691,
+      "target_namespace": "http://www.sped.fazenda.gov.br/nfse"
+    },
+    {
+      "path": "contracts/official/santana/simpliss_2026/xsd/nfse-esquemas_xsd-anexos_i_ii_iv-sefin_adn-prod-v1-00-20251210/NFSe_v1.00_anexo_i_ii_iv.xsd",
+      "sha256": "fa2dcc91ce93fe51cc75855cca44ed7f7ebf92f5a71090b5305ff440524ac4dc",
+      "size_bytes": 752,
+      "target_namespace": "http://www.sped.fazenda.gov.br/nfse"
+    },
+    {
+      "path": "contracts/official/santana/simpliss_2026/xsd/nfse-esquemas_xsd-anexos_i_ii_iv-sefin_adn-prod-v1-00-20251210/NFSe_v1.01.xsd",
+      "sha256": "af0bd2d8c50acba3d9c3f3f515426eca083b3f66e3211ce8dd48a7cf101818b8",
+      "size_bytes": 752,
+      "target_namespace": "http://www.sped.fazenda.gov.br/nfse"
+    },
+    {
+      "path": "contracts/official/santana/simpliss_2026/xsd/nfse-esquemas_xsd-anexos_i_ii_iv-sefin_adn-prod-v1-00-20251210/evento_v1.00_anexo_i_ii_iv.xsd",
+      "sha256": "3c34425d9b46b58628ecde8818f65b8c11bac958c3fc71ee1af4e9980e8bc08c",
+      "size_bytes": 737,
+      "target_namespace": "http://www.sped.fazenda.gov.br/nfse"
+    },
+    {
+      "path": "contracts/official/santana/simpliss_2026/xsd/nfse-esquemas_xsd-anexos_i_ii_iv-sefin_adn-prod-v1-00-20251210/evento_v1.01.xsd",
+      "sha256": "986d0a1c4d27454f712169849aa7c2380aaa4560bd9c920e0ff03ba6599ae28b",
+      "size_bytes": 737,
+      "target_namespace": "http://www.sped.fazenda.gov.br/nfse"
+    },
+    {
+      "path": "contracts/official/santana/simpliss_2026/xsd/nfse-esquemas_xsd-anexos_i_ii_iv-sefin_adn-prod-v1-00-20251210/pedRegEvento_v1.00_anexo_i_ii_iv.xsd",
+      "sha256": "ded678013de82b489f19d340824e07a45b2a01995af15ef56f7d2cdd27a5b317",
+      "size_bytes": 746,
+      "target_namespace": "http://www.sped.fazenda.gov.br/nfse"
+    },
+    {
+      "path": "contracts/official/santana/simpliss_2026/xsd/nfse-esquemas_xsd-anexos_i_ii_iv-sefin_adn-prod-v1-00-20251210/pedRegEvento_v1.01.xsd",
+      "sha256": "e90b6816d29cca0bd5ed8f86ad98d3b7b0d8bbfc11a7583e6ff8f98170fd4009",
+      "size_bytes": 746,
+      "target_namespace": "http://www.sped.fazenda.gov.br/nfse"
+    },
+    {
+      "path": "contracts/official/santana/simpliss_2026/xsd/nfse-esquemas_xsd-anexos_i_ii_iv-sefin_adn-prod-v1-00-20251210/tiposCnc_v1.00.xsd",
+      "sha256": "9adf1e63df31841e2d1751fb7900e46b9bd54fca32c4198637d960bc74e8daa4",
+      "size_bytes": 6889,
+      "target_namespace": "http://www.sped.fazenda.gov.br/nfse"
+    },
+    {
+      "path": "contracts/official/santana/simpliss_2026/xsd/nfse-esquemas_xsd-anexos_i_ii_iv-sefin_adn-prod-v1-00-20251210/tiposComplexos_v1.00_anexo_i_ii_iv.xsd",
+      "sha256": "f97829ff9debc3b09d1943a97ae69bce17a2796bd2b1028f63f09909bd5b7bfc",
+      "size_bytes": 78791,
+      "target_namespace": "http://www.sped.fazenda.gov.br/nfse"
+    },
+    {
+      "path": "contracts/official/santana/simpliss_2026/xsd/nfse-esquemas_xsd-anexos_i_ii_iv-sefin_adn-prod-v1-00-20251210/tiposComplexos_v1.01.xsd",
+      "sha256": "89ab79cb36ec48db9aec452d4f679577774d2a5986132eba221159fd9a099a58",
+      "size_bytes": 116522,
+      "target_namespace": "http://www.sped.fazenda.gov.br/nfse"
+    },
+    {
+      "path": "contracts/official/santana/simpliss_2026/xsd/nfse-esquemas_xsd-anexos_i_ii_iv-sefin_adn-prod-v1-00-20251210/tiposEventos_v1.00_anexo_i_ii_iv.xsd",
+      "sha256": "d704e37be3ad54a1273889966b59effc5fa913ad39ea2cddcc8b87c117c02ecf",
+      "size_bytes": 29292,
+      "target_namespace": "http://www.sped.fazenda.gov.br/nfse"
+    },
+    {
+      "path": "contracts/official/santana/simpliss_2026/xsd/nfse-esquemas_xsd-anexos_i_ii_iv-sefin_adn-prod-v1-00-20251210/tiposEventos_v1.01.xsd",
+      "sha256": "ac2ce6a34254445fb36a768b7b6c14dbb0906101ec3900a5dbb8909adfa159a0",
+      "size_bytes": 29252,
+      "target_namespace": "http://www.sped.fazenda.gov.br/nfse"
+    },
+    {
+      "path": "contracts/official/santana/simpliss_2026/xsd/nfse-esquemas_xsd-anexos_i_ii_iv-sefin_adn-prod-v1-00-20251210/tiposSimples_v1.00_anexo_i_ii_iv.xsd",
+      "sha256": "d20bf3c96babeb72c62627fb27974d9282ed4f3d70391065dd006a25f6d6fcca",
+      "size_bytes": 59307,
+      "target_namespace": "http://www.sped.fazenda.gov.br/nfse"
+    },
+    {
+      "path": "contracts/official/santana/simpliss_2026/xsd/nfse-esquemas_xsd-anexos_i_ii_iv-sefin_adn-prod-v1-00-20251210/tiposSimples_v1.01.xsd",
+      "sha256": "def6ce6f89598a4fa1f39049957105aec92d7639eb1c1bcb189c8a9b1edbf26d",
+      "size_bytes": 66958,
+      "target_namespace": "http://www.sped.fazenda.gov.br/nfse"
+    },
+    {
+      "path": "contracts/official/santana/simpliss_2026/xsd/nfse-esquemas_xsd-anexos_i_ii_iv-sefin_adn-prod-v1-00-20251210/xmldsig-core-schema.xsd",
+      "sha256": "49848f732663aecb618d72ad6130c5c3240f0a10f3a1a8544b7d48a6c726046f",
+      "size_bytes": 10610,
+      "target_namespace": "http://www.w3.org/2000/09/xmldsig#"
+    },
+    {
+      "path": "contracts/official/santana/simpliss_2026/xsd/nfse-esquemas_xsd-anexos_i_ii_iv-sefin_adn-prod-v1-00-20251210/xmldsig-core-schema_anexo_i_ii_iv.xsd",
+      "sha256": "49848f732663aecb618d72ad6130c5c3240f0a10f3a1a8544b7d48a6c726046f",
+      "size_bytes": 10610,
+      "target_namespace": "http://www.w3.org/2000/09/xmldsig#"
+    }
+  ],
+  "source_kind": "municipal_contributor_portal",
+  "sources": {
+    "layout_dps": {
+      "redistributed_in_git": false,
+      "sha256": "5e1aab5aa1843a2ea7fcf18f6c099bf6c8097bded24128aa92a089c77917e67f",
+      "size_bytes": 126846,
+      "source_url": "https://santanadeparnaiba.simplissweb.com.br/contrib/app/nfse/DocumentoIntegracaoNotaNacional/DownloadArquivo?nomeDocumento=ANEXO_I-SEFIN_ADN-DPS_NFSe-SNNFSe_Simpliss"
+    },
+    "layout_event": {
+      "redistributed_in_git": false,
+      "sha256": "11437fb73200768f77f3489546cff2c54dfdc5ae7252d57c01eb18052e300ecc",
+      "size_bytes": 26661,
+      "source_url": "https://santanadeparnaiba.simplissweb.com.br/contrib/app/nfse/DocumentoIntegracaoNotaNacional/DownloadArquivo?nomeDocumento=ANEXO_II-SEFIN_ADN-PEDREGEVT_EVT-SNNFSe_Simpliss"
+    },
+    "layout_rtc": {
+      "redistributed_in_git": false,
+      "sha256": "e7277c185a979dc708d2c6166e3f07001f85ad11467cdc6f5e9ee961caa1bce9",
+      "size_bytes": 386818,
+      "source_url": "https://santanadeparnaiba.simplissweb.com.br/contrib/app/nfse/DocumentoIntegracaoNotaNacional/DownloadArquivo?nomeDocumento=AnexoVI-LeiautesRN_RTC_IBSCBS-V1.01.01_Simpliss"
+    },
+    "manual": {
+      "redistributed_in_git": false,
+      "sha256": "9f14642216c66280122812d5b1b91d0ac86c05273514d0c0195751758bf2bfc4",
+      "size_bytes": 208362,
+      "source_url": "https://santanadeparnaiba.simplissweb.com.br/contrib/app/nfse/DocumentoIntegracaoNotaNacional/DownloadArquivo?nomeDocumento=manual_integracao_nota_nacional_-_simpliss_v1.00"
+    },
+    "nbs_catalog": {
+      "redistributed_in_git": false,
+      "sha256": "a588fea05010a037826d826dd74520e32651bee926f2faa1ffd2794fba55d424",
+      "size_bytes": 83277,
+      "source_url": "https://santanadeparnaiba.simplissweb.com.br/contrib/app/nfse/DocumentoIntegracaoNotaNacional/DownloadArquivo?nomeDocumento=anexo_b-nbs2-lista_servico_nacional-snnfse"
+    },
+    "rtc_correlation": {
+      "redistributed_in_git": false,
+      "sha256": "86c3e30fef9186472a4b4eabae79d471aaa62699497d200f478c7fa95ef326bf",
+      "size_bytes": 144594,
+      "source_url": "https://santanadeparnaiba.simplissweb.com.br/contrib/app/nfse/DocumentoIntegracaoNotaNacional/DownloadArquivo?nomeDocumento=AnexoVIII-CorrelacaoItemNBSIndOpCClassTrib_IBSCBS_V1_00_00"
+    },
+    "schemas": {
+      "redistributed_in_git": false,
+      "sha256": "78010844c589a2a1c84790f6852f9ae5789794d7f9b88086e643fd044f2c942e",
+      "size_bytes": 66184,
+      "source_url": "https://santanadeparnaiba.simplissweb.com.br/contrib/app/nfse/DocumentoIntegracaoNotaNacional/DownloadArquivo?nomeDocumento=nfse-esquemas_xsd-anexos_i_ii_iv-sefin_adn-prod-v1-00-20251210"
+    }
+  },
+  "status": "SOURCE_ACQUIRED_NOT_EXTERNAL_HOMOLOGATION"
+}

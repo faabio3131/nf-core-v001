@@ -72,6 +72,19 @@ class PortalSurfaceEvidenceProvider:
             )
 
         def matches(row: Mapping[str, Any]) -> bool:
+            # Defence in depth: a faulty projection must never elevate data
+            # bearing an explicit foreign tenant/unit marker into trusted facts.
+            if row.get("tenant_id") is not None and str(row["tenant_id"]) != tenant:
+                return False
+            if row.get("unit_id") is not None and str(row["unit_id"]) != unit_id:
+                return False
+            # Explicit environment markers must not cross homologation/production.
+            # Legacy rows without this field remain scoped by reader.surface().
+            if (
+                row.get("environment") is not None
+                and str(row["environment"]) != environment.value
+            ):
+                return False
             if subject_id is None:
                 return True
             return subject_id in {
@@ -108,10 +121,17 @@ class PortalSurfaceEvidenceProvider:
                                     EvidenceKind.RECONCILIATION_ISSUE,
                                     "portal:reconciliation", data))
         elif capability is Capability.ANSWER_ACCOUNTANT_QUESTION:
-            for index, row in enumerate(rows("reconciliation")[:5]):
+            # A document-specific question may not silently borrow evidence
+            # from other documents in the same authorized tenant/unit.
+            # Keep the unfiltered behaviour only for an explicit general question.
+            for index, row in enumerate(
+                [r for r in rows("reconciliation") if matches(r)][:5]
+            ):
                 out.append(make(f"rec:{index}", EvidenceKind.RECONCILIATION_ISSUE,
                                 "portal:reconciliation", {"status": _s(row.get("status", ""))}))
-            for index, row in enumerate(rows("errors")[:5]):
+            for index, row in enumerate(
+                [r for r in rows("errors") if matches(r)][:5]
+            ):
                 if row.get("state"):
                     out.append(make(f"doc:{index}", EvidenceKind.DOCUMENT_STATE,
                                     "portal:errors", {"state": _s(row["state"])}))

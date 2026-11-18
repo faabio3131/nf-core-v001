@@ -1,0 +1,20 @@
+# A1 Vault host bind overlay — optional compatibility with external Compose.
+# Contabo canonical production Compose NOW INCLUDES the same /var/lib/nfcore/vault bind.
+# Do NOT activate this overlay on that host unless the effective Compose was
+# separately inspected and requires an explicit source override.
+# Activate in the SAME canonical Compose, never a second A1 Vault or API.
+# Requires pre-existing host directory owned by API UID 10001, mode 0700.
+# Contabo live preflight 2026-11-13: host bind /var/lib/nfcore/vault → /var/lib/nfcore/vault.
+# Never add a different target mount. Inspect effective host Compose first.
+# Keep existing host ciphertext/key unchanged. Never create a second vault path.
+services:
+  nfcore-api:
+    environment:
+      NFCORE_A1_VAULT_DIR: /var/lib/nfcore/vault
+    volumes:
+      - type: bind
+        source: ${NFCORE_A1_VAULT_HOST_DIR:?preflight-and-provision-host-vault-first}
+        target: /var/lib/nfcore/vault
+        read_only: false
+        bind:
+          create_host_path: false

@@ -1,17 +1,5 @@
 # NFCore × Bling — ativação operacional governada na Contabo
 
-> **Gate operacional em 12/11/2026:** este documento descreve funcionalidades prontas em código, não a implantação atual do Bling. O PostgreSQL da Contabo foi comprovado no schema 19, o Worker GSM estava saudável e o Worker Bling ainda não foi iniciado. O teste `RESTORE_TEST_OK` foi concluído com 50/50 tabelas (restore básico). A PR de reconciliação #444 promove código da `main` seletivamente à `production`, **sem DDL**. Não usar SHAs de exemplo anteriores como autorização. O operador deve conferir o SHA de `production` no GitHub e sua igualdade com `/opt/fm/nfcore/.deployed` antes de qualquer comando no host.
-
-### Planejamento somente leitura de migrations Bling
-
-Após a publicação certificada da versão contendo o planejador, com `NFCORE_BLING_INSTALLATIONS_ENABLED` **desabilitado** e sem scripts de deploy concorrentes, usar somente:
-
-```bash
-cd /opt/fm/nfcore && docker compose run --rm --no-deps -T nfcore-api python scripts/ci/migration_guard.py --plan-production-bling
-```
-
-A resposta esperada para schema 19 íntegro é `Bling production migration plan: PASS READ_ONLY ... pending=20,21 ... no DDL executed`. Em schema 21 íntegro a saída será `pending=NONE`. Qualquer erro é `NO_GO` até ser investigado. Este comando **não aprova** `--apply`. Aplicar migrations 20/21 produtivas requer autorização específica, revisão de schema e Cakto, backup com restore comprovado, verificação de exclusividade/janela, lock do deploy e execução da autoridade canônica com flags temporárias e auditadas. Nenhuma ativação de OAuth/Worker Bling antes de schema 21 completo.
-
 **Atualização:** 2026-11-10. **Status:** preparação interna em PR, ativação real sujeita a gates de host e OAuth externo. Não confundir merge ou CI com conexão real.
 
 ## Autoridades únicas

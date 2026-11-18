@@ -1,0 +1,31 @@
+name: Santana Internal Engineering Gates
+
+on:
+  push:
+    branches:
+      - feat/nfcore-a-santana-simpliss-20261115
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  santana-internal:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install Python and test dependencies
+        run: python -m pip install -e ".[dev]"
+      - name: Ruff full source gate
+        run: ruff check .
+      - name: Mypy full type gate
+        run: mypy
+      - name: Santana targeted integration tests
+        run: |
+          pytest -q tests/gateway/test_santana_simpliss_events.py tests/gateway/test_santana_simpliss_substitution.py tests/gateway/test_santana_simpliss_homologation.py tests/runtime/test_santana_reviewed_config.py tests/runtime/test_santana_official_contracts.py tests/web/test_native_nfse_preparation_http.py -k "santana"
+          pytest -q tests/gateway/test_nfse_nacional_event_homologation.py tests/issuance/test_nfse_dps_builder.py tests/runtime/test_nfv1_nfse_dps_builder_and_preaudit_wiring.py

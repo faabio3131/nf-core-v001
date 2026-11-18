@@ -113,6 +113,7 @@ class AdviceRequest:
     capability: Capability
     evidence: tuple[Evidence, ...]
     question: str = ""
+    subject_id: str | None = None
 
     def __post_init__(self) -> None:
         if not isinstance(self.scope, ExecutionScope):
@@ -134,6 +135,8 @@ class AdviceRequest:
         if len(question) > MAX_QUESTION_CHARS:
             raise FiscalValidationError("question is too long")
         object.__setattr__(self, "question", question)
+        if self.subject_id is not None:
+            object.__setattr__(self, "subject_id", _text(self.subject_id, "subject_id", 128))
 
 
 @dataclass(frozen=True, slots=True)

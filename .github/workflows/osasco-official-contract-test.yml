@@ -1,0 +1,29 @@
+name: Osasco official WCF XSD exact-contract gate
+
+on:
+  push:
+    branches:
+      - feat/nfcore-web-osasco-contract-ci-20261113
+
+permissions:
+  contents: read
+
+jobs:
+  official-wcf-xsd:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+      - name: Install project test dependencies
+        run: python -m pip install -e '.[dev]'
+      - name: Ruff and MyPy on official contract changes
+        run: |
+          ruff check src/kordena_fiscal/runtime/osasco_official_schema.py src/kordena_fiscal/runtime/osasco_environment.py src/kordena_fiscal/gateway/osasco_rtc_issue_builder.py tests/gateway/test_osasco_rtc_issue_builder.py
+          mypy
+      - name: Execute exact official six-XSD gates and scoped composition
+        run: |
+          pytest -q tests/gateway/test_osasco_rtc_issue_builder.py tests/runtime/test_osasco_wsdl_contract.py tests/runtime/test_osasco_entrypoint_environment.py tests/web/test_native_nfse_preparation_http.py

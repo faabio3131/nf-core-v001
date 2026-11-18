@@ -110,6 +110,29 @@ class EncryptedA1Vault:
                 os.unlink(temporary)
         return evidence
 
+    def inspect(
+        self, *, scope: ExecutionScope, issuer_cnpj: str,
+    ) -> A1CertificatePreflight | None:
+        """Read back the scope-bound encrypted record without returning secrets.
+
+        None means no certificate exists in this precise tenant/unit/environment.
+        A corrupt, unreadable or invalid existing record raises, not "absent".
+        This checks local A1 preflight, not ICP-Brasil revocation/official issuance.
+        """
+        issuer = Cnpj(issuer_cnpj)
+        path = self._path(self._aad(scope, issuer))
+        if path.is_symlink():
+            raise A1VaultUnavailable("A1 Vault destination is not trusted")
+        if not path.exists():
+            return None
+        if not path.is_file():
+            raise A1VaultUnavailable("A1 Vault record is not a regular file")
+        material = self.resolve(scope=scope, issuer_cnpj=issuer.value)
+        return validate_a1_for_issuer(
+            material.pkcs12_bytes, material.password,
+            issuer_cnpj=issuer, at=datetime.now(UTC),
+        )
+
     def resolve(self, *, scope: ExecutionScope, issuer_cnpj: str) -> EphemeralCertificateMaterial:
         issuer = Cnpj(issuer_cnpj)
         aad = self._aad(scope, issuer)
@@ -117,7 +140,10 @@ class EncryptedA1Vault:
         if path.is_symlink() or not path.is_file():
             raise A1VaultUnavailable("Certificado A1 não cadastrado para o CNPJ emitente")
         try:
-            sealed = path.read_bytes()
+            # Never allocate unbounded memory for a corrupt/oversized Vault file.
+            # The encrypted PKCS#12 envelope fits within this fixed ceiling.
+            with path.open("rb") as stream:
+                sealed = stream.read(3 * _MAX_PFX_BYTES + 1)
             if not sealed.startswith(b"NFA1\x01") or len(sealed) > 3 * _MAX_PFX_BYTES:
                 raise ValueError
             plaintext = self._key.decrypt(sealed[5:17], sealed[17:], aad)

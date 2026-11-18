@@ -1,0 +1,294 @@
+{
+  "acquisition_method": "HTTPS exact URLs; SHA256 of downloaded bytes",
+  "contract_validation_status": "NOT_CERTIFIED",
+  "limitations": [
+    "No A1/ICP-Brasil client certificate supplied to WSDL acquisition",
+    "Official XSD presence does not certify municipal XML or SOAP actions",
+    "Authenticated HTTP/DB E2E and substitution still require independent tests"
+  ],
+  "municipality": "Jundiai/SP",
+  "municipality_ibge": "3525904",
+  "official_developers_index": "https://jundiai.giss.com.br/giss-ajuda/desenvolvedores.html",
+  "official_publisher": "GissOnline portal for Jundiai",
+  "schema_dependency_unresolved": [],
+  "schemas": [
+    {
+      "path": "xsd/Schemas_XSD-Servicos_Prestados/cabecalho-v2_04.xsd",
+      "schema_dependencies": [
+        "xmldsig-core-schema20020212.xsd",
+        "tipos-v2_04.xsd"
+      ],
+      "sha256": "9ab3f7174d9526f2bfbb2a10c1098adaeb0c34db033a52dc5044e920e45d5b53",
+      "size_bytes": 890,
+      "target_namespace": "http://www.giss.com.br/cabecalho-v2_04.xsd"
+    },
+    {
+      "path": "xsd/Schemas_XSD-Servicos_Prestados/cancelar-nfse-envio-v2_04.xsd",
+      "schema_dependencies": [
+        "xmldsig-core-schema20020212.xsd",
+        "tipos-v2_04.xsd"
+      ],
+      "sha256": "531fa12918d84526d17fefe71eff1a5a5d2f95f632cac38fc6106fe88588f7db",
+      "size_bytes": 848,
+      "target_namespace": "http://www.giss.com.br/cancelar-nfse-envio-v2_04.xsd"
+    },
+    {
+      "path": "xsd/Schemas_XSD-Servicos_Prestados/cancelar-nfse-reposta-v2_04.xsd",
+      "schema_dependencies": [
+        "xmldsig-core-schema20020212.xsd",
+        "tipos-v2_04.xsd"
+      ],
+      "sha256": "938f1fd5df50b632f2222dd29acdf000278bfdab66f0d1ac99a20755adcca0c6",
+      "size_bytes": 950,
+      "target_namespace": "http://www.giss.com.br/cancelar-nfse-resposta-v2_04.xsd"
+    },
+    {
+      "path": "xsd/Schemas_XSD-Servicos_Prestados/consultar-lote-rps-envio-v2_04.xsd",
+      "schema_dependencies": [
+        "xmldsig-core-schema20020212.xsd",
+        "tipos-v2_04.xsd"
+      ],
+      "sha256": "1e9bddc486ee85da3918d2ee0e23e353430a5d2e79c2858c1e0947f395b21c79",
+      "size_bytes": 1106,
+      "target_namespace": "http://www.giss.com.br/consultar-lote-rps-envio-v2_04.xsd"
+    },
+    {
+      "path": "xsd/Schemas_XSD-Servicos_Prestados/consultar-lote-rps-resposta-v2_04.xsd",
+      "schema_dependencies": [
+        "xmldsig-core-schema20020212.xsd",
+        "tipos-v2_04.xsd"
+      ],
+      "sha256": "540ed973f8d1c21cfd05fd8c8512a7547f56a5f4a5ca23c1acd309404833671a",
+      "size_bytes": 1472,
+      "target_namespace": "http://www.giss.com.br/consultar-lote-rps-resposta-v2_04.xsd"
+    },
+    {
+      "path": "xsd/Schemas_XSD-Servicos_Prestados/consultar-nfse-faixa-envio-v2_04.xsd",
+      "schema_dependencies": [
+        "xmldsig-core-schema20020212.xsd",
+        "tipos-v2_04.xsd"
+      ],
+      "sha256": "0db5ead65d03e587f21cb76c2509257a19aa087ecea7da897832204b0aef872b",
+      "size_bytes": 1436,
+      "target_namespace": "http://www.giss.com.br/consultar-nfse-faixa-envio-v2_04.xsd"
+    },
+    {
+      "path": "xsd/Schemas_XSD-Servicos_Prestados/consultar-nfse-faixa-resposta-v2_04.xsd",
+      "schema_dependencies": [
+        "xmldsig-core-schema20020212.xsd",
+        "tipos-v2_04.xsd"
+      ],
+      "sha256": "f361ca1b5fb7e9e123385c021193f211c03128c620c33c0f0cc32f6c0e391fc5",
+      "size_bytes": 1211,
+      "target_namespace": "http://www.giss.com.br/consultar-nfse-faixa-resposta-v2_04.xsd"
+    },
+    {
+      "path": "xsd/Schemas_XSD-Servicos_Prestados/consultar-nfse-rps-envio-v2_04.xsd",
+      "schema_dependencies": [
+        "xmldsig-core-schema20020212.xsd",
+        "tipos-v2_04.xsd"
+      ],
+      "sha256": "2c6cb159357a7ea9d1200b804bd430fecf9f149c074c56cf1c640e7e1a3e618b",
+      "size_bytes": 1064,
+      "target_namespace": "http://www.giss.com.br/consultar-nfse-rps-envio-v2_04.xsd"
+    },
+    {
+      "path": "xsd/Schemas_XSD-Servicos_Prestados/consultar-nfse-rps-resposta-v2_04.xsd",
+      "schema_dependencies": [
+        "xmldsig-core-schema20020212.xsd",
+        "tipos-v2_04.xsd"
+      ],
+      "sha256": "f7de2165b15dd26fb8632cdb739e88ebe40aa9c308720f0762b439527c1f7295",
+      "size_bytes": 931,
+      "target_namespace": "http://www.giss.com.br/consultar-nfse-rps-resposta-v2_04.xsd"
+    },
+    {
+      "path": "xsd/Schemas_XSD-Servicos_Prestados/consultar-nfse-servico-prestado-envio-v2_04.xsd",
+      "schema_dependencies": [
+        "xmldsig-core-schema20020212.xsd",
+        "tipos-v2_04.xsd"
+      ],
+      "sha256": "018ee6b23a5bb61939efc4f7a2f8639d6055c5f161e69e7234fc9b6970ea14e8",
+      "size_bytes": 2201,
+      "target_namespace": "http://www.giss.com.br/consultar-nfse-servico-prestado-envio-v2_04.xsd"
+    },
+    {
+      "path": "xsd/Schemas_XSD-Servicos_Prestados/consultar-nfse-servico-prestado-resposta-v2_04.xsd",
+      "schema_dependencies": [
+        "xmldsig-core-schema20020212.xsd",
+        "tipos-v2_04.xsd"
+      ],
+      "sha256": "9e859628710dc509519b62620e834f438a03bf7fec9633bcdcf055fbce7cd9c4",
+      "size_bytes": 1243,
+      "target_namespace": "http://www.giss.com.br/consultar-nfse-servico-prestado-resposta-v2_04.xsd"
+    },
+    {
+      "path": "xsd/Schemas_XSD-Servicos_Prestados/consultar-nfse-servico-tomado-envio-v2_04.xsd",
+      "schema_dependencies": [
+        "xmldsig-core-schema20020212.xsd",
+        "tipos-v2_04.xsd"
+      ],
+      "sha256": "147851d9ac26cd628c25f155df13b7174594dffd4571e884a4c90b8a012f3800",
+      "size_bytes": 2234,
+      "target_namespace": "http://www.giss.com.br/consultar-nfse-servico-tomado-envio-v2_04.xsd"
+    },
+    {
+      "path": "xsd/Schemas_XSD-Servicos_Prestados/consultar-nfse-servico-tomado-resposta-v2_04.xsd",
+      "schema_dependencies": [
+        "xmldsig-core-schema20020212.xsd",
+        "tipos-v2_04.xsd"
+      ],
+      "sha256": "b8891863510e558f757d27f06e4bfd4b792eb87b097ce47ea9d4035b4a263fd2",
+      "size_bytes": 1237,
+      "target_namespace": "http://www.giss.com.br/consultar-nfse-servico-tomado-resposta-v2_04.xsd"
+    },
+    {
+      "path": "xsd/Schemas_XSD-Servicos_Prestados/enviar-lote-rps-envio-v2_04.xsd",
+      "schema_dependencies": [
+        "xmldsig-core-schema20020212.xsd",
+        "tipos-v2_04.xsd"
+      ],
+      "sha256": "7205c3d7e0052291505e18c769dfd933e2906da87ed7bd21316051c4f6ddfcf5",
+      "size_bytes": 922,
+      "target_namespace": "http://www.giss.com.br/enviar-lote-rps-envio-v2_04.xsd"
+    },
+    {
+      "path": "xsd/Schemas_XSD-Servicos_Prestados/enviar-lote-rps-resposta-v2_04.xsd",
+      "schema_dependencies": [
+        "xmldsig-core-schema20020212.xsd",
+        "tipos-v2_04.xsd"
+      ],
+      "sha256": "97688e46b9608ffd184e1940f14496861e904aa8bcb493918dab483fe465e8c0",
+      "size_bytes": 1187,
+      "target_namespace": "http://www.giss.com.br/enviar-lote-rps-resposta-v2_04.xsd"
+    },
+    {
+      "path": "xsd/Schemas_XSD-Servicos_Prestados/enviar-lote-rps-sincrono-envio-v2_04.xsd",
+      "schema_dependencies": [
+        "xmldsig-core-schema20020212.xsd",
+        "tipos-v2_04.xsd"
+      ],
+      "sha256": "22765efe869d0d45d1a2b4129974c03bfd2e7132f5f842e11fc81a74f73955ad",
+      "size_bytes": 948,
+      "target_namespace": "http://www.giss.com.br/enviar-lote-rps-sincrono-envio-v2_04.xsd"
+    },
+    {
+      "path": "xsd/Schemas_XSD-Servicos_Prestados/enviar-lote-rps-sincrono-resposta-v2_04.xsd",
+      "schema_dependencies": [
+        "xmldsig-core-schema20020212.xsd",
+        "tipos-v2_04.xsd"
+      ],
+      "sha256": "e021d910a924186a0a7e169d6c36f26041fbc9d6669b8e8b929070cd837111a8",
+      "size_bytes": 1669,
+      "target_namespace": "http://www.giss.com.br/enviar-lote-rps-sincrono-resposta-v2_04.xsd"
+    },
+    {
+      "path": "xsd/Schemas_XSD-Servicos_Prestados/gerar-nfse-envio-v2_04.xsd",
+      "schema_dependencies": [
+        "xmldsig-core-schema20020212.xsd",
+        "tipos-v2_04.xsd"
+      ],
+      "sha256": "eb7592a127fc1c2f1db87515c90242fd20a9188053256cc7038886b87834b12b",
+      "size_bytes": 849,
+      "target_namespace": "http://www.giss.com.br/gerar-nfse-envio-v2_04.xsd"
+    },
+    {
+      "path": "xsd/Schemas_XSD-Servicos_Prestados/gerar-nfse-resposta-v2_04.xsd",
+      "schema_dependencies": [
+        "xmldsig-core-schema20020212.xsd",
+        "tipos-v2_04.xsd"
+      ],
+      "sha256": "4fa96e311b8e1239c7e211e1d49235080070e9b38ebe466f67a28354e808ca91",
+      "size_bytes": 1235,
+      "target_namespace": "http://www.giss.com.br/gerar-nfse-resposta-v2_04.xsd"
+    },
+    {
+      "path": "xsd/Schemas_XSD-Servicos_Prestados/nfse_v2-04.xsd",
+      "schema_dependencies": [
+        "xmldsig-core-schema20020212.xsd"
+      ],
+      "sha256": "e9b485f52799a767394c18b9dadb669ddd2e45ce2a42ab827da6d09c0ff4873d",
+      "size_bytes": 125497,
+      "target_namespace": "http://www.abrasf.org.br/nfse.xsd"
+    },
+    {
+      "path": "xsd/Schemas_XSD-Servicos_Prestados/substituir-nfse-envio-v2_04.xsd",
+      "schema_dependencies": [
+        "xmldsig-core-schema20020212.xsd",
+        "tipos-v2_04.xsd"
+      ],
+      "sha256": "516df4a73d70c5b4193472f5f31de38a8769aa915f1f69f1557f31cc39607ae6",
+      "size_bytes": 1294,
+      "target_namespace": "http://www.giss.com.br/gerar-nfse-resposta-v2_04.xsd"
+    },
+    {
+      "path": "xsd/Schemas_XSD-Servicos_Prestados/substituir-nfse-resposta-v2_04.xsd",
+      "schema_dependencies": [
+        "xmldsig-core-schema20020212.xsd",
+        "tipos-v2_04.xsd"
+      ],
+      "sha256": "bdce5d85ae9b64dcbd5ebaea59ed93b54788f713736f69b02e7bba202fa132f0",
+      "size_bytes": 1708,
+      "target_namespace": "http://www.giss.com.br/gerar-nfse-resposta-v2_04.xsd"
+    },
+    {
+      "path": "xsd/Schemas_XSD-Servicos_Prestados/tipos-v2_04.xsd",
+      "schema_dependencies": [
+        "xmldsig-core-schema20020212.xsd"
+      ],
+      "sha256": "09878c9257e243139b1136ed16f49a08eb2187bc0f2eaba0fd5532f74b644b17",
+      "size_bytes": 116763,
+      "target_namespace": "http://www.giss.com.br/tipos-v2_04.xsd"
+    },
+    {
+      "path": "xsd/Schemas_XSD-Servicos_Prestados/xmldsig-core-schema20020212.xsd",
+      "schema_dependencies": [],
+      "sha256": "95e4cdab281a964f966f04493b95924864caa412c47664a4760c5dce50f885c6",
+      "size_bytes": 10151,
+      "target_namespace": "http://www.w3.org/2000/09/xmldsig#"
+    }
+  ],
+  "sources": {
+    "manual-servicos-prestados-retorno-v1.0.pdf": {
+      "redistributed_in_git": false,
+      "sha256": "8becda8d0a97a34fe938baef6709dd8bee7867c40cc4defc54b775d670fd0db1",
+      "size_bytes": 543994,
+      "url": "https://jundiai.giss.com.br/giss-ajuda/manuais/Manual%20T%C3%A9cnico%20-%20Servi%C3%A7os%20Prestados%20-%20Retorno%20-%20%20V1.0.pdf"
+    },
+    "manual-servicos-prestados-v1.8.pdf": {
+      "redistributed_in_git": false,
+      "sha256": "cdf8095944bbe0308d7df11a9632da78cba85b1daa3973dfdd51a86f9b4b58fd",
+      "size_bytes": 919549,
+      "url": "https://jundiai.giss.com.br/giss-ajuda/manuais/Manual%20T%C3%A9cnico%20-%20Servi%C3%A7os%20Prestados%20-%20V1.8.pdf"
+    },
+    "referencia-conceitual-abrasf-2.04.pdf": {
+      "redistributed_in_git": false,
+      "sha256": "d6ac7c1237a9064042df63bb7af2b539676f8b3589bdfb3fea8378a1b2f10bb9",
+      "size_bytes": 2602906,
+      "url": "https://jundiai.giss.com.br/giss-ajuda/manuais/NFS-e_Manual_de_Orienta%C3%A7%C3%A3o_do_Contribuinte_-_2.04.pdf"
+    },
+    "schemas-servicos-prestados.rar": {
+      "redistributed_in_git": false,
+      "sha256": "c14a542de5fa2ce1a6a2b43da6e4eb0bebab12e6ebc850fe24dbdc8f6bb04356",
+      "size_bytes": 41333,
+      "url": "https://jundiai.giss.com.br/giss-ajuda/manuais/Schemas_XSD-Servicos_Prestados.rar"
+    }
+  },
+  "wsdl": {
+    "homologation": {
+      "capture_error_type": "HTTPError",
+      "captured": false,
+      "http_status": 400,
+      "needs_authenticated_contract_verification": true,
+      "source_url": "https://v2-ws-homologacao.giss.com.br/service-ws/nf/nfse-ws?wsdl"
+    },
+    "production": {
+      "capture_error_type": "HTTPError",
+      "captured": false,
+      "http_status": 400,
+      "needs_authenticated_contract_verification": true,
+      "source_url": "https://ws-jundiai.giss.com.br/service-ws/nf/nfse-ws?wsdl"
+    }
+  },
+  "wsdl_status": "MTLS_VERIFICATION_REQUIRED"
+}

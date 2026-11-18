@@ -1,8 +1,119 @@
-> **CURRENT — PROMOÇÃO GOVERNADA BLING A-00–A-05 + B-01–B-05 / 10-11-2026:** candidato para Contabo preparado a partir de `main@2d6ba3d1c32d70923a473b37950769b19511c52d` (PR #410 MERGED; CI pós-merge #42827985845 SUCCESS; governança #42827987234 SUCCESS). A branch `production@5dc48dfe1a9256b8d1e761e44533e763dd5bed63` continha cinco commits próprios já preservados como segunda linha ancestral do commit de reconciliação (sem force-push). PR #411: validação da candidata para promover código API/Portal na branch `production`, mediante CI/governança e gate de produção. Deploy Contabo é pull `production`/5 min e CODE-ONLY; sem DDL, sem ativação de Worker Bling, sem OAuth/SEFAZ real, sem alterações de segredos. Migracoes Bling 20/21 e Worker continuam OPT-IN e dependentes de aprovação e verificação do ambiente real. **A existência desta nota ou da candidata NÃO significa deploy concluído; após promoção exigir DEPLOY OK, commit implantado e readiness do host.**
->
-> **REGISTRO HISTÓRICO INTEGRADO DA BRANCH production (09/11/2026; não é CURRENT vigente):**
-> **CURRENT — CANDIDATA DE RELEASE CONTABO / 09-11-2026:** PRs #403 e #404 MERGED em main@112a4412c1e1fb53355f7ba8a7d1f3126d3808bb (CI #42705237839 e governanca #42705237769 SUCCESS). production@ea6719728ff99d4a633657af98256d6ed640fe76 agrega os 3 commits exclusivos do checkout publico Cakto, preservados na candidata release/contabo-20261109-bling criada a partir de production e reconciliada com main. Host Contabo vmi3692211 inicialmente em ea67197, API/Portal/DB healthy, schema fiscal 1..19 e Cakto 1..3 em preflight read-only. Esta nota e o commit da candidata NAO comprovam CI final da candidata, promocao, deploy, worker habilitado, homologacao fiscal real ou smoke pos-deploy. Somente publicar via PR para production apos CI/governanca verdes no HEAD exato; o cron Contabo monitora production a cada 5 minutos e seu deploy e code-only, sem DDL. Confirmar .deployed, readiness HTTP e log DEPLOY OK depois. Sem alterar outros SaaS nem segredos.
->
+## CURRENT EXECUTADO — 17/11/2026 (checkpoint pós-reconciliação; substitui snapshots anteriores)
+
+- **Repositório ativo:** faabio3131/nf-core-v001. **main** `549ab3c005d7183ff6c7940236414412ea004b9d`; **production** `ea4bdd3bcb9b61e6522081a14e5cc9ad1ced9599`; ambas **inalteradas**.
+- **#468 OPEN/DRAFT HEAD funcional** `1237c96021286f82d4f473dbd27bf90dce89ca37`. Integrações de fato: #522 FIS-03 `56a7d50a`, #523 MF-04/BH `287f0856`, #525 cronograma/registro `2ef57d6a` e #526 caminho PKI `1237c960`, todas MERGED na candidata somente. #522/#523/#525/#526 não estão mais abertas.
+- **#498 OPEN/DRAFT HEAD Web** `41dad4fab6e892a904b5f3afa94f2806b507ed29`. Mesma implementação fiscal/Portal da #468; **11 diferenças intencionais** da release para infraestrutura/histórico, incluindo backup/restore/testes de Compose e sobrescritas operacionais preservadas por blob/mode.
+- **Evidência verificada:** CI integral #44105708197 SUCCESS após #522/#523; CI #44105962170 SUCCESS da #525; CI #44108045887 SUCCESS da #526 (5.364 Python PASS, 1 SKIP justificado, 78 Playwright PASS); T2/governança/Compose atuais verdes. **CIs dos SHAs finais #468 [#44110731608](https://github.com/faabio3131/nf-core-v001/actions/runs/44110731608) e #498 [#44110843645](https://github.com/faabio3131/nf-core-v001/actions/runs/44110843645) ainda requerem conclusão**, sem herdar selo de commits antigos.
+- **Quantidade de PRs abertas na captura:** 2 (#468 e #498), ambas Draft. O cronograma e registro originais de 17/11 capturavam quatro PRs de engenharia antes destes merges; suas listas abaixo são **SNAPSHOTS HISTÓRICOS**, não o CURRENT.
+- **ENGINEERING NOT DONE:** FIS-03 confiança oficial SEFIN/policies/NameConstraints/LTV; MF-04/BH retenções/deduções/catálogo por competência; SP-22 e MG-W1 matriz fiscal por operação; Louveira PF contrato 2026 não comprovado (issue #509); Core Cognitivo/Sentinela adequações remanescentes; EGM independente; Contabo DPSv22/cofre A1/backup/restore/staging e acesso mutante; testes contábeis e homologação externa. Não declarar V1 100% interna nem produção aprovada.
+- **Regra de continuidade:** código CURRENT + PR/CI no SHA > esta nota > checkpoints antigos. **Não houve merge main, promotion production, deploy, DDL, DNS, segredo A1 real ou transmissão fiscal oficial.** Integrador único NFCORE-GOV-RELEASE-001 preservado.
+
+---
+
+> **ÍNDICE CURRENT DE CONTINUIDADE (17/11/2026 — DOCUMENTAL, NÃO CERTIFICAÇÃO):** antes de executar/mergear, consultar [docs/audit/NFCORE_RECONCILIATION_CLOSEOUT_SCHEDULE_2026-11-17.md](docs/audit/NFCORE_RECONCILIATION_CLOSEOUT_SCHEDULE_2026-11-17.md), [docs/audit/NFCORE_PENDING_REGISTER_CURRENT_2026-11-17.md](docs/audit/NFCORE_PENDING_REGISTER_CURRENT_2026-11-17.md) e [docs/audit/NFCORE_PR_RECONCILIATION_LEDGER_CURRENT.md](docs/audit/NFCORE_PR_RECONCILIATION_LEDGER_CURRENT.md). CURRENT do GitHub: main 549ab3c0, production ea4bdd3b, #468 e1632e64 (CI anterior verde, execução posterior vermelha por teste temporal), #498 fbdb3384, #522 42fa40fb CI verde, #523 7962fe7b CI verde. #522/#523 aguardam integração cumulativa; nenhuma publicação. **Preservar integralmente NFCORE-GOV-RELEASE-001, gates fiscais, a ordem SP-22 e os 59 IDs do plano mestre.** Este índice não concede nova autorização nem altera as instruções abaixo.
+
+## CURRENT — release Web conciliada, 16/11/2026
+
+Esta entrega une a release #498 `f4a94926d3ceff7d66203eef270372177052fd91` à candidata #468 `e1632e646e3ed8e960ba51c88d24facf3177ffc7`. A candidata integra #520 e #521; sua árvore é idêntica à origem de Guarulhos `d7fd30ee411ac12f691a957a9a204b9c1f46d737`. SHA resultante e CI final registrados na PR #498; não herdar certificação de outra revisão.
+
+- #520: CI43947807754 SUCCESS, 5.259 Python PASS / 1 SKIP / 75 Playwright PASS; T2 efetivo SUCCESS. Integrada em af1f7b58.
+- #521: CI43950288422 SUCCESS, 5.294 Python PASS / 1 SKIP / 78 Playwright PASS; T2 efetivo43950367595 SUCCESS. Integrada em e1632e64. Skip somente variante SQLite exclusiva PostgreSQL; variante PG executada. Segurança, containers, SBOM e backup/restore passaram no runner; não comprovam o host produtivo.
+- Revisão independente Guarulhos encontrou e confirmou correções do serviço Compose e da dupla permissão em recovery; nenhum bloqueador adicional nesse delta. Reemissão sequencial não é substituição municipal atômica; homologação real não executada.
+- Cinco deltas exclusivos da release preservados: worker host-db overrides, testes, workflow e restore-test.sh com modo100755. Revisão confirmou blobs/modos e ausência de perda da candidata. Checkpoint histórico BH preservado por SHA256; mapas de sucessores documentam as origens423/440.
+- #423: mecanismos MG/WebISS/nacional preservados, 176 testes focais PASS. #440: sucessores canônicos, sem segunda API/contador. Podem ser encerradas como SUBSTITUÍDAS após publicação/gates desta reconciliação, nunca como MG20/BH concluídos. Pendências normativas, E2E operacional, EGM e homologação permanecem na issue426 ABERTA.
+- Main549ab3c0 e productionea4bdd3b não promovidas. O proprietário autorizou concluir e publicar; Desktop Commander tem cota0 e o SSH GitHub conhecido é somente leitura. Sem acesso operacional, não comprovar schema DPS22/cofre/backup/restore/staging nem controlar auto-pull. Nenhum deploy, migration ou emissão real realizado. Não declarar lançamento comercial pronto.
+
+## CURRENT — MF04 integrado; Guarulhos corrigido após revisão, 16/11/2026
+
+#520 MERGED na candidata `af1f7b58794beba42a92718dea40a44fb1ef90fa`, origem `009c72a1`. CI completa [43947807754](https://github.com/faabio3131/nf-core-v001/actions/runs/43947807754) SUCCESS e T2 efetivo fora de Draft43949507844 SUCCESS. Main/production permanecem `549ab3c0`/`ea4bdd3b`; nenhum deploy.
+
+#521 sincronizada com essa candidata. Revisão independente encontrou dois defeitos: nome de serviço do override (`api`→`nfcore-api`) e dupla permissão ausente em recovery direto. Corrigidos: `FiscalIntentRecovery.allowed()` governa prepare, validate/resume/replay e listagem, inclusive outros canais de substituição já suportados. Papéis atuais agrupam CANCEL+ISSUE; teste de revogação parcial garante a invariável. Cajamar não ganhou endpoint novo: sua revisão não está na superfície recovery e continua bloqueada.
+
+Prova independente: prepare200 com ambas permissões; após retirar ISSUE, resume403/zero dispatch; CANCEL-only bloqueado em prepare e endpoint direto. Testes novos cobrem6operações×2estados (prepared/recorded), listagem e replay. Suite recovery SQLite PASS/variantes PG SKIP;14gateway PASS. Ruff/Mypy421 PASS antes da sincronização; retestar composição MF04+Guarulhos. CI da origem anterior de #521 não certifica este novo HEAD. Revisão sem bloqueador adicional condicionada às correções publicadas/CI exata. Testes locais e browser/PG remotos não são homologação externa. Acesso mutante ao host permanece indisponível; publicação e DPS22/cofre/restore/staging permanecem pendentes.
+
+## CURRENT — Guarulhos em validação, 16/11/2026
+
+Base confirmada `81914807d3253ebe15e6cce93640f1157f222fe3`; main `549ab3c0` e production `ea4bdd3b` permanecem sem promoção. #519 integrada; main é ancestral da candidata. CI cumulativa [43945724238](https://github.com/faabio3131/nf-core-v001/actions/runs/43945724238) SUCCESS. #518 recuperou seis fontes por SHA256; #413/#448/#453 encerradas com evidência e branches preservadas.
+
+#520 implementa decisão tributária nacional governada; HEAD `009c72a172b7ab065c70faebbb492aa045e08024`, CI [43947807754](https://github.com/faabio3131/nf-core-v001/actions/runs/43947807754) em execução. Não integrada neste checkpoint. Lacuna de trigger corrigida: PRs para `integration/nfcore-*` executam todos os mesmos gates, sem redução.
+
+Guarulhos: composição opt-in da família GISS, 24 schemas compartilhados por hash, município explícito, eventos e Portal/RBAC/recovery existentes. Plano `docs/audit/NFCORE_GUARULHOS_OPERATIONAL_PLAN_20261116.md`; runbook `docs/operations/NFCORE_GUARULHOS_REVIEWED_GISS.md`. 11 testes HTTP Jundiaí/Guarulhos e 51 testes focais PASS; Ruff/Mypy421 PASS; frontend26 PASS/lint/typecheck/build. Suíte integral local em execução. Três testes browser adicionados; execução local bloqueada pelo download truncado e pela restrição de socket do Chromium instalado. CI remota obrigatória; NÃO COMPROVADO até executar. Revisão independente em andamento.
+
+O usuário reiterou concluir e depois publicar. Desktop Commander retorna cota de chamadas0; único canal SSH GitHub auditado é somente leitura. Driver Contabo de promoção não está provisionado na árvore (existem Railway/unconfigured). Não usar credencial restrita para mutação nem mover production com auto-pull sem controle. Nenhum deploy ou migration realizado. DPS22/cofre/restore/staging, homologações reais, confiança ICP/revogação e cobertura fiscal ampliada permanecem pendentes; não declarar lançamento pronto.
+## CURRENT — reconciliação + tratamento tributário nacional, 16/11/2026
+
+#518 integrada em0ebb510a; seis fontes históricas verificadas por SHA-256; #413/#448/#453 encerradas com prova, branches preservadas. CI43943547457 SUCCESS. #519 integrada em81914807, árvore67a1a070; main549ab3c agora ancestral da candidata. Main/production não promovidas.
+
+Incremento MF-04 na branch `feat/nfcore-national-tax-treatment-20261116`: política de servidor pinada/escopada ligada ao objeto tributário nacional existente, proveniência no fingerprint/arquivo, replay com snapshot, instalação/override. Revisão independente91+6 testes PASS; integrador139 focais PASS; Ruff/Mypy422 PASS; suíte integral local em execução e CI remota ainda necessária. Plano: `docs/audit/NFCORE_MF04_GOVERNED_TREATMENT_PLAN_20261116.md`. Não conclui BH integral, catálogo de incidência/classificação, Guarulhos, confiança ICP/revogação/histórico ou operação. Binding do provider vigente ainda necessário em replay. Proprietário reafirmou conclusão interna seguida de deploy; nenhuma publicação realizada neste incremento.
+
+---
+
+## CURRENT — MF-09 integrado na candidata, 16/11/2026
+
+- Candidata #468: `cac2a1e38058ca4b6a811d337eea270561cd8223`, após merge da #517. Branch `integration/nfcore-a1-sp2-current-main-20261113`. Árvore `fc9fb39603464db854178136a1b4b6b4d74fc880` idêntica à origem `1bd7449c7204f0ca3992f048c06f679cef0758d5`.
+- CI da origem [43929948306](https://github.com/faabio3131/nf-core-v001/actions/runs/43929948306) SUCCESS: 5.240 Python PASS, 1 SKIP, 75 Playwright PASS, gates de segurança/container/restore aprovados. Skip somente variante SQLite exclusiva PG; variante PG executada. T2 efetivo [43933259955](https://github.com/faabio3131/nf-core-v001/actions/runs/43933259955) SUCCESS após tornar explícita a evidência E2E na descrição. Nenhum gate ou teste desabilitado.
+- CI cumulativa [43933409094](https://github.com/faabio3131/nf-core-v001/actions/runs/43933409094) em execução neste checkpoint. Não tratar CI da origem como resultado do merge.
+- Venda manual usa a mesma preparação, domínio, regras e arquivo; NF-e 55 SP/MG e NFC-e 65 MG online em homologação. Adoção da numeração legal requer inventário/reconciliação de legado e parada de writers antigos. Nenhum deploy, DDL ou emissão real.
+- Recuperação histórica na #518: quatro documentos e dois patches, fontes exatas e revisão independente aprovadas. Gates documentais e T2 fora de Draft passaram no HEAD anterior `9e4f846b`; este checkpoint muda o HEAD e exige novos checks aplicáveis. #413/#448/#453 permanecem abertas até integração comprovada.
+- Main `549ab3c0` e production `ea4bdd3b` inalteradas. A aprovação comercial #390 já está na main, mas ainda não é ancestral da candidata: conciliar antes da promoção. #498 continua Draft; cinco deltas de infraestrutura devem ser preservados.
+- Pendências: MF-04/BH, confiança/cadeia/revogação/histórico de recibos, Guarulhos, MG20/SP22, EGM, DPS22/cofre/backup/staging e publicação. Auditoria MF-04 encontrou o objeto tributário canônico existente, mas ausência de resolução governada na preparação HTTP; 21 testes focais PASS não encerram esse bloco. Decisão/proposta e fontes registradas no corpo da #468.
+- Próxima ação: conferir CI cumulativa, integrar recuperação documental sequencialmente, encerrar origens somente com prova e conciliar a release Draft. Produção permanece NO-GO.
+
+> **Reconciliação documental — 16/11/2026:** o incidente `NAT-GOV-2026-11-10-01` da PR #413 foi recuperado como falha de acompanhamento técnico, sem atribuição ao proprietário. Publicação de cronograma não comprova cobertura concluída. A auditoria por UF/município/documento/operação/ambiente continua aberta onde falta evidência. Prevalecem a prioridade SP-22 registrada em12/11, a ordem por grupos de engenharia de13/11 e o Integrador único de15/11 em AGENTS; nenhuma dessas decisões é alterada. O T2 posterior está implementado parcialmente, sem comprovação aqui de T1/T3–T6 ou rulesets. Fonte, hashes e documentos recuperados de #413/#448/#453: `docs/audit/NFCORE_DOCUMENT_RECOVERY_20261116.md`.
+
+# CURRENT DE RECONCILIAÇÃO — 16/11/2026, pós-#514
+
+Este banner substitui snapshots históricos abaixo. Fonte de continuidade: `docs/audit/NFCORE_PR_RECONCILIATION_LEDGER_CURRENT.md`. Main `549ab3c005d7183ff6c7940236414412ea004b9d`; production `ea4bdd3bcb9b61e6522081a14e5cc9ad1ced9599`. #514 integrada somente à #468 em `2eb7858dfa669b27b2804d846c876ec19b025672`; árvore idêntica ao HEAD de origem bfd5d0d4, CI43912553533 SUCCESS (5111 Python PASS/3 SKIP,71 E2E PASS); T2 aplicado43915564090. CI cumulativa43915895064 ainda em execução neste checkpoint. #515 correlação SP em 9cfe2e07, CI43913718612 em execução. #430/#437 encerradas com prova de incorporação; #508 preservada até fechamento de conferência.
+
+FIS-03 em incremento isolado sobre9cfe2e07: XSD NT009/correlação nacional POST/GET/arquivo e assinatura DPS aninhada. Plano/impacto/limites em `docs/audit/NFCORE_FIS03_RECEIPT_CONTRACT_PLAN_20261116.md`. Revisão independente detectou ordem tardia de validação e chave NFSe divergente; ambos corrigidos com testes negativos. CI final do incremento ainda necessária. Não certifica confiança ICP/revogação, consulta histórica, MF-04/MF-09 ou Guarulhos/BH integrais.
+
+Auditoria Contabo43758223307 attempt2 EXECUTOU em16/11: SHA/API/Portal/backup recente/schema20-21 PASS; gate Bling FAILURE por ativação/política/montagens/worker pendentes. Não está aguardando aprovação. DPSv22, cofre A1/offsite/restore isolado, staging e auto-pull continuam sem evidência. Autorização do proprietário para reconciliação e atualização Web permanece condicionada aos gates; DDL produtivo e emissão real separados. Não promover uma candidata incompleta.
+
+---
+
+# DIRETRIZ SUPERVENIENTE — INTEGRADOR ÚNICO E RELEASE MANAGER (15/11/2026)
+
+> **DECISÃO DO PROPRIETÁRIO — NFCORE-GOV-RELEASE-001 (15/11/2026).** Governança detalhada em [docs/governance/NFCORE_SINGLE_INTEGRATOR_RELEASE_OWNER_2026-11-15.md](docs/governance/NFCORE_SINGLE_INTEGRATOR_RELEASE_OWNER_2026-11-15.md). Checkpoint público de handoff na [issue #447](https://github.com/faabio3131/nf-core-v001/issues/447#issuecomment-6903641344).
+
+1. **Agente executor municipal (frente SP-22):** constrói e testa cada município em PR própria, publica HANDOFF + HEAD + CI na issue #447. Não faz merges, promoções, deploy, migration produtiva ou alterações em `main`/`production`.
+2. **Único Agente Integrador/Release Manager:** a frente de arquitetura/core que conduz a #504 e coordena #468/#498 é a **única responsável por conferir, conciliar, aceitar, executar merges nas candidatas e coordenar promoções**. Cada merge exige revisão do diff e CI verde no HEAD atual; após integrar, certificar novamente a árvore cumulativa.
+3. **Autoridade humana e revisão independente preservadas:** o proprietário autoriza por gate `main`/`production`, infra/DB/segredos e Go/No-Go. Revisão independente EGM não pode ser substituída por autocertificação do integrador.
+4. **CURRENT de entrada desta decisão:** #503 MERGED em #468; #468 OPEN/DRAFT `440f4065` com CI pós-Salto SUCCESS; #504 OPEN/DRAFT `4a31471`, CI própria SUCCESS, ainda NÃO integrada; #498 OPEN/DRAFT, não publicada. Revalidar todos os SHAs ao executar.
+5. **Limite:** esta regra é uma atribuição processual, não uma permissão exclusiva tecnicamente imposta no GitHub; enforcement por conta/bot/ruleset depende de configuração administrativa. Não interpretar registro de decisão como merge concluído ou deploy autorizado.
+
+---
+
+# CURRENT — Salto/SP incorporado à candidata cumulativa (15/11/2026)
+
+> **Checkpoint técnico posterior às diretrizes históricas abaixo.** Repositório `faabio3131/nf-core-v001`: PR #503 (Salto/SP IBGE 3545209) **MERGED NA BRANCH CUMULATIVA**, commit de integração `17f1ad3dafe9b86795bae21a0c5fe61a3ac3ff9f`, **NÃO em `main`**. PR #468 continua OPEN/DRAFT. `main` observado em `f23d2a050a4c1555de1bdbe8620bb69b6d983cc8` antes deste checkpoint; revalidar ao retomar.
+
+- **Gates da PR #503 no HEAD `959dd2690a4ad1c61c1f76b930acf583e2926458`:** GitHub Actions FM NFCORE V1 CI #43775298708 **SUCCESS**; **4.821 PASS, 3 SKIP, 2 warnings**, Ruff, Mypy, lint/typecheck/frontend E2E/build, containers, controles de infraestrutura e auditoria de segurança; governança e completude também SUCCESS.
+- **Jornadas internas Salto:** preparação/assinatura/envio DPS 1.01 nacional, XML oficial sintético assinado e arquivado, consulta/reconciliação por GET, cancelamento 101101 assinado com aprovação humana e claim durável, GET read-only para evento incerto, substituição por nova DPS `subst/chSubstda`, sem segundo motor, UI/API novas ligadas ao Portal e mesmas permissões/tenant/UoW.
+- **Gate de integração:** CI/Governança/Completude da PR #468 no commit `17f1ad3` **EM VERIFICAÇÃO**. Ainda NÃO afirmar `INTERNAL_COMPLETE_CUMULATIVE` até os gates pós-merge no HEAD final. Se a PR #468 mudar, testar o novo HEAD.
+- **Provas externas pendentes, separadas da engenharia interna:** certificado A1 e transmissões reais com SEFIN/município, conferência de atos municipais oficiais/condições de regime, homologação e publicação. Nenhum deploy, migration produtiva, segredo, emissão real ou merge na `main` foi autorizado/executado por este checkpoint.
+- **Próximo bloco após gate cumulativo verde:** Louveira/SP, primeiro confirmando canal/provedor oficial vigente; não presumir adequação pela semelhança com Salto.
+
+---
+
+# DIRETRIZ SUPERVENIENTE — REORDENAÇÃO SP-22 POR GRUPO DE ENGENHARIA (13/11/2026)
+
+> **Decisão vigente do proprietário em 13/11/2026 — complementa, sem revogar, a diretriz de 12/11 abaixo. Detalhe completo em `docs/NFCORE_SP22_REORDENACAO_GRUPOS_ENGENHARIA_2026-11-13.md`.**
+
+1. **A onda atual não é interrompida.** Cajamar (piloto, PR #463), Osasco, Barueri e Jundiaí seguem na ordem já vigente (banner 12/11 abaixo). **Santana de Parnaíba (Smarapd, sistema próprio) entra nesta mesma onda**, por decisão do proprietário, já que é trabalho isolado do mesmo tipo de Osasco/Barueri.
+2. **Depois que essa onda fechar**, a ordem dos 22 municípios de SP passa a ser por **reaproveitamento de bloco de engenharia**, não mais só por ranking comercial: **Grupo 2 (NFS-e Nacional exclusivo: Salto confirmado, Louveira indício) → Grupo 1 (família GINFES/GISS Online: Guarulhos, Santos, São Caetano, Suzano, Jundiaí já confirmados + Guarujá e Itu novos candidatos desta pesquisa) → Grupo 3 (DSF: Campinas, Sorocaba) → Grupo 5 (provedor ainda não identificado: Itapevi, Jandira, Mairiporã, Arujá, Monte Mor — resolver com contato direto na prefeitura antes de sequenciar) → Grupo 4 (isolados/próprios, sem reaproveitamento: Barueri, Osasco, Santana de Parnaíba, São Paulo capital, São Vicente)**.
+3. **Motivo:** maximizar quantos municípios ficam operacionais por bloco de código escrito — um provedor compartilhado por várias cidades rende mais cobertura por unidade de esforço do que construir sistemas isolados um a um. Os sistemas sem reaproveitamento (Grupo 4) ficam por último porque cada um é custo fixo dedicado a uma única cidade, como Cajamar já demonstrou (3 dias só para aquela cidade).
+4. **Isto é só ordem de execução.** Não altera nenhum estado `INTERNAL_COMPLETE`/`NOT_CERTIFIED`/`EXTERNAL_BLOCKED`, não toca na matriz JSON da PR #446 (ainda Draft, aberta separadamente), não autoriza merge, deploy, credencial real ou homologação.
+
+---
+
+# DIRETRIZ SUPERVENIENTE — PRIORIDADE E GOVERNANÇA (12/11/2026)
+
+> **Decisão vigente do proprietário em 12/11/2026 — esta diretriz substitui a ordem sequencial do Centro-Oeste descrita abaixo, sem apagar o histórico.**
+
+1. **Prioridade de cobertura: SP-22.** Executar primeiro **Cajamar** (piloto, fora do catálogo dos 22), **Osasco**, **Barueri** e **Jundiaí**; depois, os demais municípios de SP-22. **MG-W1** permanece no checkpoint das PRs **#423** e **#440**. A expansão **Centro-Oeste (DF → GO → MT → MS)** só será retomada depois de SP-22 e do gate interno de MG-W1. Esta decisão prevalece sobre o sequenciamento Centro-Oeste registrado nas seções históricas seguintes.
+2. **Fechamento de bloco e aprovação por conversa.** As regras **um bloco, uma PR** e **PR em Draft até checklist integralmente concluído e CI verde no HEAD exato**, bem como o protocolo de aprovação por conversa com o proprietário, estão **especificados** em `docs/NFCORE_EXECUTION_CLOSING_RULES_AND_LOCKS_SPEC_2026-11-12.md`, na **PR #453**, ainda **Draft**. O texto da especificação não equivale à implantação dos controles.
+3. **Travas de governança T1 a T6.** São **apenas uma especificação**: **nenhuma das travas T1, T2, T3, T4, T5 e T6 está implementada no GitHub**. Não declarar bloqueios automáticos, regras de permissão ou checks novos como existentes em decorrência dessa documentação.
+
 ---
 
 # AGENTS.md — Master Execution Schedule: Centro-Oeste Expansion (NFCore V1)
@@ -529,3 +640,57 @@ A busca de produtores reais confirmou ausência de instrumentação específica 
 **NFV1-P09-T02 — `INTERNAL_COMPLETE` (nível construção/validação controlada).** Produtores existentes de HTTP/error/latency, commercial events, fulfillment, worker backlog/retries/dead-letter, erro de gateway NFC-e, rejeição NFC-e, reconciliação fiscal/Cakto e activation; 31 testes dirigidos PASS cobrindo subset de contratos T01/T02; CI da PR #207 pré/pós-merge SUCCESS. **`EXTERNAL_HOMOLOGATION_PENDING`**: cobertura de cada integração fiscal real configurada em campo e aferição de volumes/limiares em tráfego verdadeiro. Não afirmar certificação operacional de toda família fiscal/provider sem runtime correspondente.
 
 **Regra de status:** `INTERNAL_COMPLETE` não equivale a `PRODUCTION_APPROVED`, `EXTERNAL_CERTIFIED` ou check global `[x]`; testes reais permanecem em registro externo separado. O próximo bloco interno é P09-T03, já aberto na PR #209; ele deve seguir sem reabrir P09-T01/T02, salvo regressão comprovada. A PR #208 ainda é draft e sua CI no HEAD exato precisa concluir verde antes do merge autorizado.
+
+---
+
+## DECISÃO SUPERVENIENTE — COBERTURA NACIONAL 11/11/2026 (NAT-GOV-2026-11-10-02)
+
+**Decisão expressa do proprietário em 11/11/2026:** a prioridade nominal Centro-Oeste no cabeçalho deste arquivo foi antecipada antes de encerrar Minas Gerais. A ordem efetiva desta frente é agora:
+
+1. **MG-W1 — Minas Gerais, 20 principais polos de PIB municipal (2023):** finalizar o conjunto interno NF-e 55, NFC-e 65 e NFS-e dos 20 municípios selecionados em `docs/NFCORE_MG_POLOS_ECONOMICOS_WAVE1_RECONCILIACAO_2026-11-11.md`.
+2. **Centro-Oeste:** DF → GO → MT → MS, respeitando integralmente DF-01..05, GO-01..07, MT-01..06 e MS-01..07 já definidos nas fases acima. Nenhuma UF regional está marcada completa por esta decisão.
+3. **MG-W2:** municípios mineiros restantes de menor prioridade econômica, sem abandono e sem prova falsa de cobertura. SP/RJ/PR/RS e outras UFs permanecem no backlog histórico, preservado.
+
+**Gate interno para mudar de MG-W1 para DF:** `MG_W1_INTERNAL_COMPLETE` exige 20 municípios x operações NFS-e aplicáveis e NF-e/NFC-e estaduais com contrato oficial atual, envelope correto (DPS/SEFIN Nacional, layout próprio municipal ou ABRASF conforme município), XSD/pacote/hash, XMLDSig verificada, A1 por emitente, transporte e resposta, RBAC/tenant/unidade, idempotência, pré-auditoria, arquivos, Web/API, testes integrados e CI exata. Se uma prefeitura não oferece operação, registrar `NOT_APPLICABLE_VERIFIED` e evidência normativa — jamais implementar operação fictícia. `INTERNAL_COMPLETE` não significa `EXTERNAL_HOMOLOGATED`, `UF_100_COMPLETA` ou `PRODUCTION_APPROVED`: essas exigem certificado, contribuinte elegível, transmissão/resposta oficial e aprovação humana específica. Ausência de A1 real **não interrompe** a construção interna segura, mas bloqueia homologação externa.
+
+**Regra de envelope municipal:** não usar envelope/serviço estadual para NFS-e, não supor que todas as prefeituras usam SEFIN Nacional, não usar ADN como autorizador, não confundir layout XML nacional com autorização no mesmo host. Um município só sai do estado `RESEARCH_REQUIRED` depois de fonte oficial; só recebe `INTERNAL_COMPLETE` com envelope assinado/transporte/retorno comprovados. **Contagem/MG** possui ISS Digital municipal, mas a regra federal publicada em 29/10/2026 impõe Emissor Nacional para ME/EPP optantes pelo Simples Nacional em competências a partir de 01/11/2026, mesmo em município com emissor próprio. Para regime normal ou competência retroativa que exige canal municipal, SEFIN falha fechado antes do A1. Nunca confundir compatibilidade de layout municipal com equivalência de endpoint ou autorização. Fonte: https://www.gov.br/nfse/pt-br/noticias/nfs-e-informa-diretrizes-sobre-a-obrigatoriedade-da-emissao-da-nfs-e-nacional-para-optantes-do-simples-nacional. Matriz: `docs/coverage/NFCORE_MG_W1_MUNICIPAL_CELLS_2026-11-11.json`, 16/20 com fonte municipal identificada, 0 homologados.
+
+**Cronograma e evidência a cada entrega:** atualizar este arquivo e `docs/NFCORE_NATIONAL_COVERAGE_MASTER_SCHEDULE_2026-11-07.md`, `docs/NFV1_NATIONAL_EXPANSION_EXECUTION_LEDGER_2026-11-05.md` e a matriz `docs/coverage/NFCORE_MG_W1_MUNICIPAL_CELLS_2026-11-11.json` no commit/PR do incremento. Nenhum checkbox pode ser fechado sem SHA/CI e critério de aceite. PR #423 (Draft) é a trilha MG independente; PR #413 (Draft) trata incidente/reconciliação documental, cujo diff deve ser preservado no merge. Outro agente permanece dono de Bling/release/Contabo: sem alterações suas por esta frente.
+
+**EGM:** usar as etapas `draft → review → resolve`, `review-loop` e `drift-report` quando houver runner original com provas e manifestos. O material `PLANO_FM_EGM_CICLO_COMPLETO_SAAS.md` ainda descreve orquestração proposta, não execução contínua certificada. Não chamar leitura documental ou CI de execução real das sete skills. **CURRENT checkpoint:** `main@545b7606208eedf77b3fd6b852ccb82b4716f6b8` consultada em 11/11; PR #423 em implementação, governança verde, CI técnica a conferir no HEAD final. Sem merge, deploy nem homologação oficial.
+
+---
+
+## Checkpoint MG-W1 — revisão de contratos fiscais e EGM, 11/11/2026
+
+**Trilha de cobertura:** PR #423 Draft; sem merge, sem alteração na Contabo e sem criar segundo motor fiscal. Esta entrega avança proteção fiscal e testes, **não conclui os 20 municípios**. Revisar os checks no SHA exato da PR antes de qualquer mudança de estado.
+
+**Deltas de construção:** `src/kordena_fiscal/gateway/mg_nfse_channel_guard.py` recusa envio NFS-e ao ambiente nacional antes de abrir A1 para município MG-W1 sem elegibilidade comprovada pela competência/regime. Para ME/EPP Simples, a regra federal de 29/10/2026 exige ambiente nacional desde competência 01/11/2026. MEI segue sua regra anterior. Para os sete canais nacionais exclusivos com fonte municipal, os cortes anteriores continuam documentados. Sem município/regime/competência elegível, falha fechada; o guard **não** autoriza emissor e não substitui o binding durável por tenant/unidade. Testes cobrem toda a matriz dos 20 polos e casos negativos.
+
+**Envelope/retorno nacional:** o parser de resposta agora exige a chave NFS-e de 50 dígitos e identidade `infNFSe/@Id='NFS'+chave`; rejeita XML de outro documento, DOCTYPE e inconsistências em testes sintéticos. Essa verificação **não** equivale a assinatura oficial do XML de resposta, recibo real ou homologação do contribuinte. O transporte Nacional continua separado dos envelopes municipais e dos SOAP NF-e/NFC-e.
+
+**Alerta regulatório XSD obrigatório:** o governo publicou em 20/10/2026 a Nota Técnica 009 release 1 para o ambiente de **produção restrita** (reposicionamento CST/cClassTrib, serviços 99.02–99.04, grupo vAjusteBC), com migração planejada de releases à produção a partir de 01/12/2026. O builder canônico `nfse_dps_builder.py` ainda gera `DPS_v1.00` do pacote histórico; **não** declarar aderência integral ao XSD corrente de produção restrita nem enviar em ambiente real antes de reconciliar versões por ambiente, vigência e serviço. Fontes: https://www.gov.br/nfse/pt-br/biblioteca/documentacao-tecnica/producao-restrita ; https://www.gov.br/nfse/pt-br/noticias/cgnfs-e-informa-disponibilizadas-no-ambiente-de-testes-o-release-1-das-evolucoes-da-nota-tecnica-009 ; https://www.gov.br/nfse/pt-br/noticias/nfs-e-nacional-confira-oas-rientacoes-sobre-leiaute-em-producao-regras-de-preenchimento-de-ibs-cbs-e-status-da-nota-tecnica-009/ . **O leiaute de produção difere do leiaute de testes em 11/11.**
+
+**Bloqueios internos identificados e não escondidos:** numeração `nDPS` ainda é hash sintético e não reserva sequencial legal por CNPJ/ambiente/série; reutilizar tabela estadual 55/65 seria incorreto. Falta contrato/migration atômica e recuperação idempotente antes de ativar NFS-e. NF-e MG55 tem caminho de autorização e consulta/cancelamento por vínculo, mas o ciclo integral não está certificado; NFC-e MG65 ainda exige assinatura, QR Code por versão, contingência, eventos e autorização própria. A NT 2025.001 v1.03 de QR versão 3 dispensa CSC nessa **versão**; CSC continua relevante para versões legadas: não aplicar regra única às duas versões. Referência: https://portalsped.fazenda.mg.gov.br/spedmg/nfce/web-services/ (validar checksum e versão do arquivo oficial no ato da implementação).
+
+**Matriz de 20 municípios:** `docs/coverage/NFCORE_MG_W1_MUNICIPAL_CELLS_2026-11-11.json` diferencia fonte normativa, XSD do envelope, XMLDSig, transporte, UI, numeração fiscal e CI por cidade. Fontes municipais identificadas em 16/20; outros quatro requerem contrato primário completo; **0/20 INTERNAL_COMPLETE, 0/20 homologados externamente**. A adoção federal não supre regras de ISS municipais nem prova endpoint próprio.
+
+**EGM:** leitura da auditoria independente `AUDITORIA_INDEPENDENTE_EGM_NFCORE_2026-11-10.md` confirma 36 achados e etapa 9 não executada no laboratório. Nenhum agente EGM original nem sete skills foi executado neste incremento; revisão por CI/GitHub não deve receber carimbo EGM.
+
+**Gates para próxima certificação:** A) versão XSD correta em homologação e produção, schemas/hash/RTC, B) DPS sequencial durável por CNPJ sem novo provedor de autoridade, C) NF-e 55 e NFC-e 65 ciclos completos, D) contrato municipal/envelope/eventos/ISS para cada cidade, E) API+Web+PG+RBAC/E2E+CI+EGM auditável, F) externa A1/credenciamento e prova oficial, G) autorização humana para produção. Atualizar a PR/cronograma a cada marco; sem mover DF à frente de MG-W1.
+
+ **Regra local BH adicional:** aviso BHISS de 11/08/2026 confirma que ME/EPP Simples em Belo Horizonte já utilizam Emissor Nacional desde a competência novembro/2025; a regra federal nacional de novembro/2026 não substitui o corte municipal anterior. Fonte: https://prefeitura.pbh.gov.br/fazenda/bhiss/avisos?page=1 .
+
+
+### Incremento fiscal MG65 — preflight separado, sem ativação (11/11/2026)
+
+- `SefazHomologationAuthorizationGateway` mantém a mesma implementação e agora reconhece `MG_NFCE` (modelo 65) com provedor e endpoint próprios da SEFAZ/MG; **não reutiliza o endereço de NF-e 55**. Fonte oficial: https://portalsped.fazenda.mg.gov.br/spedmg/nfce/web-services/ . O alvo é configurável em código de homologação mas não foi conectado ao runtime canônico para clientes.
+- Guarda antecipada valida chave MG/65, tpAmb=2, `infNFeSupl` com QR Code apontando ao host/path oficial e `urlChave` ao portal de homologação; bloqueia QR spoofed e modelo 55 antes de Vault A1, assinatura ou HTTP. Sem prova de montagem criptográfica final do QR v3, CSC onde cabível, contingência e eventos: **NFC-e 65 permanece PREFLIGHT_IMPLEMENTED_NOT_CERTIFIED**.
+- Adaptador de operações do modelo 55/SP recusa explicitamente alvo MG65, impedindo roteamento por fallback. Testes negativos dedicados `tests/gateway/test_mg_nfce_model65_preflight.py` e matriz `docs/coverage/NFCORE_MG_W1_MUNICIPAL_CELLS_2026-11-11.json` preservam o bloqueio.
+- Estado atual do PR: Draft, sem merge e sem deploy; **a CI deve ser verificada no HEAD exato após estes commits**, sucesso anterior não serve de certificado deste incremento. Issue canônica de fechamento MG-W1: https://github.com/faabio3131/nf-core-v001/issues/426 . EGM original não foi executado. Próximo delta exige QR v3 assinado, composição exata no Control Plane, consulta/cancelamento/inutilização, teste XML completo e Web/E2E.
+
+
+**Revisão adicional do QR v3 (NT 2025.001 v1.03):** o preflight de NFC-e 65 verifica o formato **online exato** `p=<chNFe>|3|2`, não aceita campos sintéticos extras nem QR v2 neste alvo; contingência `tpEmis=9` fica bloqueada até haver geração/verificação de assinatura digital específica de seus oito campos. A origem e `urlChave` devem coincidir com os endereços oficiais de homologação MG. Referência primária: https://hom.nfe.fazenda.gov.br/portal/exibirArquivo.aspx?AspxAutoDetectCookieSupport=1&conteudo=uthum2eC3is%3D (NT v1.03, seção 04). **Status:** QR v3 ONLINE PREFLIGHT ONLY, não autorização, DANFE ou contingência certificados.
+
+
+**Gate MG65 síncrono adicional:** NF-e/NFC-e Nacional NT 2025.001 v1.03 exige autorização síncrona para lote com uma única NFC-e; o preflight MG65 agora rejeita `indSinc!=1` antes de A1/transporte, com teste de regressão. Isto não ativa consulta, cancelamento, inutilização ou contingência NFC-e. Evidence: `tests/gateway/test_mg_nfce_model65_preflight.py`, PR #423, CI do HEAD a comprovar.

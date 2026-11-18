@@ -1,3 +1,5 @@
+> **ÍNDICE CURRENT — 17/11/2026:** o histórico BUILD-ONLY abaixo não é uma fotografia atual da candidata fiscal/Web. Para PRs abertas, integração #468/#498, falha temporal da CI, lacunas FIS-03/BH/SP-22/MG e gates Contabo, consultar [cronograma de reconciliação](audit/NFCORE_RECONCILIATION_CLOSEOUT_SCHEDULE_2026-11-17.md) e [inventário único](audit/NFCORE_PENDING_REGISTER_CURRENT_2026-11-17.md). Preservar os critérios/estados BUILD-ONLY sem promover por reflexo qualquer item do plano mestre de 59 IDs ou homologação fiscal.
+
 # FM NFCORE V1 — Ledger da trilha BUILD-ONLY
 
 **Estado:** EM_EXECUCAO (trilha subordinada ao cronograma mestre de 59 IDs).

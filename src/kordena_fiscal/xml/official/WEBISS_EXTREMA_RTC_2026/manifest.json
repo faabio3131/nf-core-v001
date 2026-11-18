@@ -1,0 +1,24 @@
+{
+  "municipality": "Extrema/MG",
+  "municipality_ibge": "3125101",
+  "schema_version": "WebISS ABRASF 2.02 + IBS/CBS RTC (2026)",
+  "source": "https://extremamg.webiss.com.br/externo/manual/visualizar",
+  "rtc_xsd_url": "https://drive.google.com/file/d/14yTC_mKUsBEYfmiv35JyYC_FP_6z2U-T/view",
+  "xmlsig_source_url": "https://drive.google.com/file/d/0Bw7RBBzWF6breGxiS1c4ZVhwS2M/view?resourcekey=0-6QJapRF-I7HWOYG4I16DOA",
+  "files": [
+    {
+      "name": "nfse_v2_02-IBSCBS.xsd",
+      "sha256": "4caeadd9b4993b7741d7a83aa80601ac5743524d5af7bdd14f862fed053c7003",
+      "size": 105916
+    },
+    {
+      "name": "xmldsig-core-schema20020212.xsd",
+      "sha256": "13f29857c337bef574e59ea1023caaa9b407bcae0dea013c5c295385688708d4",
+      "size": 10467,
+      "stored_as": "xmldsig-core-schema20020212.xsd.gz",
+      "compressed_sha256": "64ea007670853de7f77136fcdd81fbae91ec377f383e435550c3c8e5e6647088"
+    }
+  ],
+  "schema_set_package_sha256": "8e0f2a9174cbfafa5a601a7003c5f3d4408ceadd01de1e87b9be12c09cc762ee",
+  "disclaimer": "The official vendor package is public documentation. Schema compilation and packaging do not constitute taxpayer authorization or municipal homologation."
+}

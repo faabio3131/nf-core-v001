@@ -52,6 +52,8 @@ class FiscalCapability(StrEnum):
     CAPABILITIES_READ = "fiscal.capabilities.read"
     RECONCILE = "fiscal.reconcile"
     ARCHIVE_READ = "fiscal.archive.read"
+    CERTIFICATE_DELEGATE = "fiscal.certificate.delegate"
+    CERTIFICATE_STATUS_READ = "fiscal.certificate.status.read"
 
 
 class SecurityAuditOutcome(StrEnum):

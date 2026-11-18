@@ -15,6 +15,18 @@ require_value NFCORE_PRODUCTION_DEPLOY_DRIVER
 require_value DATABASE_URL
 require_value NFCORE_DEPLOY_REVISION
 
+# Deploy drivers must receive an immutable, audited 40-character commit.
+[ "${#NFCORE_DEPLOY_REVISION}" -eq 40 ] || {
+  echo "production preflight: FAIL immutable 40-hex source revision required"
+  exit 1
+}
+case "$NFCORE_DEPLOY_REVISION" in
+  *[!0-9a-fA-F]*)
+    echo "production preflight: FAIL immutable 40-hex source revision required"
+    exit 1
+    ;;
+esac
+
 case "$NFCORE_PRODUCTION_BASE_URL" in
   https://*) ;;
   *)

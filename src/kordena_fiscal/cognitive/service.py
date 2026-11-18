@@ -177,7 +177,7 @@ class CognitiveAdviceService:
                 return _ModelOutcome(degraded_reason="entitlement_unavailable")
             if not decision.allowed:
                 return _ModelOutcome(degraded_reason="entitlement_denied")
-        if self._audit is not None and not self._emit(
+        if self._audit is None or not self._emit(
             request, "advice.model_call_started", context_hash, "started", None
         ):
             return _ModelOutcome(degraded_reason="audit_unavailable")

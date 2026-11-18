@@ -19,6 +19,7 @@ from kordena_fiscal.domain import ExecutionScope, FiscalValidationError
 from kordena_fiscal.gateway import AuthorizationRequest, FiscalGatewayClient
 from kordena_fiscal.issuance.nfe_nfse import (
     NfseAuthorizationRequest,
+    NfseAuthorizationResult,
     NfseGatewayClient,
     NfseQueryClient,
 )
@@ -112,6 +113,11 @@ def build_provider_issuance_handler(
             "recovery_required": outcome.recovery_required,
             "result_reference": outcome.attempt.result_reference,
             "rejection_reason": outcome.attempt.rejection_reason,
+            "rejection_message": (
+                outcome.provider_result.rejection_message
+                if isinstance(outcome.provider_result, NfseAuthorizationResult)
+                else None
+            ),
         }
 
     return PreflightFiscalOperationHandler(issue, preflight)

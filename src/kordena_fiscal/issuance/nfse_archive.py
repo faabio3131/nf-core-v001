@@ -12,6 +12,7 @@ from kordena_fiscal.domain import (
     BrazilianJurisdiction,
     CnaeCode,
     Cnpj,
+    Cpf,
     ExecutionScope,
     FiscalAddress,
     FiscalProfile,
@@ -23,7 +24,15 @@ from kordena_fiscal.domain import (
     TaxRegimeCode,
 )
 
-from .nfe_nfse import NfseAuthorizationRequest, NfseCanonicalDocument, NfseServiceLine
+from .nfe_nfse import (
+    NfseAuthorizationRequest,
+    NfseCanonicalDocument,
+    NfseForeignAddress,
+    NfseNationalSubstitution,
+    NfseNationalTaxTreatment,
+    NfseServiceLine,
+    NfseServiceTaker,
+)
 
 NFSE_PREPARED_MEDIA_TYPE = "application/vnd.nfcore.prepared-nfse.v1+json"
 
@@ -85,13 +94,96 @@ def encode_prepared_nfse(request: NfseAuthorizationRequest) -> bytes:
                 "iss_amount": str(line.iss_amount.amount),
                 "iss_withheld": line.iss_withheld,
                 "national_taxation_code": line.national_taxation_code,
+                **({"nbs_code": line.nbs_code} if line.nbs_code is not None else {}),
+                **({"municipal_taxation_detail": line.municipal_taxation_detail}
+                   if line.municipal_taxation_detail is not None else {}),
                 "rule_version": line.rule_version,
                 "source_normative": line.source_normative,
             }
             for line in document.services
         ],
         "service_taker_reference": document.service_taker_reference,
+        "service_taker": None if document.service_taker is None else {
+            "tax_id_type": (
+                "cnpj" if isinstance(document.service_taker.tax_id, Cnpj)
+                else "cpf" if isinstance(document.service_taker.tax_id, Cpf)
+                else "nif" if document.service_taker.nif is not None else "cNaoNIF"
+            ),
+            "tax_id": (
+                document.service_taker.tax_id.value
+                if document.service_taker.tax_id is not None else None
+            ),
+            "nif": document.service_taker.nif,
+            "no_nif_reason": document.service_taker.no_nif_reason,
+            "legal_name": document.service_taker.legal_name,
+            "municipal_registration": document.service_taker.municipal_registration,
+            "address": (
+                None if document.service_taker.address is None else (
+                    {
+                        "type": "foreign",
+                        "country_code": document.service_taker.address.country_code,
+                        "postal_code": document.service_taker.address.postal_code,
+                        "city": document.service_taker.address.city,
+                        "region": document.service_taker.address.region,
+                        "street": document.service_taker.address.street,
+                        "number": document.service_taker.address.number,
+                        "district": document.service_taker.address.district,
+                        "complement": document.service_taker.address.complement,
+                    } if isinstance(document.service_taker.address, NfseForeignAddress) else {
+                        "type": "national",
+                        "street": document.service_taker.address.street,
+                        "number": document.service_taker.address.number,
+                        "district": document.service_taker.address.district,
+                        "municipality_name": document.service_taker.address.municipality_name,
+                        "state_code": document.service_taker.address.jurisdiction.state_code,
+                        "municipality_ibge_code": (
+                            document.service_taker.address.jurisdiction.municipality_ibge_code
+                        ),
+                        "postal_code": document.service_taker.address.postal_code,
+                        "complement": document.service_taker.address.complement,
+                    }
+                )
+            ),
+        },
         "schema_version": document.schema_version,
+        "national_tax_treatment": (
+            None if document.national_tax_treatment is None else {
+                **({
+                    "policy_id": document.national_tax_treatment.policy_id,
+                    "policy_sha256": document.national_tax_treatment.policy_sha256,
+                } if document.national_tax_treatment.policy_id is not None else {}),
+                "iss_taxation_code": document.national_tax_treatment.iss_taxation_code,
+                "special_regime_code": document.national_tax_treatment.special_regime_code,
+                "simples_assessment_code": (
+                    document.national_tax_treatment.simples_assessment_code
+                ),
+                "result_country_code": document.national_tax_treatment.result_country_code,
+                "immunity_type_code": document.national_tax_treatment.immunity_type_code,
+                "municipal_benefit_id": (
+                    document.national_tax_treatment.municipal_benefit_id
+                ),
+                "normative_reference": document.national_tax_treatment.normative_reference,
+                "rule_version": document.national_tax_treatment.rule_version,
+                "effective_from": document.national_tax_treatment.effective_from.isoformat(),
+                "effective_to": (
+                    document.national_tax_treatment.effective_to.isoformat()
+                    if document.national_tax_treatment.effective_to else None
+                ),
+            }
+        ),
+        "national_substitution": (
+            None if document.national_substitution is None else {
+                "original_document_id": document.national_substitution.original_document_id,
+                "original_invoice_reference": (
+                    document.national_substitution.original_invoice_reference
+                ),
+                "reason_code": document.national_substitution.reason_code,
+                "reason_description": document.national_substitution.reason_description,
+                "approval_reference": document.national_substitution.approval_reference,
+            }
+        ),
+        "dps_series": document.dps_series,
+        "dps_number": document.dps_number,
         "idempotency_key": request.idempotency_key.value,
         "request_fingerprint": request.request_fingerprint,
     }
@@ -197,12 +289,129 @@ def decode_prepared_nfse(content: bytes, *, scope: ExecutionScope) -> NfseAuthor
                 national_taxation_code=_optional_text(
                     item.get("national_taxation_code"), "national_taxation_code"
                 ),
+                nbs_code=_optional_text(item.get("nbs_code"), "nbs_code"),
+                municipal_taxation_detail=_optional_text(
+                    item.get("municipal_taxation_detail"), "municipal_taxation_detail",
+                ),
                 rule_version=item["rule_version"],
                 source_normative=_text(item["source_normative"], "source_normative"),
             )
             for raw in raw_services
             for item in (_mapping(raw, "service"),)
         )
+        taker = None
+        if root.get("service_taker") is not None:
+            raw_taker = _mapping(root["service_taker"], "service_taker")
+            kind = _text(raw_taker["tax_id_type"], "service_taker.tax_id_type")
+            tax_id: Cnpj | Cpf | None = None
+            nif = None
+            no_nif_reason = None
+            if kind == "cnpj":
+                tax_id = Cnpj(_text(raw_taker["tax_id"], "service_taker.tax_id"))
+            elif kind == "cpf":
+                tax_id = Cpf(_text(raw_taker["tax_id"], "service_taker.tax_id"))
+            elif kind == "nif":
+                nif = _text(raw_taker["nif"], "service_taker.nif")
+            elif kind == "cNaoNIF":
+                no_nif_reason = _text(raw_taker["no_nif_reason"], "service_taker.no_nif_reason")
+            else:
+                raise FiscalValidationError("Unsupported NFS-e taker tax identity")
+            taker_address: FiscalAddress | NfseForeignAddress | None = None
+            if raw_taker.get("address") is not None:
+                ta = _mapping(raw_taker["address"], "service_taker.address")
+                address_type = _text(ta["type"], "taker.address.type")
+                if address_type == "foreign":
+                    taker_address = NfseForeignAddress(
+                        country_code=_text(ta["country_code"], "taker.country_code"),
+                        postal_code=_text(ta["postal_code"], "taker.postal_code"),
+                        city=_text(ta["city"], "taker.city"),
+                        region=_text(ta["region"], "taker.region"),
+                        street=_text(ta["street"], "taker.street"),
+                        number=_text(ta["number"], "taker.number"),
+                        district=_text(ta["district"], "taker.district"),
+                        complement=_optional_text(ta.get("complement"), "taker.complement"),
+                    )
+                elif address_type == "national":
+                    taker_address = FiscalAddress(
+                        street=_text(ta["street"], "taker.street"),
+                        number=_text(ta["number"], "taker.number"),
+                        district=_text(ta["district"], "taker.district"),
+                        municipality_name=_text(ta["municipality_name"], "taker.municipality"),
+                        jurisdiction=BrazilianJurisdiction(
+                            _text(ta["state_code"], "taker.state_code"),
+                            _text(ta["municipality_ibge_code"], "taker.municipality_ibge_code"),
+                        ),
+                        postal_code=_text(ta["postal_code"], "taker.postal_code"),
+                        complement=_optional_text(ta.get("complement"), "taker.complement"),
+                    )
+                else:
+                    raise FiscalValidationError("Unsupported NFS-e taker address type")
+            taker = NfseServiceTaker(
+                tax_id=tax_id,
+                legal_name=_text(raw_taker["legal_name"], "taker.legal_name"),
+                address=taker_address,
+                municipal_registration=_optional_text(
+                    raw_taker.get("municipal_registration"), "taker.municipal_registration"
+                ),
+                nif=nif,
+                no_nif_reason=no_nif_reason,
+            )
+        treatment = None
+        if root.get("national_tax_treatment") is not None:
+            decision = _mapping(root["national_tax_treatment"], "national_tax_treatment")
+            treatment = NfseNationalTaxTreatment(
+                policy_id=decision.get("policy_id"),
+                policy_sha256=decision.get("policy_sha256"),
+                iss_taxation_code=_text(
+                    decision["iss_taxation_code"], "tax_treatment.iss_taxation_code"
+                ),
+                special_regime_code=_text(
+                    decision["special_regime_code"], "tax_treatment.special_regime_code"
+                ),
+                normative_reference=_text(
+                    decision["normative_reference"], "tax_treatment.normative_reference"
+                ),
+                rule_version=decision["rule_version"],
+                effective_from=date.fromisoformat(_text(
+                    decision["effective_from"], "tax_treatment.effective_from"
+                )),
+                effective_to=(
+                    date.fromisoformat(_text(
+                        decision["effective_to"], "tax_treatment.effective_to"
+                    )) if decision.get("effective_to") is not None else None
+                ),
+                simples_assessment_code=_optional_text(
+                    decision.get("simples_assessment_code"),
+                    "tax_treatment.simples_assessment_code",
+                ),
+                result_country_code=_optional_text(
+                    decision.get("result_country_code"), "tax_treatment.result_country_code",
+                ),
+                immunity_type_code=_optional_text(
+                    decision.get("immunity_type_code"), "tax_treatment.immunity_type_code",
+                ),
+                municipal_benefit_id=_optional_text(
+                    decision.get("municipal_benefit_id"),
+                    "tax_treatment.municipal_benefit_id",
+                ),
+            )
+        substitution = None
+        if root.get("national_substitution") is not None:
+            data = _mapping(root["national_substitution"], "national_substitution")
+            if set(data) != {
+                "original_document_id", "original_invoice_reference",
+                "reason_code", "reason_description", "approval_reference",
+            }:
+                raise FiscalValidationError("Invalid archived national replacement fields")
+            substitution = NfseNationalSubstitution(
+                original_document_id=_text(data["original_document_id"], "original_document_id"),
+                original_invoice_reference=_text(
+                    data["original_invoice_reference"], "original_invoice_reference",
+                ),
+                reason_code=_text(data["reason_code"], "reason_code"),
+                reason_description=_text(data["reason_description"], "reason_description"),
+                approval_reference=_text(data["approval_reference"], "approval_reference"),
+            )
         document = NfseCanonicalDocument(
             document_id=_text(root["document_id"], "document_id"),
             scope=scope,
@@ -222,6 +431,11 @@ def decode_prepared_nfse(content: bytes, *, scope: ExecutionScope) -> NfseAuthor
                 root.get("service_taker_reference"), "service_taker_reference"
             ),
             schema_version=root["schema_version"],
+            service_taker=taker,
+            dps_series=root.get("dps_series", 1),
+            dps_number=root.get("dps_number"),
+            national_tax_treatment=treatment,
+            national_substitution=substitution,
         )
         request = NfseAuthorizationRequest.build(document)
         if request.idempotency_key.value != _text(root["idempotency_key"], "idempotency_key"):
