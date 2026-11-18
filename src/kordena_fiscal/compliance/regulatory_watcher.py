@@ -337,6 +337,8 @@ class RegulatoryWatcherService:
                 )
             if observation.jurisdiction != jurisdiction:
                 raise RegulatoryWatcherConflictError("observation jurisdiction mismatch")
+            if observation.subject != subject.strip().lower():
+                raise RegulatoryWatcherConflictError("observation subject mismatch")
         proposal = RegulatoryChangeProposal(
             proposal_id=proposal_id,
             observation_ids=observation_ids,
