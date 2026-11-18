@@ -21,6 +21,7 @@ from kordena_fiscal.domain import (
     BrazilianJurisdiction,
     FiscalDocumentKind,
     FiscalEnvironment,
+    FiscalValidationError,
     Gtin,
     StateRegistration,
 )
@@ -67,17 +68,23 @@ def post(web, payload, key="manual-attempt", *, operation="prepareNativeSale"):
     })
 
 
-@pytest.fixture
-def sale_setup(preparation_database, mapping, signing_material, tmp_path, monkeypatch):
+def _make_sale_setup(
+    preparation_database, mapping, signing_material, tmp_path, monkeypatch,
+    *, state: str,
+):
     db = preparation_database
     now = datetime.now(UTC) - timedelta(minutes=1)
     scope = replace(mapping["issuer"].scope, host_namespace="fm-nfcore")
     issuer = replace(
         mapping["issuer"], scope=scope, effective_from=now - timedelta(days=1),
-        address=replace(mapping["issuer"].address,
-            jurisdiction=BrazilianJurisdiction("MG", "3106200"),
-            municipality_name="Belo Horizonte"),
-        state_registration=StateRegistration("MG", "123456789"),
+        address=replace(
+            mapping["issuer"].address,
+            jurisdiction=BrazilianJurisdiction(
+                state, "3550308" if state == "SP" else "3106200",
+            ),
+            municipality_name="Sao Paulo" if state == "SP" else "Belo Horizonte",
+        ),
+        state_registration=StateRegistration(state, "123456789"),
     )
     product = replace(mapping["products_by_code"]["SKU"], scope=scope,
         gtin=Gtin("SEM GTIN"), effective_from=now - timedelta(days=1))
@@ -93,7 +100,7 @@ def sale_setup(preparation_database, mapping, signing_material, tmp_path, monkey
                 environment=FiscalEnvironment.HOMOLOGATION, document_kind=kind,
                 jurisdiction=issuer.address.jurisdiction,
                 operation=ConfiguredFiscalOperation.AUTHORIZE,
-                provider_id="sefaz-mg-homologacao-" + kind.value + "4"))
+                provider_id="sefaz-" + state.lower() + "-homologacao-" + kind.value + "4"))
         uow.commit()
     root = tmp_path / "policies"
     root.mkdir()
@@ -111,7 +118,7 @@ def sale_setup(preparation_database, mapping, signing_material, tmp_path, monkey
                 "rule_id": "synthetic-sale", "version": 1, "priority": 1,
                 "effective_from": (now - timedelta(days=1)).isoformat(),
                 "source_normative": "urn:synthetic:manual-test-only",
-                "selector": {"state_code": "MG", "tax_regime": 1,
+                "selector": {"state_code": state, "tax_regime": 1,
                     "recipient_profile": "consumer_final", "ncm_prefix": "21"},
                 "outcome": {"cfop": "5102", "icms_code": "102", "pis_cst": "07",
                     "cofins_cst": "07", "nfe_rates": {"icms_rate": "0",
@@ -143,6 +150,113 @@ def sale_setup(preparation_database, mapping, signing_material, tmp_path, monkey
         "payments": [{"method": "cash", "amount": "20.00"}], "change_amount": "10.00",
     }
     return db, scope, payload, policies, calls, root
+
+
+@pytest.fixture
+def sale_setup(preparation_database, mapping, signing_material, tmp_path, monkeypatch):
+    return _make_sale_setup(
+        preparation_database, mapping, signing_material, tmp_path, monkeypatch,
+        state="MG",
+    )
+
+
+@pytest.fixture
+def sp_sale_setup(preparation_database, mapping, signing_material, tmp_path, monkeypatch):
+    return _make_sale_setup(
+        preparation_database, mapping, signing_material, tmp_path, monkeypatch,
+        state="SP",
+    )
+
+
+def test_sp_nfce_exact_city_binding_cannot_be_reused_across_scope(
+    sp_sale_setup,
+) -> None:
+    """Control Plane issuer CNPJ and city, not a statewide placeholder, grant 65."""
+    from kordena_fiscal.runtime.canonical_fiscal_composition import (
+        _require_sp_nfce_binding,
+    )
+
+    db, scope, payload, _, _, _ = sp_sale_setup
+    web = client(db)
+    response = post(web, payload)
+    assert response.status_code == 200, response.text
+    app = FiscalApplicationService(db)
+    access_key = app.load_prepared_document_authorization(
+        scope, response.json()["document_id"],
+    ).access_key
+    city = app.resolve_scoped_issuer_jurisdiction(
+        scope=scope, issuer_cnpj=access_key.issuer_identifier,
+        instant=datetime.now(UTC),
+    )
+    assert city.state_code == "SP"
+    assert city.municipality_ibge_code == "3550308"
+    _require_sp_nfce_binding(
+        app, scope, access_key, ConfiguredFiscalOperation.AUTHORIZE,
+    )
+    with pytest.raises(FiscalValidationError, match="scoped fiscal issuer"):
+        app.resolve_scoped_issuer_jurisdiction(
+            scope=replace(scope, tenant_id="other"),
+            issuer_cnpj=access_key.issuer_identifier, instant=datetime.now(UTC),
+        )
+    with pytest.raises(FiscalValidationError, match="scoped fiscal issuer"):
+        app.resolve_scoped_issuer_jurisdiction(
+            scope=scope, issuer_cnpj="11222333000181",
+            instant=datetime.now(UTC),
+        )
+    with pytest.raises(FiscalValidationError):
+        _require_sp_nfce_binding(
+            app, replace(scope, unit_id="other"), access_key,
+            ConfiguredFiscalOperation.AUTHORIZE,
+        )
+    with pytest.raises(FiscalValidationError):
+        _require_sp_nfce_binding(
+            app, scope, access_key, ConfiguredFiscalOperation.QUERY,
+        )
+
+
+def test_sp_nfce_same_authenticated_portal_qr_v3_signature_replay_and_isolation(
+    sp_sale_setup, signing_material,
+) -> None:
+    db, scope, payload, policies, calls, root = sp_sale_setup
+    web = client(db)
+    reviewed = post(
+        web, {"unit_id": "unit", "environment": "homologation", "document_kind": "nfce"},
+        operation="reviewNativeSale",
+    )
+    assert reviewed.status_code == 200, reviewed.text
+    assert reviewed.json()["policy_sha256"] == policies["nfce"]
+    first = post(web, payload)
+    assert first.status_code == 200, first.text
+    assert first.json()["status"] == "ready_to_transmit"
+    assert first.json()["transmitted"] is False
+    document_id = first.json()["document_id"]
+    prepared = FiscalApplicationService(db).load_prepared_document_authorization(
+        scope, document_id,
+    )
+    assert prepared.access_key.value[:2] == "35"
+    assert prepared.access_key.value[20:22] == "65"
+    OfficialNfeEnvelopeValidator()(prepared.signed_xml)
+    root_xml = etree.fromstring(prepared.signed_xml)
+    verify_official_nfe4_signature(root_xml, signing_material)
+    ns = {"n": "http://www.portalfiscal.inf.br/nfe"}
+    qr = root_xml.xpath("string(//n:qrCode)", namespaces=ns)
+    assert qr == (
+        "https://www.homologacao.nfce.fazenda.sp.gov.br/qrcode?p="
+        + prepared.access_key.value + "|3|2"
+    )
+    assert root_xml.xpath("string(//n:urlChave)", namespaces=ns) == (
+        "https://www.homologacao.nfce.fazenda.sp.gov.br/consulta"
+    )
+    replay = post(client(db), payload)
+    assert replay.status_code == 200, replay.text
+    assert replay.json()["replay"] is True
+    assert replay.json()["document_id"] == document_id
+    assert len(calls) == 1
+    cross_tenant = client(db, tenant="other")
+    assert cross_tenant.get(
+        f"/v1/portal/documents/{document_id}/artifacts/authorized_xml",
+        params={"unit_id": "unit", "environment": "homologation"},
+    ).status_code == 404
 
 
 def test_nfce_http_preparation_signature_schema_replay_restart_and_numbering(
@@ -343,6 +457,104 @@ def test_policy_installer_uses_same_validator_and_scope(sale_setup, tmp_path):
     _, digest, _ = load_sale_policy({"NFCORE_SALE_FISCAL_POLICY_ROOT": str(destination)},
         scope, FiscalDocumentKind.NFCE)
     assert digest == policies["nfce"]
+
+
+def test_sp_nfce_full_canonical_portal_issue_replay_query_xml_and_pdf(
+    sp_sale_setup, signing_material, monkeypatch,
+) -> None:
+    """Same auth/tenant, Control Plane, A1, XML signature, archive and Portal."""
+    from unittest.mock import Mock
+
+    from kordena_fiscal.gateway.nfe_sp_homologation import (
+        SefazHomologationAuthorizationGateway,
+    )
+    from kordena_fiscal.operations import FakeFiscalOperationsGateway
+    from kordena_fiscal.runtime.canonical_fiscal_composition import (
+        build_runtime_fiscal_handler_factory,
+    )
+    from kordena_fiscal.runtime.fiscal_runtime import (
+        CanonicalFiscalOperationPath,
+        CanonicalPortalOperationExecutor,
+    )
+
+    db, scope, payload, policies, calls, root = sp_sale_setup
+    exchange = Mock()
+    ns = "http://www.portalfiscal.inf.br/nfe"
+
+    def synthetic_sp_sefaz(self, soap, context, timeout):
+        exchange(soap)
+        envelope = etree.fromstring(soap)
+        signed = envelope.find(f".//{{{ns}}}enviNFe")
+        assert signed is not None
+        verify_official_nfe4_signature(signed, signing_material)
+        key = signed.find(f".//{{{ns}}}infNFe").get("Id")[3:]
+        assert key[20:22] == "65" and key[:2] == "35"
+        digest = signed.findtext(".//{http://www.w3.org/2000/09/xmldsig#}DigestValue")
+        return (
+            '<Envelope xmlns="http://www.w3.org/2003/05/soap-envelope"><Body>'
+            f'<retEnviNFe xmlns="{ns}" versao="4.00"><tpAmb>2</tpAmb>'
+            '<verAplic>synthetic</verAplic><cUF>35</cUF><cStat>104</cStat>'
+            '<xMotivo>Lote sintetico</xMotivo>'
+            '<protNFe versao="4.00"><infProt><tpAmb>2</tpAmb>'
+            f'<chNFe>{key}</chNFe><nProt>135000000000001</nProt>'
+            f'<digVal>{digest}</digVal><cStat>100</cStat>'
+            '<xMotivo>Autorizacao sintetica interna</xMotivo>'
+            '</infProt></protNFe></retEnviNFe></Body></Envelope>'
+        ).encode()
+
+    monkeypatch.setattr(
+        SefazHomologationAuthorizationGateway,
+        "_https_exchange", synthetic_sp_sefaz,
+    )
+
+    class ScopedVault:
+        def resolve(self, *, scope, issuer_cnpj):
+            assert scope.tenant_id == "tenant" and scope.unit_id == "unit"
+            assert scope.environment is FiscalEnvironment.HOMOLOGATION
+            assert issuer_cnpj == "12345678000195"
+            return signing_material
+
+    application = FiscalApplicationService(db)
+    query_gateway = FakeFiscalOperationsGateway()
+    handlers = build_runtime_fiscal_handler_factory(
+        operations_gateway=query_gateway,
+        certificate_vault=ScopedVault(),
+    )(application)
+    web = client(db, operation_executor=CanonicalPortalOperationExecutor(
+        unit_of_work_factory=db,
+        path=CanonicalFiscalOperationPath(application, handlers=handlers),
+    ))
+    prepared = post(web, payload)
+    assert prepared.status_code == 200, prepared.text
+    doc_id = prepared.json()["document_id"]
+    params = {"unit_id": "unit", "environment": "homologation"}
+    url = f"/v1/portal/documents/{doc_id}/artifacts/"
+    assert web.get(url + "authorized_xml", params=params).status_code == 404
+    issued = post(
+        web, params | {"document_id": doc_id},
+        "sp-nfce-issue", operation="issueFiscalDocument",
+    )
+    assert issued.status_code == 200, issued.text
+    assert issued.json()["status"] == "authorized"
+    replay = post(
+        web, params | {"document_id": doc_id},
+        "sp-nfce-retry", operation="issueFiscalDocument",
+    )
+    assert replay.status_code == 200, replay.text
+    assert exchange.call_count == 1
+    archived = web.get(url + "authorized_xml", params=params)
+    assert archived.status_code == 200 and b"nfeProc" in archived.content
+    verify_official_nfe4_signature(etree.fromstring(archived.content), signing_material)
+    pdf = web.get(url + "auxiliary_pdf", params=params)
+    assert pdf.status_code == 200 and pdf.content.startswith(b"%PDF")
+    key = application.load_prepared_document_authorization(scope, doc_id).access_key.value
+    queried = post(
+        web, params | {"access_key": key},
+        "sp-nfce-query", operation="queryFiscalDocument",
+    )
+    assert queried.status_code == 200, queried.text
+    assert queried.json()["status"] == "authorized"
+    assert len(query_gateway.query_calls) == 1 and exchange.call_count == 1
 
 
 @pytest.mark.parametrize("kind", ["nfe", "nfce"])

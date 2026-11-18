@@ -78,6 +78,72 @@ def _inutilize(model=ElectronicInvoiceModel.NFE):
     )
 
 
+@pytest.mark.parametrize("model", [
+    ElectronicInvoiceModel.NFCE,
+])
+def test_sp_model55_query_and_cancel_refuse_nfce_before_a1(
+    model: ElectronicInvoiceModel,
+) -> None:
+    """A SP65 key cannot be queried/cancelled through the SP55 provider."""
+    invoice = _request("35", model=model)
+    vault = Mock(side_effect=AssertionError("A1 should not be resolved"))
+    exchange = Mock(side_effect=AssertionError("SEFAZ should not be called"))
+    gateway = SefazSpHomologationOperationsGateway(
+        resolve_certificate=vault, exchange=exchange,
+    )
+    with pytest.raises(OfficialNfeOperationsError, match="state/model"):
+        gateway.query(FiscalQueryRequest(invoice.scope, invoice.access_key))
+    with pytest.raises(OfficialNfeOperationsError, match="state/model"):
+        gateway.cancel(CancellationRequest.build(
+            scope=invoice.scope,
+            access_key=invoice.access_key,
+            authorization_protocol="135260000000001",
+            justification="Cancelamento sintético para verificação interna",
+        ))
+    vault.assert_not_called()
+    exchange.assert_not_called()
+
+
+def test_sp_nfce65_query_uses_separate_official_model65_endpoint(
+    material,
+) -> None:
+    """Prove existing operations class routes SP65 by model, not UF alone."""
+    from kordena_fiscal.control_plane.sefaz_endpoint_catalog import (
+        SefazService,
+        resolve_sefaz_endpoint,
+    )
+    from kordena_fiscal.gateway.nfe_sp_homologation import (
+        SP_NFCE_HOMOLOGATION_PROVIDER_ID,
+    )
+
+    original = _request("35", model=ElectronicInvoiceModel.NFCE)
+    expected = resolve_sefaz_endpoint(
+        state_ibge_code="35", document_kind=FiscalDocumentKind.NFCE,
+        environment=FiscalEnvironment.HOMOLOGATION, service=SefazService.QUERY,
+    )
+    answer = Mock(return_value=_soap(
+        f'<retConsSitNFe xmlns="{NS}"><tpAmb>2</tpAmb><cUF>35</cUF>'
+        f'<chNFe>{original.access_key.value}</chNFe><cStat>217</cStat>'
+        '</retConsSitNFe>'
+    ))
+    resolver = Mock(return_value=material)
+    gateway = SefazHomologationOperationsGateway(
+        target=HomologationAuthorizationTarget.SP_NFCE,
+        resolve_certificate=resolver, exchange=answer,
+    )
+    assert gateway._sp_nfce_endpoints["NFeConsultaProtocolo4"] == expected.url
+    result = gateway.query(FiscalQueryRequest(original.scope, original.access_key))
+    assert result.status is FiscalQueryStatus.NOT_FOUND
+    assert result.provider.provider_name == SP_NFCE_HOMOLOGATION_PROVIDER_ID
+    resolver.assert_called_once()
+    answer.assert_called_once()
+    assert answer.call_args.args[0] == "NFeConsultaProtocolo4"
+    wrong = _request("35", model=ElectronicInvoiceModel.NFE)
+    with pytest.raises(OfficialNfeOperationsError, match="state/model"):
+        gateway.query(FiscalQueryRequest(wrong.scope, wrong.access_key))
+    assert resolver.call_count == 1 and answer.call_count == 1
+
+
 def test_all_lifecycle_schemas_compile_without_network():
     OfficialOperationXmlValidator(tuple(ROOTS))
 

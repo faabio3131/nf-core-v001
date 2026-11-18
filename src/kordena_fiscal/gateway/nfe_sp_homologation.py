@@ -161,12 +161,14 @@ def _tls_context(material: EphemeralCertificateMaterial) -> ssl.SSLContext:
 
 MG_NFE_HOMOLOGATION_PROVIDER_ID = "sefaz-mg-homologacao-nfe4"
 MG_NFCE_HOMOLOGATION_PROVIDER_ID = "sefaz-mg-homologacao-nfce4"
+SP_NFCE_HOMOLOGATION_PROVIDER_ID = "sefaz-sp-homologacao-nfce4"
 
 
 class HomologationAuthorizationTarget(StrEnum):
     """Engineering configuration only; never an HTTP/provider binding authority."""
 
     SP_NFE = "sp_nfe"
+    SP_NFCE = "sp_nfce"
     MG_NFE = "mg_nfe"
     MG_NFCE = "mg_nfce"
 
@@ -238,6 +240,96 @@ def _validate_mg_authorization_scope(
             raise OfficialNfeTransportError("NFC-e MG65 QR/consulta divergem da SEFAZ")
 
 
+def _validate_sp_nfe_authorization_scope(request: AuthorizationRequest) -> None:
+    """Deny model-65 or wrong-UF payloads before a model-55 SP A1 is opened."""
+    if (
+        request.scope.environment is not FiscalEnvironment.HOMOLOGATION
+        or request.access_key.value[:2] != "35"
+        or request.access_key.model.value != 55
+    ):
+        raise OfficialNfeTransportError("SEFAZ SP NF-e requires model 55 and tpAmb=2")
+    root = _parse_xml(request.signed_xml)
+    invoices = root.findall(f"{{{NFE_NAMESPACE}}}NFe")
+    if (
+        root.tag != f"{{{NFE_NAMESPACE}}}enviNFe"
+        or root.get("versao") != "4.00"
+        or len(invoices) != 1
+    ):
+        raise OfficialNfeTransportError("SEFAZ SP NF-e requires one 4.00 invoice")
+    info = invoices[0].find(f"{{{NFE_NAMESPACE}}}infNFe")
+    if info is None or info.get("Id") != "NFe" + request.access_key.value:
+        raise OfficialNfeTransportError("SEFAZ SP NF-e access key mismatch")
+    ide = info.find(f"{{{NFE_NAMESPACE}}}ide")
+    issuer = info.find(f"{{{NFE_NAMESPACE}}}emit")
+    if ide is None or issuer is None:
+        raise OfficialNfeTransportError("SEFAZ SP NF-e issuer or identity missing")
+    if (
+        any(
+            ide.findtext(f"{{{NFE_NAMESPACE}}}{field}") != expected
+            for field, expected in (("cUF", "35"), ("mod", "55"), ("tpAmb", "2"))
+        )
+        or issuer.findtext(f"{{{NFE_NAMESPACE}}}CNPJ")
+        != request.access_key.issuer_identifier
+    ):
+        raise OfficialNfeTransportError("SEFAZ SP NF-e issuer/model/UF mismatch")
+
+
+def _validate_sp_nfce_authorization_scope(request: AuthorizationRequest) -> None:
+    """Strict SP model 65 online-QR boundary before opening A1 or transport."""
+    if (
+        request.scope.environment is not FiscalEnvironment.HOMOLOGATION
+        or request.access_key.value[:2] != "35"
+        or request.access_key.model.value != 65
+    ):
+        raise OfficialNfeTransportError("SP NFC-e requires UF35 model 65 homologation")
+    root = _parse_xml(request.signed_xml)
+    invoices = root.findall(f"{{{NFE_NAMESPACE}}}NFe")
+    if (
+        root.tag != f"{{{NFE_NAMESPACE}}}enviNFe"
+        or root.get("versao") != "4.00"
+        or len(invoices) != 1
+        or root.findtext(f"{{{NFE_NAMESPACE}}}indSinc") != "1"
+    ):
+        raise OfficialNfeTransportError("SP NFC-e requires one synchronous 4.00 invoice")
+    invoice = invoices[0]
+    info = invoice.find(f"{{{NFE_NAMESPACE}}}infNFe")
+    if info is None or info.get("Id") != "NFe" + request.access_key.value:
+        raise OfficialNfeTransportError("SP NFC-e XML access key mismatch")
+    ide = info.find(f"{{{NFE_NAMESPACE}}}ide")
+    issuer = info.find(f"{{{NFE_NAMESPACE}}}emit")
+    if ide is None or issuer is None or any(
+        ide.findtext(f"{{{NFE_NAMESPACE}}}{field}") != value
+        for field, value in (
+            ("cUF", "35"), ("mod", "65"), ("tpAmb", "2"), ("tpEmis", "1")
+        )
+    ) or issuer.findtext(
+        f"{{{NFE_NAMESPACE}}}CNPJ"
+    ) != request.access_key.issuer_identifier:
+        raise OfficialNfeTransportError("SP NFC-e issuer/model/environment mismatch")
+    supplement = invoice.find(f"{{{NFE_NAMESPACE}}}infNFeSupl")
+    if supplement is None:
+        raise OfficialNfeTransportError("SP NFC-e QR code is absent")
+    qr = supplement.findtext(f"{{{NFE_NAMESPACE}}}qrCode")
+    link = supplement.findtext(f"{{{NFE_NAMESPACE}}}urlChave")
+    if not qr or not link:
+        raise OfficialNfeTransportError("SP NFC-e consultation references are absent")
+    qr_parts, link_parts = urlsplit(qr), urlsplit(link)
+    params = parse_qs(qr_parts.query)
+    if (
+        qr_parts.scheme != "https"
+        or qr_parts.netloc != "www.homologacao.nfce.fazenda.sp.gov.br"
+        or qr_parts.path != "/qrcode"
+        or bool(qr_parts.fragment)
+        or set(params) != {"p"}
+        or params["p"] != [request.access_key.value + "|3|2"]
+        or link_parts.scheme != "https"
+        or link_parts.netloc != "www.homologacao.nfce.fazenda.sp.gov.br"
+        or link_parts.path != "/consulta"
+        or bool(link_parts.query or link_parts.fragment)
+    ):
+        raise OfficialNfeTransportError("SP NFC-e QR/consulta divergem da SEFAZ")
+
+
 class SefazHomologationAuthorizationGateway:
     """Shared SOAP authorization; explicit targets, no runtime auto-activation."""
 
@@ -257,12 +349,22 @@ class SefazHomologationAuthorizationGateway:
         if target in {
             HomologationAuthorizationTarget.MG_NFE,
             HomologationAuthorizationTarget.MG_NFCE,
+            HomologationAuthorizationTarget.SP_NFCE,
         } and not callable(validate_schema):
-            raise ValueError("MG authorization requires a trusted XSD validator")
+            raise ValueError("Model-specific authorization requires a trusted XSD validator")
         self._target = target
         self._validate_schema = validate_schema
         self._endpoint = NFE_SP_HOMOLOGATION_AUTHORIZATION_URL
         self._provider = _PROVIDER
+        if target is HomologationAuthorizationTarget.SP_NFCE:
+            self._endpoint = resolve_sefaz_endpoint(
+                state_ibge_code="35", document_kind=FiscalDocumentKind.NFCE,
+                environment=FiscalEnvironment.HOMOLOGATION,
+                service=SefazService.AUTHORIZE,
+            ).url
+            self._provider = GatewayProviderMetadata(
+                SP_NFCE_HOMOLOGATION_PROVIDER_ID, "1.0",
+            )
         if target in {
             HomologationAuthorizationTarget.MG_NFE,
             HomologationAuthorizationTarget.MG_NFCE,
@@ -330,6 +432,10 @@ class SefazHomologationAuthorizationGateway:
             )
             if self._validate_schema is None:
                 raise OfficialNfeTransportError("MG XSD validator unavailable")
+        elif self._target is HomologationAuthorizationTarget.SP_NFCE:
+            _validate_sp_nfce_authorization_scope(request)
+        else:
+            _validate_sp_nfe_authorization_scope(request)
         material = self._resolve_certificate(
             request.scope, request.access_key.issuer_identifier
         )
@@ -348,14 +454,14 @@ class SefazHomologationAuthorizationGateway:
                 request.signed_xml, material,
                 profile=(
                     NfeSignatureProfile.NFE4_OFFICIAL_RSA_SHA1
-                    if mg_target
+                    if mg_target or self._target is HomologationAuthorizationTarget.SP_NFCE
                     else NfeSignatureProfile.RSA_SHA256
                 ),
             )
         xml = _signed_homologation_xml(request, signed_bytes)
         if self._validate_schema is not None:
             self._validate_schema(signed_bytes)
-        if mg_target:
+        if mg_target or self._target is HomologationAuthorizationTarget.SP_NFCE:
             verify_official_nfe4_signature(xml, material)
         context = _tls_context(material)
         response = _parse_xml(
@@ -369,6 +475,9 @@ class SefazHomologationAuthorizationGateway:
         if mg_target:
             if _text(result, "cUF") != "31":
                 raise OfficialNfeTransportError("MG response state mismatch")
+        elif self._target is HomologationAuthorizationTarget.SP_NFCE:
+            if _text(result, "cUF") != "35":
+                raise OfficialNfeTransportError("SP NFC-e response state mismatch")
         code = _text(result, "cStat")
         reason = _text(result, "xMotivo")
         if not code:
@@ -379,7 +488,7 @@ class SefazHomologationAuthorizationGateway:
             authorization_code = _text(protocol, "cStat") if protocol is not None else None
             protocol_no = _text(protocol, "nProt") if protocol is not None else None
             if code == "104" and authorization_code == "100" and protocol_no:
-                if mg_target:
+                if mg_target or self._target is HomologationAuthorizationTarget.SP_NFCE:
                     digest = xml.findtext(".//{" + XMLDSIG_NAMESPACE + "}DigestValue")
                     if not digest or protocol is None or _text(protocol, "digVal") != digest:
                         raise OfficialNfeTransportError("MG protocol digest mismatch")
@@ -435,6 +544,29 @@ class SefazSpHomologationGateway(SefazHomologationAuthorizationGateway):
             exchange=exchange,
             target=HomologationAuthorizationTarget.SP_NFE,
         )
+
+
+def build_sp_nfce_homologation_gateway(
+    *,
+    resolve_certificate: Callable[[ExecutionScope, str], EphemeralCertificateMaterial],
+    timeout_seconds: float = 15.0,
+    exchange: Callable[[bytes, ssl.SSLContext, float], bytes] | None = None,
+) -> SefazHomologationAuthorizationGateway:
+    """SP NFC-e 65 via the existing signed SEFAZ SOAP gateway and XSD."""
+    from kordena_fiscal.xml.official_operation_schema import OfficialOperationXmlValidator
+
+    validator = OfficialOperationXmlValidator(("NFeAutorizacao4",))
+
+    def validate_envelope(xml: bytes) -> None:
+        validator("NFeAutorizacao4", xml)
+
+    return SefazHomologationAuthorizationGateway(
+        target=HomologationAuthorizationTarget.SP_NFCE,
+        resolve_certificate=resolve_certificate,
+        validate_schema=validate_envelope,
+        timeout_seconds=timeout_seconds,
+        exchange=exchange,
+    )
 
 
 def build_mg_nfe_homologation_gateway(
