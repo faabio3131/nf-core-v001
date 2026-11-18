@@ -12,11 +12,13 @@ from fastapi.testclient import TestClient
 
 from kordena_fiscal.domain import ExecutionScope, FiscalEnvironment
 from kordena_fiscal.persistence.iron_a1_delegation import (
-    IRON_A1_DELEGATION_SCHEMA, IronA1DelegationStore,
+    IRON_A1_DELEGATION_SCHEMA,
+    IronA1DelegationStore,
 )
 from kordena_fiscal.web.app import AuthorizedBridgeContext, BridgeHttpContext, HttpContractError
 from kordena_fiscal.web.iron_a1_delegation import (
-    create_iron_a1_router, trusted_iron_origin,
+    create_iron_a1_router,
+    trusted_iron_origin,
 )
 
 _CNPJ = "11222333000181"
@@ -70,9 +72,13 @@ class _Security:
     def authorize(self, *, operation_id, context):
         self.calls.append(operation_id)
         if operation_id not in {"prepareIronA1Delegation", "readIronA1Status"}:
-            raise HttpContractError(403,"WORKLOAD_CAPABILITY_DENIED","not allowed", context.correlation_id)
+            raise HttpContractError(
+                403,"WORKLOAD_CAPABILITY_DENIED","not allowed", context.correlation_id,
+            )
         if context.credential_id != "iron-credential" or context.presented_secret != "test-secret":
-            raise HttpContractError(401,"WORKLOAD_AUTHENTICATION_FAILED","not allowed", context.correlation_id)
+            raise HttpContractError(
+                401,"WORKLOAD_AUTHENTICATION_FAILED","not allowed", context.correlation_id,
+            )
         return AuthorizedBridgeContext(
             authority=SimpleNamespace(scope=ExecutionScope(
                 host_namespace=context.host_namespace, tenant_id="tenant-a",
