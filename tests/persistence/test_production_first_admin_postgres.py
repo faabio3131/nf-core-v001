@@ -28,7 +28,7 @@ def test_first_admin_bootstrap_real_postgres_is_audited_and_one_time(
         raw.execute("CREATE SCHEMA public")
     db = PostgresFiscalDatabase(dsn)
     try:
-        assert db.initialize() == (*range(1, 20), 22)
+        assert db.initialize() == (*range(1, 20), 22, 23)
     finally:
         db.close()
 
