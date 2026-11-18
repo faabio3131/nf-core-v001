@@ -633,6 +633,12 @@ function appendNativeNfsePreparation(article) {
       result.textContent = "NFS-e preparada: " + String(prepared.document_id)
         + " (" + String(prepared.numbering_authority || "numeração fiscal durável") + ")."
         + " Referência preenchida na emissão. Documento não transmitido nem autorizado.";
+      if (prepared.dps_numbering === "reserved_durable"
+        && Number.isSafeInteger(prepared.dps_series)
+        && Number.isSafeInteger(prepared.dps_number)) {
+        result.textContent += " DPS série " + prepared.dps_series
+          + ", número " + prepared.dps_number + " já reservados de forma durável.";
+      }
       if (prepared.fiscal_policy_state === "review_required_before_sefin") {
         result.textContent += " BLOQUEIO FISCAL: falta política tributária nacional aprovada e instalada."
           + " A transmissão à SEFIN será recusada até revisão e instalação da política.";

@@ -534,9 +534,15 @@ def prepare_native_nfse(
                 else "municipal_provider_contract"
             ),
             "dps_numbering": (
-                "not_applicable_municipal_original_rps"
-                if municipal_sp else "pending_durable_authority"
+                "reserved_durable"
+                if result.request.document.dps_number is not None
+                else "not_applicable_municipal_original_rps"
             ),
+            "dps_series": (
+                result.request.document.dps_series
+                if result.request.document.dps_number is not None else None
+            ),
+            "dps_number": result.request.document.dps_number,
             "numbering_authority": (
                 "municipal_rps_durable" if municipal_sp
                 else "national_dps_durable"
