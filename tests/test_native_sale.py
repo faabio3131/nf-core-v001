@@ -67,17 +67,23 @@ def post(web, payload, key="manual-attempt", *, operation="prepareNativeSale"):
     })
 
 
-@pytest.fixture
-def sale_setup(preparation_database, mapping, signing_material, tmp_path, monkeypatch):
+def _make_sale_setup(
+    preparation_database, mapping, signing_material, tmp_path, monkeypatch,
+    *, state: str,
+):
     db = preparation_database
     now = datetime.now(UTC) - timedelta(minutes=1)
     scope = replace(mapping["issuer"].scope, host_namespace="fm-nfcore")
     issuer = replace(
         mapping["issuer"], scope=scope, effective_from=now - timedelta(days=1),
-        address=replace(mapping["issuer"].address,
-            jurisdiction=BrazilianJurisdiction("MG", "3106200"),
-            municipality_name="Belo Horizonte"),
-        state_registration=StateRegistration("MG", "123456789"),
+        address=replace(
+            mapping["issuer"].address,
+            jurisdiction=BrazilianJurisdiction(
+                state, "3550308" if state == "SP" else "3106200",
+            ),
+            municipality_name="Sao Paulo" if state == "SP" else "Belo Horizonte",
+        ),
+        state_registration=StateRegistration(state, "123456789"),
     )
     product = replace(mapping["products_by_code"]["SKU"], scope=scope,
         gtin=Gtin("SEM GTIN"), effective_from=now - timedelta(days=1))
@@ -93,7 +99,7 @@ def sale_setup(preparation_database, mapping, signing_material, tmp_path, monkey
                 environment=FiscalEnvironment.HOMOLOGATION, document_kind=kind,
                 jurisdiction=issuer.address.jurisdiction,
                 operation=ConfiguredFiscalOperation.AUTHORIZE,
-                provider_id="sefaz-mg-homologacao-" + kind.value + "4"))
+                provider_id="sefaz-" + state.lower() + "-homologacao-" + kind.value + "4"))
         uow.commit()
     root = tmp_path / "policies"
     root.mkdir()
@@ -111,7 +117,7 @@ def sale_setup(preparation_database, mapping, signing_material, tmp_path, monkey
                 "rule_id": "synthetic-sale", "version": 1, "priority": 1,
                 "effective_from": (now - timedelta(days=1)).isoformat(),
                 "source_normative": "urn:synthetic:manual-test-only",
-                "selector": {"state_code": "MG", "tax_regime": 1,
+                "selector": {"state_code": state, "tax_regime": 1,
                     "recipient_profile": "consumer_final", "ncm_prefix": "21"},
                 "outcome": {"cfop": "5102", "icms_code": "102", "pis_cst": "07",
                     "cofins_cst": "07", "nfe_rates": {"icms_rate": "0",
@@ -143,6 +149,67 @@ def sale_setup(preparation_database, mapping, signing_material, tmp_path, monkey
         "payments": [{"method": "cash", "amount": "20.00"}], "change_amount": "10.00",
     }
     return db, scope, payload, policies, calls, root
+
+
+@pytest.fixture
+def sale_setup(preparation_database, mapping, signing_material, tmp_path, monkeypatch):
+    return _make_sale_setup(
+        preparation_database, mapping, signing_material, tmp_path, monkeypatch,
+        state="MG",
+    )
+
+
+@pytest.fixture
+def sp_sale_setup(preparation_database, mapping, signing_material, tmp_path, monkeypatch):
+    return _make_sale_setup(
+        preparation_database, mapping, signing_material, tmp_path, monkeypatch,
+        state="SP",
+    )
+
+
+def test_sp_nfce_same_authenticated_portal_qr_v3_signature_replay_and_isolation(
+    sp_sale_setup, signing_material,
+) -> None:
+    db, scope, payload, policies, calls, root = sp_sale_setup
+    web = client(db)
+    reviewed = post(
+        web, {"unit_id": "unit", "environment": "homologation", "document_kind": "nfce"},
+        operation="reviewNativeSale",
+    )
+    assert reviewed.status_code == 200, reviewed.text
+    assert reviewed.json()["policy_sha256"] == policies["nfce"]
+    first = post(web, payload)
+    assert first.status_code == 200, first.text
+    assert first.json()["status"] == "ready_to_transmit"
+    assert first.json()["transmitted"] is False
+    document_id = first.json()["document_id"]
+    prepared = FiscalApplicationService(db).load_prepared_document_authorization(
+        scope, document_id,
+    )
+    assert prepared.access_key.value[:2] == "35"
+    assert prepared.access_key.value[20:22] == "65"
+    OfficialNfeEnvelopeValidator()(prepared.signed_xml)
+    root_xml = etree.fromstring(prepared.signed_xml)
+    verify_official_nfe4_signature(root_xml, signing_material)
+    ns = {"n": "http://www.portalfiscal.inf.br/nfe"}
+    qr = root_xml.xpath("string(//n:qrCode)", namespaces=ns)
+    assert qr == (
+        "https://www.homologacao.nfce.fazenda.sp.gov.br/qrcode?p="
+        + prepared.access_key.value + "|3|2"
+    )
+    assert root_xml.xpath("string(//n:urlChave)", namespaces=ns) == (
+        "https://www.homologacao.nfce.fazenda.sp.gov.br/consulta"
+    )
+    replay = post(client(db), payload)
+    assert replay.status_code == 200, replay.text
+    assert replay.json()["replay"] is True
+    assert replay.json()["document_id"] == document_id
+    assert len(calls) == 1
+    cross_tenant = client(db, tenant="other")
+    assert cross_tenant.get(
+        f"/v1/portal/documents/{document_id}/artifacts/authorized_xml",
+        params={"unit_id": "unit", "environment": "homologation"},
+    ).status_code == 404
 
 
 def test_nfce_http_preparation_signature_schema_replay_restart_and_numbering(
