@@ -26,7 +26,7 @@ _ORIGIN = "https://app.ironfitcore.com.br"
 
 class _Database:
     def __init__(self):
-        self.db = sqlite3.connect(":memory:")
+        self.db = sqlite3.connect(":memory:", check_same_thread=False)
         for statement in IRON_A1_DELEGATION_SCHEMA:
             self.db.execute(statement)
         self.db.commit()
