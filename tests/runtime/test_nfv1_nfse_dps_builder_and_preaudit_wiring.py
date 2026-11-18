@@ -185,6 +185,46 @@ def _governed_gateway(*, resolver_return: str = NACIONAL_HOMOLOGATION_PROVIDER_I
     )
 
 
+@pytest.mark.parametrize(
+    ("regime", "competence"),
+    [
+        (TaxRegimeCode.NORMAL, date(2026, 11, 6)),
+        (TaxRegimeCode.SIMPLES_NACIONAL, date(2026, 10, 31)),
+    ],
+)
+def test_guarulhos_direct_national_gateway_refuses_wrong_channel_before_a1(
+    regime: TaxRegimeCode, competence: date,
+) -> None:
+    """Direct API/worker calls cannot bypass the Portal's issuer channel gate."""
+    original = _request()
+    city = BrazilianJurisdiction("SP", "3518800")
+    issuer = replace(
+        original.document.issuer,
+        tax_regime=regime,
+        address=replace(
+            original.document.issuer.address,
+            municipality_name="Guarulhos", jurisdiction=city,
+        ),
+    )
+    request = NfseAuthorizationRequest.build(replace(
+        original.document, issuer=issuer, service_jurisdiction=city,
+        competence_date=competence,
+    ))
+    certificate = Mock(side_effect=AssertionError("A1 must not be touched"))
+    signer = Mock(side_effect=AssertionError("DPS must not be signed"))
+    exchange = Mock(side_effect=AssertionError("SEFIN must not be called"))
+    gateway = NfseNacionalHomologationGateway(
+        resolve_certificate=certificate,
+        build_signed_dps=signer,
+        exchange=exchange,
+    )
+    with pytest.raises(OfficialNfseTransportError, match="Guarulhos"):
+        gateway.authorize(request)
+    certificate.assert_not_called()
+    signer.assert_not_called()
+    exchange.assert_not_called()
+
+
 def test_real_builder_and_preaudit_authorize_a_valid_document_end_to_end() -> None:
     """Preaudit passes, build_signed_dps produces a schema-valid unsigned DPS,
     sign_nfse_dps_xml() signs the 1.01 layout with RSA-SHA256, and the
