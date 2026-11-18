@@ -412,6 +412,102 @@ def test_policy_installer_uses_same_validator_and_scope(sale_setup, tmp_path):
     assert digest == policies["nfce"]
 
 
+def test_sp_nfce_full_canonical_portal_issue_replay_query_xml_and_pdf(
+    sp_sale_setup, signing_material, monkeypatch,
+) -> None:
+    """Same auth/tenant, Control Plane, A1, XML signature, archive and Portal."""
+    from unittest.mock import Mock
+
+    from kordena_fiscal.gateway.nfe_sp_homologation import (
+        SefazHomologationAuthorizationGateway,
+    )
+    from kordena_fiscal.operations import FakeFiscalOperationsGateway
+    from kordena_fiscal.runtime.canonical_fiscal_composition import (
+        build_runtime_fiscal_handler_factory,
+    )
+    from kordena_fiscal.runtime.fiscal_runtime import (
+        CanonicalFiscalOperationPath,
+        CanonicalPortalOperationExecutor,
+    )
+
+    db, scope, payload, policies, calls, root = sp_sale_setup
+    exchange = Mock()
+    ns = "http://www.portalfiscal.inf.br/nfe"
+
+    def synthetic_sp_sefaz(self, soap, context, timeout):
+        exchange(soap)
+        envelope = etree.fromstring(soap)
+        signed = envelope.find(f".//{{{ns}}}enviNFe")
+        assert signed is not None
+        verify_official_nfe4_signature(signed, signing_material)
+        key = signed.find(f".//{{{ns}}}infNFe").get("Id")[3:]
+        assert key[20:22] == "65" and key[:2] == "35"
+        digest = signed.findtext(".//{http://www.w3.org/2000/09/xmldsig#}DigestValue")
+        return (
+            '<Envelope xmlns="http://www.w3.org/2003/05/soap-envelope"><Body>'
+            f'<retEnviNFe xmlns="{ns}" versao="4.00"><tpAmb>2</tpAmb>'
+            '<verAplic>synthetic</verAplic><cUF>35</cUF><cStat>104</cStat>'
+            '<xMotivo>Lote sintetico</xMotivo>'
+            '<protNFe versao="4.00"><infProt><tpAmb>2</tpAmb>'
+            f'<chNFe>{key}</chNFe><nProt>135000000000001</nProt>'
+            f'<digVal>{digest}</digVal><cStat>100</cStat>'
+            '<xMotivo>Autorizacao sintetica interna</xMotivo>'
+            '</infProt></protNFe></retEnviNFe></Body></Envelope>'
+        ).encode()
+
+    monkeypatch.setattr(
+        SefazHomologationAuthorizationGateway,
+        "_https_exchange", synthetic_sp_sefaz,
+    )
+
+    class ScopedVault:
+        def resolve(self, *, scope, issuer_cnpj):
+            assert issuer_cnpj == signing_material.reference_id or issuer_cnpj
+            return signing_material
+
+    application = FiscalApplicationService(db)
+    query_gateway = FakeFiscalOperationsGateway()
+    handlers = build_runtime_fiscal_handler_factory(
+        operations_gateway=query_gateway,
+        certificate_vault=ScopedVault(),
+    )(application)
+    web = client(db, operation_executor=CanonicalPortalOperationExecutor(
+        unit_of_work_factory=db,
+        path=CanonicalFiscalOperationPath(application, handlers=handlers),
+    ))
+    prepared = post(web, payload)
+    assert prepared.status_code == 200, prepared.text
+    doc_id = prepared.json()["document_id"]
+    params = {"unit_id": "unit", "environment": "homologation"}
+    url = f"/v1/portal/documents/{doc_id}/artifacts/"
+    assert web.get(url + "authorized_xml", params=params).status_code == 404
+    issued = post(
+        web, params | {"document_id": doc_id},
+        "sp-nfce-issue", operation="issueFiscalDocument",
+    )
+    assert issued.status_code == 200, issued.text
+    assert issued.json()["status"] == "authorized"
+    replay = post(
+        web, params | {"document_id": doc_id},
+        "sp-nfce-retry", operation="issueFiscalDocument",
+    )
+    assert replay.status_code == 200, replay.text
+    assert exchange.call_count == 1
+    archived = web.get(url + "authorized_xml", params=params)
+    assert archived.status_code == 200 and b"nfeProc" in archived.content
+    verify_official_nfe4_signature(etree.fromstring(archived.content), signing_material)
+    pdf = web.get(url + "auxiliary_pdf", params=params)
+    assert pdf.status_code == 200 and pdf.content.startswith(b"%PDF")
+    key = application.load_prepared_document_authorization(scope, doc_id).access_key.value
+    queried = post(
+        web, params | {"access_key": key},
+        "sp-nfce-query", operation="queryFiscalDocument",
+    )
+    assert queried.status_code == 200, queried.text
+    assert queried.json()["status"] == "authorized"
+    assert len(query_gateway.query_calls) == 1 and exchange.call_count == 1
+
+
 @pytest.mark.parametrize("kind", ["nfe", "nfce"])
 def test_http_sale_prepare_emit_query_xml_and_pdf(sale_setup, signing_material, kind):
     from kordena_fiscal.gateway.nfe_sp_homologation import (
