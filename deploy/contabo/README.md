@@ -143,3 +143,61 @@ alertas, retenção e prova de destino efetivamente offsite antes de GO.
 
 Checklist completo e N3 aprovado:
 `docs/checkpoints/NFCORE_A1_N3_OPERATIONAL_READINESS_2026-11-13.md`.
+
+
+## Confiança SEFIN Nacional — XML autorizado e eventos
+
+`compose.nfse-trust.api.yml` completa a configuração da mesma API para o
+validador de recibos e eventos nacionais. É opt-in e compatível com o overlay
+`compose.nfse-policy.api.yml`. Não habilita emissão, não altera o ambiente
+fiscal da unidade e não substitui o A1 Vault.
+
+Antes da ativação, obter os arquivos **públicos oficiais** da cadeia ICP e
+as CRLs assinadas e vigentes, e validar independentemente a procedência
+dos certificados folha usados pela SEFIN para NFSe e para eventos.
+Registrar origem, data de coleta, fingerprints e aprovação. Não obter pins
+a partir de um retorno fiscal não confiável e não usar o A1 do contribuinte
+como certificado assinante do órgão. Os dados oficiais não estão embutidos
+neste overlay.
+
+No host existente e após aprovação, definir os seguintes nomes no ambiente
+privado de composição:
+
+- `NFCORE_NFSE_TRUST_HOST_DIR`: diretório preexistente fora do Git contendo
+  `ca-bundle.pem` e `crl-bundle.pem` legíveis pela API UID 10001, sem symlinks.
+  O mount é somente leitura, sem criação automática; manter escrita restrita
+  ao operador autorizado. Não colocar chaves privadas neste diretório.
+- `NFCORE_NFSE_RECEIPT_ROOT_SHA256`: hash SHA-256 DER da raiz ICP aprovada.
+- `NFCORE_NFSE_RECEIPT_SIGNER_SHA256`: fingerprints DER das folhas de NFSe,
+  1 a 8 hashes hex, separados por vírgula.
+- `NFCORE_NFSE_EVENT_SIGNER_SHA256`: lista própria de fingerprints dos
+  assinantes de eventos oficiais, com a mesma sintaxe.
+
+Reconciliar o overlay com o Compose efetivo, preservando integralmente
+o bind do A1 Vault, policies por tenant, configurações sale/Bling e outros
+mounts. Não substituir o override efetivo pelo arquivo novo.
+
+Preflight **somente leitura**, executado no container candidato que contém
+os três validadores, sem rede fiscal e sem consultar certificados de clientes:
+
+```sh
+docker compose exec -T nfcore-api python -c '
+from kordena_fiscal.gateway.nfse_national_receipt import require_national_receipt_signer_pins
+from kordena_fiscal.gateway.nfse_nacional_event_homologation import require_national_event_signer_pins
+from kordena_fiscal.gateway.nfse_receipt_pki import require_national_receipt_pki_ready
+require_national_receipt_signer_pins()
+require_national_event_signer_pins()
+require_national_receipt_pki_ready()
+print("SEFIN_TRUST_CONFIG_PASS_ONLY")
+'
+```
+
+O comando valida configuração, cadeias e CRLs, **não** prova confiança
+de um certificado folha real ainda não recebido nem autorização fiscal.
+Qualquer erro mantém envio e confirmação de evento nacional bloqueados.
+Planejar atualização governada de CRLs antes do vencimento e rotação de
+pins, com verificação de rollback; não desativar validação em falha.
+A emissão continua dependente de política revisada, vínculo do provedor,
+A1 autorizado, schema e consulta/cancelamento oficiais.
+
+Teste reproduzível sem ativar containers: `bash deploy/contabo/test-nfse-trust-opt-in.sh`.
