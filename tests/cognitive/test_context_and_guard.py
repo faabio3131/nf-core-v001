@@ -4,6 +4,7 @@ import pytest
 
 from kordena_fiscal.cognitive import (
     ContextPackBuilder,
+    EvidenceKind,
     OutputGuard,
     ScopeViolationError,
     SectionKind,
@@ -278,3 +279,107 @@ def test_guard_typed_numbers_must_come_from_the_section_citation() -> None:
     result = OutputGuard().validate((output,), request)
     assert result.accepted == ()
     assert result.findings == ("section[0]:ungrounded_amount",)
+
+
+@pytest.mark.parametrize(("evidence_kind", "data"), [
+    (EvidenceKind.REJECTION, {"code": "204", "amount": "R$ 5.102,00"}),
+    (EvidenceKind.REJECTION, {"code": "204", "message": "Verificado 5102"}),
+    (EvidenceKind.REJECTION, {"code": "204", "cfop": "5102"}),
+    (EvidenceKind.CLASSIFICATION_CATALOG, {"ncm": "5102"}),
+    (EvidenceKind.CLASSIFICATION_CATALOG, {"cfop": "51020"}),
+])
+def test_guard_rejects_cfop_claim_without_typed_cited_provenance(
+    evidence_kind: EvidenceKind, data: dict[str, str],
+) -> None:
+    baseline = rejection_evidence()
+    fact = dataclasses.replace(baseline[0], kind=evidence_kind, data=data)
+    request = make_request(evidence=(fact, *baseline[1:]))
+    model = ProviderSection(
+        SectionKind.HYPOTHESIS, "O CFOP 5102 pode ser aplicável.", ("rej-1",)
+    )
+    guarded = OutputGuard().validate((model,), request)
+    assert guarded.accepted == ()
+    assert guarded.findings
+
+
+@pytest.mark.parametrize("kind", [
+    EvidenceKind.TAX_DECISION,
+    EvidenceKind.PRODUCT_PROFILE,
+    EvidenceKind.CLASSIFICATION_CATALOG,
+])
+def test_guard_accepts_cfop_from_exact_typed_trusted_evidence(kind: EvidenceKind) -> None:
+    baseline = rejection_evidence()
+    fact = dataclasses.replace(baseline[0], kind=kind, data={"cfop": "5102"})
+    request = make_request(evidence=(fact, *baseline[1:]))
+    model = ProviderSection(
+        SectionKind.HYPOTHESIS, "O CFOP 5102 consta na evidência.", ("rej-1",)
+    )
+    guarded = OutputGuard().validate((model,), request)
+    assert len(guarded.accepted) == 1
+    assert guarded.findings == ()
+
+
+def test_guard_classification_requires_its_own_trusted_citation() -> None:
+    baseline = rejection_evidence()
+    trusted = dataclasses.replace(
+        baseline[0], kind=EvidenceKind.CLASSIFICATION_CATALOG, data={"cfop": "5102"}
+    )
+    request = make_request(evidence=(trusted, *baseline[1:]))
+    model = ProviderSection(
+        SectionKind.HYPOTHESIS, "O CFOP 5102 pode ser aplicável.", ("doc-1",)
+    )
+    guarded = OutputGuard().validate((model,), request)
+    assert guarded.accepted == ()
+    assert guarded.findings
+
+
+def test_guard_rejects_classification_code_from_untrusted_source() -> None:
+    baseline = rejection_evidence()
+    source = dataclasses.replace(
+        baseline[0], kind=EvidenceKind.CLASSIFICATION_CATALOG,
+        trusted=False, data={"cfop": "5102"},
+    )
+    request = make_request(evidence=(source, *baseline[1:]))
+    model = ProviderSection(
+        SectionKind.HYPOTHESIS, "O CFOP 5102 pode ser aplicável.", ("rej-1",)
+    )
+    guarded = OutputGuard().validate((model,), request)
+    assert guarded.accepted == ()
+    assert guarded.findings
+
+
+def test_guard_allows_only_matching_catalog_code_entry_not_description_digits() -> None:
+    baseline = rejection_evidence()
+    catalog = dataclasses.replace(
+        baseline[0], evidence_id="kb:cls:csosn", kind=EvidenceKind.CLASSIFICATION_CATALOG,
+        origin="classification-catalog@classification.seed/2026-10-31",
+        data={"codes_1": "102=Tributada sem crédito | 201=Outra classificação 777"},
+    )
+    request = make_request(evidence=(*baseline, catalog))
+    good = ProviderSection(
+        SectionKind.HYPOTHESIS, "O CSOSN 102 consta do catálogo.", ("kb:cls:csosn",)
+    )
+    bad = ProviderSection(
+        SectionKind.HYPOTHESIS, "O CSOSN 777 consta do catálogo.", ("kb:cls:csosn",)
+    )
+    result = OutputGuard().validate((good, bad), request)
+    assert len(result.accepted) == 1
+    assert result.accepted[0].text == good.text
+    assert result.findings
+
+
+def test_guard_rejects_code_from_different_catalog_family() -> None:
+    baseline = rejection_evidence()
+    catalog = dataclasses.replace(
+        baseline[0], evidence_id="kb:cls:cst_icms",
+        kind=EvidenceKind.CLASSIFICATION_CATALOG,
+        origin="classification-catalog@classification.seed/2026-10-31",
+        data={"codes_1": "102=Incorrect family for CSOSN"},
+    )
+    request = make_request(evidence=(*baseline, catalog))
+    claim = ProviderSection(
+        SectionKind.HYPOTHESIS, "O CSOSN 102 consta do catálogo.", ("kb:cls:cst_icms",)
+    )
+    result = OutputGuard().validate((claim,), request)
+    assert result.accepted == ()
+    assert result.findings == ("section[0]:ungrounded_classification_code",)

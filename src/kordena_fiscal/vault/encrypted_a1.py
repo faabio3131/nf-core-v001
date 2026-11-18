@@ -140,7 +140,10 @@ class EncryptedA1Vault:
         if path.is_symlink() or not path.is_file():
             raise A1VaultUnavailable("Certificado A1 não cadastrado para o CNPJ emitente")
         try:
-            sealed = path.read_bytes()
+            # Never allocate unbounded memory for a corrupt/oversized Vault file.
+            # The encrypted PKCS#12 envelope fits within this fixed ceiling.
+            with path.open("rb") as stream:
+                sealed = stream.read(3 * _MAX_PFX_BYTES + 1)
             if not sealed.startswith(b"NFA1\x01") or len(sealed) > 3 * _MAX_PFX_BYTES:
                 raise ValueError
             plaintext = self._key.decrypt(sealed[5:17], sealed[17:], aad)

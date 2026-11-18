@@ -7,7 +7,14 @@ from dataclasses import dataclass
 from decimal import Decimal
 
 from .context import INJECTION_MARKERS
-from .contracts import MAX_SECTION_CHARS, AdviceRequest, AdviceSection, SectionKind
+from .contracts import (
+    MAX_SECTION_CHARS,
+    AdviceRequest,
+    AdviceSection,
+    Evidence,
+    EvidenceKind,
+    SectionKind,
+)
 from .ports import ProviderSection
 from .redaction import Redactor
 
@@ -18,6 +25,18 @@ _CLASSIFICATION_REF = re.compile(
     r"(?i)\b(cst|csosn|cfop|ncm|cclasstrib|cclass)\b[^\d\n]{0,12}(\d{2,8})"
 )
 _DIGIT_RUN = re.compile(r"\d+")
+_CLASSIFICATION_CATALOGS = {
+    "cst": frozenset({"cst_icms", "cst_pis_cofins"}),
+    "csosn": frozenset({"csosn"}),
+    "cfop": frozenset({"cfop"}),
+    "ncm": frozenset({"ncm"}),
+    "cclasstrib": frozenset({"cclasstrib"}),
+}
+_CLASSIFICATION_EVIDENCE_KINDS = frozenset({
+    EvidenceKind.TAX_DECISION,
+    EvidenceKind.PRODUCT_PROFILE,
+    EvidenceKind.CLASSIFICATION_CATALOG,
+})
 # Money and percentages are different fiscal dimensions. Matching the same
 # digits in an unrelated field (or another unit) is not valid grounding.
 _PERCENTAGE = re.compile(r"(?<![\w.,])(?P<value>-?\d+(?:[.,]\d+)?)[ \t]*%(?!\w)")
@@ -53,6 +72,28 @@ def _brl_value(match: re.Match[str]) -> Decimal:
     return -value if match.group("leading_minus") else value
 
 
+def _catalog_has_code(fact: Evidence, field: str, code: str) -> bool:
+    """Only a code entry in a matching deterministic catalogue may ground a claim.
+
+    Descriptions, monetary amounts and codes from other catalogue families
+    cannot be used to authorize a fiscal classification suggestion.
+    """
+    if fact.kind is not EvidenceKind.CLASSIFICATION_CATALOG:
+        return False
+    allowed = _CLASSIFICATION_CATALOGS.get(field, frozenset())
+    if not any(fact.evidence_id == f"kb:cls:{kind}" for kind in allowed):
+        return False
+    if not fact.origin.startswith("classification-catalog@"):
+        return False
+    return any(
+        part.partition("=")[0].strip() == code
+        for key, value in fact.data.items()
+        if re.fullmatch(r"codes_[1-9][0-9]*", key)
+        for part in value.split(" | ")
+        if "=" in part
+    )
+
+
 @dataclass(frozen=True, slots=True)
 class GuardResult:
     accepted: tuple[AdviceSection, ...]
@@ -70,9 +111,12 @@ class OutputGuard:
         # Only deterministic, trusted evidence may ground numeric fiscal claims.
         # The user's question and external untrusted provider messages are not
         # authority for codes, rates or monetary amounts.
+        trusted_by_id = {
+            item.evidence_id: item for item in request.evidence if item.trusted
+        }
         trusted_corpus_by_id = {
-            item.evidence_id: "\n".join(item.data.values())
-            for item in request.evidence if item.trusted
+            item_id: "\n".join(item.data.values())
+            for item_id, item in trusted_by_id.items()
         }
         accepted: list[AdviceSection] = []
         findings: list[str] = []
@@ -84,7 +128,11 @@ class OutputGuard:
                 trusted_corpus_by_id.get(item_id, "")
                 for item_id in section.evidence_ids
             )
-            reason = self._reject_reason(section, known_ids, cited_corpus)
+            cited_facts = tuple(
+                trusted_by_id[item_id]
+                for item_id in section.evidence_ids if item_id in trusted_by_id
+            )
+            reason = self._reject_reason(section, known_ids, cited_corpus, cited_facts)
             if reason is not None:
                 findings.append(f"{tag}:{reason}")
                 continue
@@ -101,7 +149,8 @@ class OutputGuard:
         return GuardResult(accepted=tuple(accepted), findings=tuple(findings))
 
     def _reject_reason(
-        self, section: ProviderSection, known_ids: set[str], corpus: str
+        self, section: ProviderSection, known_ids: set[str], corpus: str,
+        cited_facts: tuple[Evidence, ...],
     ) -> str | None:
         if section.kind not in _MODEL_KINDS:
             return "model_authored_fact_or_source"
@@ -145,6 +194,17 @@ class OutputGuard:
         if any(_brl_value(match) not in trusted_money for match in money):
             return "ungrounded_amount"
         for match in _CLASSIFICATION_REF.finditer(text):
-            if match.group(2) not in corpus_numbers:
+            field = match.group(1).lower()
+            if field == "cclass":
+                field = "cclasstrib"
+            # A code from a money value, rejection or different classification
+            # must not authorize a model-authored fiscal classification claim.
+            if field not in _CLASSIFICATION_CATALOGS or not any(
+                (
+                    fact.kind in _CLASSIFICATION_EVIDENCE_KINDS
+                    and fact.data.get(field, "").strip() == match.group(2)
+                ) or _catalog_has_code(fact, field, match.group(2))
+                for fact in cited_facts
+            ):
                 return "ungrounded_classification_code"
         return None
