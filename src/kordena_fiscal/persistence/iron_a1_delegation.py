@@ -89,4 +89,5 @@ class IronA1DelegationStore:
             conn.commit()
         if row is None:
             return None
-        return dict(zip(("host_namespace","tenant_id","unit_id","environment","issuer_cnpj"), row, strict=True))
+        columns = ("host_namespace", "tenant_id", "unit_id", "environment", "issuer_cnpj")
+        return dict(zip(columns, row, strict=True))
