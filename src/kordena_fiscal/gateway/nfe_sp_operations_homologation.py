@@ -26,9 +26,9 @@ from kordena_fiscal.gateway.fiscal_tls import RejectFiscalRedirects
 from kordena_fiscal.gateway.nfe_sp_homologation import (
     MG_NFCE_HOMOLOGATION_PROVIDER_ID,
     MG_NFE_HOMOLOGATION_PROVIDER_ID,
-    SP_NFCE_HOMOLOGATION_PROVIDER_ID,
     NFE_NAMESPACE,
     SOAP12_NAMESPACE,
+    SP_NFCE_HOMOLOGATION_PROVIDER_ID,
     HomologationAuthorizationTarget,
     _parse_xml,
     _tls_context,
