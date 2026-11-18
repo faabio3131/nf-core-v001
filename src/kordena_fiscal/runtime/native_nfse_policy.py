@@ -12,7 +12,11 @@ from pathlib import Path
 from typing import Any
 
 from kordena_fiscal.domain import ExecutionScope, FiscalDocumentKind, FiscalValidationError
-from kordena_fiscal.issuance.nfe_nfse import NfseNationalTaxTreatment
+from kordena_fiscal.issuance.nfe_nfse import (
+    NfseCanonicalDocument,
+    NfseForeignAddress,
+    NfseNationalTaxTreatment,
+)
 
 from .native_sale_policy import sale_policy_key
 from .sale_facts import _unique
@@ -167,6 +171,58 @@ def resolve_national_treatment(
         OSError, KeyError, TypeError, ValueError, AttributeError, ArithmeticError, RecursionError,
     ):
         raise FiscalValidationError("Scoped national NFS-e policy unavailable or invalid") from None
+
+
+def require_current_national_treatment_for_live_dispatch(
+    environ: Mapping[str, str], document: NfseCanonicalDocument,
+) -> ReviewedNfsePolicy:
+    """Revalidate the exact installed tax decision before a real SEFIN POST.
+
+    A prepared DPS may be historical. If the policy has been removed, rotated
+    or no longer selects its documented service and competence, the operation
+    must be reconciled or reviewed, never silently reclassified.
+    """
+    decision = document.national_tax_treatment
+    if decision is None or decision.policy_id is None or decision.policy_sha256 is None:
+        raise FiscalValidationError(
+            "Live National NFS-e requires a pinned, reviewed tax decision"
+        )
+    if len(document.services) != 1:
+        raise FiscalValidationError("Live National NFS-e requires one service per DPS")
+    service = document.services[0]
+    taker = document.service_taker
+    country = (
+        taker.address.country_code
+        if taker is not None and isinstance(taker.address, NfseForeignAddress)
+        else "BR"
+    )
+    facts: dict[str, Any] = {
+        "issuer_profile_id": document.issuer.profile_id,
+        "issuer_profile_version": document.issuer.version,
+        "issuer_cnpj": document.issuer.cnpj.value,
+        "issuer_tax_regime": int(document.issuer.tax_regime),
+        "issuer_municipality_ibge": (
+            document.issuer.address.jurisdiction.municipality_ibge_code
+        ),
+        "service_state_code": document.service_jurisdiction.state_code,
+        "service_municipality_ibge": document.service_jurisdiction.municipality_ibge_code,
+        "national_taxation_code": service.national_taxation_code,
+        "municipal_service_code": service.municipal_service_code,
+        "taker_country": country,
+        "iss_withheld": service.iss_withheld,
+        "nbs_code": service.nbs_code,
+        "municipal_taxation_detail": service.municipal_taxation_detail,
+        "source_normative": service.source_normative,
+        "rule_version": service.rule_version,
+    }
+    current = resolve_national_treatment(
+        environ, document.scope, facts, document.competence_date,
+    )
+    if current is None or current.treatment != decision:
+        raise FiscalValidationError(
+            "Live National NFS-e decision differs from current pinned policy"
+        )
+    return current
 
 
 @contextmanager
