@@ -22,7 +22,7 @@ from fastapi.responses import JSONResponse
 from kordena_fiscal.domain import Cnpj, ExecutionScope, FiscalEnvironment, FiscalValidationError
 from kordena_fiscal.persistence.iron_a1_delegation import IronA1DelegationStore
 from kordena_fiscal.persistence.postgres import PostgresFiscalDatabase
-from kordena_fiscal.vault.a1_preflight import InvalidCertificateMaterialError
+from kordena_fiscal.signing.contracts import InvalidCertificateMaterialError
 from kordena_fiscal.vault.encrypted_a1 import A1VaultUnavailable, EncryptedA1Vault
 from kordena_fiscal.web.app import (
     AuthorizedBridgeContext,
