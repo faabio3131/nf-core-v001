@@ -21,6 +21,7 @@ from kordena_fiscal.domain import (
     BrazilianJurisdiction,
     FiscalDocumentKind,
     FiscalEnvironment,
+    FiscalValidationError,
     Gtin,
     StateRegistration,
 )
@@ -165,6 +166,52 @@ def sp_sale_setup(preparation_database, mapping, signing_material, tmp_path, mon
         preparation_database, mapping, signing_material, tmp_path, monkeypatch,
         state="SP",
     )
+
+
+def test_sp_nfce_exact_city_binding_cannot_be_reused_across_scope(
+    sp_sale_setup,
+) -> None:
+    """Control Plane issuer CNPJ and city, not a statewide placeholder, grant 65."""
+    from kordena_fiscal.runtime.canonical_fiscal_composition import (
+        _require_sp_nfce_binding,
+    )
+
+    db, scope, payload, _, _, _ = sp_sale_setup
+    web = client(db)
+    response = post(web, payload)
+    assert response.status_code == 200, response.text
+    app = FiscalApplicationService(db)
+    access_key = app.load_prepared_document_authorization(
+        scope, response.json()["document_id"],
+    ).access_key
+    city = app.resolve_scoped_issuer_jurisdiction(
+        scope=scope, issuer_cnpj=access_key.issuer_identifier,
+        instant=datetime.now(UTC),
+    )
+    assert city.state_code == "SP"
+    assert city.municipality_ibge_code == "3550308"
+    _require_sp_nfce_binding(
+        app, scope, access_key, ConfiguredFiscalOperation.AUTHORIZE,
+    )
+    with pytest.raises(FiscalValidationError, match="scoped fiscal issuer"):
+        app.resolve_scoped_issuer_jurisdiction(
+            scope=replace(scope, tenant_id="other"),
+            issuer_cnpj=access_key.issuer_identifier, instant=datetime.now(UTC),
+        )
+    with pytest.raises(FiscalValidationError, match="scoped fiscal issuer"):
+        app.resolve_scoped_issuer_jurisdiction(
+            scope=scope, issuer_cnpj="11222333000181",
+            instant=datetime.now(UTC),
+        )
+    with pytest.raises(FiscalValidationError):
+        _require_sp_nfce_binding(
+            app, replace(scope, unit_id="other"), access_key,
+            ConfiguredFiscalOperation.AUTHORIZE,
+        )
+    with pytest.raises(FiscalValidationError):
+        _require_sp_nfce_binding(
+            app, scope, access_key, ConfiguredFiscalOperation.QUERY,
+        )
 
 
 def test_sp_nfce_same_authenticated_portal_qr_v3_signature_replay_and_isolation(
