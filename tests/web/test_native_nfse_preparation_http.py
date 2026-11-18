@@ -784,6 +784,7 @@ def test_owner_prepares_native_nfse_and_replay_keeps_immutable_document(tmp_path
     result = first.json()
     assert result["status"] == FiscalDocumentState.READY_TO_TRANSMIT.value
     assert result["fiscal_authorization"] == "not_inferred_from_preparation"
+    assert result["fiscal_policy_state"] == "review_required_before_sefin"
     assert result["transmitted"] is False
     assert result["dps_numbering"] == "pending_durable_authority"
     replay = _post(web, _payload(), key="second-review")

@@ -633,6 +633,13 @@ function appendNativeNfsePreparation(article) {
       result.textContent = "NFS-e preparada: " + String(prepared.document_id)
         + " (" + String(prepared.numbering_authority || "numeração fiscal durável") + ")."
         + " Referência preenchida na emissão. Documento não transmitido nem autorizado.";
+      if (prepared.fiscal_policy_state === "review_required_before_sefin") {
+        result.textContent += " BLOQUEIO FISCAL: falta política tributária nacional aprovada e instalada."
+          + " A transmissão à SEFIN será recusada até revisão e instalação da política.";
+      } else if (prepared.fiscal_policy_state === "reviewed_policy_pinned_at_preparation") {
+        result.textContent += " Política revisada vinculada; vigência e integridade"
+          + " serão novamente verificadas antes do envio oficial.";
+      }
       attempt = null;
     } catch (error) {
       result.textContent = (error instanceof Error ? error.message : "Preparação falhou")

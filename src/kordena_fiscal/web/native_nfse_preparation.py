@@ -523,6 +523,16 @@ def prepare_native_nfse(
             "environment": "homologation",
             "transmitted": False,
             "fiscal_authorization": "not_inferred_from_preparation",
+            "fiscal_policy_state": (
+                "reviewed_policy_pinned_at_preparation"
+                if provider == NACIONAL_HOMOLOGATION_PROVIDER_ID
+                and treatment is not None
+                and treatment.policy_id is not None
+                and treatment.policy_sha256 is not None
+                else "review_required_before_sefin"
+                if provider == NACIONAL_HOMOLOGATION_PROVIDER_ID
+                else "municipal_provider_contract"
+            ),
             "dps_numbering": (
                 "not_applicable_municipal_original_rps"
                 if municipal_sp else "pending_durable_authority"

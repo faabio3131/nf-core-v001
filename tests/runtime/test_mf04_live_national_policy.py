@@ -156,5 +156,10 @@ def test_live_gateway_checks_policy_before_fiscal_exchange(
         exchange=exchange,
     )
     with pytest.raises(FiscalValidationError, match="pinned, reviewed"):
+        gateway.validate_pre_dispatch(request)
+    resolver.assert_not_called()
+    exchange.assert_not_called()
+    with pytest.raises(FiscalValidationError, match="pinned, reviewed"):
         gateway.authorize(request)
+    resolver.assert_not_called()
     exchange.assert_not_called()
