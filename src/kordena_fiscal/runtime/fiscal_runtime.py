@@ -92,6 +92,8 @@ _CAPABILITY_BY_OPERATION: dict[str, FiscalCapability] = {
     "issueFiscalDocument": FiscalCapability.ISSUE,
     "queryFiscalDocument": FiscalCapability.QUERY,
     "reconcileFiscalOperation": FiscalCapability.RECONCILE,
+    "prepareIronA1Delegation": FiscalCapability.CERTIFICATE_DELEGATE,
+    "readIronA1Status": FiscalCapability.CERTIFICATE_STATUS_READ,
 }
 
 _BRIDGE_STATUS_BY_OPERATION: dict[str, int] = {
