@@ -35,6 +35,8 @@ async function fillSale(form) {
 
 test("sale prepares canonical facts with csrf and retry identity; no browser fiscal authority", async ({page, context}) => {
   const form = await openSale(page, context);
+  await expect(form.locator('select[name="document_kind"] option[value="nfce"]'))
+    .toHaveText("NFC-e 65 — SP/MG");
   await fillSale(form);
   const requests = [];
   await page.route("**/v1/portal/operations/prepareNativeSale", route => {

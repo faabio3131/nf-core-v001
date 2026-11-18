@@ -248,7 +248,7 @@ function appendNativeSalePreparation(article) {
     }
     wrapper.append(field); parent.append(wrapper); return field;
   };
-  const model = select(form, "document_kind", "Documento", [["nfe", "NF-e 55 — SP/MG"], ["nfce", "NFC-e 65 — MG"]]);
+  const model = select(form, "document_kind", "Documento", [["nfe", "NF-e 55 — SP/MG"], ["nfce", "NFC-e 65 — SP/MG"]]);
   const reference = input(form, "source_id", "Referência única desta venda");
   const issued = input(form, "issued_at", "Data e hora da venda com fuso", new Date().toISOString());
   const review = document.createElement("button"); review.type = "button"; review.textContent = "Carregar configuração fiscal";
