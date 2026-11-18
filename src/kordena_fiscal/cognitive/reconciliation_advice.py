@@ -26,7 +26,10 @@ class ReconciliationBaseline:
         self._kb = knowledge
 
     def __call__(self, request: AdviceRequest) -> Baseline:
-        items = [e for e in request.evidence if e.kind is EvidenceKind.RECONCILIATION_ISSUE]
+        items = [
+            e for e in request.evidence
+            if e.trusted and e.kind is EvidenceKind.RECONCILIATION_ISSUE
+        ]
         status_ev = next((e for e in items if "status" in e.data), None)
         issues = [e for e in items if "issue_code" in e.data]
         if status_ev is None and not issues:
@@ -141,7 +144,10 @@ class AccountantQuestionBaseline:
     def __call__(self, request: AdviceRequest) -> Baseline:
         if not request.question:
             return insufficient("Nenhuma pergunta informada: não há base suficiente.")
-        usable = [e for e in request.evidence if e.kind is not EvidenceKind.KNOWLEDGE_BASE]
+        usable = [
+            e for e in request.evidence
+            if e.trusted and e.kind is not EvidenceKind.KNOWLEDGE_BASE
+        ]
         if not usable:
             return insufficient(
                 "Não há evidência fiscal da unidade para fundamentar esta pergunta: não há "
