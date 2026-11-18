@@ -34,6 +34,28 @@ from kordena_fiscal.web.app import (
 _MAX_BODY_BYTES = 3_200_000
 _UPLOAD_PATH = "/v1/iron/a1/upload"
 
+async def _read_bounded_body(request: Request, limit: int) -> bytes | None:
+    """Stream with a strict in-process cap, including chunked/unknown-length bodies.
+
+    Starlette Request.body() eagerly buffers an unbounded body, so checking
+    len(body) afterwards does not protect this unauthenticated upload surface.
+    """
+    length = request.headers.get("content-length")
+    if length is not None:
+        try:
+            declared = int(length)
+        except ValueError:
+            return None
+        if declared < 0 or declared > limit:
+            return None
+    data = bytearray()
+    async for chunk in request.stream():
+        if len(chunk) > limit - len(data):
+            return None
+        data.extend(chunk)
+    return bytes(data)
+
+
 
 def trusted_iron_origin(value: str | None) -> str | None:
     if not value or len(value) > 256:
@@ -118,8 +140,8 @@ def create_iron_a1_router(
             raise HttpContractError(
                 415, "INVALID_CONTENT_TYPE", "JSON required", scope.correlation_id,
             )
-        raw = await request.body()
-        if len(raw) > 1024:
+        raw = await _read_bounded_body(request, 1024)
+        if raw is None:
             raise HttpContractError(
                 413, "A1_PREPARE_TOO_LARGE", "Request too large", scope.correlation_id,
             )
@@ -154,8 +176,8 @@ def create_iron_a1_router(
             raise HttpContractError(
                 415, "INVALID_CONTENT_TYPE", "JSON required", scope.correlation_id,
             )
-        raw = await request.body()
-        if len(raw) > 1024:
+        raw = await _read_bounded_body(request, 1024)
+        if raw is None:
             raise HttpContractError(
                 413, "A1_STATUS_TOO_LARGE", "Request too large", scope.correlation_id,
             )
@@ -219,8 +241,8 @@ def create_iron_a1_router(
             return denied("IRON_A1_DELEGATION_UNAVAILABLE", 503)
         if not is_json_content(request):
             return denied("INVALID_CONTENT_TYPE", 415)
-        raw = await request.body()
-        if len(raw) > _MAX_BODY_BYTES:
+        raw = await _read_bounded_body(request, _MAX_BODY_BYTES)
+        if raw is None:
             return denied("A1_UPLOAD_TOO_LARGE", 413)
         try:
             body = json.loads(raw)

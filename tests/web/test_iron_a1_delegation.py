@@ -233,3 +233,44 @@ def test_store_token_is_hashed_and_one_time_with_real_sql_atomic_update():
     assert trusted_iron_origin("https://app.ironfitcore.com.br.evil.example") != _ORIGIN
     assert trusted_iron_origin("http://app.ironfitcore.com.br") is None
     assert trusted_iron_origin(_ORIGIN) == _ORIGIN
+
+
+def test_body_size_caps_stream_without_materializing_request_body(monkeypatch):
+    """Request.body may never buffer unbounded A1 ingress; tickets remain unused."""
+    from starlette.requests import Request
+
+    client, db, vault, _ = _fixture()
+    token = _prepare(client).json()["delegation_token"]
+    def forbidden_eager_body(_request):
+        raise AssertionError("A1 ingress may not call eager Request.body()")
+    monkeypatch.setattr(Request, "body", forbidden_eager_body)
+
+    assert client.post(
+        "/v1/iron/a1/delegations", headers=_workload_headers(),
+        content=b"x" * 1025,
+    ).status_code == 413
+    assert client.post(
+        "/v1/iron/a1/status", headers=_workload_headers(),
+        content=b"x" * 1025,
+    ).status_code == 413
+    assert client.post(
+        "/v1/iron/a1/upload",
+        headers={"Origin": _ORIGIN, "Content-Type": "application/json"},
+        content=b"x" * 3_200_001,
+    ).status_code == 413
+    assert vault.calls == []
+    digest_row = db.db.execute(
+        "SELECT consumed_at FROM fm_iron_a1_delegations"
+    ).fetchone()
+    assert digest_row == (None,)
+
+    # The ticket remains usable after oversized attempts, but can be used once.
+    accepted = client.post(
+        "/v1/iron/a1/upload",
+        headers={"Origin": _ORIGIN, "Content-Type": "application/json"},
+        json={"delegation_token": token,
+              "pfx_base64": base64.b64encode(b"synthetic-pfx").decode(),
+              "password": "sample-only"},
+    )
+    assert accepted.status_code == 200
+    assert len(vault.calls) == 1
