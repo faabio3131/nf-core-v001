@@ -30,8 +30,8 @@ from kordena_fiscal.runtime.observability import (
 )
 from kordena_fiscal.security.human_identity import HumanIdentityService
 from kordena_fiscal.security.human_recovery import PasswordRecoveryService
-from kordena_fiscal.vault.encrypted_a1 import EncryptedA1Vault
 from kordena_fiscal.persistence.postgres import PostgresFiscalDatabase
+from kordena_fiscal.vault.encrypted_a1 import EncryptedA1Vault
 from kordena_fiscal.web.cakto_checkout import create_cakto_checkout_router
 from kordena_fiscal.web.commercial_release import create_commercial_release_router
 from kordena_fiscal.web.human_auth import create_human_auth_router
