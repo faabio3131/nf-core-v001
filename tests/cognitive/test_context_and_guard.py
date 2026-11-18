@@ -4,6 +4,7 @@ import pytest
 
 from kordena_fiscal.cognitive import (
     ContextPackBuilder,
+    EvidenceKind,
     OutputGuard,
     ScopeViolationError,
     SectionKind,
@@ -278,3 +279,70 @@ def test_guard_typed_numbers_must_come_from_the_section_citation() -> None:
     result = OutputGuard().validate((output,), request)
     assert result.accepted == ()
     assert result.findings == ("section[0]:ungrounded_amount",)
+
+
+@pytest.mark.parametrize(("evidence_kind", "data"), [
+    (EvidenceKind.REJECTION, {"code": "204", "amount": "R$ 5.102,00"}),
+    (EvidenceKind.REJECTION, {"code": "204", "message": "Verificado 5102"}),
+    (EvidenceKind.REJECTION, {"code": "204", "cfop": "5102"}),
+    (EvidenceKind.CLASSIFICATION_CATALOG, {"ncm": "5102"}),
+    (EvidenceKind.CLASSIFICATION_CATALOG, {"cfop": "51020"}),
+])
+def test_guard_rejects_cfop_claim_without_typed_cited_provenance(
+    evidence_kind: EvidenceKind, data: dict[str, str],
+) -> None:
+    baseline = rejection_evidence()
+    fact = dataclasses.replace(baseline[0], kind=evidence_kind, data=data)
+    request = make_request(evidence=(fact, *baseline[1:]))
+    model = ProviderSection(
+        SectionKind.HYPOTHESIS, "O CFOP 5102 pode ser aplicável.", ("rej-1",)
+    )
+    guarded = OutputGuard().validate((model,), request)
+    assert guarded.accepted == ()
+    assert guarded.findings
+
+
+@pytest.mark.parametrize("kind", [
+    EvidenceKind.TAX_DECISION,
+    EvidenceKind.PRODUCT_PROFILE,
+    EvidenceKind.CLASSIFICATION_CATALOG,
+])
+def test_guard_accepts_cfop_from_exact_typed_trusted_evidence(kind: EvidenceKind) -> None:
+    baseline = rejection_evidence()
+    fact = dataclasses.replace(baseline[0], kind=kind, data={"cfop": "5102"})
+    request = make_request(evidence=(fact, *baseline[1:]))
+    model = ProviderSection(
+        SectionKind.HYPOTHESIS, "O CFOP 5102 consta na evidência.", ("rej-1",)
+    )
+    guarded = OutputGuard().validate((model,), request)
+    assert len(guarded.accepted) == 1
+    assert guarded.findings == ()
+
+
+def test_guard_classification_requires_its_own_trusted_citation() -> None:
+    baseline = rejection_evidence()
+    trusted = dataclasses.replace(
+        baseline[0], kind=EvidenceKind.CLASSIFICATION_CATALOG, data={"cfop": "5102"}
+    )
+    request = make_request(evidence=(trusted, *baseline[1:]))
+    model = ProviderSection(
+        SectionKind.HYPOTHESIS, "O CFOP 5102 pode ser aplicável.", ("doc-1",)
+    )
+    guarded = OutputGuard().validate((model,), request)
+    assert guarded.accepted == ()
+    assert guarded.findings
+
+
+def test_guard_rejects_classification_code_from_untrusted_source() -> None:
+    baseline = rejection_evidence()
+    source = dataclasses.replace(
+        baseline[0], kind=EvidenceKind.CLASSIFICATION_CATALOG,
+        trusted=False, data={"cfop": "5102"},
+    )
+    request = make_request(evidence=(source, *baseline[1:]))
+    model = ProviderSection(
+        SectionKind.HYPOTHESIS, "O CFOP 5102 pode ser aplicável.", ("rej-1",)
+    )
+    guarded = OutputGuard().validate((model,), request)
+    assert guarded.accepted == ()
+    assert guarded.findings
