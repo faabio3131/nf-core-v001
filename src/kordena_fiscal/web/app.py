@@ -31,6 +31,7 @@ from kordena_fiscal.runtime.observability import (
 from kordena_fiscal.security.human_identity import HumanIdentityService
 from kordena_fiscal.security.human_recovery import PasswordRecoveryService
 from kordena_fiscal.vault.encrypted_a1 import EncryptedA1Vault
+from kordena_fiscal.persistence.postgres import PostgresFiscalDatabase
 from kordena_fiscal.web.cakto_checkout import create_cakto_checkout_router
 from kordena_fiscal.web.commercial_release import create_commercial_release_router
 from kordena_fiscal.web.human_auth import create_human_auth_router
@@ -265,6 +266,8 @@ def create_app(
     password_reset_completed: Callable[[str, datetime], None] | None = None,
     portal_executor: HumanPortalExecutor | None = None,
     certificate_vault: EncryptedA1Vault | None = None,
+    iron_a1_database: PostgresFiscalDatabase | None = None,
+    iron_a1_allowed_origin: str | None = None,
     pricing_administration: CommercialPricingAdministrationService | None = None,
     commercial_release_administration: CommercialReleaseAdministrationService | None = None,
     commercial_checkout: CommercialCheckoutProjector | None = None,
@@ -370,6 +373,15 @@ def create_app(
         # Same rationale as command_commercial_router above: read-only,
         # fails closed per-request, mounted regardless of human_identity.
         app.include_router(command_operational_usage_router)
+
+    # A1 delegated enrollment is mounted on the real canonical API, not a shadow app.
+    # Disabled deployments fail closed at the router without exposing a PFX endpoint.
+    from kordena_fiscal.web.iron_a1_delegation import create_iron_a1_router
+    app.include_router(create_iron_a1_router(
+        security=security, database=iron_a1_database,
+        vault=certificate_vault, allowed_origin=iron_a1_allowed_origin,
+        context_from_request=lambda request: _context(request, idempotency_required=False),
+    ))
 
     if human_identity is not None:
         app.include_router(
