@@ -727,6 +727,55 @@ def test_osasco_simples_after_november_cutoff_uses_national_not_municipal(
     assert response.status_code == 400
 
 
+@pytest.mark.parametrize(
+    ("regime", "competence", "expected"),
+    [
+        (TaxRegimeCode.NORMAL, "2026-11-12", 400),
+        (TaxRegimeCode.SIMPLES_NACIONAL, "2026-10-31", 400),
+        (TaxRegimeCode.SIMPLES_NACIONAL, "2026-11-12", 200),
+        (TaxRegimeCode.MEI, "2026-11-12", 200),
+    ],
+)
+def test_mg_w1_portal_refuses_unapproved_national_channel_before_preparation(
+    tmp_path: Path, regime: TaxRegimeCode, competence: str, expected: int,
+) -> None:
+    """Contagem: eligibility is not conferred merely by a stored binding."""
+    db = _database(
+        tmp_path / f"mg-w1-{regime}-{competence}.sqlite",
+        issuer_ibge="3118601", issuer_state="MG",
+        tax_regime=regime,
+    )
+    web = _client(db)
+    payload = _payload() | {
+        "source_id": f"contagem-channel-{regime}-{competence}",
+        "competence_date": competence,
+        "service_state_code": "MG",
+        "service_municipality_ibge": "3118601",
+        "iss_amount": "0.00" if regime is TaxRegimeCode.MEI else "3.00",
+    }
+    with patch.object(
+        FiscalApplicationService, "prepare_nfse_authorization",
+        autospec=True, wraps=None,
+    ) as preparer:
+        if expected == 400:
+            response = _post(web, payload, key=f"contagem-deny-{regime}")
+            assert response.status_code == 400
+            assert response.json()["detail"]["code"] == "NATIVE_NFSE_INVALID_FISCAL_FACTS"
+            preparer.assert_not_called()
+        else:
+            # Only the negative eligibility guard is tested in this branch.
+            # The canonical preparation path is exercised without the mock.
+            pass
+    if expected == 200:
+        accepted = _post(web, payload, key=f"contagem-allow-{regime}")
+        assert accepted.status_code == 200, accepted.text
+        assert accepted.json()["fiscal_authorization"] == (
+            "not_inferred_from_preparation"
+        )
+        replay = _post(web, payload, key=f"contagem-replay-{regime}")
+        assert replay.status_code == 200 and replay.json()["replay"] is True
+
+
 def test_owner_prepares_native_nfse_and_replay_keeps_immutable_document(tmp_path: Path) -> None:
     db = _database(tmp_path / "native.sqlite")
     web = _client(db)
@@ -2794,6 +2843,35 @@ def test_jundiai_http_cancel_or_substitute_officially_scoped_and_idempotent(
         assert repeated.status_code == 200, repeated.text
         cancellation_query.assert_called_once()
         cancellation_post.assert_called_once()
+
+@pytest.mark.parametrize("regime", [
+    TaxRegimeCode.MEI, TaxRegimeCode.SIMPLES_NACIONAL,
+    TaxRegimeCode.SIMPLES_NACIONAL_EXCESS_SUBLIMIT,
+])
+def test_santana_municipal_portal_refuses_national_mandatory_regime(
+    tmp_path: Path, regime: TaxRegimeCode,
+) -> None:
+    """Having a municipal binding cannot authorize post-cutover SP issuance."""
+    db = _database(
+        tmp_path / f"santana-federal-guard-{regime}.sqlite",
+        issuer_ibge="3547304",
+        provider_id="santana-simpliss-v1-homologation",
+        tax_regime=regime,
+    )
+    web = _client(db)
+    payload = _payload() | _TAKER_ADDRESS | {
+        "nbs_code": "123456789",
+        "source_id": f"santana-national-mandatory-{regime}",
+        "service_municipality_ibge": "3547304",
+        "competence_date": "2026-11-12",
+        "iss_amount": "0.00" if regime is TaxRegimeCode.MEI else "3.00",
+    }
+    with patch.object(FiscalApplicationService, "prepare_nfse_authorization") as prepare:
+        result = _post(web, payload, key=f"santana-federal-{regime}")
+        assert result.status_code == 400, result.text
+        assert result.json()["detail"]["code"] == "NATIVE_NFSE_INVALID_FISCAL_FACTS"
+        prepare.assert_not_called()
+
 
 def test_santana_simpliss_portal_uses_existing_durable_dps_and_replay(
     tmp_path: Path,

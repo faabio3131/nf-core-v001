@@ -5,7 +5,8 @@ All specimens are synthetic. No municipality, taxpayer or external API is called
 from __future__ import annotations
 
 import json
-from datetime import UTC, datetime, timedelta
+from dataclasses import replace
+from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
 from unittest.mock import Mock
 
@@ -120,6 +121,36 @@ def test_provider_url_is_derived_only_from_operator_reviewed_simpliss() -> None:
     ):
         with pytest.raises(santana.SantanaSimplissError):
             santana.SantanaSimplissEndpoint(candidate)
+
+
+@pytest.mark.parametrize("regime", [
+    TaxRegimeCode.MEI, TaxRegimeCode.SIMPLES_NACIONAL,
+    TaxRegimeCode.SIMPLES_NACIONAL_EXCESS_SUBLIMIT,
+])
+def test_santana_direct_gateway_blocks_mandatory_national_channel_before_a1(
+    monkeypatch: pytest.MonkeyPatch, regime: TaxRegimeCode,
+) -> None:
+    gateway, sender, signer, preaudit, resolver, receipt = _gateway(
+        monkeypatch,
+        response=b'{"tipoAmbiente":2,"chaveAcesso":"35"}',
+    )
+    request = _request()
+    issuer = replace(request.document.issuer, tax_regime=regime)
+    services = (
+        (replace(request.document.services[0], iss_amount=Money.zero()),)
+        if regime is TaxRegimeCode.MEI else request.document.services
+    )
+    document = replace(
+        request.document, issuer=issuer,
+        competence_date=date(2026, 11, 12), services=services,
+    )
+    with pytest.raises(santana.SantanaSimplissError, match="National NFS-e"):
+        gateway.authorize(NfseAuthorizationRequest.build(document))
+    resolver.resolve_provider_id.assert_not_called()
+    sender.assert_not_called()
+    signer.assert_not_called()
+    preaudit.assert_not_called()
+    receipt.assert_not_called()
 
 
 def test_approved_santana_invoice_uses_bound_provider_and_one_post(

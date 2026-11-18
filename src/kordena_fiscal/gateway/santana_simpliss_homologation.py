@@ -29,6 +29,9 @@ from kordena_fiscal.gateway.authorization import (
     GatewayProviderMetadata,
 )
 from kordena_fiscal.gateway.fiscal_tls import RejectFiscalRedirects, build_fiscal_tls_context
+from kordena_fiscal.gateway.municipal_sp_routing import (
+    require_sp_municipal_nfse_issuance_permitted,
+)
 from kordena_fiscal.gateway.nfse_nacional_event_homologation import (
     NationalNfseCancellationReceipt,
 )
@@ -227,6 +230,17 @@ class SantanaSimplissHomologationGateway:
             or document.dps_number is None
         ):
             raise SantanaSimplissError("Santana requires a scoped, durably numbered DPS")
+        if operation == "authorize":
+            # New issuance/replacement cannot evade national competence rules
+            # through direct gateway calls. Historical query/cancel stays valid.
+            try:
+                require_sp_municipal_nfse_issuance_permitted(
+                    issuer_jurisdiction=jurisdiction,
+                    tax_regime=document.issuer.tax_regime,
+                    competence_date=document.competence_date,
+                )
+            except FiscalValidationError as exc:
+                raise SantanaSimplissError(str(exc)) from None
         actual = self._resolver.resolve_provider_id(
             scope=scope, document_kind=FiscalDocumentKind.NFSE,
             jurisdiction=jurisdiction, operation=operation,

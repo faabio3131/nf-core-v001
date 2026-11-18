@@ -465,6 +465,24 @@ class NfseCanonicalDocument:
         line_numbers = [line.line_number for line in self.services]
         if len(line_numbers) != len(set(line_numbers)):
             raise FiscalValidationError("NFS-e line_number values must be unique")
+        # PBH: these LC116 subitems require documentary support for tax
+        # deductions. No documentary-proof field exists in this canonical
+        # NFS-e contract yet; block before storage, signing or any provider.
+        # The invariant belongs here, not solely in the Portal: internal
+        # clients and direct gateways must not bypass the fiscal decision.
+        if self.issuer.address.jurisdiction.municipality_ibge_code == "3106200":
+            documentary_codes = frozenset({
+                "0702", "0705", "0901", "1001", "1002", "1003",
+                "1004", "1005", "1008", "1706",
+            })
+            if any(
+                line.deduction_amount.amount > 0
+                and (line.national_taxation_code or "")[:4] in documentary_codes
+                for line in self.services
+            ):
+                raise FiscalValidationError(
+                    "BH documentary deduction requires evidence not yet supported"
+                )
         object.__setattr__(
             self,
             "service_taker_reference",

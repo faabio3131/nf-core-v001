@@ -35,9 +35,12 @@ from kordena_fiscal.domain import (
     SourceReference,
     TaxRegimeCode,
 )
+from kordena_fiscal.gateway.mg_nfse_channel_guard import (
+    require_mg_national_channel_eligibility,
+)
 from kordena_fiscal.gateway.municipal_sp_routing import (
-    classify_sp_national_nfse_eligibility,
     require_guarulhos_nfse_channel,
+    require_sp_municipal_nfse_issuance_permitted,
 )
 from kordena_fiscal.gateway.nfse_nacional_homologation import (
     NACIONAL_HOMOLOGATION_PROVIDER_ID,
@@ -303,6 +306,18 @@ def prepare_native_nfse(
             tax_regime=profile.tax_regime, competence_date=competence,
             provider_id=provider,
         )
+        # A national provider binding is necessary, not sufficient: for MG-W1
+        # cities, the federal/municipal channel and competence must be valid
+        # before recording READY_TO_TRANSMIT or reserving any fiscal number.
+        # Replays preserve immutable prior facts; the deterministic gateway
+        # repeats this negative gate before reading A1 or calling SEFIN.
+        if previous is None and provider == NACIONAL_HOMOLOGATION_PROVIDER_ID:
+            require_mg_national_channel_eligibility(
+                jurisdiction=profile.address.jurisdiction,
+                tax_regime=profile.tax_regime,
+                competence_date=competence,
+                national_taxation_code=payload["national_taxation_code"],
+            )
         municipal_sp = (
             municipal_barueri or municipal_cajamar
             or municipal_osasco or municipal_jundiai or municipal_guarulhos
@@ -321,6 +336,13 @@ def prepare_native_nfse(
             str(payload.get("nbs_code", ""))
         ):
             raise FiscalValidationError("Santana requires reviewed NBS 2.0 nine-digit code")
+        # Santana's Simpliss is municipal even though its payload reuses the
+        # national DPS schema. Do not bypass the same federal Simples/MEI cutoffs.
+        if provider == _SANTANA_PROVIDER and previous is None:
+            require_sp_municipal_nfse_issuance_permitted(
+                issuer_jurisdiction=profile.address.jurisdiction,
+                tax_regime=profile.tax_regime, competence_date=competence,
+            )
         if municipal_sp:
             expected_city = (
                 "3505708" if municipal_barueri else
@@ -336,18 +358,10 @@ def prepare_native_nfse(
                 raise FiscalValidationError(
                     "Municipal NFS-e requires issuer city and complete taker address"
                 )
-            try:
-                classify_sp_national_nfse_eligibility(
-                    issuer_jurisdiction=profile.address.jurisdiction,
-                    tax_regime=profile.tax_regime,
-                    competence_date=competence,
-                )
-            except FiscalValidationError:
-                pass
-            else:
-                raise FiscalValidationError(
-                    "National NFS-e is mandatory for this regime and competence"
-                )
+            require_sp_municipal_nfse_issuance_permitted(
+                issuer_jurisdiction=profile.address.jurisdiction,
+                tax_regime=profile.tax_regime, competence_date=competence,
+            )
         policy = None
         treatment = previous.document.national_tax_treatment if previous else None
         if previous is None and provider == NACIONAL_HOMOLOGATION_PROVIDER_ID:
@@ -400,21 +414,8 @@ def prepare_native_nfse(
             iss > 0 or payload["iss_withheld"]
         ):
             raise FiscalValidationError("Reviewed special regime cannot highlight or withhold ISS")
-        # PBH BHISS: these LC116 subitems allow deductions only against
-        # supporting documents. The current native contract has no document
-        # evidence fields; never silently emit an unsupported deduction.
-        if (
-            previous is None and provider == NACIONAL_HOMOLOGATION_PROVIDER_ID
-            and profile.address.jurisdiction.municipality_ibge_code == "3106200"
-            and deductions > 0
-            and payload["national_taxation_code"][:4] in {
-                "0702", "0705", "0901", "1001", "1002", "1003",
-                "1004", "1005", "1008", "1706",
-            }
-        ):
-            raise FiscalValidationError(
-                "BH documentary deduction requires evidence not yet supported"
-            )
+        # BH documentary deductions are checked by NfseCanonicalDocument,
+        # including direct API/gateway paths; no Portal-only fiscal rule.
         if profile.tax_regime is TaxRegimeCode.SIMPLES_NACIONAL_EXCESS_SUBLIMIT and (
             provider != NACIONAL_HOMOLOGATION_PROVIDER_ID
             or treatment is None or treatment.simples_assessment_code is None

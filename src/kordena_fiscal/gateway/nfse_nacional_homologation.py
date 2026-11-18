@@ -149,6 +149,25 @@ class NfseNacionalHomologationGateway:
             raise OfficialNfseTransportError(
                 f"{city_label}: Emissor Nacional indisponível para regime/competência"
             ) from None
+        # Existing Guarulhos channel authority is also a dispatch gate.
+        # Portal checks it at preparation, but callers of this gateway may be
+        # internal integrations; a configured national binding alone cannot
+        # override the municipality's regime/competence split.
+        # Local import avoids a cycle: SP routing already imports this module.
+        from kordena_fiscal.gateway.municipal_sp_routing import (
+            require_guarulhos_nfse_channel,
+        )
+        try:
+            require_guarulhos_nfse_channel(
+                issuer_jurisdiction=document.issuer.address.jurisdiction,
+                tax_regime=document.issuer.tax_regime,
+                competence_date=document.competence_date,
+                provider_id=NACIONAL_HOMOLOGATION_PROVIDER_ID,
+            )
+        except FiscalValidationError:
+            raise OfficialNfseTransportError(
+                "Guarulhos: national provider is incompatible with regime/competence"
+            ) from None
         material = self._resolve_certificate(document.scope, issuer_cnpj)
         validate_a1_for_issuer(
             material.pkcs12_bytes, material.password, issuer_cnpj=Cnpj(issuer_cnpj),
