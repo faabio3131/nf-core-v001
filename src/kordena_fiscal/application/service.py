@@ -434,6 +434,28 @@ class FiscalApplicationService:
             operation=operation,
         )
 
+    def resolve_scoped_issuer_jurisdiction(
+        self, *, scope: ExecutionScope, issuer_cnpj: str, instant: datetime,
+    ) -> BrazilianJurisdiction:
+        """Read the single effective Control Plane issuer; never trust browser UF.
+
+        Fiscal provider bindings are exact to municipality, so resolving by a
+        state-wide placeholder would bypass the canonical issuer identity.
+        A historical issuer with no effective profile fails closed rather than
+        routing through a different current tenant's or unit's binding.
+        """
+        if scope.host_namespace is None or instant.tzinfo is None:
+            raise FiscalValidationError("Effective scoped issuer must be verified")
+        with self._uow_factory() as uow:
+            profile = uow.control_plane.resolve_profile(
+                host_namespace=scope.host_namespace, tenant_id=scope.tenant_id,
+                unit_id=scope.unit_id, environment=scope.environment,
+                instant=instant,
+            )
+        if profile is None or profile.cnpj.value != issuer_cnpj:
+            raise FiscalValidationError("Effective scoped fiscal issuer mismatch")
+        return profile.address.jurisdiction
+
     def register_binding(self, binding: FiscalAccountBinding) -> FiscalAccountBinding:
         with self._uow_factory() as uow:
             persisted = uow.bindings.add(binding)
