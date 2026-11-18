@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from kordena_fiscal.domain import ExecutionScope, FiscalEnvironment
+from kordena_fiscal.domain import Cnpj, ExecutionScope, FiscalEnvironment
 from kordena_fiscal.vault.encrypted_a1 import A1VaultUnavailable, EncryptedA1Vault
 
 _CNPJ = "11222333000181"
@@ -20,8 +20,6 @@ def test_oversized_encrypted_a1_record_fails_closed_without_eager_read(
         host_namespace="fm.iron", tenant_id="tenant-a", unit_id="unit-a",
         environment=FiscalEnvironment.HOMOLOGATION, correlation_id="vault-bounded-test",
     )
-    from kordena_fiscal.domain import Cnpj
-
     ciphertext = vault._path(vault._aad(scope, Cnpj(_CNPJ)))
     ciphertext.write_bytes(b"NFA1\x01" + b"X" * (3 * 2 * 1024 * 1024))
     ciphertext.chmod(0o600)
