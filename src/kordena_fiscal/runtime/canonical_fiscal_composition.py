@@ -37,10 +37,12 @@ from kordena_fiscal.gateway.mg_webiss_soap import (
 from kordena_fiscal.gateway.nfe_sp_homologation import (
     MG_NFCE_HOMOLOGATION_PROVIDER_ID,
     MG_NFE_HOMOLOGATION_PROVIDER_ID,
+    SP_NFCE_HOMOLOGATION_PROVIDER_ID,
     HomologationAuthorizationTarget,
     SefazSpHomologationGateway,
     build_mg_nfce_homologation_gateway,
     build_mg_nfe_homologation_gateway,
+    build_sp_nfce_homologation_gateway,
 )
 from kordena_fiscal.gateway.nfe_sp_operations_homologation import (
     SefazHomologationOperationsGateway,
@@ -197,6 +199,37 @@ def _require_mg_binding(
         raise FiscalValidationError(f"Provedor do vínculo de {label} incompatível")
 
 
+def _require_sp_nfce_binding(
+    application: FiscalApplicationService,
+    scope: ExecutionScope,
+    access_key: NfeAccessKey,
+    operation: ConfiguredFiscalOperation,
+) -> None:
+    """One existing tenant/unit/UF provider binding, never a browser header."""
+    if (
+        scope.environment is not FiscalEnvironment.HOMOLOGATION
+        or scope.host_namespace is None
+        or access_key.value[:2] != "35"
+        or access_key.model.value != 65
+    ):
+        raise FiscalValidationError("SP NFC-e requires scoped model 65 homologation")
+    try:
+        jurisdiction = application.resolve_scoped_issuer_jurisdiction(
+            scope=scope, issuer_cnpj=access_key.issuer_identifier,
+            instant=datetime.now(UTC),
+        )
+        if jurisdiction.state_code != "SP":
+            raise FiscalValidationError("SP NFC-e issuer municipality mismatch")
+        selected = application.resolve_configured_provider_id(
+            scope=scope, document_kind=FiscalDocumentKind.NFCE,
+            jurisdiction=jurisdiction, operation=operation.value,
+        )
+    except ControlPlaneNotFoundError:
+        raise FiscalValidationError("SP NFC-e provider binding unavailable") from None
+    if selected != SP_NFCE_HOMOLOGATION_PROVIDER_ID:
+        raise FiscalValidationError("SP NFC-e provider binding mismatch")
+
+
 class _GovernedNationalNfseGateway:
     """Enforce a durable unit binding and fiscal audit before accessing A1."""
 
@@ -344,10 +377,12 @@ class _GovernedMgQueryGateway:
         mg: FiscalOperationsGateway,
         application: FiscalApplicationService,
         mg_nfce: FiscalOperationsGateway | None = None,
+        sp_nfce: FiscalOperationsGateway | None = None,
     ) -> None:
         self._legacy = legacy
         self._mg = mg
         self._mg_nfce = mg_nfce
+        self._sp_nfce = sp_nfce
         self._application = application
 
     def _mg_for_model(self, access_key: NfeAccessKey) -> FiscalOperationsGateway:
@@ -358,6 +393,14 @@ class _GovernedMgQueryGateway:
         raise FiscalValidationError("Gateway MG para modelo fiscal indisponível")
 
     def query(self, request: FiscalQueryRequest) -> FiscalQueryResult:
+        if request.access_key.value[:2] == "35" and request.access_key.model.value == 65:
+            if self._sp_nfce is None:
+                raise FiscalValidationError("SP NFC-e query gateway unavailable")
+            _require_sp_nfce_binding(
+                self._application, request.scope, request.access_key,
+                ConfiguredFiscalOperation.QUERY,
+            )
+            return self._sp_nfce.query(request)
         if request.access_key.value[:2] != "31":
             return self._legacy.query(request)
         _require_mg_binding(
@@ -366,6 +409,14 @@ class _GovernedMgQueryGateway:
         return self._mg_for_model(request.access_key).query(request)
 
     def cancel(self, request: CancellationRequest) -> CancellationResult:
+        if request.access_key.value[:2] == "35" and request.access_key.model.value == 65:
+            if self._sp_nfce is None:
+                raise FiscalValidationError("SP NFC-e cancellation gateway unavailable")
+            _require_sp_nfce_binding(
+                self._application, request.scope, request.access_key,
+                ConfiguredFiscalOperation.CANCEL,
+            )
+            return self._sp_nfce.cancel(request)
         if request.access_key.value[:2] != "31":
             return self._legacy.cancel(request)
         _require_mg_binding(
@@ -640,6 +691,10 @@ def build_runtime_fiscal_handler_factory(
                     resolve_certificate=resolve_mg_certificate,
                     target=HomologationAuthorizationTarget.MG_NFCE,
                 ),
+                sp_nfce=SefazHomologationOperationsGateway(
+                    resolve_certificate=resolve_mg_certificate,
+                    target=HomologationAuthorizationTarget.SP_NFCE,
+                ),
                 application=application,
             )
         selector: PreparedXmlGatewaySelector | None = None
@@ -657,8 +712,17 @@ def build_runtime_fiscal_handler_factory(
             mg_nfce_authorization = FiscalGatewayClient(build_mg_nfce_homologation_gateway(
                 resolve_certificate=resolve_authorization_certificate,
             ))
+            sp_nfce_authorization = FiscalGatewayClient(build_sp_nfce_homologation_gateway(
+                resolve_certificate=resolve_authorization_certificate,
+            ))
 
             def select_xml_gateway(request: AuthorizationRequest) -> FiscalGatewayClient:
+                if request.access_key.value[:2] == "35" and request.access_key.model.value == 65:
+                    _require_sp_nfce_binding(
+                        application, request.scope, request.access_key,
+                        ConfiguredFiscalOperation.AUTHORIZE,
+                    )
+                    return sp_nfce_authorization
                 if request.access_key.value[:2] != "31":
                     return authorization
                 _require_mg_binding(

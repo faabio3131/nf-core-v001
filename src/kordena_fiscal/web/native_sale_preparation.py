@@ -196,7 +196,7 @@ def native_sale_operation(
                     raise FiscalValidationError("Pinned product profile is unavailable")
                 products[product_id] = product
         if issuer.address.jurisdiction.state_code not in (
-            {"MG"} if kind is FiscalDocumentKind.NFCE else {"SP", "MG"}
+            {"SP", "MG"}
         ):
             raise FiscalValidationError("Sale preparation target unavailable")
         app = FiscalApplicationService(factory)
@@ -210,6 +210,7 @@ def native_sale_operation(
             ("SP", FiscalDocumentKind.NFE): "sefaz-sp-homologacao-nfe4",
             ("MG", FiscalDocumentKind.NFE): "sefaz-mg-homologacao-nfe4",
             ("MG", FiscalDocumentKind.NFCE): "sefaz-mg-homologacao-nfce4",
+            ("SP", FiscalDocumentKind.NFCE): "sefaz-sp-homologacao-nfce4",
         }[(issuer.address.jurisdiction.state_code, kind)]
         if provider != expected_provider:
             raise FiscalValidationError("Sale provider binding does not match issuer/model")

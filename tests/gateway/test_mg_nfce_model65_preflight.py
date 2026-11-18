@@ -14,6 +14,10 @@ from test_mg_homologation_authorization import _request
 
 from kordena_fiscal.control_plane.commercial import ConfiguredFiscalOperation
 from kordena_fiscal.control_plane.mg_official_homologation_catalog import mg_homologation_endpoint
+from kordena_fiscal.control_plane.sefaz_endpoint_catalog import (
+    SefazService,
+    resolve_sefaz_endpoint,
+)
 from kordena_fiscal.domain import (
     ElectronicInvoiceModel,
     FiscalDocumentKind,
@@ -21,10 +25,13 @@ from kordena_fiscal.domain import (
 )
 from kordena_fiscal.gateway.nfe_sp_homologation import (
     MG_NFCE_HOMOLOGATION_PROVIDER_ID,
+    SP_NFCE_HOMOLOGATION_PROVIDER_ID,
     HomologationAuthorizationTarget,
     OfficialNfeTransportError,
     _validate_mg_authorization_scope,
+    _validate_sp_nfce_authorization_scope,
     build_mg_nfce_homologation_gateway,
+    build_sp_nfce_homologation_gateway,
 )
 from kordena_fiscal.gateway.nfe_sp_operations_homologation import (
     OfficialNfeOperationsError,
@@ -50,6 +57,53 @@ def _with_qr(
     xml = request.signed_xml.replace(b"</ide>", b"<tpEmis>1</tpEmis></ide>")
     xml = xml.replace(b"</NFe>", child + b"</NFe>")
     return replace(request, signed_xml=xml)
+
+
+def test_sp_nfce_target_pins_published_65_endpoint_and_online_qr() -> None:
+    gateway = build_sp_nfce_homologation_gateway(resolve_certificate=Mock())
+    official = resolve_sefaz_endpoint(
+        state_ibge_code="35", document_kind=FiscalDocumentKind.NFCE,
+        environment=FiscalEnvironment.HOMOLOGATION, service=SefazService.AUTHORIZE,
+    )
+    assert gateway._endpoint == official.url
+    assert gateway._provider.provider_name == SP_NFCE_HOMOLOGATION_PROVIDER_ID
+    original = _request(uf="35", model=ElectronicInvoiceModel.NFCE)
+    qr = (
+        "https://www.homologacao.nfce.fazenda.sp.gov.br/qrcode"
+        f"?p={original.access_key.value}|3|2"
+    )
+    prepared = _with_qr(
+        original, qr_url=qr,
+        consultation_url="https://www.homologacao.nfce.fazenda.sp.gov.br/consulta",
+    )
+    _validate_sp_nfce_authorization_scope(prepared)
+
+
+def test_sp_nfce_direct_issuer_rejects_wrong_model_qr_and_uf_before_a1() -> None:
+    original = _request(uf="35", model=ElectronicInvoiceModel.NFCE)
+    qr = (
+        "https://www.homologacao.nfce.fazenda.sp.gov.br/qrcode"
+        f"?p={original.access_key.value}|3|2"
+    )
+    malformed = (
+        original,
+        _request(uf="31", model=ElectronicInvoiceModel.NFCE),
+        _request(uf="35", model=ElectronicInvoiceModel.NFE),
+        _with_qr(original, qr_url=qr.replace("www.homologacao", "attacker"),
+                 consultation_url="https://www.homologacao.nfce.fazenda.sp.gov.br/consulta"),
+        _with_qr(original, qr_url=qr + "|extra",
+                 consultation_url="https://www.homologacao.nfce.fazenda.sp.gov.br/consulta"),
+    )
+    for request in malformed:
+        vault = Mock(side_effect=AssertionError("No A1 for invalid model or QR"))
+        network = Mock(side_effect=AssertionError("No SEFAZ request"))
+        gateway = build_sp_nfce_homologation_gateway(
+            resolve_certificate=vault, exchange=network,
+        )
+        with pytest.raises(OfficialNfeTransportError):
+            gateway.authorize(request)
+        vault.assert_not_called()
+        network.assert_not_called()
 
 
 def test_nfce_target_uses_pinned_mg65_endpoint_and_distinct_provider() -> None:
