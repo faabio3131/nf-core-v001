@@ -163,3 +163,48 @@ def test_live_gateway_checks_policy_before_fiscal_exchange(
         gateway.authorize(request)
     resolver.assert_not_called()
     exchange.assert_not_called()
+
+
+def test_policy_rotation_during_dps_signing_refuses_live_post(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from kordena_fiscal.gateway import nfse_nacional_homologation as gate
+    from kordena_fiscal.gateway import nfse_receipt_pki
+    from kordena_fiscal.issuance.nfe_nfse import NfseAuthorizationRequest
+
+    env, document, folder, name = _installed_policy(tmp_path, _document())
+    monkeypatch.setenv(POLICY_ENV, env[POLICY_ENV])
+    exchange = Mock()
+    material = Mock()
+    resolver = Mock(return_value=material)
+    monkeypatch.setattr(gate, "_LIVE_EXCHANGE", exchange)
+    monkeypatch.setattr(gate, "require_national_receipt_signer_pins", Mock())
+    monkeypatch.setattr(nfse_receipt_pki, "require_national_receipt_pki_ready", Mock())
+    monkeypatch.setattr(gate, "validate_a1_for_issuer", Mock())
+    monkeypatch.setattr(gate, "encode_signed_dps", Mock(return_value=b"{}"))
+    monkeypatch.setattr(gate, "parse_signed_dps_info", Mock())
+    monkeypatch.setattr(
+        gate.NationalReceiptIdentity, "from_dps_info", Mock(return_value="same-id"),
+    )
+    monkeypatch.setattr(
+        gate.NationalReceiptIdentity, "from_request", Mock(return_value="same-id"),
+    )
+
+    def rotate_during_signing(*_args: object) -> bytes:
+        path = folder / (name + ".json")
+        changed = json.loads(path.read_text())
+        changed["version"] = 2
+        changed["rules"][0]["treatment"]["normative_reference"] = "urn:rotated"
+        raw = json.dumps(changed, sort_keys=True).encode()
+        path.write_bytes(raw)
+        (folder / (name + ".sha256")).write_text(hashlib.sha256(raw).hexdigest())
+        return b"synthetic-signed"
+
+    gateway = gate.NfseNacionalHomologationGateway(
+        resolve_certificate=resolver, build_signed_dps=rotate_during_signing,
+        exchange=exchange,
+    )
+    with pytest.raises(FiscalValidationError, match="differs from current pinned policy"):
+        gateway.authorize(NfseAuthorizationRequest.build(document))
+    assert resolver.call_count == 1
+    exchange.assert_not_called()

@@ -201,6 +201,15 @@ class NfseNacionalHomologationGateway:
         expected = NationalReceiptIdentity.from_request(request)
         if NationalReceiptIdentity.from_dps_info(parse_signed_dps_info(signed_dps)) != expected:
             raise OfficialNfseTransportError("Outgoing DPS differs from canonical request")
+        # A policy might rotate after preflight while the A1 was resolved and
+        # the DPS signed. Recheck immediately before external HTTP (TOCTOU).
+        if self._exchange is _LIVE_EXCHANGE:
+            from kordena_fiscal.runtime.native_nfse_policy import (
+                require_current_national_treatment_for_live_dispatch,
+            )
+            require_current_national_treatment_for_live_dispatch(
+                os.environ, document,
+            )
         response = self._exchange(payload, build_fiscal_tls_context(material), self._timeout)
         if not isinstance(response, bytes) or len(response) > _MAX_RESPONSE:
             raise OfficialNfseTransportError("Resposta SEFIN inválida")
