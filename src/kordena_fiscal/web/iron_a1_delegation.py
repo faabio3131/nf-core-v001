@@ -14,7 +14,6 @@ import binascii
 import json
 from collections.abc import Callable
 from datetime import UTC, datetime
-from typing import Any
 from urllib.parse import urlsplit
 
 from fastapi import APIRouter, Request
@@ -25,7 +24,12 @@ from kordena_fiscal.persistence.iron_a1_delegation import IronA1DelegationStore
 from kordena_fiscal.persistence.postgres import PostgresFiscalDatabase
 from kordena_fiscal.vault.a1_preflight import InvalidCertificateMaterialError
 from kordena_fiscal.vault.encrypted_a1 import A1VaultUnavailable, EncryptedA1Vault
-from kordena_fiscal.web.app import AuthorizedBridgeContext, BridgeHttpContext, BridgeSecurityBoundary, HttpContractError
+from kordena_fiscal.web.app import (
+    AuthorizedBridgeContext,
+    BridgeHttpContext,
+    BridgeSecurityBoundary,
+    HttpContractError,
+)
 
 _MAX_BODY_BYTES = 3_200_000
 _UPLOAD_PATH = "/v1/iron/a1/upload"
@@ -51,6 +55,9 @@ def create_iron_a1_router(
     router = APIRouter(prefix="/v1/iron/a1", tags=["iron-a1"])
     trusted_origin = trusted_iron_origin(allowed_origin)
     store = None if database is None else IronA1DelegationStore(database.connection)
+
+    def is_json_content(request: Request) -> bool:
+        return request.headers.get("content-type", "").split(";")[0].strip().lower() == "application/json"
 
     def ready() -> None:
         if security is None or store is None or vault is None or trusted_origin is None:
@@ -106,11 +113,15 @@ def create_iron_a1_router(
     @router.post("/delegations")
     async def prepare(request: Request) -> JSONResponse:
         scope = authorize(request, "prepareIronA1Delegation")
-        if request.headers.get("content-type", "").split(";")[0].strip().lower() != "application/json":
-            raise HttpContractError(415, "INVALID_CONTENT_TYPE", "JSON required", scope.correlation_id)
+        if not is_json_content(request):
+            raise HttpContractError(
+                415, "INVALID_CONTENT_TYPE", "JSON required", scope.correlation_id,
+            )
         raw = await request.body()
         if len(raw) > 1024:
-            raise HttpContractError(413, "A1_PREPARE_TOO_LARGE", "Request too large", scope.correlation_id)
+            raise HttpContractError(
+                413, "A1_PREPARE_TOO_LARGE", "Request too large", scope.correlation_id,
+            )
         try:
             body = json.loads(raw)
             if not isinstance(body, dict) or set(body) != {"issuer_cnpj", "actor_user_id"}:
@@ -138,17 +149,23 @@ def create_iron_a1_router(
     @router.post("/status")
     async def status(request: Request) -> JSONResponse:
         scope = authorize(request, "readIronA1Status")
-        if request.headers.get("content-type", "").split(";")[0].strip().lower() != "application/json":
-            raise HttpContractError(415, "INVALID_CONTENT_TYPE", "JSON required", scope.correlation_id)
+        if not is_json_content(request):
+            raise HttpContractError(
+                415, "INVALID_CONTENT_TYPE", "JSON required", scope.correlation_id,
+            )
         raw = await request.body()
         if len(raw) > 1024:
-            raise HttpContractError(413, "A1_STATUS_TOO_LARGE", "Request too large", scope.correlation_id)
+            raise HttpContractError(
+                413, "A1_STATUS_TOO_LARGE", "Request too large", scope.correlation_id,
+            )
         try:
             body = json.loads(raw)
             if not isinstance(body, dict) or set(body) != {"issuer_cnpj"}:
                 raise ValueError
         except (ValueError, TypeError):
-            raise HttpContractError(400, "INVALID_A1_STATUS", "Request invalid", scope.correlation_id) from None
+            raise HttpContractError(
+                400, "INVALID_A1_STATUS", "Request invalid", scope.correlation_id,
+            ) from None
         cnpj = verified_profile(scope, body["issuer_cnpj"])
         assert vault is not None
         try:
@@ -199,14 +216,16 @@ def create_iron_a1_router(
 
         if vault is None or store is None:
             return denied("IRON_A1_DELEGATION_UNAVAILABLE", 503)
-        if request.headers.get("content-type", "").split(";")[0].strip().lower() != "application/json":
+        if not is_json_content(request):
             return denied("INVALID_CONTENT_TYPE", 415)
         raw = await request.body()
         if len(raw) > _MAX_BODY_BYTES:
             return denied("A1_UPLOAD_TOO_LARGE", 413)
         try:
             body = json.loads(raw)
-            if not isinstance(body, dict) or set(body) != {"delegation_token", "pfx_base64", "password"}:
+            if not isinstance(body, dict) or set(body) != {
+                "delegation_token", "pfx_base64", "password",
+            }:
                 raise ValueError
             if not all(isinstance(body.get(key), str) for key in body):
                 raise ValueError
@@ -219,7 +238,11 @@ def create_iron_a1_router(
 
         # Atomic consume PRECEDES Vault mutation. Replay/concurrency returns 409.
         record = store.consume(token=body["delegation_token"], origin=origin)
-        if record is None or record["host_namespace"] != "fm.iron" or record["environment"] != "homologation":
+        if (
+            record is None
+            or record["host_namespace"] != "fm.iron"
+            or record["environment"] != "homologation"
+        ):
             return denied("IRON_A1_DELEGATION_INVALID", 409)
         scope = ExecutionScope(
             host_namespace="fm.iron", tenant_id=record["tenant_id"],
