@@ -47,8 +47,8 @@ def test_bling_upgrade_19_to_21_keeps_existing_data_and_partition_lock() -> None
             isolated_dsn, min_pool_size=1, max_pool_size=4,
         )
         assert database.applied_migrations() == tuple(range(1, 20))
-        assert database.initialize(enable_bling=True) == (20, 21, 22)
-        assert database.applied_migrations() == tuple(range(1, 23))
+        assert database.initialize(enable_bling=True) == (20, 21, 22, 23)
+        assert database.applied_migrations() == tuple(range(1, 24))
         # Second invocation must be idempotent; no schema rewrite or drop.
         assert database.initialize(enable_bling=True) == ()
 
