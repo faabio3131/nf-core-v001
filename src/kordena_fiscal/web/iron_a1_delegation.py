@@ -227,6 +227,10 @@ def create_iron_a1_router(
             correlation_id="iron-a1-direct-upload",
         )
         try:
+            verified_profile(scope, record["issuer_cnpj"])
+        except HttpContractError:
+            return denied("IRON_A1_ISSUER_REVOKED", 403)
+        try:
             evidence = vault.provision(
                 scope=scope, issuer_cnpj=record["issuer_cnpj"],
                 pkcs12_bytes=pfx, password=password,
