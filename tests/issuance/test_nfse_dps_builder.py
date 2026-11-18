@@ -297,6 +297,59 @@ def test_mei_canonical_nfse_refuses_special_iss_regime() -> None:
         )
 
 
+@pytest.mark.parametrize(
+    "national_code",
+    [
+        "070201", "070501", "090101", "100101", "100201",
+        "100301", "100401", "100501", "100801", "170601",
+    ],
+)
+def test_bh_canonical_rejects_documentary_deduction_without_proof(
+    national_code: str,
+) -> None:
+    """A direct domain/gateway caller cannot bypass the Portal's BH gate."""
+    initial = _document()
+    city = BrazilianJurisdiction("MG", "3106200")
+    issuer = replace(
+        initial.issuer,
+        state_registration=StateRegistration("MG", "123456789"),
+        address=replace(
+            initial.issuer.address,
+            jurisdiction=city, municipality_name="Belo Horizonte",
+        ),
+    )
+    with pytest.raises(FiscalValidationError, match="BH documentary deduction"):
+        replace(
+            initial, issuer=issuer, service_jurisdiction=city,
+            services=(_service(
+                national_taxation_code=national_code,
+                deduction_amount=Money(Decimal("10.00")),
+            ),),
+        )
+
+
+def test_bh_canonical_allows_ordinary_service_or_zero_deduction() -> None:
+    initial = _document()
+    city = BrazilianJurisdiction("MG", "3106200")
+    issuer = replace(
+        initial.issuer,
+        state_registration=StateRegistration("MG", "123456789"),
+        address=replace(
+            initial.issuer.address,
+            jurisdiction=city, municipality_name="Belo Horizonte",
+        ),
+    )
+    for national_code, deduction in (("070201", "0.00"), ("010701", "10.00")):
+        document = replace(
+            initial, issuer=issuer, service_jurisdiction=city,
+            services=(_service(
+                national_taxation_code=national_code,
+                deduction_amount=Money(Decimal(deduction)),
+            ),),
+        )
+        assert document.issuer.address.jurisdiction.municipality_ibge_code == "3106200"
+
+
 def test_build_signed_dps_includes_deduction_and_withheld_retention_code() -> None:
     document = _document(
         services=(
