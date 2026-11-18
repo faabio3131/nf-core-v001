@@ -86,7 +86,7 @@ def _installed_policy(tmp_path: Path, document):
     return env, replace(document, national_tax_treatment=resolved.treatment), folder, name
 
 
-def test_live_dispatch_refuses_unreviewed_default_codes(tmp_path: Path) -> None:
+def test_live_dispatch_refuses_unreviewed_default_codes() -> None:
     document = _document()
     with pytest.raises(FiscalValidationError, match="pinned, reviewed"):
         require_current_national_treatment_for_live_dispatch({}, document)
@@ -100,7 +100,7 @@ def test_live_dispatch_accepts_exact_effective_scoped_policy(tmp_path: Path) -> 
 
 def test_live_dispatch_rejects_missing_or_rotated_policy(tmp_path: Path) -> None:
     env, document, folder, name = _installed_policy(tmp_path, _document())
-    with pytest.raises(FiscalValidationError, match="policy unavailable"):
+    with pytest.raises(FiscalValidationError, match="differs from current pinned policy"):
         require_current_national_treatment_for_live_dispatch({}, document)
 
     path = folder / (name + ".json")
@@ -130,6 +130,7 @@ def test_live_gateway_checks_policy_before_fiscal_exchange(
     from kordena_fiscal.issuance.nfe_nfse import NfseAuthorizationRequest
 
     document = _document()
+    monkeypatch.delenv(POLICY_ENV, raising=False)
     request = NfseAuthorizationRequest.build(document)
     material = Mock()
     resolver = Mock(return_value=material)
@@ -141,8 +142,12 @@ def test_live_gateway_checks_policy_before_fiscal_exchange(
     monkeypatch.setattr(gate, "validate_a1_for_issuer", Mock())
     monkeypatch.setattr(gate, "encode_signed_dps", Mock(return_value=b"{}"))
     monkeypatch.setattr(gate, "parse_signed_dps_info", Mock())
-    monkeypatch.setattr(gate.NationalReceiptIdentity, "from_dps_info", Mock())
-    monkeypatch.setattr(gate.NationalReceiptIdentity, "from_request", Mock())
+    monkeypatch.setattr(
+        gate.NationalReceiptIdentity, "from_dps_info", Mock(return_value="same-id"),
+    )
+    monkeypatch.setattr(
+        gate.NationalReceiptIdentity, "from_request", Mock(return_value="same-id"),
+    )
     # Make the injectable transport identical to the live call boundary;
     # no real network function is installed or called in this test.
     monkeypatch.setattr(gate, "_LIVE_EXCHANGE", exchange)
