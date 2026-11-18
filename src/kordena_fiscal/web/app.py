@@ -18,6 +18,7 @@ from kordena_fiscal.control_plane.commercial_release import (
     CommercialReleaseAdministrationService,
 )
 from kordena_fiscal.control_plane.pricing_admin import CommercialPricingAdministrationService
+from kordena_fiscal.persistence.postgres import PostgresFiscalDatabase
 from kordena_fiscal.product.checkout import CommercialCheckoutProjector
 from kordena_fiscal.product.commercial_readiness import CommercialDeliveryPathReadiness
 from kordena_fiscal.runtime.observability import (
@@ -30,7 +31,6 @@ from kordena_fiscal.runtime.observability import (
 )
 from kordena_fiscal.security.human_identity import HumanIdentityService
 from kordena_fiscal.security.human_recovery import PasswordRecoveryService
-from kordena_fiscal.persistence.postgres import PostgresFiscalDatabase
 from kordena_fiscal.vault.encrypted_a1 import EncryptedA1Vault
 from kordena_fiscal.web.cakto_checkout import create_cakto_checkout_router
 from kordena_fiscal.web.commercial_release import create_commercial_release_router
