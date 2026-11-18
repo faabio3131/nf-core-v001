@@ -198,7 +198,7 @@ def test_concurrent_postgres_workers_do_not_allocate_duplicate_dps_numbers() -> 
     try:
         applied = db.initialize()
         assert 22 in applied
-        assert db.require_current_schema() == (*range(1, 20), 22)
+        assert db.require_current_schema() == (*range(1, 20), 22, 23)
         documents = tuple(_document(i) for i in range(1, 9))
         with ThreadPoolExecutor(max_workers=4) as workers:
             prepared = tuple(workers.map(lambda d: _prepare(db, d), documents))
