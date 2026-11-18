@@ -214,9 +214,15 @@ def _require_sp_nfce_binding(
     ):
         raise FiscalValidationError("SP NFC-e requires scoped model 65 homologation")
     try:
+        jurisdiction = application.resolve_scoped_issuer_jurisdiction(
+            scope=scope, issuer_cnpj=access_key.issuer_identifier,
+            instant=datetime.now(UTC),
+        )
+        if jurisdiction.state_code != "SP":
+            raise FiscalValidationError("SP NFC-e issuer municipality mismatch")
         selected = application.resolve_configured_provider_id(
             scope=scope, document_kind=FiscalDocumentKind.NFCE,
-            jurisdiction=BrazilianJurisdiction("SP"), operation=operation.value,
+            jurisdiction=jurisdiction, operation=operation.value,
         )
     except ControlPlaneNotFoundError:
         raise FiscalValidationError("SP NFC-e provider binding unavailable") from None
