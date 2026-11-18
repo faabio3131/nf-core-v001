@@ -36,9 +36,8 @@ from kordena_fiscal.domain import (
     TaxRegimeCode,
 )
 from kordena_fiscal.gateway.municipal_sp_routing import (
-    classify_sp_national_nfse_eligibility,
-    require_sp_municipal_nfse_issuance_permitted,
     require_guarulhos_nfse_channel,
+    require_sp_municipal_nfse_issuance_permitted,
 )
 from kordena_fiscal.gateway.nfse_nacional_homologation import (
     NACIONAL_HOMOLOGATION_PROVIDER_ID,
