@@ -111,7 +111,9 @@ def build_nfe_sale(
         )
         or (options.presence == 4 and recipient is None)
     ):
-        raise FiscalValidationError("NFC-e requires same-UF final consumer and reviewed online sale")
+        raise FiscalValidationError(
+            "NFC-e requires same-UF final consumer and reviewed online sale"
+        )
     if document.scope.environment is not FiscalEnvironment.HOMOLOGATION:
         raise FiscalValidationError("production fiscal preparation is not activated")
     if (recipient is None and not nfce) or (
