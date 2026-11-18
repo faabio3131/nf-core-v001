@@ -78,6 +78,32 @@ def _inutilize(model=ElectronicInvoiceModel.NFE):
     )
 
 
+@pytest.mark.parametrize("model", [
+    ElectronicInvoiceModel.NFCE,
+])
+def test_sp_model55_query_and_cancel_refuse_nfce_before_a1(
+    model: ElectronicInvoiceModel,
+) -> None:
+    """A SP65 key cannot be queried/cancelled through the SP55 provider."""
+    invoice = _request("35", model=model)
+    vault = Mock(side_effect=AssertionError("A1 should not be resolved"))
+    exchange = Mock(side_effect=AssertionError("SEFAZ should not be called"))
+    gateway = SefazSpHomologationOperationsGateway(
+        resolve_certificate=vault, exchange=exchange,
+    )
+    with pytest.raises(OfficialNfeOperationsError, match="state/model"):
+        gateway.query(FiscalQueryRequest(invoice.scope, invoice.access_key))
+    with pytest.raises(OfficialNfeOperationsError, match="state/model"):
+        gateway.cancel(CancellationRequest.build(
+            scope=invoice.scope,
+            access_key=invoice.access_key,
+            authorization_protocol="135260000000001",
+            justification="Cancelamento sintético para verificação interna",
+        ))
+    vault.assert_not_called()
+    exchange.assert_not_called()
+
+
 def test_all_lifecycle_schemas_compile_without_network():
     OfficialOperationXmlValidator(tuple(ROOTS))
 
