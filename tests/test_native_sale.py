@@ -462,7 +462,9 @@ def test_sp_nfce_full_canonical_portal_issue_replay_query_xml_and_pdf(
 
     class ScopedVault:
         def resolve(self, *, scope, issuer_cnpj):
-            assert issuer_cnpj == signing_material.reference_id or issuer_cnpj
+            assert scope.tenant_id == "tenant" and scope.unit_id == "unit"
+            assert scope.environment is FiscalEnvironment.HOMOLOGATION
+            assert issuer_cnpj == "12345678000195"
             return signing_material
 
     application = FiscalApplicationService(db)
