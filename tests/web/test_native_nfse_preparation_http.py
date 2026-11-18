@@ -784,8 +784,11 @@ def test_owner_prepares_native_nfse_and_replay_keeps_immutable_document(tmp_path
     result = first.json()
     assert result["status"] == FiscalDocumentState.READY_TO_TRANSMIT.value
     assert result["fiscal_authorization"] == "not_inferred_from_preparation"
+    assert result["fiscal_policy_state"] == "review_required_before_sefin"
     assert result["transmitted"] is False
-    assert result["dps_numbering"] == "pending_durable_authority"
+    assert result["dps_numbering"] == "reserved_durable"
+    assert result["dps_series"] == 1
+    assert type(result["dps_number"]) is int and result["dps_number"] > 0
     replay = _post(web, _payload(), key="second-review")
     assert replay.status_code == 200, replay.text
     assert replay.json()["replay"] is True
@@ -794,6 +797,8 @@ def test_owner_prepares_native_nfse_and_replay_keeps_immutable_document(tmp_path
     prepared = FiscalApplicationService(db).load_prepared_nfse_authorization(
         scope, result["document_id"]
     )
+    assert prepared.document.dps_series == result["dps_series"]
+    assert prepared.document.dps_number == result["dps_number"]
     assert prepared.document.issuer.cnpj.value == "11222333000181"
     assert prepared.document.service_taker is not None
     assert prepared.document.service_taker.tax_id.value == "12345678000195"
@@ -4225,6 +4230,7 @@ def test_national_reviewed_treatment_http_archive_xml_and_policy_rotation(
     response = _post(web, payload)
     assert response.status_code == 200, response.text
     result = response.json()
+    assert result["fiscal_policy_state"] == "reviewed_policy_pinned_at_preparation"
     request = FiscalApplicationService(db).load_prepared_nfse_authorization(
         scope, result["document_id"],
     )
