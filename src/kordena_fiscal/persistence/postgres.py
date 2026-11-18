@@ -81,6 +81,7 @@ from .customer_configuration_schema import (
     CUSTOMER_CONFIGURATION_VERSION,
 )
 from .fiscal_scope_schema import FISCAL_SCOPE_NAME, FISCAL_SCOPE_SCHEMA, FISCAL_SCOPE_VERSION
+from .iron_a1_delegation import (IRON_A1_DELEGATION_NAME, IRON_A1_DELEGATION_SCHEMA, IRON_A1_DELEGATION_VERSION)
 from .nfse_dps_numbering_schema import (
     NFSE_DPS_NUMBERING_NAME,
     NFSE_DPS_NUMBERING_SCHEMA,
@@ -942,6 +943,16 @@ class PostgresFiscalDatabase:
                         ),
                     )
                     new_versions.append(NFSE_DPS_NUMBERING_VERSION)
+                if IRON_A1_DELEGATION_VERSION not in applied:
+                    for statement in IRON_A1_DELEGATION_SCHEMA:
+                        raw.execute(statement)
+                    raw.execute(
+                        "INSERT INTO fm_schema_migrations (version, name, applied_at) "
+                        "VALUES (%s, %s, %s)",
+                        (IRON_A1_DELEGATION_VERSION, IRON_A1_DELEGATION_NAME,
+                         datetime.now().astimezone().isoformat()),
+                    )
+                    new_versions.append(IRON_A1_DELEGATION_VERSION)
                 raw.commit()
                 return tuple(new_versions)
             except Exception:
@@ -971,10 +982,13 @@ class PostgresFiscalDatabase:
         bling_ready = tuple(range(1, BLING_WORKER_POLICY_VERSION + 1))
         nfse_baseline = (*baseline, NFSE_DPS_NUMBERING_VERSION)
         nfse_bling = (*bling_ready, NFSE_DPS_NUMBERING_VERSION)
+        a1_nfse_baseline = (*nfse_baseline, IRON_A1_DELEGATION_VERSION)
+        a1_nfse_bling = (*nfse_bling, IRON_A1_DELEGATION_VERSION)
         # Optional Bling 20/21 and additive DPS 22 can be independently
         # installed. Partial Bling installation remains forbidden.
-        ready_schemas = (bling_ready, nfse_bling) if require_bling else (
+        ready_schemas = (bling_ready, nfse_bling, a1_nfse_bling) if require_bling else (
             baseline, bling_ready, nfse_baseline, nfse_bling,
+            a1_nfse_baseline, a1_nfse_bling,
         )
         if applied not in ready_schemas:
             raise PersistenceStateError(
