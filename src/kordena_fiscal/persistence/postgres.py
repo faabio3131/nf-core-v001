@@ -81,7 +81,11 @@ from .customer_configuration_schema import (
     CUSTOMER_CONFIGURATION_VERSION,
 )
 from .fiscal_scope_schema import FISCAL_SCOPE_NAME, FISCAL_SCOPE_SCHEMA, FISCAL_SCOPE_VERSION
-from .iron_a1_delegation import (IRON_A1_DELEGATION_NAME, IRON_A1_DELEGATION_SCHEMA, IRON_A1_DELEGATION_VERSION)
+from .iron_a1_delegation import (
+    IRON_A1_DELEGATION_NAME,
+    IRON_A1_DELEGATION_SCHEMA,
+    IRON_A1_DELEGATION_VERSION,
+)
 from .nfse_dps_numbering_schema import (
     NFSE_DPS_NUMBERING_NAME,
     NFSE_DPS_NUMBERING_SCHEMA,
