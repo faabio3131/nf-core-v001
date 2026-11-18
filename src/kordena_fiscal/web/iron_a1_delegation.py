@@ -57,7 +57,8 @@ def create_iron_a1_router(
     store = None if database is None else IronA1DelegationStore(database.connection)
 
     def is_json_content(request: Request) -> bool:
-        return request.headers.get("content-type", "").split(";")[0].strip().lower() == "application/json"
+        content_type = request.headers.get("content-type", "").split(";")[0]
+        return content_type.strip().lower() == "application/json"
 
     def ready() -> None:
         if security is None or store is None or vault is None or trusted_origin is None:
