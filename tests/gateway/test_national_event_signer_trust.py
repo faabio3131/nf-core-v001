@@ -114,3 +114,17 @@ def test_real_event_post_and_get_preflight_trust_before_certificate(
     certificate.assert_not_called()
     exchange.assert_not_called()
     exchange_get.assert_not_called()
+
+
+def test_nested_taxpayer_certificate_cannot_substitute_official_outer_signer(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    root, fingerprint = _synthetic_signer()
+    monkeypatch.setenv(_ENV, fingerprint)
+    signature = root.find(f"{{{_DS}}}Signature")
+    assert signature is not None
+    root.remove(signature)
+    embedded = etree.SubElement(root, "{http://www.sped.fazenda.gov.br/nfse}pedRegEvento")
+    embedded.append(signature)
+    with pytest.raises(NationalNfseEventError, match="signer certificate missing"):
+        _enforce_national_event_signer(root)
