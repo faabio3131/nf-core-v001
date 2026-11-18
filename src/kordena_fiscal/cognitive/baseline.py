@@ -86,7 +86,13 @@ class RejectionBaseline:
                 (rejection.evidence_id, kb_id),
             )
         ]
-        state = next((e for e in request.evidence if e.trusted and e.kind is EvidenceKind.DOCUMENT_STATE), None)
+        state = next(
+            (
+                e for e in request.evidence
+                if e.trusted and e.kind is EvidenceKind.DOCUMENT_STATE
+            ),
+            None,
+        )
         if state is not None and "state" in state.data:
             sections.append(
                 AdviceSection(

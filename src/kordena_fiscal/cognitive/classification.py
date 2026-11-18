@@ -44,7 +44,11 @@ class ClassificationBaseline:
                 "Não há decisão tributária informada para analisar: não há base suficiente."
             )
         product = next(
-            (e for e in request.evidence if e.trusted and e.kind is EvidenceKind.PRODUCT_PROFILE), None
+            (
+                e for e in request.evidence
+                if e.trusted and e.kind is EvidenceKind.PRODUCT_PROFILE
+            ),
+            None,
         )
         findings = self._validate(decision, product)
         kb_evidence = self._catalog_evidence(decision)
