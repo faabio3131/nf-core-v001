@@ -109,7 +109,8 @@ def test_sp_nfce65_query_uses_separate_official_model65_endpoint(
 ) -> None:
     """Prove existing operations class routes SP65 by model, not UF alone."""
     from kordena_fiscal.control_plane.sefaz_endpoint_catalog import (
-        SefazService, resolve_sefaz_endpoint,
+        SefazService,
+        resolve_sefaz_endpoint,
     )
     from kordena_fiscal.gateway.nfe_sp_homologation import (
         SP_NFCE_HOMOLOGATION_PROVIDER_ID,
