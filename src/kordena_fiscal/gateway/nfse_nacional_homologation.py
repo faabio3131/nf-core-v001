@@ -6,6 +6,7 @@ preparation authority. Never builds a DPS from untrusted browser JSON.
 from __future__ import annotations
 
 import json
+import os
 import ssl
 from collections.abc import Callable
 from datetime import UTC, datetime
@@ -193,6 +194,10 @@ class NfseNacionalHomologationGateway:
                 require_national_receipt_pki_ready,
             )
             require_national_receipt_pki_ready()
+            from kordena_fiscal.runtime.native_nfse_policy import (
+                require_current_national_treatment_for_live_dispatch,
+            )
+            require_current_national_treatment_for_live_dispatch(os.environ, document)
         response = self._exchange(payload, build_fiscal_tls_context(material), self._timeout)
         if not isinstance(response, bytes) or len(response) > _MAX_RESPONSE:
             raise OfficialNfseTransportError("Resposta SEFIN inválida")
