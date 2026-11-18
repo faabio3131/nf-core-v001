@@ -805,6 +805,42 @@ def test_sublimit_national_preparation_refuses_unreviewed_tax_assessment(
     assert forged.status_code == 400
 
 
+def test_mei_national_portal_requires_das_no_highlight_and_persists_zero_iss(
+    tmp_path: Path,
+) -> None:
+    """Same Portal/RBAC/UoW route; MEI never bills per-invoice ISS."""
+    db = _database(
+        tmp_path / "mei-native.sqlite", tax_regime=TaxRegimeCode.MEI,
+    )
+    web = _client(db)
+    invalid = _post(web, _payload() | {
+        "source_id": "mei-invalid-highlight",
+    }, key="mei-invalid-highlight")
+    assert invalid.status_code == 400
+    retained = _post(web, _payload() | {
+        "source_id": "mei-invalid-retention",
+        "iss_amount": "0.00", "iss_withheld": True,
+    }, key="mei-invalid-retention")
+    assert retained.status_code == 400
+
+    reviewed = _payload() | {
+        "source_id": "mei-zero-iss-reviewed", "iss_amount": "0.00",
+    }
+    prepared = _post(web, reviewed, key="mei-reviewed")
+    assert prepared.status_code == 200, prepared.text
+    assert prepared.json()["fiscal_authorization"] == "not_inferred_from_preparation"
+    scope = ExecutionScope(
+        TENANT, UNIT, FiscalEnvironment.HOMOLOGATION, "readback", "fm-nfcore",
+    )
+    stored = FiscalApplicationService(db).load_prepared_nfse_authorization(
+        scope, prepared.json()["document_id"],
+    )
+    assert stored.document.issuer.tax_regime is TaxRegimeCode.MEI
+    assert stored.document.services[0].iss_amount.amount == 0
+    replay = _post(web, reviewed, key="mei-replayed")
+    assert replay.status_code == 200 and replay.json()["replay"] is True
+
+
 def test_unmodeled_untaxed_iss_and_malformed_money_fail_before_preparation(tmp_path: Path) -> None:
     db = _database(tmp_path / "tax.sqlite")
     web = _client(db)
@@ -4280,6 +4316,69 @@ def test_reviewed_national_policy_installer_refuses_untrusted_prior_state(
     with pytest.raises(FiscalValidationError):
         install_reviewed_policy(source, directory)
     assert data["version"] == 2
+
+
+def test_reviewed_national_policy_install_lock_refuses_symlink_and_unsafe_mode(
+    tmp_path, monkeypatch,
+) -> None:
+    """Operator installation must refuse a symlinked or unsafe lock."""
+    from kordena_fiscal.runtime.native_nfse_policy import install_reviewed_policy
+
+    _, _, source, _, _ = _install_national_decision(
+        tmp_path, monkeypatch, _payload() | {"iss_amount": "0.00"},
+    )
+    target_dir = tmp_path / "locks"
+    name = install_reviewed_policy(source, target_dir)
+    lock = target_dir / (name + ".lock")
+    assert lock.is_file() and lock.stat().st_mode & 0o077 == 0
+    lock.chmod(0o644)
+    with pytest.raises(FiscalValidationError, match="install lock"):
+        install_reviewed_policy(source, target_dir)
+    lock.unlink()
+    lock.symlink_to(source)
+    with pytest.raises(OSError):
+        install_reviewed_policy(source, target_dir)
+    assert (target_dir / (name + ".json")).read_bytes() == source.read_bytes()
+
+
+def test_reviewed_national_policy_concurrent_versions_never_roll_back(
+    tmp_path, monkeypatch,
+) -> None:
+    """Concurrent writers must leave the highest approved policy version."""
+    from concurrent.futures import ThreadPoolExecutor
+
+    from kordena_fiscal.runtime.native_nfse_policy import install_reviewed_policy
+
+    _, data, source, _, _ = _install_national_decision(
+        tmp_path, monkeypatch, _payload() | {"iss_amount": "0.00"},
+    )
+    target_dir = tmp_path / "concurrent-policy"
+    name = install_reviewed_policy(source, target_dir)
+    inputs = []
+    for version in (2, 3):
+        revision = json.loads(json.dumps(data))
+        revision["version"] = version
+        candidate = tmp_path / f"candidate-v{version}.json"
+        candidate.write_text(json.dumps(revision), encoding="utf-8")
+        inputs.append(candidate)
+
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        futures = [
+            executor.submit(install_reviewed_policy, candidate, target_dir)
+            for candidate in inputs
+        ]
+        outcomes = []
+        for future in futures:
+            try:
+                outcomes.append(future.result())
+            except FiscalValidationError:
+                outcomes.append(None)
+    assert name in outcomes
+    final = (target_dir / (name + ".json")).read_bytes()
+    assert json.loads(final)["version"] == 3
+    assert (target_dir / (name + ".sha256")).read_text().strip() == (
+        hashlib.sha256(final).hexdigest()
+    )
 
 
 def test_national_policy_never_changes_municipal_tax_handling(tmp_path, monkeypatch):

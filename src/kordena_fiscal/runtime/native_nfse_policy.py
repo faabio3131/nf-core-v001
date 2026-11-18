@@ -4,7 +4,8 @@ from __future__ import annotations
 import hashlib
 import json
 import re
-from collections.abc import Mapping
+from collections.abc import Iterator, Mapping
+from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
@@ -168,6 +169,38 @@ def resolve_national_treatment(
         raise FiscalValidationError("Scoped national NFS-e policy unavailable or invalid") from None
 
 
+@contextmanager
+def _serialized_policy_install(directory: Path, name: str) -> Iterator[None]:
+    """Serialize same-scope policy promotions across processes on the host.
+
+    Without a shared lock, a lower-version writer can overwrite a higher one
+    after both have checked the previous version. Readers still fail closed
+    while the signed JSON/SHA pair is replaced.
+    """
+    import fcntl
+    import os
+    import stat
+
+    fd = os.open(
+        directory / (name + ".lock"),
+        os.O_CREAT | os.O_RDWR | os.O_NOFOLLOW | os.O_CLOEXEC,
+        0o600,
+    )
+    try:
+        metadata = os.fstat(fd)
+        if (
+            not stat.S_ISREG(metadata.st_mode)
+            or metadata.st_nlink != 1
+            or metadata.st_uid != os.geteuid()
+            or metadata.st_mode & 0o077
+        ):
+            raise FiscalValidationError("Unsafe scoped national policy install lock")
+        fcntl.flock(fd, fcntl.LOCK_EX)
+        yield
+    finally:
+        os.close(fd)
+
+
 def install_reviewed_policy(source: Path, directory: Path) -> str:
     """Install operator-reviewed national decisions; no rules or rates are invented."""
     import os
@@ -199,60 +232,63 @@ def install_reviewed_policy(source: Path, directory: Path) -> str:
                 date.fromisoformat(rule["treatment"]["effective_from"]),
             )
     directory.mkdir(parents=True, exist_ok=True)
-    target, pin = directory / (name + ".json"), directory / (name + ".sha256")
-    if target.is_symlink() or pin.is_symlink():
-        raise FiscalValidationError("National policy destination cannot be a symlink")
-    # A reviewed decision's version is an audit invariant. Reinstalling identical
-    # bytes is idempotent; changing any decision, selector or rule at the same
-    # version (or rolling back to an older version) is not.
-    if target.exists() or pin.exists():
-        if not target.is_file() or not pin.is_file():
-            raise FiscalValidationError("National policy installation is incomplete")
-        with target.open("rb") as stream:
-            previous_raw = stream.read(1_048_577)
-        with pin.open("rb") as stream:
-            previous_pin = stream.read(66)
-        if (
-            not previous_raw or len(previous_raw) > 1_048_576
-            or not re.fullmatch(rb"[0-9a-f]{64}\n?", previous_pin)
-            or hashlib.sha256(previous_raw).hexdigest().encode()
-            != previous_pin.strip()
-        ):
-            raise FiscalValidationError("Existing national policy integrity failed")
+    if directory.is_symlink():
+        raise FiscalValidationError("National policy directory cannot be a symlink")
+    with _serialized_policy_install(directory, name):
+        target, pin = directory / (name + ".json"), directory / (name + ".sha256")
+        if target.is_symlink() or pin.is_symlink():
+            raise FiscalValidationError("National policy destination cannot be a symlink")
+        # A reviewed decision's version is an audit invariant. Reinstalling identical
+        # bytes is idempotent; changing any decision, selector or rule at the same
+        # version (or rolling back to an older version) is not.
+        if target.exists() or pin.exists():
+            if not target.is_file() or not pin.is_file():
+                raise FiscalValidationError("National policy installation is incomplete")
+            with target.open("rb") as stream:
+                previous_raw = stream.read(1_048_577)
+            with pin.open("rb") as stream:
+                previous_pin = stream.read(66)
+            if (
+                not previous_raw or len(previous_raw) > 1_048_576
+                or not re.fullmatch(rb"[0-9a-f]{64}\n?", previous_pin)
+                or hashlib.sha256(previous_raw).hexdigest().encode()
+                != previous_pin.strip()
+            ):
+                raise FiscalValidationError("Existing national policy integrity failed")
+            try:
+                previous = json.loads(previous_raw, object_pairs_hook=_unique)
+            except (TypeError, ValueError, RecursionError):
+                raise FiscalValidationError("Existing national policy is invalid") from None
+            if (
+                not isinstance(previous, dict)
+                or type(previous.get("version")) is not int
+                or type(previous.get("schema_version")) is not int
+                or previous["schema_version"] != 1
+                or any(previous.get(k) != data.get(k) for k in (
+                    "host_namespace", "tenant_id", "unit_id",
+                    "environment", "document_kind",
+                ))
+            ):
+                raise FiscalValidationError("Existing national policy scope is invalid")
+            if previous_raw == raw:
+                return name
+            if data["version"] <= previous["version"]:
+                raise FiscalValidationError(
+                    "National tax policy changes require a higher reviewed version"
+                )
+        suffix = "." + uuid4().hex + ".tmp"
+        staged, staged_pin = directory / (name + suffix), directory / (name + suffix + ".sha256")
         try:
-            previous = json.loads(previous_raw, object_pairs_hook=_unique)
-        except (TypeError, ValueError, RecursionError):
-            raise FiscalValidationError("Existing national policy is invalid") from None
-        if (
-            not isinstance(previous, dict)
-            or type(previous.get("version")) is not int
-            or type(previous.get("schema_version")) is not int
-            or previous["schema_version"] != 1
-            or any(previous.get(k) != data.get(k) for k in (
-                "host_namespace", "tenant_id", "unit_id",
-                "environment", "document_kind",
-            ))
-        ):
-            raise FiscalValidationError("Existing national policy scope is invalid")
-        if previous_raw == raw:
-            return name
-        if data["version"] <= previous["version"]:
-            raise FiscalValidationError(
-                "National tax policy changes require a higher reviewed version"
-            )
-    suffix = "." + uuid4().hex + ".tmp"
-    staged, staged_pin = directory / (name + suffix), directory / (name + suffix + ".sha256")
-    try:
-        staged.write_bytes(raw)
-        staged_pin.write_text(digest + "\n", encoding="ascii")
-        staged.chmod(0o644)
-        staged_pin.chmod(0o644)
-        os.replace(staged, target)
-        os.replace(staged_pin, pin)
-    finally:
-        staged.unlink(missing_ok=True)
-        staged_pin.unlink(missing_ok=True)
-    return name
+            staged.write_bytes(raw)
+            staged_pin.write_text(digest + "\n", encoding="ascii")
+            staged.chmod(0o644)
+            staged_pin.chmod(0o644)
+            os.replace(staged, target)
+            os.replace(staged_pin, pin)
+        finally:
+            staged.unlink(missing_ok=True)
+            staged_pin.unlink(missing_ok=True)
+        return name
 
 
 def main() -> None:

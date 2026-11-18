@@ -239,7 +239,14 @@ def test_build_signed_dps_translates_tax_regime_to_op_simp_nac(
         )
         if tax_regime is TaxRegimeCode.SIMPLES_NACIONAL_EXCESS_SUBLIMIT else None
     )
-    document = _document(issuer=_issuer(tax_regime=tax_regime), tax_treatment=treatment)
+    services = (
+        (_service(iss_amount=Money.zero()),)
+        if tax_regime is TaxRegimeCode.MEI else None
+    )
+    document = _document(
+        issuer=_issuer(tax_regime=tax_regime),
+        services=services, tax_treatment=treatment,
+    )
     signed = build_signed_dps(_request(document), _certificate())
     root = etree.fromstring(signed)
     reg_trib = root.find(
@@ -250,6 +257,44 @@ def test_build_signed_dps_translates_tax_regime_to_op_simp_nac(
         assert reg_trib.findtext(f"{{{_NFSE_NS}}}regApTribSN") == "3"
     else:
         assert reg_trib.find(f"{{{_NFSE_NS}}}regApTribSN") is None
+    if tax_regime is TaxRegimeCode.MEI:
+        trib = root.find(
+            f"{{{_NFSE_NS}}}infDPS/{{{_NFSE_NS}}}valores/"
+            f"{{{_NFSE_NS}}}trib/{{{_NFSE_NS}}}tribMun"
+        )
+        assert trib is not None
+        assert trib.findtext(f"{{{_NFSE_NS}}}tribISSQN") == "1"
+        assert trib.find(f"{{{_NFSE_NS}}}pAliq") is None
+        assert reg_trib.findtext(f"{{{_NFSE_NS}}}regEspTrib") == "0"
+
+
+@pytest.mark.parametrize(
+    ("iss", "withheld"), [("3.00", False), ("0.00", True)],
+)
+def test_mei_canonical_nfse_refuses_iss_highlight_and_withholding(
+    iss: str, withheld: bool,
+) -> None:
+    with pytest.raises(FiscalValidationError, match="MEI cannot highlight"):
+        _document(
+            issuer=_issuer(tax_regime=TaxRegimeCode.MEI),
+            services=(_service(
+                iss_amount=Money(Decimal(iss)), iss_withheld=withheld,
+            ),),
+        )
+
+
+def test_mei_canonical_nfse_refuses_special_iss_regime() -> None:
+    treatment = NfseNationalTaxTreatment(
+        iss_taxation_code="1", special_regime_code="2",
+        normative_reference="synthetic:MEI:invalid-special-regime",
+        rule_version=1, effective_from=date(2026, 1, 1),
+    )
+    with pytest.raises(FiscalValidationError, match="MEI cannot claim special"):
+        _document(
+            issuer=_issuer(tax_regime=TaxRegimeCode.MEI),
+            services=(_service(iss_amount=Money.zero()),),
+            tax_treatment=treatment,
+        )
 
 
 def test_build_signed_dps_includes_deduction_and_withheld_retention_code() -> None:
