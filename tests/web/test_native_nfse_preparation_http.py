@@ -4226,6 +4226,7 @@ def test_national_reviewed_treatment_http_archive_xml_and_policy_rotation(
     response = _post(web, payload)
     assert response.status_code == 200, response.text
     result = response.json()
+    assert result["fiscal_policy_state"] == "reviewed_policy_pinned_at_preparation"
     request = FiscalApplicationService(db).load_prepared_nfse_authorization(
         scope, result["document_id"],
     )
