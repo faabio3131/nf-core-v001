@@ -25,7 +25,13 @@ _CLASSIFICATION_REF = re.compile(
     r"(?i)\b(cst|csosn|cfop|ncm|cclasstrib|cclass)\b[^\d\n]{0,12}(\d{2,8})"
 )
 _DIGIT_RUN = re.compile(r"\d+")
-_CLASSIFICATION_FIELDS = frozenset({"cst", "csosn", "cfop", "ncm", "cclasstrib"})
+_CLASSIFICATION_CATALOGS = {
+    "cst": frozenset({"cst_icms", "cst_pis_cofins"}),
+    "csosn": frozenset({"csosn"}),
+    "cfop": frozenset({"cfop"}),
+    "ncm": frozenset({"ncm"}),
+    "cclasstrib": frozenset({"cclasstrib"}),
+}
 _CLASSIFICATION_EVIDENCE_KINDS = frozenset({
     EvidenceKind.TAX_DECISION,
     EvidenceKind.PRODUCT_PROFILE,
@@ -64,6 +70,28 @@ def _percent_value(match: re.Match[str]) -> Decimal:
 def _brl_value(match: re.Match[str]) -> Decimal:
     value = Decimal(match.group("value").replace(".", "").replace(",", "."))
     return -value if match.group("leading_minus") else value
+
+
+def _catalog_has_code(fact: Evidence, field: str, code: str) -> bool:
+    """Only a code entry in a matching deterministic catalogue may ground a claim.
+
+    Descriptions, monetary amounts and codes from other catalogue families
+    cannot be used to authorize a fiscal classification suggestion.
+    """
+    if fact.kind is not EvidenceKind.CLASSIFICATION_CATALOG:
+        return False
+    allowed = _CLASSIFICATION_CATALOGS.get(field, frozenset())
+    if not any(fact.evidence_id == f"kb:cls:{kind}" for kind in allowed):
+        return False
+    if not fact.origin.startswith("classification-catalog@"):
+        return False
+    return any(
+        part.partition("=")[0].strip() == code
+        for key, value in fact.data.items()
+        if re.fullmatch(r"codes_[1-9][0-9]*", key)
+        for part in value.split(" | ")
+        if "=" in part
+    )
 
 
 @dataclass(frozen=True, slots=True)
@@ -171,9 +199,11 @@ class OutputGuard:
                 field = "cclasstrib"
             # A code from a money value, rejection or different classification
             # must not authorize a model-authored fiscal classification claim.
-            if field not in _CLASSIFICATION_FIELDS or not any(
-                fact.kind in _CLASSIFICATION_EVIDENCE_KINDS
-                and fact.data.get(field, "").strip() == match.group(2)
+            if field not in _CLASSIFICATION_CATALOGS or not any(
+                (
+                    fact.kind in _CLASSIFICATION_EVIDENCE_KINDS
+                    and fact.data.get(field, "").strip() == match.group(2)
+                ) or _catalog_has_code(fact, field, match.group(2))
                 for fact in cited_facts
             ):
                 return "ungrounded_classification_code"
