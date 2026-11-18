@@ -2844,6 +2844,35 @@ def test_jundiai_http_cancel_or_substitute_officially_scoped_and_idempotent(
         cancellation_query.assert_called_once()
         cancellation_post.assert_called_once()
 
+@pytest.mark.parametrize("regime", [
+    TaxRegimeCode.MEI, TaxRegimeCode.SIMPLES_NACIONAL,
+    TaxRegimeCode.SIMPLES_NACIONAL_EXCESS_SUBLIMIT,
+])
+def test_santana_municipal_portal_refuses_national_mandatory_regime(
+    tmp_path: Path, regime: TaxRegimeCode,
+) -> None:
+    """Having a municipal binding cannot authorize post-cutover SP issuance."""
+    db = _database(
+        tmp_path / f"santana-federal-guard-{regime}.sqlite",
+        issuer_ibge="3547304",
+        provider_id="santana-simpliss-v1-homologation",
+        tax_regime=regime,
+    )
+    web = _client(db)
+    payload = _payload() | _TAKER_ADDRESS | {
+        "nbs_code": "123456789",
+        "source_id": f"santana-national-mandatory-{regime}",
+        "service_municipality_ibge": "3547304",
+        "competence_date": "2026-11-12",
+        "iss_amount": "0.00" if regime is TaxRegimeCode.MEI else "3.00",
+    }
+    with patch.object(FiscalApplicationService, "prepare_nfse_authorization") as prepare:
+        result = _post(web, payload, key=f"santana-federal-{regime}")
+        assert result.status_code == 400, result.text
+        assert result.json()["detail"]["code"] == "NATIVE_NFSE_INVALID_FISCAL_FACTS"
+        prepare.assert_not_called()
+
+
 def test_santana_simpliss_portal_uses_existing_durable_dps_and_replay(
     tmp_path: Path,
 ) -> None:

@@ -157,6 +157,37 @@ def classify_sp_national_nfse_eligibility(
     )
 
 
+
+def require_sp_municipal_nfse_issuance_permitted(
+    *, issuer_jurisdiction: BrazilianJurisdiction,
+    tax_regime: TaxRegimeCode, competence_date: date,
+) -> None:
+    """Negative-only federal guard shared by all SP municipal emitters.
+
+    A provider binding cannot overrule the national compulsory channel.
+    A successful check never certifies that the municipal API is available.
+    """
+    if (
+        not isinstance(issuer_jurisdiction, BrazilianJurisdiction)
+        or issuer_jurisdiction.state_code != "SP"
+        or type(tax_regime) is not TaxRegimeCode
+        or type(competence_date) is not date
+    ):
+        raise FiscalValidationError("SP municipal issuance requires reviewed fiscal facts")
+    try:
+        classify_sp_national_nfse_eligibility(
+            issuer_jurisdiction=issuer_jurisdiction,
+            tax_regime=tax_regime, competence_date=competence_date,
+        )
+    except FiscalValidationError:
+        # No national obligation established for this regime/competence.
+        # Municipal authority must still be independently verified.
+        return
+    raise FiscalValidationError(
+        "National NFS-e is mandatory for this regime and competence"
+    )
+
+
 # Guarulhos migrated its non-Simples municipal emission to GissOnline V2 on
 # 2026-07-01. Federal CGSN 191/2026 moves Simples ME/EPP competences from
 # 2026-11-01 to Emissor Nacional, irrespective of the municipal provider.

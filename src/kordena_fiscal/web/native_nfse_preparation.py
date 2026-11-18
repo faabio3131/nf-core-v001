@@ -39,8 +39,8 @@ from kordena_fiscal.gateway.mg_nfse_channel_guard import (
     require_mg_national_channel_eligibility,
 )
 from kordena_fiscal.gateway.municipal_sp_routing import (
-    classify_sp_national_nfse_eligibility,
     require_guarulhos_nfse_channel,
+    require_sp_municipal_nfse_issuance_permitted,
 )
 from kordena_fiscal.gateway.nfse_nacional_homologation import (
     NACIONAL_HOMOLOGATION_PROVIDER_ID,
@@ -336,6 +336,13 @@ def prepare_native_nfse(
             str(payload.get("nbs_code", ""))
         ):
             raise FiscalValidationError("Santana requires reviewed NBS 2.0 nine-digit code")
+        # Santana's Simpliss is municipal even though its payload reuses the
+        # national DPS schema. Do not bypass the same federal Simples/MEI cutoffs.
+        if provider == _SANTANA_PROVIDER and previous is None:
+            require_sp_municipal_nfse_issuance_permitted(
+                issuer_jurisdiction=profile.address.jurisdiction,
+                tax_regime=profile.tax_regime, competence_date=competence,
+            )
         if municipal_sp:
             expected_city = (
                 "3505708" if municipal_barueri else
@@ -351,18 +358,10 @@ def prepare_native_nfse(
                 raise FiscalValidationError(
                     "Municipal NFS-e requires issuer city and complete taker address"
                 )
-            try:
-                classify_sp_national_nfse_eligibility(
-                    issuer_jurisdiction=profile.address.jurisdiction,
-                    tax_regime=profile.tax_regime,
-                    competence_date=competence,
-                )
-            except FiscalValidationError:
-                pass
-            else:
-                raise FiscalValidationError(
-                    "National NFS-e is mandatory for this regime and competence"
-                )
+            require_sp_municipal_nfse_issuance_permitted(
+                issuer_jurisdiction=profile.address.jurisdiction,
+                tax_regime=profile.tax_regime, competence_date=competence,
+            )
         policy = None
         treatment = previous.document.national_tax_treatment if previous else None
         if previous is None and provider == NACIONAL_HOMOLOGATION_PROVIDER_ID:
