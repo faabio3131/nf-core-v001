@@ -8,9 +8,10 @@ from __future__ import annotations
 
 import hashlib
 import secrets
+from collections.abc import Callable
 from contextlib import AbstractContextManager
 from datetime import UTC, datetime, timedelta
-from typing import Any, Callable, Protocol
+from typing import Any, Protocol
 
 IRON_A1_DELEGATION_VERSION = 23
 IRON_A1_DELEGATION_NAME = "iron_a1_one_time_delegated_upload"
@@ -88,4 +89,4 @@ class IronA1DelegationStore:
             conn.commit()
         if row is None:
             return None
-        return dict(zip(("host_namespace","tenant_id","unit_id","environment","issuer_cnpj"), row))
+        return dict(zip(("host_namespace","tenant_id","unit_id","environment","issuer_cnpj"), row, strict=True))
