@@ -80,8 +80,10 @@ class PortalSurfaceEvidenceProvider:
                 return False
             # Explicit environment markers must not cross homologation/production.
             # Legacy rows without this field remain scoped by reader.surface().
-            if (row.get("environment") is not None
-                    and str(row["environment"]) != environment.value):
+            if (
+                row.get("environment") is not None
+                and str(row["environment"]) != environment.value
+            ):
                 return False
             if subject_id is None:
                 return True
