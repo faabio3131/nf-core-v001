@@ -238,6 +238,40 @@ def _validate_mg_authorization_scope(
             raise OfficialNfeTransportError("NFC-e MG65 QR/consulta divergem da SEFAZ")
 
 
+def _validate_sp_nfe_authorization_scope(request: AuthorizationRequest) -> None:
+    """Deny model-65 or wrong-UF payloads before a model-55 SP A1 is opened."""
+    if (
+        request.scope.environment is not FiscalEnvironment.HOMOLOGATION
+        or request.access_key.value[:2] != "35"
+        or request.access_key.model.value != 55
+    ):
+        raise OfficialNfeTransportError("SEFAZ SP NF-e requires model 55 and tpAmb=2")
+    root = _parse_xml(request.signed_xml)
+    invoices = root.findall(f"{{{NFE_NAMESPACE}}}NFe")
+    if (
+        root.tag != f"{{{NFE_NAMESPACE}}}enviNFe"
+        or root.get("versao") != "4.00"
+        or len(invoices) != 1
+    ):
+        raise OfficialNfeTransportError("SEFAZ SP NF-e requires one 4.00 invoice")
+    info = invoices[0].find(f"{{{NFE_NAMESPACE}}}infNFe")
+    if info is None or info.get("Id") != "NFe" + request.access_key.value:
+        raise OfficialNfeTransportError("SEFAZ SP NF-e access key mismatch")
+    ide = info.find(f"{{{NFE_NAMESPACE}}}ide")
+    issuer = info.find(f"{{{NFE_NAMESPACE}}}emit")
+    if ide is None or issuer is None:
+        raise OfficialNfeTransportError("SEFAZ SP NF-e issuer or identity missing")
+    if (
+        any(
+            ide.findtext(f"{{{NFE_NAMESPACE}}}{field}") != expected
+            for field, expected in (("cUF", "35"), ("mod", "55"), ("tpAmb", "2"))
+        )
+        or issuer.findtext(f"{{{NFE_NAMESPACE}}}CNPJ")
+        != request.access_key.issuer_identifier
+    ):
+        raise OfficialNfeTransportError("SEFAZ SP NF-e issuer/model/UF mismatch")
+
+
 class SefazHomologationAuthorizationGateway:
     """Shared SOAP authorization; explicit targets, no runtime auto-activation."""
 
@@ -330,6 +364,8 @@ class SefazHomologationAuthorizationGateway:
             )
             if self._validate_schema is None:
                 raise OfficialNfeTransportError("MG XSD validator unavailable")
+        else:
+            _validate_sp_nfe_authorization_scope(request)
         material = self._resolve_certificate(
             request.scope, request.access_key.issuer_identifier
         )

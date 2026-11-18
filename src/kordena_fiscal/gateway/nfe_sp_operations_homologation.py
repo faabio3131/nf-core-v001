@@ -207,7 +207,9 @@ class SefazHomologationOperationsGateway:
         return _post_xml(service, self._mg_endpoints[service], payload, context, timeout)
 
     def _validate_key(self, value: str) -> None:
-        if value[:2] != self._state or (self._state == "31" and value[20:22] != self._model):
+        # SP model 55 is as model-specific as MG: a 65 key must never reach
+        # NF-e's SP query/cancel endpoint or its tenant-scoped A1 resolver.
+        if value[:2] != self._state or value[20:22] != self._model:
             raise OfficialNfeOperationsError("Fiscal operation state/model mismatch")
 
     def _certificate(
