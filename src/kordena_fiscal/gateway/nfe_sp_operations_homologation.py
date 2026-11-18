@@ -26,6 +26,7 @@ from kordena_fiscal.gateway.fiscal_tls import RejectFiscalRedirects
 from kordena_fiscal.gateway.nfe_sp_homologation import (
     MG_NFCE_HOMOLOGATION_PROVIDER_ID,
     MG_NFE_HOMOLOGATION_PROVIDER_ID,
+    SP_NFCE_HOMOLOGATION_PROVIDER_ID,
     NFE_NAMESPACE,
     SOAP12_NAMESPACE,
     HomologationAuthorizationTarget,
@@ -160,8 +161,15 @@ class SefazHomologationOperationsGateway:
                 HomologationAuthorizationTarget.MG_NFCE,
             } else "35"
         )
-        self._model = "65" if target is HomologationAuthorizationTarget.MG_NFCE else "55"
-        if target is HomologationAuthorizationTarget.MG_NFCE:
+        self._model = (
+            "65" if target in {
+                HomologationAuthorizationTarget.MG_NFCE,
+                HomologationAuthorizationTarget.SP_NFCE,
+            } else "55"
+        )
+        if target is HomologationAuthorizationTarget.SP_NFCE:
+            self._provider = GatewayProviderMetadata(SP_NFCE_HOMOLOGATION_PROVIDER_ID, "1.0")
+        elif target is HomologationAuthorizationTarget.MG_NFCE:
             self._provider = GatewayProviderMetadata(MG_NFCE_HOMOLOGATION_PROVIDER_ID, "1.0")
         elif target is HomologationAuthorizationTarget.MG_NFE:
             self._provider = GatewayProviderMetadata(MG_NFE_HOMOLOGATION_PROVIDER_ID, "1.0")
@@ -169,10 +177,23 @@ class SefazHomologationOperationsGateway:
             self._provider = _PROVIDER
         self._profile = (
             NfeSignatureProfile.NFE4_OFFICIAL_RSA_SHA1
-            if self._state == "31" else NfeSignatureProfile.RSA_SHA256
+            if self._state == "31" or self._model == "65"
+            else NfeSignatureProfile.RSA_SHA256
         )
         self._validator: Callable[[str, bytes], None] | None = None
         self._mg_endpoints: dict[str, str] = {}
+        self._sp_nfce_endpoints: dict[str, str] = {}
+        if target is HomologationAuthorizationTarget.SP_NFCE:
+            from kordena_fiscal.xml.official_operation_schema import OfficialOperationXmlValidator
+            self._validator = OfficialOperationXmlValidator(tuple(_SERVICES))
+            for service, route in (
+                ("NFeConsultaProtocolo4", SefazService.QUERY),
+                ("NFeRecepcaoEvento4", SefazService.CANCEL),
+            ):
+                self._sp_nfce_endpoints[service] = resolve_sefaz_endpoint(
+                    state_ibge_code="35", document_kind=FiscalDocumentKind.NFCE,
+                    environment=FiscalEnvironment.HOMOLOGATION, service=route,
+                ).url
         if self._state == "31":
             from kordena_fiscal.control_plane.commercial import ConfiguredFiscalOperation
             from kordena_fiscal.control_plane.mg_official_homologation_catalog import (
@@ -200,6 +221,11 @@ class SefazHomologationOperationsGateway:
     def _https_exchange(
         self, service: str, payload: bytes, context: ssl.SSLContext, timeout: float,
     ) -> bytes:
+        if self._target is HomologationAuthorizationTarget.SP_NFCE:
+            endpoint = self._sp_nfce_endpoints.get(service)
+            if endpoint is None:
+                raise OfficialNfeOperationsError("Unsupported SP NFC-e operation")
+            return _post_xml(service, endpoint, payload, context, timeout)
         if self._state == "35":
             return _post_official(service, payload, context, timeout)
         if service not in self._mg_endpoints:
@@ -343,6 +369,12 @@ class SefazHomologationOperationsGateway:
         )
 
     def inutilize(self, request: InutilizationRequest) -> InutilizationResult:
+        if self._target is HomologationAuthorizationTarget.SP_NFCE:
+            # SP: national SINIEF 38/2026 removed the obligation in Nov/2026.
+            # Model-65 must never be routed through the old SP55 endpoint.
+            raise OfficialNfeOperationsError(
+                "SP NFC-e inutilization is not available after 2026-11-01"
+            )
         if request.scope.environment is not FiscalEnvironment.HOMOLOGATION:
             raise OfficialNfeOperationsError("Only homologation inutilization allowed")
         if request.model.value != int(self._model):
