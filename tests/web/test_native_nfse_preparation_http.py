@@ -805,6 +805,42 @@ def test_sublimit_national_preparation_refuses_unreviewed_tax_assessment(
     assert forged.status_code == 400
 
 
+def test_mei_national_portal_requires_das_no_highlight_and_persists_zero_iss(
+    tmp_path: Path,
+) -> None:
+    """Same Portal/RBAC/UoW route; MEI never bills per-invoice ISS."""
+    db = _database(
+        tmp_path / "mei-native.sqlite", tax_regime=TaxRegimeCode.MEI,
+    )
+    web = _client(db)
+    invalid = _post(web, _payload() | {
+        "source_id": "mei-invalid-highlight",
+    }, key="mei-invalid-highlight")
+    assert invalid.status_code == 400
+    retained = _post(web, _payload() | {
+        "source_id": "mei-invalid-retention",
+        "iss_amount": "0.00", "iss_withheld": True,
+    }, key="mei-invalid-retention")
+    assert retained.status_code == 400
+
+    reviewed = _payload() | {
+        "source_id": "mei-zero-iss-reviewed", "iss_amount": "0.00",
+    }
+    prepared = _post(web, reviewed, key="mei-reviewed")
+    assert prepared.status_code == 200, prepared.text
+    assert prepared.json()["fiscal_authorization"] == "not_inferred_from_preparation"
+    scope = ExecutionScope(
+        TENANT, UNIT, FiscalEnvironment.HOMOLOGATION, "readback", "fm-nfcore",
+    )
+    stored = FiscalApplicationService(db).load_prepared_nfse_authorization(
+        scope, prepared.json()["document_id"],
+    )
+    assert stored.document.issuer.tax_regime is TaxRegimeCode.MEI
+    assert stored.document.services[0].iss_amount.amount == 0
+    replay = _post(web, reviewed, key="mei-replayed")
+    assert replay.status_code == 200 and replay.json()["replay"] is True
+
+
 def test_unmodeled_untaxed_iss_and_malformed_money_fail_before_preparation(tmp_path: Path) -> None:
     db = _database(tmp_path / "tax.sqlite")
     web = _client(db)

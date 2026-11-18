@@ -473,6 +473,16 @@ class NfseCanonicalDocument:
         if self.service_taker is not None and not isinstance(self.service_taker, NfseServiceTaker):
             raise FiscalValidationError("service_taker must be NfseServiceTaker")
         treatment = self.national_tax_treatment
+        # MEI pays fixed ISS in DAS-SIMEI; this document must never assess,
+        # highlight or withhold per-invoice ISS or claim a special ISS regime.
+        # Single domain invariant applies to Portal and all DPS callers.
+        if self.issuer.tax_regime is TaxRegimeCode.MEI:
+            if treatment is not None and treatment.special_regime_code != "0":
+                raise FiscalValidationError("MEI cannot claim special ISS regime")
+            if any(
+                line.iss_amount.amount > 0 or line.iss_withheld for line in self.services
+            ):
+                raise FiscalValidationError("MEI cannot highlight or withhold ISS")
         if treatment is not None:
             if not isinstance(treatment, NfseNationalTaxTreatment):
                 raise FiscalValidationError("national_tax_treatment must be a reviewed decision")

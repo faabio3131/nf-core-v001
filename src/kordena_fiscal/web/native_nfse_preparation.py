@@ -382,8 +382,17 @@ def prepare_native_nfse(
                 and treatment.special_regime_code == "1"
             )
         )
-        ordinary_taxable = treatment is None or (
-            treatment.iss_taxation_code == "1" and not no_iss_highlight
+        # For MEI the national invoice is taxable but ISS is collected in the
+        # fixed DAS-SIMEI, never assessed or highlighted per service invoice.
+        # The canonical document itself rejects any nonzero ISS or retention.
+        mei_national = (
+            provider == NACIONAL_HOMOLOGATION_PROVIDER_ID
+            and profile.tax_regime is TaxRegimeCode.MEI
+        )
+        ordinary_taxable = not mei_national and (
+            treatment is None or (
+                treatment.iss_taxation_code == "1" and not no_iss_highlight
+            )
         )
         if ordinary_taxable and iss <= 0:
             raise FiscalValidationError("Taxable service requires positive reviewed ISS")
