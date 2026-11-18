@@ -65,7 +65,7 @@ def database_fixture(tmp_path: Path, backend: str):
     try:
         db = PostgresFiscalDatabase(isolated, min_pool_size=1, max_pool_size=4)
         db.initialize(enable_bling=True)
-        assert db.applied_migrations() == (*range(1, 22), 22)
+        assert db.applied_migrations() == (*range(1, 22), 22, 23)
         yield db
     finally:
         if db is not None:
