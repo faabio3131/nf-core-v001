@@ -35,6 +35,9 @@ from kordena_fiscal.domain import (
     SourceReference,
     TaxRegimeCode,
 )
+from kordena_fiscal.gateway.mg_nfse_channel_guard import (
+    require_mg_national_channel_eligibility,
+)
 from kordena_fiscal.gateway.municipal_sp_routing import (
     classify_sp_national_nfse_eligibility,
     require_guarulhos_nfse_channel,
@@ -303,6 +306,18 @@ def prepare_native_nfse(
             tax_regime=profile.tax_regime, competence_date=competence,
             provider_id=provider,
         )
+        # A national provider binding is necessary, not sufficient: for MG-W1
+        # cities, the federal/municipal channel and competence must be valid
+        # before recording READY_TO_TRANSMIT or reserving any fiscal number.
+        # Replays preserve immutable prior facts; the deterministic gateway
+        # repeats this negative gate before reading A1 or calling SEFIN.
+        if previous is None and provider == NACIONAL_HOMOLOGATION_PROVIDER_ID:
+            require_mg_national_channel_eligibility(
+                jurisdiction=profile.address.jurisdiction,
+                tax_regime=profile.tax_regime,
+                competence_date=competence,
+                national_taxation_code=payload["national_taxation_code"],
+            )
         municipal_sp = (
             municipal_barueri or municipal_cajamar
             or municipal_osasco or municipal_jundiai or municipal_guarulhos
