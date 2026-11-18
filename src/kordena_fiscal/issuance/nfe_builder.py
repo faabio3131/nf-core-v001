@@ -99,7 +99,7 @@ def build_nfe_sale(
     if document.document_kind.value not in {"nfe", "nfce"} or access_key.value[20:22] != model:
         raise FiscalValidationError("sale builder requires matching NF-e/NFC-e model")
     if nfce and (
-        issuer.address.jurisdiction.state_code != "MG"
+        issuer.address.jurisdiction.state_code not in {"MG", "SP"}
         or options.presence not in {1, 4}
         or (
             recipient is not None
@@ -111,7 +111,7 @@ def build_nfe_sale(
         )
         or (options.presence == 4 and recipient is None)
     ):
-        raise FiscalValidationError("NFC-e requires MG final consumer and reviewed online sale")
+        raise FiscalValidationError("NFC-e requires same-UF final consumer and reviewed online sale")
     if document.scope.environment is not FiscalEnvironment.HOMOLOGATION:
         raise FiscalValidationError("production fiscal preparation is not activated")
     if (recipient is None and not nfce) or (
@@ -449,14 +449,21 @@ def build_nfe_sale(
         _element(intermediary, "idCadIntTran", options.intermediary_registration)
     if nfce:
         supplement = _element(invoice, "infNFeSupl")
-        _element(
-            supplement,
-            "qrCode",
-            "https://portalsped.fazenda.mg.gov.br/portalnfce/sistema/qrcode.xhtml?p="
-            + access_key.value
-            + "|3|2",
-        )
-        _element(supplement, "urlChave", "https://hportalsped.fazenda.mg.gov.br/portalnfce")
+        # NFC-e QR v3 ONLINE, NT 2025.001: chave|3|tpAmb (CSC-free).
+        # Keep URL authority per UF; offline contingency needs signed QR,
+        # and is not synthesized by this preparation path.
+        base_qr, consultation = {
+            "MG": (
+                "https://portalsped.fazenda.mg.gov.br/portalnfce/sistema/qrcode.xhtml?p=",
+                "https://hportalsped.fazenda.mg.gov.br/portalnfce",
+            ),
+            "SP": (
+                "https://www.homologacao.nfce.fazenda.sp.gov.br/qrcode?p=",
+                "https://www.homologacao.nfce.fazenda.sp.gov.br/consulta",
+            ),
+        }[issuer.address.jurisdiction.state_code]
+        _element(supplement, "qrCode", base_qr + access_key.value + "|3|2")
+        _element(supplement, "urlChave", consultation)
     return etree.tostring(root, encoding="utf-8", xml_declaration=True)
 
 
