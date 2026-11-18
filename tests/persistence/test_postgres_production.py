@@ -23,6 +23,7 @@ from kordena_fiscal.domain import (
 )
 from kordena_fiscal.lifecycle import IdempotencyKey
 from kordena_fiscal.numbering import FiscalSequenceKey, FiscalSequencePolicy
+from kordena_fiscal.persistence.iron_a1_delegation import IronA1DelegationStore
 from kordena_fiscal.persistence.ports import PersistenceStateError
 from kordena_fiscal.persistence.postgres import (
     PostgresFiscalDatabase,
@@ -317,3 +318,78 @@ def test_postgres_human_accounts_sessions_and_reset_survive_repository_restart(
         ).fetchone()
     assert session_row is not None and session_row[0] != issued.session_token
     assert reset_row is not None and reset_row[0] != reset.reset_token
+
+
+def test_iron_a1_delegation_postgres_migration_durable_single_use_and_tenant_scope(
+    database: PostgresFiscalDatabase,
+) -> None:
+    """Certified migration 23: real PostgreSQL atomic token redemption under concurrency."""
+    store = IronA1DelegationStore(database.connection)
+    now = datetime.now(UTC)
+    token, expires_at = store.issue(
+        host_namespace="fm.iron",
+        tenant_id="gym-tenant-a",
+        unit_id="unit-a",
+        environment="homologation",
+        issuer_cnpj="11222333000181",
+        allowed_origin="https://app.ironfitcore.com.br",
+        issued_by="owner-123",
+        now=now,
+    )
+    assert expires_at - now == timedelta(minutes=5)
+    with database.connection() as connection:
+        row = connection.execute(
+            "SELECT token_sha256, fiscal_tenant_id, fiscal_unit_id, consumed_at "
+            "FROM fm_iron_a1_delegations"
+        ).fetchone()
+        assert row is not None
+        assert row[0] != token and len(row[0]) == 64
+        assert row[1:3] == ("gym-tenant-a", "unit-a")
+        assert row[3] is None
+
+    assert store.consume(
+        token=token, origin="https://other.example", now=now,
+    ) is None
+    # Separate PostgreSQL transactions, racing on one digest, must consume once.
+    with ThreadPoolExecutor(max_workers=6) as executor:
+        results = list(executor.map(
+            lambda _: store.consume(
+                token=token, origin="https://app.ironfitcore.com.br", now=now,
+            ),
+            range(6),
+        ))
+    assert sum(result is not None for result in results) == 1
+    winner = next(result for result in results if result is not None)
+    assert winner == {
+        "host_namespace": "fm.iron",
+        "tenant_id": "gym-tenant-a",
+        "unit_id": "unit-a",
+        "environment": "homologation",
+        "issuer_cnpj": "11222333000181",
+    }
+    assert store.consume(
+        token=token, origin="https://app.ironfitcore.com.br", now=now,
+    ) is None
+
+    # Expiry is checked against a persisted deadline, not an in-memory token.
+    expired_token, _ = store.issue(
+        host_namespace="fm.iron",
+        tenant_id="gym-tenant-b",
+        unit_id="unit-b",
+        environment="homologation",
+        issuer_cnpj="11222333000181",
+        allowed_origin="https://app.ironfitcore.com.br",
+        issued_by="owner-456",
+        now=now,
+    )
+    assert store.consume(
+        token=expired_token,
+        origin="https://app.ironfitcore.com.br",
+        now=now + timedelta(minutes=6),
+    ) is None
+    with database.connection() as connection:
+        assert connection.execute(
+            "SELECT consumed_at FROM fm_iron_a1_delegations "
+            "WHERE fiscal_tenant_id = ?",
+            ("gym-tenant-b",),
+        ).fetchone()[0] is None
