@@ -1,0 +1,28 @@
+# RTC-RFB-02 opt-in overlay: official Simples Nacional RTC calculator as an
+# INTERNAL service. Not part of the default deploy. No published ports, read-only
+# database mount, no public egress needed. Shadow mode only until RTC-RFB-11.
+# Usage (after the reviewed database exists on the host):
+#   docker compose -f compose.prod.yml -f compose.rtc-simples.opt-in.yml up -d nfcore-rtc-simples
+services:
+  nfcore-rtc-simples:
+    build:
+      context: ../rfb/simples
+    image: nfcore-rtc-simples:c5b0f01c
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp
+    volumes:
+      - type: bind
+        source: ${NFCORE_RTC_SIMPLES_DB_DIR:?provision-the-reviewed-calculator-database-first}
+        target: /app/calculadora/db
+        read_only: true
+    mem_limit: 768m
+    cpus: 1.0
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: ["CMD-SHELL", "exec 3<>/dev/tcp/127.0.0.1/8082 || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
