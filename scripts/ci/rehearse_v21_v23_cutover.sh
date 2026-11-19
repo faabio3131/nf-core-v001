@@ -26,10 +26,27 @@ cleanup() {
 }
 trap cleanup EXIT
 mkdir "$TMP/legacy"
-git -C "$ROOT" archive "$LEGACY_SHA" | tar -x -C "$TMP/legacy"
+# Only tracked source is extracted with normal source-file modes. Keep the
+# enclosing temp directory and all dumps, logs and generated data private.
+git -C "$ROOT" -c tar.umask=0022 archive "$LEGACY_SHA" | (
+  umask 022
+  tar --no-same-permissions -x -C "$TMP/legacy"
+)
 docker build -f "$TMP/legacy/Dockerfile.api" -t "$OLD_API" "$TMP/legacy"
 docker build -f "$TMP/legacy/Dockerfile.worker" -t "$OLD_WORKER" "$TMP/legacy"
 docker image inspect nfcore-api:test nfcore-worker:test >/dev/null
+# Verify source readability as the actual non-root runtime user before any DB.
+for api_image in "$OLD_API" nfcore-api:test; do
+  docker run --rm --network none "$api_image" python -c '
+import os
+from pathlib import Path
+assert os.getuid() == 10001, "unexpected runtime UID"
+assert os.getgid() == 10001, "unexpected runtime GID"
+p = Path("/app/scripts/ci/migration_guard.py")
+compile(p.read_bytes(), str(p), "exec")
+print("NONROOT_MIGRATION_GUARD_READABLE")
+'
+done
 NET_ID="$(docker network create --internal "$NET")"
 [[ "$(docker network inspect --format '{{.Internal}}' "$NET_ID")" == true ]]
 PW="$(python -c 'import secrets; print(secrets.token_hex(24))')"
