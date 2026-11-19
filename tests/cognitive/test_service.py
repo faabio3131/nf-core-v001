@@ -135,6 +135,34 @@ def test_timeout_retains_bulkhead_slot_until_worker_finishes() -> None:
         assert finished.wait(5)
 
 
+def test_saturated_bulkhead_does_not_consume_half_open_probe() -> None:
+    from kordena_fiscal.cognitive import Bulkhead
+    from .conftest import Recorder
+
+    now = [0.0]
+    breaker = CircuitBreaker(
+        failure_threshold=1, recovery_seconds=5, clock=lambda: now[0],
+    )
+    breaker.record_failure()
+    now[0] = 6.0
+    bulkhead = Bulkhead(1)
+    model = ScriptedModel(sections=good_sections())
+    service = CognitiveAdviceService(
+        baselines=default_baselines(), model=model, audit=Recorder(),
+        bulkhead=bulkhead, breaker=breaker,
+    )
+    bulkhead.acquire()
+    try:
+        result = service.advise(make_request())
+        assert result.provenance.degraded_reason == "overloaded"
+        assert model.calls == 0
+    finally:
+        bulkhead.release()
+    assert service.advise(make_request()).status is AdviceStatus.ADVISED
+    assert model.calls == 1
+    assert breaker.state == "closed"
+
+
 def test_circuit_opens_and_stops_calling_provider(build_service) -> None:  # type: ignore[no-untyped-def]
     model = ScriptedModel(error=ModelProviderUnavailable())
     service = build_service(model, breaker=CircuitBreaker(failure_threshold=2, recovery_seconds=60))
