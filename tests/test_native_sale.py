@@ -739,7 +739,9 @@ def test_sale_policy_installer_rejects_incomplete_pair(sp_sale_setup, tmp_path):
     assert not (root / (name + ".sha256")).exists()
 
 
-def test_manual_nfe_requires_reviewed_exact_interstate_destination(sp_sale_setup, tmp_path):
+def test_manual_nfe_requires_reviewed_exact_interstate_destination(
+    sp_sale_setup, tmp_path, signing_material,
+):
     from kordena_fiscal.runtime.native_sale_policy import install_reviewed_policy, load_sale_policy
 
     db, scope, payload, _, calls, root = sp_sale_setup
@@ -772,8 +774,40 @@ def test_manual_nfe_requires_reviewed_exact_interstate_destination(sp_sale_setup
         {"NFCORE_SALE_FISCAL_POLICY_ROOT": str(root)}, scope, FiscalDocumentKind.NFE,
     )
     assert loaded["rules"][1]["selector"]["destination_state_code"] == "MG"
-    # The decision is now destination-specific. Do not fabricate DIFAL values:
-    # incomplete reviewed calculation must still fail safely before commitment.
+    # Do not invent DIFAL values; even an exact destination rule is not enough
+    # for this final-consumer scenario without a complete approved calculation.
     assert digest != sale["policy_sha256"]
+    denied_difal = post(web, sale | {"policy_sha256": digest}, "missing-difal")
+    assert denied_difal.status_code == 400, denied_difal.text
     with db() as uow:
         assert not uow.lifecycle.list_for_scope(scope)
+    # An explicitly reviewed taxpayer/resale scenario uses a different rule.
+    taxpayer_rule = copy.deepcopy(rule)
+    taxpayer_rule["rule_id"] = "synthetic-interstate-taxpayer-only"
+    taxpayer_rule["selector"]["recipient_profile"] = "taxpayer"
+    policy["rules"].append(taxpayer_rule)
+    policy["version"] = 3
+    source.write_bytes(json.dumps(policy).encode())
+    install_reviewed_policy(source, root)
+    _, current, _ = load_sale_policy(
+        {"NFCORE_SALE_FISCAL_POLICY_ROOT": str(root)}, scope, FiscalDocumentKind.NFE,
+    )
+    taxpayer = recipient | {
+        "document": "11222333000181", "ie_indicator": 1,
+        "final_consumer": False, "state_registration": "123456789",
+    }
+    prepared_response = post(web, sale | {
+        "recipient": taxpayer, "policy_sha256": current,
+    }, "reviewed-taxpayer-sale")
+    assert prepared_response.status_code == 200, prepared_response.text
+    prepared = FiscalApplicationService(db).load_prepared_document_authorization(
+        scope, prepared_response.json()["document_id"],
+    )
+    OfficialNfeEnvelopeValidator()(prepared.signed_xml)
+    xml = etree.fromstring(prepared.signed_xml)
+    verify_official_nfe4_signature(xml, signing_material)
+    ns = {"n": "http://www.portalfiscal.inf.br/nfe"}
+    assert xml.xpath("string(//n:idDest)", namespaces=ns) == "2"
+    assert xml.xpath("string(//n:CFOP)", namespaces=ns) == "6102"
+    assert xml.xpath("string(//n:dest/n:enderDest/n:UF)", namespaces=ns) == "MG"
+    assert prepared.access_key.value[25:34] == "000000001"

@@ -980,7 +980,8 @@ def test_destination_specific_rule_selected_by_canonical_engine() -> None:
     engine = TaxRuleEngine()
     assert engine.resolve(_context(destination_state_code="MG"), [base, mg, rj]).rule_id == "to-mg"
     assert engine.resolve(_context(destination_state_code="RJ"), [base, mg, rj]).rule_id == "to-rj"
-    assert engine.resolve(_context(destination_state_code="SP"), [base, mg, rj]).rule_id == "same-state"
+    local = engine.resolve(_context(destination_state_code="SP"), [base, mg, rj])
+    assert local.rule_id == "same-state"
     assert not mg.matches(_context())
     with pytest.raises(TaxRuleAmbiguityError):
         engine.resolve(_context(destination_state_code="MG"), [mg, replace(mg, rule_id="tie")])

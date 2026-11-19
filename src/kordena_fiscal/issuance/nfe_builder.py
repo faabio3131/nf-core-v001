@@ -106,7 +106,8 @@ def build_nfe_sale(
             and (
                 not recipient.final_consumer
                 or recipient.ie_indicator != 9
-                or recipient.address.jurisdiction.state_code != issuer.address.jurisdiction.state_code
+                or recipient.address.jurisdiction.state_code
+                != issuer.address.jurisdiction.state_code
             )
         )
         or (options.presence == 4 and recipient is None)
