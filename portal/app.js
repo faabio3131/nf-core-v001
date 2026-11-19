@@ -2058,7 +2058,7 @@ function fieldLabel(key) {
     fiscal_operations_configured: "Operações fiscais configuradas",
     configured_fiscal_operations: "Operações fiscais disponíveis", onboarding_stage: "Etapa de configuração",
     basic_onboarding_complete: "Configuração básica concluída", customer_configuration_mode: "Modo de configuração",
-    customer_configuration_operations: "Comandos de configuração", unit_id: "Unidade", environment: "Ambiente",
+    customer_configuration_operations: "Comandos de configuração", unit_id: "Unidade", display_name: "Nome", environments: "Ambientes habilitados", environment: "Ambiente",
     record_type: "Tipo de registro", entry_id: "Identificador na fila", operation: "Operação",
     status: "Estado registrado", attempt_count: "Tentativas", created_at: "Criado em",
     available_at: "Próxima tentativa a partir de", fiscal_confirmation: "Confirmação fiscal",
@@ -3303,8 +3303,14 @@ function appendRtcProfileRegistration(section) {
   const crtLabel = document.createElement("label");
   crtLabel.textContent = "CRT da NF-e/NFC-e (não confundir com regime federal IRPJ)";
   const crt = document.createElement("select");
+  crt.name = "crt"; crt.required = true;
+  // No default: a silently pre-selected CRT 1 registered Lucro Presumido issuers as Simples.
+  const crtPlaceholder = document.createElement("option");
+  crtPlaceholder.value = ""; crtPlaceholder.textContent = "Selecione o CRT";
+  crtPlaceholder.disabled = true; crtPlaceholder.selected = true;
+  crt.append(crtPlaceholder);
   for (const [code, label] of [["1", "Simples Nacional"], ["2", "Simples com sublimite"],
-    ["3", "Regime normal CRT"], ["4", "MEI"]]) {
+    ["3", "Regime normal (Lucro Presumido ou Lucro Real)"], ["4", "MEI"]]) {
     const option = document.createElement("option");
     option.value = code; option.textContent = label; crt.append(option);
   }

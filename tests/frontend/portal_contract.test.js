@@ -193,6 +193,13 @@ test("RTC screen uses the existing authenticated scoped portal and does not inve
   assert.doesNotMatch(script, /\/v1\/rtc\/calculate/);
 });
 
+test("fiscal profile CRT has no silent default and record details are readable", () => {
+  assert.match(script, /crtPlaceholder\.value = ""; crtPlaceholder\.textContent = "Selecione o CRT"/);
+  assert.match(script, /crtPlaceholder\.disabled = true; crtPlaceholder\.selected = true/);
+  assert.match(script, /crt\.name = "crt"; crt\.required = true/);
+  assert.match(script, /display_name: "Nome"/);
+});
+
 
 test("RTC issuer profile enrollment uses governed portal operation and no browser tenant authority", () => {
   assert.match(script, /registerFiscalProfile/);
