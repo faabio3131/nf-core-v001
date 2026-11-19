@@ -132,3 +132,5 @@ Cada `NFV1-BLD-xx` corresponde a um **bloco verificável de construção**. Se a
 ## 7. Resultado esperado
 
 `CONSTRUCTION_AND_WEB_INTEGRATION_COMPLETE` é marco **interno de construção funcional demonstrada**. Não significa `PRODUCTION_APPROVED`, `COMMERCIAL_LIVE` ou homologação fiscal. O cronograma mestre de 59 tarefas permanece em execução, com seus gates externos preservados e sem exigir repetição de etapas já comprovadas.
+
+> **2026-11-19 — REC-04 — incremento de evidência documental (base `d38c872dba2c`).** Nesta entrega: bytes originais previamente revisados, em diretório de política por escopo `<sale_policy_key>.evidence/<sha256>.bin`, máximo 2 MiB por arquivo/16 MiB por decisão, verificação do SHA-256 na resolução/instalação, retenção no arquivo fiscal canônico na mesma UoW da reserva e revalidação na recuperação. Sem segunda persistência ou aceitação de upload do navegador como autoridade. Requer provisionamento autorizado dos documentos e revisão fiscal; não equivale à comprovação de autenticidade/aceitação externa. Testes escritos, não executados; sem CI, merge ou deploy; REC-04 segue aberto até certificação normativa e operacional.

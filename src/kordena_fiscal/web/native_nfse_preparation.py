@@ -515,6 +515,7 @@ def prepare_native_nfse(
             retention=RetentionPolicyMetadata("nfcore-fiscal-archive", 1),
             sp4_original_builder=municipal_original if municipal_sp else None,
             sp4_rps_series=1 if municipal_sp else None,
+            deduction_evidence=policy.deduction_evidence if policy is not None else (),
         )
         return {
             "document_id": result.attempt.document_id,

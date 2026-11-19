@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 from collections.abc import Mapping
 from datetime import date, datetime
@@ -36,6 +37,36 @@ from .nfe_nfse import (
 )
 
 NFSE_PREPARED_MEDIA_TYPE = "application/vnd.nfcore.prepared-nfse.v1+json"
+NFSE_DEDUCTION_EVIDENCE_MEDIA_TYPE = "application/vnd.nfcore.nfse-deduction-evidence.v1"
+NFSE_DEDUCTION_EVIDENCE_MAX_BYTES = 2_097_152
+NFSE_DEDUCTION_EVIDENCE_TOTAL_MAX_BYTES = 16_777_216
+
+
+def validate_deduction_evidence(
+    evidence: tuple[tuple[str, bytes], ...], expected: frozenset[str],
+    *, allow_absent: bool = False,
+) -> None:
+    """Validate original reviewed bytes, never just a declared digest."""
+    if not isinstance(evidence, tuple) or len(evidence) > len(expected):
+        raise FiscalValidationError("Invalid deduction evidence collection")
+    seen: set[str] = set()
+    total = 0
+    for item in evidence:
+        if not isinstance(item, tuple) or len(item) != 2:
+            raise FiscalValidationError("Invalid deduction evidence item")
+        digest, raw = item
+        if (
+            not isinstance(digest, str) or digest not in expected or digest in seen
+            or not isinstance(raw, bytes) or not 0 < len(raw) <= NFSE_DEDUCTION_EVIDENCE_MAX_BYTES
+            or hashlib.sha256(raw).hexdigest() != digest
+        ):
+            raise FiscalValidationError("Invalid deduction evidence bytes or digest")
+        seen.add(digest)
+        total += len(raw)
+        if total > NFSE_DEDUCTION_EVIDENCE_TOTAL_MAX_BYTES:
+            raise FiscalValidationError("Deduction evidence aggregate exceeds bound")
+    if seen != expected and not (allow_absent and not seen):
+        raise FiscalValidationError("Complete original deduction evidence is required")
 
 
 def encode_prepared_nfse(request: NfseAuthorizationRequest) -> bytes:

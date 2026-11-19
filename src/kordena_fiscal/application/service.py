@@ -128,9 +128,11 @@ from kordena_fiscal.issuance.nfe_nfse import (
     build_nfse_request_fingerprint,
 )
 from kordena_fiscal.issuance.nfse_archive import (
+    NFSE_DEDUCTION_EVIDENCE_MEDIA_TYPE,
     NFSE_PREPARED_MEDIA_TYPE,
     decode_prepared_nfse,
     encode_prepared_nfse,
+    validate_deduction_evidence,
 )
 from kordena_fiscal.issuance.sp4_original_rps_archive import (
     SP4_ORIGINAL_RPS_MEDIA_TYPE,
@@ -900,6 +902,7 @@ class FiscalApplicationService:
             [NfseAuthorizationRequest, FiscalNumberReservation], Sp4OriginalRps
         ] | None = None,
         sp4_rps_series: int | None = None,
+        deduction_evidence: tuple[tuple[str, bytes], ...] = (),
     ) -> DurablePreparedAuthorization:
         """Atomically reserve, validate and archive one provider-neutral NFS-e request."""
         if not isinstance(document, NfseCanonicalDocument):
@@ -939,6 +942,8 @@ class FiscalApplicationService:
         documents = treatment.deduction_documents if treatment is not None else ()
         if documents and (extrema_intent_builder is not None or sp4_original_builder is not None):
             raise FiscalValidationError("Documentary deductions require National DPS transport")
+        expected_evidence = frozenset(item.evidence_sha256 for item in documents)
+        validate_deduction_evidence(deduction_evidence, expected_evidence, allow_absent=True)
         with self._uow_factory() as uow:
             if document.national_substitution is not None:
                 if extrema_intent_builder is not None or sp4_original_builder is not None:
@@ -1059,6 +1064,7 @@ class FiscalApplicationService:
                 return DurablePreparedAuthorization(attempt, current, prepared, True)
             if current is not None:
                 raise PersistenceConflictError("document_id already belongs to an issuance")
+            validate_deduction_evidence(deduction_evidence, expected_evidence)
             municipal_entry: FiscalArchiveEntry | None = None
             if extrema_intent_builder is not None:
                 assert extrema_rps_series is not None
@@ -1141,6 +1147,13 @@ class FiscalApplicationService:
                 uow.lifecycle.save(updated, expected_version=current.version)
                 current = updated
             uow.archive.append(entry)
+            for _, raw in deduction_evidence:
+                uow.archive.append(FiscalArchiveEntry.build(
+                    scope=document.scope, document_reference=document.document_id,
+                    kind=FiscalArchiveKind.OTHER, content=raw,
+                    media_type=NFSE_DEDUCTION_EVIDENCE_MEDIA_TYPE,
+                    archived_at=occurred_at, retention=retention,
+                ))
             if municipal_entry is not None:
                 uow.archive.append(municipal_entry)
             uow.commit()
@@ -1291,7 +1304,8 @@ class FiscalApplicationService:
     ) -> AuthorizationRequest | NfseAuthorizationRequest:
         uow.lifecycle.assert_scope(document_id, scope)
         matches: list[AuthorizationRequest | NfseAuthorizationRequest] = []
-        for entry in uow.archive.list_for_document(scope, document_id):
+        entries = uow.archive.list_for_document(scope, document_id)
+        for entry in entries:
             if entry.kind is not FiscalArchiveKind.OTHER:
                 continue
             try:
@@ -1326,7 +1340,23 @@ class FiscalApplicationService:
                 matches.append(request)
         if len(matches) != 1:
             raise PersistenceStateError("one current prepared request is required")
-        return matches[0]
+        prepared = matches[0]
+        if isinstance(prepared, NfseAuthorizationRequest):
+            treatment = prepared.document.national_tax_treatment
+            documents = treatment.deduction_documents if treatment is not None else ()
+            try:
+                validate_deduction_evidence(
+                    tuple(
+                        (hashlib.sha256(entry.content).hexdigest(), entry.content)
+                        for entry in entries
+                        if entry.kind is FiscalArchiveKind.OTHER
+                        and entry.media_type == NFSE_DEDUCTION_EVIDENCE_MEDIA_TYPE
+                    ),
+                    frozenset(item.evidence_sha256 for item in documents),
+                )
+            except FiscalValidationError as exc:
+                raise PersistenceStateError("Archived deduction evidence is invalid") from exc
+        return prepared
 
     def record_national_dispatch(
         self, request: NfseAuthorizationRequest, profile: str, signed_dps: bytes,

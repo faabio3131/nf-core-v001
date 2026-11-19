@@ -1,4 +1,5 @@
 """Document-specific reviewed deductions: domain, archive and both DPS schemas."""
+import hashlib
 from dataclasses import replace
 from datetime import date
 from decimal import Decimal
@@ -15,6 +16,8 @@ from kordena_fiscal.xml.nfse_nacional_schema import national_dps_validator
 from kordena_fiscal.xml.nfse_national_profiles import NT009_RESTRICTED_PROFILE, PRODUCTION_PROFILE
 
 _NS = {"n": "http://www.sped.fazenda.gov.br/nfse"}
+_PROOF = b"synthetic reviewed original evidence"
+_PROOF_DIGEST = hashlib.sha256(_PROOF).hexdigest()
 
 
 def _reviewed():
@@ -26,7 +29,7 @@ def _reviewed():
         kind="nfse", access_key="3" * 50, legacy_code="7", nt009_code="7",
         issued_on=date(2026, 10, 1), document_total_amount=Money(Decimal("50.00")),
         eligible_amount=Money(Decimal("20.00")),
-        applied_amount=Money(Decimal("10.00")), evidence_sha256="a" * 64,
+        applied_amount=Money(Decimal("10.00")), evidence_sha256=_PROOF_DIGEST,
     )
     decision = NfseNationalTaxTreatment(
         iss_taxation_code="1", special_regime_code="0", normative_reference="synthetic-review",
@@ -97,9 +100,22 @@ def test_durable_evidence_allocation_refuses_other_source_after_policy_rotation(
     database.initialize()
     application = FiscalApplicationService(database)
     retention = RetentionPolicyMetadata("deduction-test", 1)
+    with pytest.raises(FiscalValidationError, match="Complete original"):
+        application.prepare_nfse_authorization(
+            original, occurred_at=original.issued_at, retention=retention,
+        )
+    with pytest.raises(FiscalValidationError, match="bytes or digest"):
+        application.prepare_nfse_authorization(
+            original, occurred_at=original.issued_at, retention=retention,
+            deduction_evidence=((_PROOF_DIGEST, b"tampered"),),
+        )
     first = application.prepare_nfse_authorization(
         original, occurred_at=original.issued_at, retention=retention,
+        deduction_evidence=((_PROOF_DIGEST, _PROOF),),
     )
+    assert application.load_prepared_nfse_authorization(
+        original.scope, original.document_id,
+    ) == first.request
     replay = application.prepare_nfse_authorization(
         original, occurred_at=original.issued_at, retention=retention,
     )
@@ -116,6 +132,7 @@ def test_durable_evidence_allocation_refuses_other_source_after_policy_rotation(
     with pytest.raises(PersistenceConflictError, match="configuration idempotency conflict"):
         application.prepare_nfse_authorization(
             other, occurred_at=other.issued_at, retention=retention,
+            deduction_evidence=((_PROOF_DIGEST, _PROOF),),
         )
     with database() as uow:
         assert uow.lifecycle.get(other.document_id) is None
@@ -176,3 +193,22 @@ def test_non_national_document_cannot_use_unreviewed_identity_or_alias():
     alternate = replace(original, access_key="4" * 50)
     with pytest.raises(FiscalValidationError, match="Duplicated documentary"):
         replace(decision, deduction_documents=(original, alternate))
+
+
+def test_policy_loads_only_matching_original_evidence(tmp_path):
+    from kordena_fiscal.runtime.native_nfse_policy import _load_deduction_evidence
+
+    treatment = _reviewed().national_tax_treatment
+    assert treatment is not None
+    folder = tmp_path / "scope.evidence"
+    folder.mkdir()
+    path = folder / (_PROOF_DIGEST + ".bin")
+    with pytest.raises(ValueError, match="unavailable"):
+        _load_deduction_evidence(tmp_path, "scope", treatment)
+    path.write_bytes(b"forged")
+    with pytest.raises(FiscalValidationError, match="bytes or digest"):
+        _load_deduction_evidence(tmp_path, "scope", treatment)
+    path.write_bytes(_PROOF)
+    assert _load_deduction_evidence(tmp_path, "scope", treatment) == (
+        (_PROOF_DIGEST, _PROOF),
+    )

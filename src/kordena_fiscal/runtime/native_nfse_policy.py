@@ -18,6 +18,12 @@ from kordena_fiscal.issuance.nfe_nfse import (
     NfseNationalTaxTreatment,
 )
 
+from kordena_fiscal.issuance.nfse_archive import (
+    NFSE_DEDUCTION_EVIDENCE_MAX_BYTES,
+    NFSE_DEDUCTION_EVIDENCE_TOTAL_MAX_BYTES,
+    validate_deduction_evidence,
+)
+
 from .native_sale_policy import _serialized_policy_install, sale_policy_key
 from .sale_facts import _unique
 
@@ -42,6 +48,33 @@ class ReviewedNfsePolicy:
     digest: str
     content: bytes
     treatment: NfseNationalTaxTreatment
+    deduction_evidence: tuple[tuple[str, bytes], ...] = ()
+
+
+def _load_deduction_evidence(
+    root: Path, name: str, treatment: NfseNationalTaxTreatment,
+) -> tuple[tuple[str, bytes], ...]:
+    expected = frozenset(item.evidence_sha256 for item in treatment.deduction_documents)
+    if not expected:
+        return ()
+    folder = root / (name + ".evidence")
+    if root.is_symlink() or folder.is_symlink() or not folder.is_dir():
+        raise ValueError("reviewed evidence directory unavailable")
+    result: list[tuple[str, bytes]] = []
+    total = 0
+    for digest in sorted(expected):
+        path = folder / (digest + ".bin")
+        if path.is_symlink() or not path.is_file():
+            raise ValueError("reviewed evidence file unavailable")
+        with path.open("rb") as stream:
+            raw = stream.read(NFSE_DEDUCTION_EVIDENCE_MAX_BYTES + 1)
+        total += len(raw)
+        if total > NFSE_DEDUCTION_EVIDENCE_TOTAL_MAX_BYTES:
+            raise ValueError("reviewed evidence aggregate exceeds bound")
+        result.append((digest, raw))
+    evidence = tuple(result)
+    validate_deduction_evidence(evidence, expected)
+    return evidence
 
 
 def _text(value: object, limit: int = 128) -> bool:
@@ -193,7 +226,10 @@ def resolve_national_treatment(
             matches = specific
         if len(matches) != 1:
             raise ValueError("national decision absent or ambiguous")
-        return ReviewedNfsePolicy(data["policy_id"], data["version"], digest, raw, matches[0])
+        return ReviewedNfsePolicy(
+            data["policy_id"], data["version"], digest, raw, matches[0],
+            _load_deduction_evidence(root, name, matches[0]),
+        )
     except (
         OSError, KeyError, TypeError, ValueError, AttributeError, ArithmeticError, RecursionError,
     ):
@@ -288,6 +324,21 @@ def install_reviewed_policy(source: Path, directory: Path) -> str:
         folder = Path(work)
         (folder / (name + ".json")).write_bytes(raw)
         (folder / (name + ".sha256")).write_text(digest, encoding="ascii")
+        evidence_total = 0
+        copied: set[str] = set()
+        for rule in data["rules"]:
+            treatment = _treatment(rule["treatment"], data["policy_id"], digest)
+            for evidence_digest, evidence_bytes in _load_deduction_evidence(
+                directory, name, treatment,
+            ):
+                if evidence_digest not in copied:
+                    evidence_total += len(evidence_bytes)
+                    if evidence_total > 67_108_864:
+                        raise FiscalValidationError("Policy deduction evidence exceeds bound")
+                    evidence_folder = folder / (name + ".evidence")
+                    evidence_folder.mkdir(exist_ok=True)
+                    (evidence_folder / (evidence_digest + ".bin")).write_bytes(evidence_bytes)
+                    copied.add(evidence_digest)
         for rule in data["rules"]:
             resolve_national_treatment(
                 {POLICY_ENV: work}, scope, rule["selector"],
