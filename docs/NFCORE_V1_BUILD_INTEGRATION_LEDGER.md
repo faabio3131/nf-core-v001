@@ -1,3 +1,7 @@
+> **CURRENT complementar — 19/11/2026:** branch `work/nfcore-closeout-20261119`, HEAD de engenharia `2224b3d0d6fca49029afa4fd41b194f65ac6562a`. As dez entregas registradas por commit em [cronograma executivo REC](audit/NFCORE_RECONCILIATION_CLOSEOUT_SCHEDULE_2026-11-17.md), [pendências CURRENT](audit/NFCORE_PENDING_REGISTER_CURRENT_2026-11-17.md) e [ledger de PRs](audit/NFCORE_PR_RECONCILIATION_LEDGER_CURRENT.md) reconciliam os avanços fiscais/municipais/Web/IRON desde 17/11. Incluem deduções documentais, reserva durável de comprovantes, DPS histórico, correção GISS, PKI e composição de release. Seis PRs Draft; zero runs na branch consolidada. Sem novo teste executado, EGM, promoção main/production, deploy ou aceite fiscal. Preservados os 59 IDs e seus checkboxes, critérios, ordem e independência dos gates BUILD/produção. As notas anteriores são históricas; não reutilizar CI de outro SHA. Não considerar SP22/MG20 completos.
+
+---
+
 > **ÍNDICE CURRENT — 17/11/2026:** o histórico BUILD-ONLY abaixo não é uma fotografia atual da candidata fiscal/Web. Para PRs abertas, integração #468/#498, falha temporal da CI, lacunas FIS-03/BH/SP-22/MG e gates Contabo, consultar [cronograma de reconciliação](audit/NFCORE_RECONCILIATION_CLOSEOUT_SCHEDULE_2026-11-17.md) e [inventário único](audit/NFCORE_PENDING_REGISTER_CURRENT_2026-11-17.md). Preservar os critérios/estados BUILD-ONLY sem promover por reflexo qualquer item do plano mestre de 59 IDs ou homologação fiscal.
 
 # FM NFCORE V1 — Ledger da trilha BUILD-ONLY

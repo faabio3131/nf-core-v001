@@ -1,3 +1,34 @@
+## CURRENT — 19/11/2026: construção consolidada (não certificada)
+
+- Branch de trabalho única `work/nfcore-closeout-20261119`; **HEAD de engenharia** [`2224b3d0d6fca49029afa4fd41b194f65ac6562a`](https://github.com/faabio3131/nf-core-v001/commit/2224b3d0d6fca49029afa4fd41b194f65ac6562a). O commit documental que contém esta nota é posterior ao HEAD de engenharia; consultar a ref no GitHub em cada retomada.
+- main `549ab3c005d7183ff6c7940236414412ea004b9d`; production `ea4bdd3bcb9b61e6522081a14e5cc9ad1ced9599`; sem promoção ou deploy nesta rodada.
+- PRs abertas, todas Draft: #468 e #556 (mesma branch fiscal, HEAD `49546e06fd0ccf2970723d9e8950a43d003c1c70`), #498 (Web, `4cbbe7c3b222cc2abdf8c1a791203474072e8e5a`), #560 (`96fdfbede1b2109c44a4f2847268525f588cc594`), #562 (`347c1ab59961b01243f85f4c1bdb4aed30ae9614`), #563 (`d90baf14b8e9ab60b0abdee314e581f4922d2ec6`). A consolidação na branch de trabalho não equivale a merge dessas PRs nas respectivas bases.
+- CI anterior nos SHAs das PRs: #468/#556 [44451576085](https://github.com/faabio3131/nf-core-v001/actions/runs/44451576085) SUCCESS; #498 [44314193608](https://github.com/faabio3131/nf-core-v001/actions/runs/44314193608) SUCCESS; #560 [44451353152](https://github.com/faabio3131/nf-core-v001/actions/runs/44451353152) SUCCESS; #562 [44450892681](https://github.com/faabio3131/nf-core-v001/actions/runs/44450892681) SUCCESS; #563 [44451657588](https://github.com/faabio3131/nf-core-v001/actions/runs/44451657588) FAILURE. O patch de lint foi incorporado à branch de trabalho, sem recertificação. **Branch de trabalho: 0 runs, nenhum teste novo executado**, por determinação do proprietário de terminar construção antes de nova certificação; testes de regressão escritos não equivalem a PASS. Não herdar CI anterior.
+- Checkpoints: [consolidação](https://github.com/faabio3131/nf-core-v001/issues/510#issuecomment-6999029427) e [entregas](https://github.com/faabio3131/nf-core-v001/issues/510#issuecomment-6999508612). Snapshots datados de 17/11 e anteriores abaixo são históricos; prevalece esta atualização para fatos supervenientes.
+
+### Entregas por REC (engenharia implementada na branch, aceite pendente)
+
+| REC | Commit de engenharia | Mudança | Estado e limite |
+|---|---|---|---|
+| REC-01/12/14 | `7a57cc3497784704e867f89b5764a5ab9da0109c` | Consolidou candidata fiscal pós-#561, deltas Web #498/#556, deploy coordenado #560 e conteúdo DPS #563 | Implementado na branch; integração das PRs e certificação integral pendentes; host não verificado |
+| REC-03 | `60562364f0d112f5012809bd4606552dafcc5c6b` | Pré-validação dos signatários pinados de nota e evento, antes da rede | Código; signatários oficiais, LTV/OCSP e revisão independente pendentes |
+| REC-04 | `fb2ffe7809978e2850d53baee863a9f1691f12e6` | Informação complementar fiscal revisada e guarda BH cooperativa 3% | Código; matriz normativa/casos restantes pendentes |
+| REC-17/03 | `e6cdc7e3a74b45c89c1a35e8a2be5d9578802b45` | Incorporou retirada de A1 IRON #562 e correção de imports da #563 | Código; sem nova CI da composição |
+| REC-03 | `7c78c892d09503a1a940fd12392da717c8194daa` | Recusa chaves fracas e controles de política X.509 não processados | Fail-closed; não é processador completo RFC5280, OCSP ou LTV |
+| REC-03 | `388b00ae255b65b22e083465f0bc0730b9dc0cf4` | Recuperou wrapper NFSe de fevereiro por identidade de blob e separou perfis de validação | ZIP integral de fevereiro não verificado; NT009 oficial já adquirido; ver dossiê de proveniência |
+| REC-04 | `0c1652108d27f3d2749e6576995456c5154ad9e5` | Deduções NF-e/NFS-e revisadas ligadas à origem, competência, digest, valores, archive e DPS | Política do servidor; demais espécies documentais e prova do original pendentes |
+| REC-04 | `e032e115d657a92e48ac5a61c0376287f6e8b317` | Reserva durável de comprovante por unidade/emitente, na transação de preparação | Reuso entre escopos e alocação parcial não certificados |
+| REC-03/07 | `e4cf162efd25978eb16ab2c29d1224e805ab6401` | Guarda DPS exato/perfil antes do POST; recuperação e recibo arquivado usam evidência; fallback histórico por dhProc | LTV/OCSP e timestamp independente não concluídos; registros irreproduzíveis recusados |
+| REC-04/06/08 | `2224b3d0d6fca49029afa4fd41b194f65ac6562a` | Separa valor total/elegível/aplicado; corrige assinatura de consulta GISS Guarulhos/Jundiaí sem Id incompatível com XSD | Código; WSDL/signatário oficial, jornada integral e certificação municipal pendentes |
+
+Nenhum REC acima promovido a DONE por esta anotação. REC-05 MF-09/SP-MG: #561 integrada à #468 em `49546e06`, sem certificação completa das jornadas/produção. REC-07 Louveira PF, REC-08 SP-22, REC-09 MG20, REC-11 EGM, REC-13 reconciliação semântica das origens, REC-14 ambiente Contabo, REC-15/16 release e homologação, REC-21 Go/No-Go e REC-22 Core/Sentinela continuam abertos conforme seus próprios gates. Não ampliar cobertura nem iniciar expansão nacional. Próxima dependência: terminar lacunas internas, depois rodar matriz integral no SHA final, obter revisão independente, reconciliar as seis PRs e só então publicar mediante gates operacionais e autorizações aplicáveis.
+
+**A–E:** A funcional e B paridade parciais; C produção, D operação e E comercial não certificadas. Matriz SP22 de 12/11 e MG20 de 11/11 são snapshots históricos, mantidos intactos; não inferir status certificado de célula a partir da implementação compartilhada.
+
+Dossiês técnicos: [deduções](../operations/NFCORE_REVIEWED_DOCUMENTARY_DEDUCTIONS.md), [despacho histórico](../operations/NFCORE_NATIONAL_DPS_DISPATCH_EVIDENCE.md), [proveniência XSD](../operations/NFCORE_NATIONAL_RECEIPT_SCHEMA_PROVENANCE.md), [Guarulhos GISS](../operations/NFCORE_GUARULHOS_REVIEWED_GISS.md).
+
+---
+
 > **ATUALIZAÇÃO SUPERVENIENTE — 17/11/2026:** após as quatro integrações na candidata #468, #522/#523/#525/#526 estão **MERGED**; restam **somente #468 e #498 OPEN/DRAFT** no snapshot GitHub. #468@1237c960, #498@41dad4fa; CI final de ambos em execução. O inventário de quatro PRs e as descrições individuais abaixo referem-se à captura ANTERIOR a esses merges e foram preservados como histórico. A matriz de 22 SP/20 MG **não** foi promovida; continuam as 14 issues de escopo e os bloqueios internos/externos. Pesquisas de Louveira PF registradas na issue #509. O estado de CURRENT técnico superior é o GitHub e o ledger de reconciliação deste mesmo commit.
 
 # NFCore — Registro Único de Pendências CURRENT e Origem Histórica (17/11/2026)
