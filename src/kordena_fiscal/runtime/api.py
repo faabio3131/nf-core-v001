@@ -24,6 +24,7 @@ from kordena_fiscal.compliance.nfse_preaudit import (
     extrema_abrasf_service_preaudit,
     nfse_preaudit,
 )
+from kordena_fiscal.gateway.nfse_national_environment import load_nfse_production_authority
 from kordena_fiscal.gateway.production_activation import ProductionExecutionAuthority
 from kordena_fiscal.issuance.nfse_dps_builder import build_sefin_signed_dps
 from kordena_fiscal.persistence.command_commercial import CommandCommercialStore
@@ -1248,6 +1249,7 @@ def build_entrypoint_fiscal_handler_factory(
         certificate_vault=vault,
         trusted_signed_dps_builder=build_sefin_signed_dps,
         nfse_preaudit=nfse_preaudit,
+        nfse_production_authority=load_nfse_production_authority(environ),
         webiss_extrema_exchange=build_extrema_webiss_exchange(environ),
         webiss_service_preaudit=(
             extrema_abrasf_service_preaudit

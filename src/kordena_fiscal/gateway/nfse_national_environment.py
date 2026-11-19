@@ -74,3 +74,66 @@ def resolve_national_environment(
         url = validate_production_nfse_url(source.get(ENV_PRODUCTION_URL))
         return NationalEnvironmentProfile(environment, 1, url, "nfse-nacional-producao")
     raise FiscalValidationError("Unsupported national fiscal environment")
+
+
+ENV_PRODUCTION_GRANTS_FILE = "NFCORE_NFSE_PRODUCTION_GRANTS_FILE"
+_MAX_GRANTS_BYTES = 64 * 1024
+
+
+def load_nfse_production_authority(env: Mapping[str, str] | None = None):  # type: ignore[no-untyped-def]
+    """Load the host-owned human production grants; absent file means no grant.
+
+    The file is operator-managed on the server (outside the repository and the
+    container image). Each entry is one exact human-approved production cell:
+    tenant_id, unit_id, uf, municipality_ibge_code, approved_by,
+    approval_reference, external_evidence_id, approved_at (ISO-8601 with TZ).
+    A configured-but-malformed file fails closed (raises) instead of silently
+    granting or silently ignoring entries.
+    """
+    import json
+    from datetime import datetime
+    from pathlib import Path
+
+    from kordena_fiscal.domain import BrazilianJurisdiction, FiscalDocumentKind
+    from kordena_fiscal.gateway.production_activation import (
+        ProductionActivationKey,
+        ProductionActivationRecord,
+        ProductionActivationState,
+        ProductionExecutionAuthority,
+    )
+    from kordena_fiscal.gateway.provider import ProviderOperation
+
+    source = os.environ if env is None else env
+    raw_path = source.get(ENV_PRODUCTION_GRANTS_FILE, "").strip()
+    if not raw_path:
+        return None
+    path = Path(raw_path)
+    try:
+        if not path.is_file() or path.stat().st_size > _MAX_GRANTS_BYTES:
+            raise ValueError
+        payload = json.loads(path.read_text(encoding="utf-8"))
+        entries = payload["grants"]
+        if not isinstance(entries, list):
+            raise ValueError
+        records = []
+        for entry in entries:
+            if not isinstance(entry, dict):
+                raise ValueError
+            key = ProductionActivationKey(
+                tenant_id=entry["tenant_id"], unit_id=entry["unit_id"],
+                provider_id="nfse-nacional-producao-restrita",
+                document_kind=FiscalDocumentKind.NFSE,
+                jurisdiction=BrazilianJurisdiction(entry["uf"], entry["municipality_ibge_code"]),
+                operation=ProviderOperation.AUTHORIZE,
+            )
+            records.append(ProductionActivationRecord(
+                key=key, state=ProductionActivationState.ACTIVE,
+                approval_reference=entry["approval_reference"],
+                external_evidence_id=entry["external_evidence_id"],
+                changed_by=entry["approved_by"],
+                changed_at=datetime.fromisoformat(entry["approved_at"]),
+                correlation_id="host-grant-file",
+            ))
+    except (OSError, ValueError, KeyError, TypeError, FiscalValidationError):
+        raise FiscalValidationError("NFS-e production grants file is invalid") from None
+    return ProductionExecutionAuthority(tuple(records))

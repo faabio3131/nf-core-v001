@@ -27,8 +27,10 @@ from kordena_fiscal.gateway.nfse_nacional_homologation import (
 )
 from kordena_fiscal.gateway.nfse_national_environment import (
     ENV_PRODUCTION_ENABLED,
+    ENV_PRODUCTION_GRANTS_FILE,
     ENV_PRODUCTION_URL,
     SEFIN_HOMOLOGATION_NFSE_URL,
+    load_nfse_production_authority,
     resolve_national_environment,
     validate_production_nfse_url,
 )
@@ -168,3 +170,42 @@ def test_granted_production_sends_tpamb1_to_production_url():
 
 def test_scope_type_is_unchanged():
     assert isinstance(_prod_request().document.scope, ExecutionScope)
+
+
+def _grants_file(tmp_path, entries):
+    path = tmp_path / "grants.json"
+    path.write_text(json.dumps({"grants": entries}), encoding="utf-8")
+    return {ENV_PRODUCTION_GRANTS_FILE: str(path)}
+
+
+_ENTRY = {
+    "tenant_id": "tenant-a", "unit_id": "unit-a", "uf": "SP",
+    "municipality_ibge_code": "3550308", "approved_by": "fabio",
+    "approval_reference": "chg-9", "external_evidence_id": "ev-9",
+    "approved_at": "2026-11-19T12:00:00+00:00",
+}
+
+
+def test_grants_file_absent_means_no_authority():
+    assert load_nfse_production_authority({}) is None
+
+
+def test_grants_file_loads_exact_cells_only(tmp_path):
+    authority = load_nfse_production_authority(_grants_file(tmp_path, [_ENTRY]))
+    result = _gateway(authority=authority, environ=_ENV).authorize(_prod_request())
+    assert result.status is AuthorizationStatus.REJECTED  # reached SEFIN stub
+    other = load_nfse_production_authority(
+        _grants_file(tmp_path, [{**_ENTRY, "municipality_ibge_code": "3518800"}])
+    )
+    with pytest.raises(FiscalValidationError, match="not active"):
+        _gateway(authority=other, environ=_ENV).authorize(_prod_request())
+
+
+@pytest.mark.parametrize("bad", [{"grants": "x"}, {"grants": [{"tenant_id": "t"}]}, [], "oops"])
+def test_malformed_grants_file_fails_closed(tmp_path, bad):
+    path = tmp_path / "g.json"
+    path.write_text(json.dumps(bad), encoding="utf-8")
+    with pytest.raises(FiscalValidationError, match="grants file is invalid"):
+        load_nfse_production_authority({ENV_PRODUCTION_GRANTS_FILE: str(path)})
+    with pytest.raises(FiscalValidationError):
+        load_nfse_production_authority({ENV_PRODUCTION_GRANTS_FILE: str(tmp_path / "nope.json")})

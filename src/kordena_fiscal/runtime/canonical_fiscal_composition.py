@@ -56,6 +56,7 @@ from kordena_fiscal.gateway.nfse_nacional_homologation import (
 from kordena_fiscal.gateway.nfse_national_query import (
     NfseNationalHomologationQueryGateway,
 )
+from kordena_fiscal.gateway.production_activation import ProductionExecutionAuthority
 from kordena_fiscal.gateway.santana_simpliss_homologation import (
     SANTANA_PROVIDER_ID,
     SantanaSimplissHomologationGateway,
@@ -230,6 +231,9 @@ def _require_sp_nfce_binding(
         raise FiscalValidationError("SP NFC-e provider binding mismatch")
 
 
+_NFSE_NATIONAL_ENVIRONMENTS = (FiscalEnvironment.HOMOLOGATION, FiscalEnvironment.PRODUCTION)
+
+
 class _GovernedNationalNfseGateway:
     """Enforce a durable unit binding and fiscal audit before accessing A1."""
 
@@ -253,11 +257,11 @@ class _GovernedNationalNfseGateway:
         scope = document.scope
         jurisdiction = document.issuer.address.jurisdiction
         if (
-            scope.environment is not FiscalEnvironment.HOMOLOGATION
+            scope.environment not in _NFSE_NATIONAL_ENVIRONMENTS
             or scope.host_namespace is None
             or jurisdiction.municipality_ibge_code is None
         ):
-            raise FiscalValidationError("NFS-e Nacional exige escopo de homologacao e municipio")
+            raise FiscalValidationError("NFS-e Nacional exige escopo governado e municipio")
         try:
             provider_id = self._application.resolve_configured_provider_id(
                 scope=scope,
@@ -309,16 +313,20 @@ class _GovernedNfseRouter:
 
     def _provider(self, request: NfseAuthorizationRequest) -> str:
         scope = request.document.scope
-        if (
-            scope.environment is not FiscalEnvironment.HOMOLOGATION
-            or not scope.host_namespace
-        ):
-            raise FiscalValidationError("NFS-e requires governed homologation scope")
-        return self._application.resolve_configured_provider_id(
+        if scope.environment not in _NFSE_NATIONAL_ENVIRONMENTS or not scope.host_namespace:
+            raise FiscalValidationError("NFS-e requires governed fiscal scope")
+        provider = self._application.resolve_configured_provider_id(
             scope=scope, document_kind=FiscalDocumentKind.NFSE,
             jurisdiction=request.document.issuer.address.jurisdiction,
             operation=ConfiguredFiscalOperation.AUTHORIZE.value,
         )
+        if (
+            scope.environment is FiscalEnvironment.PRODUCTION
+            and provider != NACIONAL_HOMOLOGATION_PROVIDER_ID
+        ):
+            # Municipal adapters are homologation-only until each is certified.
+            raise FiscalValidationError("NFS-e production is only open for the national provider")
+        return provider
 
     def validate_pre_dispatch(self, request: NfseAuthorizationRequest) -> None:
         provider = self._provider(request)
@@ -444,6 +452,7 @@ def build_runtime_fiscal_handler_factory(
         [NfseAuthorizationRequest, EphemeralCertificateMaterial], bytes
     ] | None = None,
     nfse_preaudit: Callable[[NfseAuthorizationRequest], None] | None = None,
+    nfse_production_authority: ProductionExecutionAuthority | None = None,
     webiss_extrema_exchange: Callable[
         [bytes, str, ssl.SSLContext, float], bytes
     ] | None = None,
@@ -585,6 +594,7 @@ def build_runtime_fiscal_handler_factory(
                 scope=scope, issuer_cnpj=cnpj
             ),
             build_signed_dps=trusted_signed_dps_builder,
+            production_authority=nfse_production_authority,
         )
     retention = RetentionPolicyMetadata(
         policy_id="nfcore-fiscal-archive", policy_version=1
