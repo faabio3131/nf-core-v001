@@ -27,9 +27,10 @@ from lxml import etree
 from kordena_fiscal.domain import FiscalEnvironment, FiscalValidationError
 from kordena_fiscal.issuance.nfe_nfse import NfseAuthorizationRequest
 from kordena_fiscal.issuance.nfse_dps_identity import national_dps_id
+from kordena_fiscal.xml.nfse_nacional_schema import national_nfse_receipt_validator
 from kordena_fiscal.xml.nfse_national_profiles import (
     NT009_RESTRICTED_PROFILE,
-    national_restricted_validator,
+    PRODUCTION_PROFILE,
     select_national_dps_profile,
 )
 from kordena_fiscal.xml.schema import XmlSchemaValidationError
@@ -358,10 +359,10 @@ def validate_national_nfse_xml(
 ) -> bytes:
     """Validate archived or transported NFSe under an explicitly selected contract."""
     root = validate_nfse_xml_integrity(xml, key)
-    if schema_profile != NT009_RESTRICTED_PROFILE:
+    if schema_profile not in (NT009_RESTRICTED_PROFILE, PRODUCTION_PROFILE):
         raise NfseReceiptVerificationError("National NFSe receipt schema profile unsupported")
     try:
-        national_restricted_validator("NFSe_v1.01.xsd").validate_document(xml)
+        national_nfse_receipt_validator(profile=schema_profile).validate_document(xml)
     except XmlSchemaValidationError:
         raise NfseReceiptVerificationError("National NFSe receipt violates official XSD") from None
     info = root.find(f"{{{_NS}}}infNFSe")

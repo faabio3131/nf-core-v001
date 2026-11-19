@@ -21,7 +21,7 @@ from kordena_fiscal.gateway.nfse_national_receipt import (
     validate_official_nfse_receipt,
 )
 from kordena_fiscal.issuance.nfe_nfse import NfseAuthorizationRequest
-from kordena_fiscal.issuance.nfse_dps_builder import build_sefin_signed_dps
+from kordena_fiscal.issuance.nfse_dps_builder import build_sefin_signed_dps, build_signed_dps
 from kordena_fiscal.signing.nfse_xmldsig import append_nfse_signature
 from kordena_fiscal.xml.nfse_national_profiles import (
     NT009_RESTRICTED_PROFILE,
@@ -166,7 +166,7 @@ def test_receipt_requires_explicit_context_and_supported_profile(sample):
     with pytest.raises(NfseReceiptVerificationError, match='schema profile unsupported'):
         validate_national_nfse_xml(
             sample[2], sample[3], expected=NationalReceiptIdentity.from_request(sample[0]),
-            schema_profile=PRODUCTION_PROFILE,
+            schema_profile='unsupported-profile',
         )
 
 
@@ -245,4 +245,28 @@ def test_access_key_must_match_signed_issuer_and_generator(sample, start, end, v
         validate_national_nfse_xml(
             xml, key, expected=NationalReceiptIdentity.from_request(sample[0]),
             schema_profile=NT009_RESTRICTED_PROFILE,
+        )
+
+
+def test_february_receipt_uses_independent_pinned_types(sample):
+    request, material = sample[:2]
+    dps = build_signed_dps(request, material, schema_profile=PRODUCTION_PROFILE)
+    key = fixture.key_for(dps)
+    xml = fixture.complete_receipt(dps, material, schema_profile=PRODUCTION_PROFILE)
+    expected = NationalReceiptIdentity.from_request(request, schema_profile=PRODUCTION_PROFILE)
+    assert validate_national_nfse_xml(
+        xml, key, expected=expected, schema_profile=PRODUCTION_PROFILE,
+    ) == xml
+    with pytest.raises(NfseReceiptVerificationError, match='official XSD'):
+        validate_national_nfse_xml(
+            xml, key, expected=expected, schema_profile=NT009_RESTRICTED_PROFILE,
+        )
+
+
+def test_nt009_receipt_cannot_use_february_types(sample):
+    with pytest.raises(NfseReceiptVerificationError, match='official XSD'):
+        validate_national_nfse_xml(
+            sample[2], sample[3],
+            expected=NationalReceiptIdentity.from_request(sample[0]),
+            schema_profile=PRODUCTION_PROFILE,
         )

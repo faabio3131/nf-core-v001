@@ -15,7 +15,8 @@ from lxml import etree
 from kordena_fiscal.issuance.nfse_dps_builder import build_sefin_signed_dps
 from kordena_fiscal.signing.nfse_xmldsig import append_nfse_signature
 from kordena_fiscal.vault import EphemeralCertificateMaterial
-from kordena_fiscal.xml.nfse_national_profiles import national_restricted_validator
+from kordena_fiscal.xml.nfse_nacional_schema import national_nfse_receipt_validator
+from kordena_fiscal.xml.nfse_national_profiles import NT009_RESTRICTED_PROFILE
 
 NS = 'http://www.sped.fazenda.gov.br/nfse'
 TAG = '{' + NS + '}'
@@ -54,7 +55,10 @@ def key_for(dps: bytes, digit: str = '3') -> str:
             + info.findtext(TAG + 'prest/' + TAG + 'CNPJ') + digit * 27)
 
 
-def complete_receipt(dps: bytes, material, *, key: str | None = None, issued_at=None) -> bytes:
+def complete_receipt(
+    dps: bytes, material, *, key: str | None = None, issued_at=None,
+    schema_profile: str = NT009_RESTRICTED_PROFILE,
+) -> bytes:
     """Include the actual submitted DPS, with its reserved serial and signed bytes."""
     dps_root = etree.fromstring(dps)
     dps_info = dps_root.find(TAG + 'infDPS')
@@ -90,7 +94,7 @@ def complete_receipt(dps: bytes, material, *, key: str | None = None, issued_at=
     info.append(dps_root)
     append_nfse_signature(root, info, private, cert, legacy_abrasf=False)
     xml = etree.tostring(root, encoding='utf-8', xml_declaration=True)
-    national_restricted_validator('NFSe_v1.01.xsd').validate_document(xml)
+    national_nfse_receipt_validator(profile=schema_profile).validate_document(xml)
     return xml
 
 

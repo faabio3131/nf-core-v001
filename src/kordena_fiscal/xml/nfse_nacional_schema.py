@@ -139,3 +139,40 @@ def national_event_validator(kind: str, *, profile: str = PRODUCTION_PROFILE) ->
         version=version, root_schema=root_name, resources=resources,
         source_uri=_EVENT_MIRROR_SOURCE,
     ))
+
+
+# The root wrapper is byte-identical in the official NT009 package and the
+# independently archived February layout. Keep the February type definitions
+# and the preexisting, hash-pinned TSSerieDPS derivation, never NT009 types.
+# See docs/operations/NFCORE_NATIONAL_RECEIPT_SCHEMA_PROVENANCE.md.
+_PRODUCTION_RECEIPT_ROOT = "NFSe_v1.01.xsd"
+_PRODUCTION_RECEIPT_ROOT_SHA256 = (
+    "af0bd2d8c50acba3d9c3f3f515426eca083b3f66e3211ce8dd48a7cf101818b8"
+)
+
+
+@lru_cache(maxsize=2)
+def national_nfse_receipt_validator(*, profile: str) -> XmlSchemaValidator:
+    """Validate receipts with the explicitly selected, isolated schema profile."""
+    if profile == NT009_RESTRICTED_PROFILE:
+        return national_restricted_validator(_PRODUCTION_RECEIPT_ROOT)
+    if profile != PRODUCTION_PROFILE:
+        raise FiscalValidationError("Unsupported National NFSe receipt schema profile")
+    directory = files("kordena_fiscal.xml").joinpath("official", "NFSE_NACIONAL_1.01")
+    hashes = {
+        name: sha for name, sha in _HASHES["1.01"].items()
+        if name != "DPS_v1.01.xsd"
+    }
+    hashes[_PRODUCTION_RECEIPT_ROOT] = _PRODUCTION_RECEIPT_ROOT_SHA256
+    return XmlSchemaValidator(SchemaSet(
+        version=PRODUCTION_PROFILE,
+        root_schema=_PRODUCTION_RECEIPT_ROOT,
+        resources=tuple(
+            _pinned_schema_resource(
+                version="1.01", name=name, official_bytes=directory.joinpath(name).read_bytes(),
+                official_sha256=digest,
+            )
+            for name, digest in hashes.items()
+        ),
+        source_uri=_SOURCE,
+    ))
