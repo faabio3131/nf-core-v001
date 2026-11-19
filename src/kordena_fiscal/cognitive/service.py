@@ -182,17 +182,19 @@ class CognitiveAdviceService:
         ):
             return _ModelOutcome(degraded_reason="audit_unavailable")
         try:
-            self._breaker.before_call()
-        except CircuitOpen:
-            return _ModelOutcome(degraded_reason="circuit_open")
-        try:
             self._bulkhead.acquire()
         except BulkheadFull:
             return _ModelOutcome(degraded_reason="overloaded")
+        try:
+            self._breaker.before_call()
+        except CircuitOpen:
+            self._bulkhead.release()
+            return _ModelOutcome(degraded_reason="circuit_open")
         model = self._model
         try:
             answer = call_with_deadline(
-                lambda: model.advise(prompt, deadline_seconds=self._deadline), self._deadline
+                lambda: model.advise(prompt, deadline_seconds=self._deadline),
+                self._deadline, on_complete=self._bulkhead.release,
             )
         except DeadlineExceeded:
             self._breaker.record_failure()
@@ -203,8 +205,6 @@ class CognitiveAdviceService:
         except Exception:
             self._breaker.record_failure()
             return _ModelOutcome(degraded_reason="provider_error")
-        finally:
-            self._bulkhead.release()
         self._breaker.record_success()
         result = self._guard.validate(answer.sections, request)
         reason = None if result.accepted else "guard_rejected_all"
