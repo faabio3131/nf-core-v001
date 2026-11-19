@@ -25,6 +25,7 @@ case "$1 $2" in
     printf '%s\n' nfcore-db nfcore-api nfcore-portal
     if [ -f "$C/worker-present" ] && { [ "$2" = -a ] || [ ! -f "$C/worker-stopped" ]; }; then echo nfcore-worker; fi
     if [ -f "$C/unknown-worker" ]; then echo nfcore-unknown-worker; fi
+    if [ -f "$C/bling-present" ]; then echo nfcore-bling-worker; fi
     exit 0;;
   "image inspect")
     if [ "$3" = -f ]; then
@@ -182,6 +183,9 @@ rc=$(run --coordinated); chk "nao implanta Worker fora do compose efetivo" '[ "$
 touch "$CTL/worker-configured" "$CTL/unknown-worker"
 rc=$(run --coordinated); chk "consumidor desconhecido ativo bloqueia" '[ "$rc" = 42 ] && ! grep -q "compose build" "$CTL/calls"'
 rm "$CTL/unknown-worker"
+touch "$CTL/bling-present"
+rc=$(run --coordinated); chk "Bling ativo permanece fora do deploy canonico" '[ "$rc" = 42 ] && ! grep -q "compose build" "$CTL/calls"'
+rm "$CTL/bling-present"
 touch "$CTL/config-drift"
 rc=$(run --coordinated); chk "deriva de Compose bloqueia antes de build" '[ "$rc" = 42 ] && ! grep -q "compose build" "$CTL/calls"'
 rm "$CTL/config-drift"

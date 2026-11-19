@@ -32,7 +32,7 @@ services=(nfcore-api nfcore-portal)
 workers=()
 names=$(docker ps -a --format '{{.Names}}') || blocked "Docker inventory unavailable"
 running=$(docker ps --format '{{.Names}}') || blocked "Docker running inventory unavailable"
-for svc in nfcore-worker nfcore-bling-worker; do
+for svc in nfcore-worker; do
   if grep -Fxq "$svc" <<<"$names"; then
     grep -Fxq "$svc" <<<"$running" || blocked "production Worker is stopped; never auto-activate"
     workers+=("$svc")
@@ -40,7 +40,7 @@ for svc in nfcore-worker nfcore-bling-worker; do
 done
 while IFS= read -r name; do
   case "$name" in
-    nfcore-worker|nfcore-bling-worker) ;;
+    nfcore-worker) ;;
     nfcore-*worker*) blocked "unexpected running NFCore consumer; scoped review required";;
   esac
 done <<<"$running"
@@ -61,7 +61,6 @@ declare -A tags previous candidate
 tags[nfcore-api]=nfcore-api:current
 tags[nfcore-portal]=nfcore-portal:current
 tags[nfcore-worker]=nfcore-worker:controlled
-tags[nfcore-bling-worker]=nfcore-bling-worker:controlled
 configured=$(docker compose config --services 2>/dev/null) || blocked "effective Compose unavailable"
 config_check='import json, sys
 from pathlib import Path
@@ -78,7 +77,6 @@ for spec in sys.argv[2:]:
         "nfcore-api": "Dockerfile.api",
         "nfcore-portal": "Dockerfile.portal",
         "nfcore-worker": "Dockerfile.worker",
-        "nfcore-bling-worker": "Dockerfile.worker",
     }[name]
     if (service.get("container_name") != name or service.get("image") != tag
             or Path(build.get("context", "")).resolve() != source
