@@ -10,8 +10,9 @@ from __future__ import annotations
 
 import hashlib
 from collections.abc import Callable, Mapping, Sequence
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from typing import Any, Protocol
+from uuid import uuid4
 
 from fastapi import HTTPException, status
 from lxml import etree
@@ -533,6 +534,10 @@ class DurableHumanPortalExecutor:
         if surface_id == "capabilities":
             return self._capability_rows(authority, scope)[offset : offset + limit]
         if surface_id == "tax-reform":
+            from kordena_fiscal.application.federal_regime_store import (
+                federal_regime_status,
+            )
+
             # The only issuer authority is the existing versioned Control Plane
             # profile. The federal IRPJ regime is NOT inferred from NF-e CRT.
             with self._unit_of_work_factory() as uow:
@@ -562,7 +567,9 @@ class DurableHumanPortalExecutor:
                 "effective_from": issuer.effective_from.isoformat(),
                 "effective_to": (issuer.effective_to.isoformat()
                                  if issuer.effective_to is not None else None),
-                "federal_regime_status": "declaration_not_configured",
+                **federal_regime_status(
+                    self._unit_of_work_factory, scope, issuer, datetime.now(UTC),
+                ),
                 "calculation_status": "not_certified",
             },)[offset : offset + limit]
         rows: list[Mapping[str, Any]] = []
@@ -921,6 +928,10 @@ class DurableHumanPortalExecutor:
             )
         if operation_id == "registerFiscalProfile":
             return self._register_fiscal_profile(
+                authority=authority, payload=payload, idempotency_key=idempotency_key
+            )
+        if operation_id == "declareFederalRegime":
+            return self._declare_federal_regime(
                 authority=authority, payload=payload, idempotency_key=idempotency_key
             )
         if operation_id in {"createUser", "updateUser"}:
@@ -1392,6 +1403,85 @@ class DurableHumanPortalExecutor:
             raise _portal_error(
                 400, "INVALID_EXTREMA_PREPARATION", "Reviewed fiscal facts invalid",
             ) from exc
+
+    def _declare_federal_regime(
+        self,
+        *,
+        authority: AuthenticatedHuman,
+        payload: Mapping[str, Any],
+        idempotency_key: str | None,
+    ) -> Mapping[str, Any]:
+        """RTC-02: record Lucro Presumido / Lucro Real / Simples for the issuer.
+
+        The CRT comes from the effective issuer profile (server-owned); the
+        browser supplies only the regime, the start date and the evidence.
+        """
+        from zoneinfo import ZoneInfo
+
+        from kordena_fiscal.application.federal_regime_store import declare_federal_regime
+        from kordena_fiscal.tax.regimes import FederalIncomeTaxRegime
+
+        fields = {
+            "unit_id", "environment", "federal_income_tax_regime",
+            "effective_from", "source_reference",
+        }
+        try:
+            if set(payload) != fields or any(
+                not isinstance(payload[name], str) for name in fields
+            ):
+                raise ValueError("invalid federal regime command fields")
+            unit_id = payload["unit_id"].strip()
+            environment = FiscalEnvironment(payload["environment"])
+            authority.assert_permission(PortalPermission.CONFIGURATION_WRITE, unit_id=unit_id)
+            regime = FederalIncomeTaxRegime(payload["federal_income_tax_regime"])
+            start = date.fromisoformat(payload["effective_from"])
+            effective_from = datetime(
+                start.year, start.month, start.day, tzinfo=ZoneInfo("America/Sao_Paulo"),
+            )
+            scope = ExecutionScope(
+                host_namespace="fm-nfcore", tenant_id=authority.tenant_id,
+                unit_id=unit_id, environment=environment,
+                correlation_id="federal-regime-" + uuid4().hex[:16],
+            )
+            now = datetime.now(UTC)
+            with self._unit_of_work_factory() as uow:
+                profile = uow.control_plane.resolve_profile(
+                    host_namespace="fm-nfcore", tenant_id=authority.tenant_id,
+                    unit_id=unit_id, environment=environment, instant=now,
+                )
+            if profile is None:
+                raise _portal_error(
+                    409, "FISCAL_PROFILE_REQUIRED",
+                    "Cadastre o perfil fiscal do emitente antes do regime federal",
+                )
+            result = declare_federal_regime(
+                self._unit_of_work_factory, scope=scope, crt=profile.tax_regime,
+                federal_income_tax_regime=regime, effective_from=effective_from,
+                source_reference=payload["source_reference"],
+                actor=authority.account.account_id,
+                idempotency_key=idempotency_key or "", occurred_at=now,
+            )
+        except HumanAuthorizationError:
+            raise _portal_error(
+                403, "PORTAL_FORBIDDEN", "Sem permissão nesta unidade",
+            ) from None
+        except PersistenceConflictError:
+            raise _portal_error(
+                409, "FEDERAL_REGIME_CONFLICT",
+                "Esta tentativa já foi usada com dados diferentes",
+            ) from None
+        except (ValueError, TypeError, KeyError, FiscalValidationError):
+            raise _portal_error(
+                400, "FEDERAL_REGIME_INVALID",
+                "Regime federal, data de início ou evidência inválidos",
+            ) from None
+        return {
+            "status": "declared",
+            "federal_income_tax_regime": result["federal_income_tax_regime"],
+            "effective_from": result["effective_from"],
+            "version": result["version"],
+            "replay": result["replay"],
+        }
 
     def _register_fiscal_profile(
         self,

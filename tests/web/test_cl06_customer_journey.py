@@ -411,3 +411,34 @@ def test_owner_registers_initial_fiscal_profile_idempotently_via_canonical_porta
     assert visible.json()["rows"][0]["profile_id"] == first.json()["profile_id"]
     assert "cnpj" not in visible.json()["rows"][0]
     assert "tenant_id" not in visible.json()["rows"][0]
+    assert visible.json()["rows"][0]["federal_regime_status"] == "declaration_not_configured"
+
+    # RTC-02: CRT 3 does not say Presumido vs Real; the owner declares it.
+    regime_endpoint = "/v1/portal/operations/declareFederalRegime"
+    regime = {
+        "unit_id": "matriz", "environment": "homologation",
+        "federal_income_tax_regime": "lucro_presumido",
+        "effective_from": "2026-01-01", "source_reference": "ECF 2026 - opcao Lucro Presumido",
+    }
+    simples = web.post(
+        regime_endpoint, json={**regime, "federal_income_tax_regime": "simples_nacional"},
+        headers={CSRF_HEADER: csrf, "Idempotency-Key": "regime-simples"},
+    )
+    assert simples.status_code == 400
+    assert simples.json()["detail"]["code"] == "FEDERAL_REGIME_INVALID"
+    spoof = web.post(
+        regime_endpoint, json={**regime, "crt": 1},
+        headers={CSRF_HEADER: csrf, "Idempotency-Key": "regime-spoof"},
+    )
+    assert spoof.status_code == 400
+    declared = web.post(
+        regime_endpoint, json=regime,
+        headers={CSRF_HEADER: csrf, "Idempotency-Key": "regime-1"},
+    )
+    assert declared.status_code == 200, declared.text
+    assert declared.json()["federal_income_tax_regime"] == "lucro_presumido"
+    row = web.get(
+        "/v1/portal/surfaces/tax-reform?unit_id=matriz&environment=homologation"
+    ).json()["rows"][0]
+    assert row["federal_regime_status"] == "declared"
+    assert row["federal_income_tax_regime"] == "lucro_presumido"
