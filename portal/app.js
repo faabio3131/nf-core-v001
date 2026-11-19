@@ -1196,6 +1196,19 @@ function appendReviewedMunicipalWebAction(article, operation) {
       if (reply.recovery_required === true) {
         status.textContent += " Recuperação oficial necessária.";
       }
+      if (operation === "inspectCajamarNfseCancellation") {
+        if (reply.query_status === "invoice_found") {
+          status.textContent += " Nota localizada; isso não comprova cancelamento.";
+        } else if (reply.query_status === "invoice_query_error") {
+          status.textContent += " Consulta municipal sem confirmação da nota.";
+          if (typeof reply.rejection_code === "string") {
+            status.textContent += " Código municipal: " + reply.rejection_code + ".";
+          }
+        }
+        if (typeof reply.entry_id === "string") {
+          status.textContent += " Referência da evidência arquivada: " + reply.entry_id + ".";
+        }
+      }
     } catch (error) {
       status.textContent = (error instanceof Error ? error.message : "Resultado incerto")
         + (recovery ? " Consulta indisponível." :
