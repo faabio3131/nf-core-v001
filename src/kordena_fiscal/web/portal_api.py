@@ -428,6 +428,7 @@ def create_portal_router(
             evidence = certificate_vault.provision(
                 scope=scope, issuer_cnpj=issuer_cnpj,
                 pkcs12_bytes=certificate, password=password,
+                actor=auth.account.account_id,
             )
         except FiscalSigningError as exc:
             # Preflight failures are not FiscalValidationError; they used to escape as HTTP 500.

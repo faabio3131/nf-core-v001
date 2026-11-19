@@ -20,6 +20,7 @@ from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
 from kordena_fiscal.domain import Cnpj, ExecutionScope, FiscalEnvironment, FiscalValidationError
 from kordena_fiscal.vault import EphemeralCertificateMaterial
+from kordena_fiscal.vault.a1_audit import A1AuditLog, a1_audit_record
 from kordena_fiscal.vault.a1_preflight import A1CertificatePreflight, validate_a1_for_issuer
 
 _MAX_PFX_BYTES = 2 * 1024 * 1024
@@ -41,6 +42,18 @@ class EncryptedA1Vault:
             raise A1VaultUnavailable("A1 Vault directory is not trusted")
         self._directory.mkdir(mode=0o700, parents=True, exist_ok=True)
         os.chmod(self._directory, 0o700)
+        self._audit = A1AuditLog(self._directory)
+
+    def _record(
+        self, event: str, scope: ExecutionScope, issuer_cnpj: str, *,
+        error: BaseException | None = None, fingerprint: str | None = None,
+        actor: str | None = None,
+    ) -> None:
+        self._audit.append(a1_audit_record(
+            event=event, outcome="failed" if error is not None else "ok",
+            scope=scope, issuer_cnpj=issuer_cnpj, fingerprint_sha256=fingerprint,
+            actor=actor, error=error,
+        ))
 
     @classmethod
     def from_environ(cls) -> EncryptedA1Vault | None:
@@ -72,6 +85,26 @@ class EncryptedA1Vault:
         return self._directory / (hashlib.sha256(aad).hexdigest() + ".a1.enc")
 
     def provision(
+        self, *, scope: ExecutionScope, issuer_cnpj: str,
+        pkcs12_bytes: bytes, password: bytes, actor: str | None = None,
+    ) -> A1CertificatePreflight:
+        """Store the A1; every attempt (ok or failed) is in the audit trail."""
+        self._audit.ensure_writable()
+        try:
+            evidence = self._provision(
+                scope=scope, issuer_cnpj=issuer_cnpj,
+                pkcs12_bytes=pkcs12_bytes, password=password,
+            )
+        except Exception as exc:
+            self._record("provision", scope, issuer_cnpj, error=exc, actor=actor)
+            raise
+        self._record(
+            "provision", scope, issuer_cnpj, actor=actor,
+            fingerprint=evidence.certificate_fingerprint_sha256,
+        )
+        return evidence
+
+    def _provision(
         self, *, scope: ExecutionScope, issuer_cnpj: str,
         pkcs12_bytes: bytes, password: bytes,
     ) -> A1CertificatePreflight:
@@ -111,7 +144,18 @@ class EncryptedA1Vault:
                 os.unlink(temporary)
         return evidence
 
-    def withdraw(self, *, scope: ExecutionScope, issuer_cnpj: str) -> None:
+    def withdraw(
+        self, *, scope: ExecutionScope, issuer_cnpj: str, actor: str | None = None,
+    ) -> None:
+        self._audit.ensure_writable()
+        try:
+            self._withdraw(scope=scope, issuer_cnpj=issuer_cnpj)
+        except Exception as exc:
+            self._record("withdraw", scope, issuer_cnpj, error=exc, actor=actor)
+            raise
+        self._record("withdraw", scope, issuer_cnpj, actor=actor)
+
+    def _withdraw(self, *, scope: ExecutionScope, issuer_cnpj: str) -> None:
         """Withdraw the exact authorized homologation record; not ICP-Brasil revocation.
 
         Product authorization belongs to the calling boundary. The existing
@@ -134,6 +178,20 @@ class EncryptedA1Vault:
     def inspect(
         self, *, scope: ExecutionScope, issuer_cnpj: str,
     ) -> A1CertificatePreflight | None:
+        try:
+            evidence = self._inspect(scope=scope, issuer_cnpj=issuer_cnpj)
+        except Exception as exc:
+            self._record("inspect", scope, issuer_cnpj, error=exc)
+            raise
+        self._record(
+            "inspect", scope, issuer_cnpj,
+            fingerprint=None if evidence is None else evidence.certificate_fingerprint_sha256,
+        )
+        return evidence
+
+    def _inspect(
+        self, *, scope: ExecutionScope, issuer_cnpj: str,
+    ) -> A1CertificatePreflight | None:
         """Read back the scope-bound encrypted record without returning secrets.
 
         None means no certificate exists in this precise tenant/unit/environment.
@@ -148,13 +206,25 @@ class EncryptedA1Vault:
             return None
         if not path.is_file():
             raise A1VaultUnavailable("A1 Vault record is not a regular file")
-        material = self.resolve(scope=scope, issuer_cnpj=issuer.value)
+        material, _ = self._resolve(scope=scope, issuer_cnpj=issuer.value)
         return validate_a1_for_issuer(
             material.pkcs12_bytes, material.password,
             issuer_cnpj=issuer, at=datetime.now(UTC),
         )
 
     def resolve(self, *, scope: ExecutionScope, issuer_cnpj: str) -> EphemeralCertificateMaterial:
+        """Decrypt for signing/TLS; each use (ok or failed) is audited."""
+        try:
+            material, fingerprint = self._resolve(scope=scope, issuer_cnpj=issuer_cnpj)
+        except Exception as exc:
+            self._record("resolve", scope, issuer_cnpj, error=exc)
+            raise
+        self._record("resolve", scope, issuer_cnpj, fingerprint=fingerprint)
+        return material
+
+    def _resolve(
+        self, *, scope: ExecutionScope, issuer_cnpj: str,
+    ) -> tuple[EphemeralCertificateMaterial, str]:
         issuer = Cnpj(issuer_cnpj)
         aad = self._aad(scope, issuer)
         path = self._path(aad)
@@ -173,7 +243,7 @@ class EncryptedA1Vault:
                 raise ValueError
             pfx = base64.b64decode(record["pfx"], validate=True)
             password = base64.b64decode(record["password"], validate=True)
-            validate_a1_for_issuer(
+            preflight = validate_a1_for_issuer(
                 pfx, password, issuer_cnpj=issuer, at=datetime.now(UTC),
             )
             reference = hashlib.sha256(aad).hexdigest()
@@ -181,6 +251,6 @@ class EncryptedA1Vault:
                 reference_id="ref:nfcore-a1-" + reference,
                 pkcs12_bytes=pfx,
                 password=password,
-            )
+            ), preflight.certificate_fingerprint_sha256
         except (ValueError, TypeError, KeyError, json.JSONDecodeError, OSError, InvalidTag):
             raise A1VaultUnavailable("Certificado A1 indisponível ou inválido") from None

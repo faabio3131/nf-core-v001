@@ -47,7 +47,9 @@ def _pfx(*, cnpj: str = _CNPJ, expired: bool = False) -> bytes:
 
 @pytest.fixture
 def client(tmp_path, monkeypatch):
-    auth = SimpleNamespace(tenant_id="tenant-a")
+    auth = SimpleNamespace(
+        tenant_id="tenant-a", account=SimpleNamespace(account_id="acct-owner-1"),
+    )
     monkeypatch.setattr(portal_api, "_authenticated", lambda *a, **k: auth)
     monkeypatch.setattr(portal_api, "_csrf", lambda *a, **k: None)
     monkeypatch.setattr(portal_api, "_authorized", lambda *a, **k: None)
@@ -55,7 +57,9 @@ def client(tmp_path, monkeypatch):
     app = FastAPI()
     app.include_router(portal_api.create_portal_router(
         SimpleNamespace(), None, certificate_vault=vault))
-    return TestClient(app)
+    test_client = TestClient(app)
+    test_client.vault_dir = tmp_path / "vault"  # type: ignore[attr-defined]
+    return test_client
 
 
 def _post(client, pfx: bytes, *, password: bytes = _PASSWORD, cnpj: str = _CNPJ):
@@ -91,3 +95,20 @@ def test_expired_a1_is_422_expired(client):
 def test_non_pkcs12_bytes_are_422_not_500(client):
     response = _post(client, b"not a pfx at all")
     assert response.status_code == 422
+
+
+def test_every_upload_attempt_is_audited_with_actor_and_no_secret(client):
+    from kordena_fiscal.vault.a1_audit import AUDIT_FILENAME, verify_a1_audit_chain
+
+    assert _post(client, _pfx()).status_code == 200
+    assert _post(client, _pfx(), password=b"wrong-password").status_code == 422
+    trail = client.vault_dir / AUDIT_FILENAME
+    assert verify_a1_audit_chain(trail) == 2
+    lines = [json.loads(line) for line in trail.read_text().splitlines()]
+    assert [(x["event"], x["outcome"]) for x in lines] == [
+        ("provision", "ok"), ("provision", "failed"),
+    ]
+    assert all(x["actor"] == "acct-owner-1" and x["issuer_cnpj"] == _CNPJ for x in lines)
+    assert len(lines[0]["fingerprint_sha256"]) == 64
+    raw = trail.read_bytes()
+    assert _PASSWORD not in raw and b"wrong-password" not in raw

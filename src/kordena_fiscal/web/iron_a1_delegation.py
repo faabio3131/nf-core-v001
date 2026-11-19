@@ -268,7 +268,7 @@ def create_iron_a1_router(
                         409, "IRON_A1_WITHDRAW_REPLAY", "Do not replay withdrawal",
                         scope.correlation_id,
                     )
-                vault.withdraw(scope=scope, issuer_cnpj=cnpj)
+                vault.withdraw(scope=scope, issuer_cnpj=cnpj, actor="iron:" + actor)
         except IronA1ScopeBusy:
             raise HttpContractError(
                 409, "IRON_A1_SCOPE_BUSY", "Try again", scope.correlation_id,
