@@ -329,15 +329,94 @@ class NfseDeductionDocument:
     applied_amount: Money
     evidence_sha256: str
     description: str | None = None
+    document_number: str | None = None
+    document_municipality: str | None = None
+    verification_code: str | None = None
+    paper_model: str | None = None
+    paper_series: str | None = None
+    document_label: str | None = None
+    supplier_tax_id: str | None = None
+    supplier_name: str | None = None
 
     def __post_init__(self) -> None:
-        if self.kind not in ("nfe", "nfse"):
-            raise FiscalValidationError("Unsupported documentary deduction kind")
-        width = 44 if self.kind == "nfe" else 50
-        if not isinstance(self.access_key, str) or not re.fullmatch(
-            rf"[0-9]{{{width}}}", self.access_key,
+        if self.kind not in (
+            "nfe", "nfse", "municipal_nfse", "paper_invoice", "other_fiscal", "non_fiscal",
         ):
-            raise FiscalValidationError("Invalid documentary deduction access key")
+            raise FiscalValidationError("Unsupported documentary deduction kind")
+        fields = {
+            "document_number": self.document_number,
+            "document_municipality": self.document_municipality,
+            "verification_code": self.verification_code,
+            "paper_model": self.paper_model,
+            "paper_series": self.paper_series,
+            "document_label": self.document_label,
+        }
+        present = {key for key, value in fields.items() if value is not None}
+        required = {
+            "nfe": set(), "nfse": set(),
+            "municipal_nfse": {"document_number", "document_municipality",
+                               "verification_code", "document_label"},
+            "paper_invoice": {"document_number", "document_municipality",
+                              "paper_model", "paper_series", "document_label"},
+            "other_fiscal": {"document_number", "document_municipality", "document_label"},
+            "non_fiscal": {"document_number", "document_label"},
+        }[self.kind]
+        if present != required:
+            raise FiscalValidationError("Documentary deduction reference fields differ from kind")
+        if self.kind in ("nfe", "nfse"):
+            width = 44 if self.kind == "nfe" else 50
+            if not isinstance(self.access_key, str) or not re.fullmatch(
+                rf"[0-9]{{{width}}}", self.access_key,
+            ):
+                raise FiscalValidationError("Invalid documentary deduction access key")
+        elif self.access_key != "":
+            raise FiscalValidationError("Non-national deduction cannot claim national access key")
+        if self.document_number is not None:
+            if not isinstance(self.document_number, str):
+                raise FiscalValidationError("Invalid documentary deduction number")
+            if self.kind in ("municipal_nfse", "paper_invoice"):
+                width = 15 if self.kind == "municipal_nfse" else 7
+                if not re.fullmatch(rf"[0-9]{{{width}}}", self.document_number):
+                    raise FiscalValidationError("Invalid documentary deduction number")
+            elif (
+                self.document_number != self.document_number.strip()
+                or not 1 <= len(self.document_number) <= 255
+            ):
+                raise FiscalValidationError("Invalid documentary deduction number")
+        for value, pattern in (
+            (self.document_municipality, r"[0-9]{7}"),
+            (self.verification_code, r"[a-zA-Z0-9]{1,9}"),
+            (self.paper_model, r"[0-9]{15}"),
+            (self.paper_series, r"[a-zA-Z0-9]{1,15}"),
+        ):
+            if value is not None and (
+                not isinstance(value, str) or not re.fullmatch(pattern, value)
+            ):
+                raise FiscalValidationError("Invalid documentary deduction identification")
+        if self.document_label is not None and (
+            not isinstance(self.document_label, str)
+            or self.document_label != self.document_label.strip()
+            or not 1 <= len(self.document_label) <= 255
+        ):
+            raise FiscalValidationError("Invalid deduction document label")
+        if (self.supplier_tax_id is None) != (self.supplier_name is None) or (
+            self.kind not in ("nfe", "nfse") and self.supplier_tax_id is None
+        ):
+            raise FiscalValidationError("Documentary deduction supplier identity is required")
+        if self.supplier_tax_id is not None:
+            if not isinstance(self.supplier_tax_id, str):
+                raise FiscalValidationError("Invalid documentary supplier identity")
+            if re.fullmatch(r"[0-9]{14}", self.supplier_tax_id):
+                Cnpj(self.supplier_tax_id)
+            elif re.fullmatch(r"[0-9]{11}", self.supplier_tax_id):
+                Cpf(self.supplier_tax_id)
+            else:
+                raise FiscalValidationError("Invalid documentary supplier identity")
+            if not isinstance(self.supplier_name, str):
+                raise FiscalValidationError("Invalid documentary supplier name")
+            object.__setattr__(self, "supplier_name", _required(
+                self.supplier_name, "deduction.supplier_name", 150,
+            ))
         if self.legacy_code not in {"1", "2", "3", "4", "5", "6", "7", "8", "9", "99"}:
             raise FiscalValidationError("Invalid legacy documentary deduction code")
         if self.nt009_code not in {
@@ -366,8 +445,18 @@ class NfseDeductionDocument:
         if (self.legacy_code == "99" or self.nt009_code in {"99", "199"}) and not self.description:
             raise FiscalValidationError("Other documentary deduction requires description")
 
+    @property
+    def allocation_identity(self) -> tuple[str, ...]:
+        """Legal document identity, excluding mutable amounts and descriptions."""
+        if self.kind in ("nfe", "nfse"):
+            return (self.kind, self.access_key)
+        return (
+            self.kind, self.supplier_tax_id or "", self.document_municipality or "",
+            self.paper_model or "", self.paper_series or "", self.document_number or "",
+        )
+
     def as_payload(self) -> dict[str, str | None]:
-        return {
+        payload: dict[str, str | None] = {
             "kind": self.kind, "access_key": self.access_key,
             "legacy_code": self.legacy_code, "nt009_code": self.nt009_code,
             "issued_on": self.issued_on.isoformat(),
@@ -376,16 +465,31 @@ class NfseDeductionDocument:
             "applied_amount": str(self.applied_amount.amount),
             "evidence_sha256": self.evidence_sha256, "description": self.description,
         }
+        for field in (
+            "document_number", "document_municipality", "verification_code",
+            "paper_model", "paper_series", "document_label", "supplier_tax_id", "supplier_name",
+        ):
+            value = getattr(self, field)
+            if value is not None:
+                payload[field] = value
+        return payload
 
     @classmethod
     def from_payload(cls, data: object) -> NfseDeductionDocument:
-        if not isinstance(data, dict) or set(data) != {
+        required = {
             "kind", "access_key", "legacy_code", "nt009_code", "issued_on",
             "document_total_amount", "eligible_amount", "applied_amount",
             "evidence_sha256", "description",
-        } or any(
-            not isinstance(value, str)
-            for key, value in data.items() if key != "description"
+        }
+        optional = {
+            "document_number", "document_municipality", "verification_code",
+            "paper_model", "paper_series", "document_label", "supplier_tax_id", "supplier_name",
+        }
+        if (
+            not isinstance(data, dict) or not required <= set(data)
+            or not set(data) <= required | optional
+            or any(not isinstance(value, str)
+                   for key, value in data.items() if key != "description")
         ):
             raise FiscalValidationError("Invalid reviewed documentary deduction fields")
         if data["description"] is not None and not isinstance(data["description"], str):
@@ -405,6 +509,13 @@ class NfseDeductionDocument:
                 eligible_amount=Money(Decimal(data["eligible_amount"])),
                 applied_amount=Money(Decimal(data["applied_amount"])),
                 evidence_sha256=data["evidence_sha256"], description=data["description"],
+                document_number=data.get("document_number"),
+                document_municipality=data.get("document_municipality"),
+                verification_code=data.get("verification_code"),
+                paper_model=data.get("paper_model"), paper_series=data.get("paper_series"),
+                document_label=data.get("document_label"),
+                supplier_tax_id=data.get("supplier_tax_id"),
+                supplier_name=data.get("supplier_name"),
             )
         except (ValueError, ArithmeticError) as exc:
             raise FiscalValidationError("Invalid reviewed documentary deduction") from exc
@@ -462,8 +573,9 @@ class NfseNationalTaxTreatment:
                 or len(self.deduction_documents) > 100
             ):
                 raise FiscalValidationError("Documentary deductions require scoped reviewed policy")
-            keys = [(item.kind, item.access_key) for item in self.deduction_documents]
-            if len(set(keys)) != len(keys):
+            keys = [item.allocation_identity for item in self.deduction_documents]
+            hashes = [item.evidence_sha256 for item in self.deduction_documents]
+            if len(set(keys)) != len(keys) or len(set(hashes)) != len(hashes):
                 raise FiscalValidationError("Duplicated documentary deduction")
         elif self.deduction_source_type is not None or self.deduction_source_id is not None:
             raise FiscalValidationError("Documentary source requires reviewed documents")

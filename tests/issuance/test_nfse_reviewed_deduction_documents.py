@@ -126,3 +126,53 @@ def test_deduction_eligible_amount_cannot_exceed_original_document():
     assert decision is not None
     with pytest.raises(FiscalValidationError, match="eligible or document"):
         replace(decision.deduction_documents[0], document_total_amount=Money(Decimal("9.00")))
+
+
+@pytest.mark.parametrize(("kind", "fields", "legacy_tag", "nt009_tag"), [
+    ("municipal_nfse", {"document_number": "000000000000123",
+                         "document_municipality": "3106200", "verification_code": "ABC123"},
+     "NFSeMun/n:nNFSeMun", "docFiscalOutro/n:nDocFiscal"),
+    ("paper_invoice", {"document_number": "0000123", "document_municipality": "3106200",
+                        "paper_model": "000000000000001", "paper_series": "A"},
+     "NFNFS/n:nNFS", "docFiscalOutro/n:nDocFiscal"),
+    ("other_fiscal", {"document_number": "DOC-123", "document_municipality": "3106200"},
+     "nDocFisc", "docFiscalOutro/n:nDocFiscal"),
+    ("non_fiscal", {"document_number": "REC-123"}, "nDoc", "docOutro/n:nDoc"),
+])
+@pytest.mark.parametrize("profile", [PRODUCTION_PROFILE, NT009_RESTRICTED_PROFILE])
+def test_additional_document_choices_are_archived_and_schema_valid(
+    kind, fields, legacy_tag, nt009_tag, profile,
+):
+    document = _reviewed()
+    decision = document.national_tax_treatment
+    assert decision is not None
+    item = replace(
+        decision.deduction_documents[0], kind=kind, access_key="",
+        document_label="Comprovante revisado", supplier_tax_id="11222333000181",
+        supplier_name="Fornecedor Sintetico", **fields,
+    )
+    prepared = _request(replace(
+        document, national_tax_treatment=replace(decision, deduction_documents=(item,)),
+    ))
+    recovered = decode_prepared_nfse(encode_prepared_nfse(prepared), scope=document.scope)
+    assert recovered == prepared
+    xml = build_signed_dps(recovered, _certificate(), schema_profile=profile)
+    national_dps_validator("1.01", profile=profile).validate_document(xml)
+    root = etree.fromstring(xml)
+    tag = legacy_tag if profile == PRODUCTION_PROFILE else nt009_tag
+    assert root.findtext(".//n:" + tag, namespaces=_NS) == fields["document_number"]
+    assert root.findtext(".//n:fornec/n:CNPJ", namespaces=_NS) == "11222333000181"
+
+
+def test_non_national_document_cannot_use_unreviewed_identity_or_alias():
+    decision = _reviewed().national_tax_treatment
+    assert decision is not None
+    original = decision.deduction_documents[0]
+    with pytest.raises(FiscalValidationError, match="reference fields"):
+        replace(original, kind="municipal_nfse", access_key="")
+    with pytest.raises(FiscalValidationError, match="supplier identity"):
+        replace(original, kind="non_fiscal", access_key="",
+                document_number="A-1", document_label="Recibo")
+    alternate = replace(original, access_key="4" * 50)
+    with pytest.raises(FiscalValidationError, match="Duplicated documentary"):
+        replace(decision, deduction_documents=(original, alternate))

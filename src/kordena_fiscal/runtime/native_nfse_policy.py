@@ -154,7 +154,8 @@ def resolve_national_treatment(
             raise ValueError("policy identity or scope")
         matches = []
         identities = set()
-        deduction_keys: set[tuple[str, str]] = set()
+        deduction_keys: set[tuple[str, ...]] = set()
+        deduction_hashes: set[str] = set()
         for rule in data["rules"]:
             if not isinstance(rule, dict) or set(rule) != {"rule_id", "selector", "treatment"}:
                 raise ValueError("rule fields")
@@ -166,10 +167,11 @@ def resolve_national_treatment(
                 rule["treatment"], data["policy_id"] + ":" + rule["rule_id"], digest,
             )
             for item in treatment.deduction_documents:
-                document_key = (item.kind, item.access_key)
-                if document_key in deduction_keys:
+                document_key = item.allocation_identity
+                if document_key in deduction_keys or item.evidence_sha256 in deduction_hashes:
                     raise ValueError("Deduction document duplicated in reviewed policy")
                 deduction_keys.add(document_key)
+                deduction_hashes.add(item.evidence_sha256)
             # PBH BHISS notice (updated 14 Aug 2026) lists only 1,2,4,5,6,9;
             # zero means no special regime. Code 3 is not admitted by BH.
             if (

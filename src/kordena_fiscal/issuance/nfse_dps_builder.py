@@ -30,6 +30,7 @@ from kordena_fiscal.domain import (
 from kordena_fiscal.issuance.nfe_nfse import (
     NfseAuthorizationRequest,
     NfseCanonicalDocument,
+    NfseDeductionDocument,
     NfseForeignAddress,
 )
 from kordena_fiscal.issuance.nfse_dps_identity import national_dps_id
@@ -68,6 +69,45 @@ def _money(value: Decimal) -> str:
     # TSDec15V2 accepts "0", "0.NN" or "[1-9]...[.NN]"; two fixed decimals
     # satisfy every branch of that pattern.
     return f"{value:.2f}"
+
+
+def _deduction_reference(
+    record: etree._Element, item: NfseDeductionDocument, *, nt009: bool,
+) -> None:
+    """Serialize only reviewed identifiers in the choice allowed by each XSD."""
+    if item.kind in ("nfe", "nfse"):
+        if nt009:
+            dfe = etree.SubElement(record, f"{{{_NFSE_NS}}}dFeNacional")
+            _child(dfe, "tipoChaveDFe", "2" if item.kind == "nfe" else "1")
+            _child(dfe, "chaveDFe", item.access_key)
+        else:
+            _child(record, "chNFe" if item.kind == "nfe" else "chNFSe", item.access_key)
+        return
+    assert item.document_number is not None and item.document_label is not None
+    if nt009:
+        if item.kind == "non_fiscal":
+            other = etree.SubElement(record, f"{{{_NFSE_NS}}}docOutro")
+            _child(other, "nDoc", item.document_number)
+            _child(other, "xDoc", item.document_label)
+        else:
+            assert item.document_municipality is not None
+            other = etree.SubElement(record, f"{{{_NFSE_NS}}}docFiscalOutro")
+            _child(other, "cMunDocFiscal", item.document_municipality)
+            _child(other, "nDocFiscal", item.document_number)
+            _child(other, "xDocFiscal", item.document_label)
+    elif item.kind == "municipal_nfse":
+        municipal = etree.SubElement(record, f"{{{_NFSE_NS}}}NFSeMun")
+        _child(municipal, "cMunNFSeMun", item.document_municipality or "")
+        _child(municipal, "nNFSeMun", item.document_number)
+        _child(municipal, "cVerifNFSeMun", item.verification_code or "")
+    elif item.kind == "paper_invoice":
+        paper = etree.SubElement(record, f"{{{_NFSE_NS}}}NFNFS")
+        _child(paper, "nNFS", item.document_number)
+        _child(paper, "modNFS", item.paper_model or "")
+        _child(paper, "serieNFS", item.paper_series or "")
+    else:
+        _child(record, "nDoc" if item.kind == "non_fiscal" else "nDocFisc",
+               item.document_number)
 
 
 def _require_durable_dps_numbering(request: NfseAuthorizationRequest) -> tuple[str, str]:
@@ -292,17 +332,20 @@ def build_unsigned_dps(
                     _child(record, "vTotDoc", _money(item.document_total_amount.amount))
                     _child(record, "vAjusteAplic", _money(item.applied_amount.amount))
                     _child(record, "dtEmiDoc", item.issued_on.isoformat())
-                    dfe = etree.SubElement(record, f"{{{_NFSE_NS}}}dFeNacional")
-                    _child(dfe, "tipoChaveDFe", "2" if item.kind == "nfe" else "1")
-                    _child(dfe, "chaveDFe", item.access_key)
+                    _deduction_reference(record, item, nt009=True)
                 else:
-                    _child(record, "chNFe" if item.kind == "nfe" else "chNFSe", item.access_key)
+                    _deduction_reference(record, item, nt009=False)
                     _child(record, "tpDedRed", item.legacy_code)
                     if item.legacy_code == "99" and item.description is not None:
                         _child(record, "xDescOutDed", item.description)
                     _child(record, "dtEmiDoc", item.issued_on.isoformat())
                     _child(record, "vDedutivelRedutivel", _money(item.eligible_amount.amount))
                     _child(record, "vDeducaoReducao", _money(item.applied_amount.amount))
+                if item.supplier_tax_id is not None:
+                    supplier = etree.SubElement(record, f"{{{_NFSE_NS}}}fornec")
+                    _child(supplier, "CNPJ" if len(item.supplier_tax_id) == 14 else "CPF",
+                           item.supplier_tax_id)
+                    _child(supplier, "xNome", item.supplier_name or "")
     trib = etree.SubElement(valores, f"{{{_NFSE_NS}}}trib")
     trib_mun = etree.SubElement(trib, f"{{{_NFSE_NS}}}tribMun")
     iss_taxation = treatment.iss_taxation_code if treatment is not None else "1"

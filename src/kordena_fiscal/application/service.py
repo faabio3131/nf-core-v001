@@ -993,10 +993,6 @@ class FiscalApplicationService:
             # command ledger, in the SAME transaction as fiscal preparation.
             # Changing policy version/source/amount cannot allocate it again.
             for item in documents:
-                allocation_key = "nfse-deduction:" + hashlib.sha256(json.dumps([
-                    document.scope.host_namespace, document.issuer.cnpj.value,
-                    item.kind, item.access_key,
-                ], separators=(",", ":")).encode()).hexdigest()
                 allocation = {
                     "document_id": document.document_id,
                     "request_fingerprint": request.request_fingerprint,
@@ -1005,15 +1001,22 @@ class FiscalApplicationService:
                 allocation_digest = hashlib.sha256(json.dumps(
                     allocation, sort_keys=True, separators=(",", ":"),
                 ).encode()).hexdigest()
-                previous = uow.commercial.reserve_configuration_command(
-                    document.scope, allocation_key, allocation_digest,
-                )
-                if previous is None:
-                    uow.commercial.complete_configuration_command(
-                        document.scope, allocation_key, allocation,
+                # Preserve the original national key namespace; additionally
+                # reserve the evidence digest to prevent aliasing one file as
+                # different document kinds within this issuer/scope.
+                for identity in (item.allocation_identity, ("proof", item.evidence_sha256)):
+                    allocation_key = "nfse-deduction:" + hashlib.sha256(json.dumps([
+                        document.scope.host_namespace, document.issuer.cnpj.value, *identity,
+                    ], separators=(",", ":")).encode()).hexdigest()
+                    previous = uow.commercial.reserve_configuration_command(
+                        document.scope, allocation_key, allocation_digest,
                     )
-                elif previous != allocation:
-                    raise PersistenceConflictError("Documentary deduction allocation conflicts")
+                    if previous is None:
+                        uow.commercial.complete_configuration_command(
+                            document.scope, allocation_key, allocation,
+                        )
+                    elif previous != allocation:
+                        raise PersistenceConflictError("Documentary deduction allocation conflicts")
             reservation = uow.idempotency.reserve(
                 request.idempotency_key,
                 request.request_fingerprint,

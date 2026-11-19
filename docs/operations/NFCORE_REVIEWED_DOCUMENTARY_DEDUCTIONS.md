@@ -32,3 +32,21 @@ Cross-unit/tenant legal ownership and external allocations require separate
 review; the allocation ledger is deliberately scoped.
 No municipality, fiscal production or official homologation is promoted.
 Tests authored, not executed in this construction round.
+
+
+## Complemento — espécies documentais previstas nos XSDs
+
+O contrato revisado aceita também municipal_nfse, paper_invoice, other_fiscal e
+non_fiscal. Para estes, access_key deve ser vazio. A identidade de fornecedor
+(CPF/CNPJ numérico válido e nome) e document_number/document_label são obrigatórios.
+Documentos fiscais requerem document_municipality; municipal_nfse exige número
+de 15 dígitos e verification_code; paper_invoice exige número de 7 dígitos,
+paper_model de 15 dígitos e paper_series. Campos incompatíveis são recusados.
+O leiaute de fevereiro usa NFSeMun/NFNFS/nDocFisc/nDoc; NT009 usa
+docFiscalOutro/docOutro, mantendo os detalhes adicionais no arquivo canônico.
+O digest original também é reservado no ledger existente para impedir o uso
+do mesmo arquivo sob referências alternativas na mesma unidade/emitente.
+Isso cobre as escolhas documentais do leiaute de fevereiro, não declara a
+dedutibilidade jurídica de qualquer espécie, nem verifica automaticamente
+documentos emitidos por terceiros. O operador deve revisar os dois códigos
+de ajuste e os documentos originais. Testes escritos, não executados.
