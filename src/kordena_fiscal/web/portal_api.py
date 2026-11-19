@@ -29,7 +29,10 @@ from kordena_fiscal.security.human_identity import (
     HumanIdentityService,
     PortalPermission,
 )
-from kordena_fiscal.signing.contracts import InvalidCertificateMaterialError
+from kordena_fiscal.signing.contracts import (
+    FiscalSigningError,
+    InvalidCertificateMaterialError,
+)
 from kordena_fiscal.vault.encrypted_a1 import A1VaultUnavailable, EncryptedA1Vault
 from kordena_fiscal.web.human_auth import CSRF_COOKIE, CSRF_HEADER, SESSION_COOKIE
 
@@ -293,6 +296,17 @@ def _authorized(
         ) from exc
 
 
+def _a1_failure_code(message: str) -> str:
+    """Map fixed, non-secret preflight messages to stable user-facing codes."""
+    if "outside validity period" in message:
+        return "A1_EXPIRED"
+    if "CNPJ does not match" in message or "lacks issuer identity" in message:
+        return "A1_CNPJ_MISMATCH"
+    if "material is invalid" in message:
+        return "A1_FILE_OR_PASSWORD_INVALID"
+    return "A1_VALIDATION_FAILED"
+
+
 def create_portal_router(
     identity: HumanIdentityService,
     executor: HumanPortalExecutor | None,
@@ -415,10 +429,22 @@ def create_portal_router(
                 scope=scope, issuer_cnpj=issuer_cnpj,
                 pkcs12_bytes=certificate, password=password,
             )
-        except (A1VaultUnavailable, FiscalValidationError, InvalidCertificateMaterialError):
+        except FiscalSigningError as exc:
+            # Preflight failures are not FiscalValidationError; they used to escape as HTTP 500.
+            raise HTTPException(
+                422, detail={"code": _a1_failure_code(str(exc)),
+                             "message": "Certificado A1 inválido, vencido ou não pertence ao CNPJ"},
+            ) from None
+        except (A1VaultUnavailable, FiscalValidationError):
             raise HTTPException(
                 422, detail={"code": "A1_VALIDATION_FAILED",
                              "message": "Certificado A1 inválido, vencido ou não pertence ao CNPJ"},
+            ) from None
+        except OSError:
+            # Vault directory not writable/full: never leak paths or errno details.
+            raise HTTPException(
+                503, detail={"code": "A1_VAULT_UNAVAILABLE",
+                             "message": "Cofre A1 indisponível para gravação neste ambiente"},
             ) from None
         return {
             "status": "stored",
