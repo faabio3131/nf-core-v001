@@ -513,3 +513,59 @@ def test_live_leaf_preflight_requires_exact_and_nonrevoked_leaf_bundle(chain, bu
     ], root)
     with pytest.raises(NationalReceiptPkiError):
         require_national_signer_pki_ready(frozenset({pin}), bundle_env=bundle_env)
+
+
+@pytest.mark.parametrize("critical", [False, True])
+@pytest.mark.parametrize("control", [
+    x509.PolicyConstraints(require_explicit_policy=0, inhibit_policy_mapping=None),
+    x509.InhibitAnyPolicy(skip_certs=0),
+    x509.UnrecognizedExtension(
+        ObjectIdentifier("2.5.29.33"),
+        bytes.fromhex("300a300806022a0306022a04"),
+    ),
+])
+def test_unprocessed_policy_controls_block_ca_and_leaf(chain, critical, control) -> None:
+    path, monkeypatch, root, intermediate, leaf, root_key, intermediate_key = chain
+    restricted_ca = _certificate(
+        intermediate.subject, root.subject, intermediate_key.public_key(),
+        root_key, ca=True, extra_extension=control, critical=critical,
+    )
+    _write(path, monkeypatch, [restricted_ca, root], [
+        _crl(restricted_ca, intermediate_key), _crl(root, root_key),
+    ], root)
+    with pytest.raises(NationalReceiptPkiError):
+        require_national_receipt_pki_ready()
+    with pytest.raises(NationalReceiptPkiError):
+        verify_national_receipt_pki(leaf)
+    _write(path, monkeypatch, [intermediate, root], [
+        _crl(intermediate, intermediate_key), _crl(root, root_key),
+    ], root)
+    restricted_leaf = _certificate(
+        leaf.subject, intermediate.subject, _key().public_key(),
+        intermediate_key, ca=False, extra_extension=control, critical=critical,
+    )
+    with pytest.raises(NationalReceiptPkiError):
+        verify_national_receipt_pki(restricted_leaf)
+
+
+def test_weak_rsa_signer_and_ca_are_rejected(chain) -> None:
+    path, monkeypatch, root, intermediate, leaf, root_key, intermediate_key = chain
+    weak_key = rsa.generate_private_key(public_exponent=65537, key_size=1024)
+    weak_leaf = _certificate(
+        leaf.subject, intermediate.subject, weak_key.public_key(),
+        intermediate_key, ca=False,
+    )
+    _write(path, monkeypatch, [intermediate, root], [
+        _crl(intermediate, intermediate_key), _crl(root, root_key),
+    ], root)
+    with pytest.raises(NationalReceiptPkiError):
+        verify_national_receipt_pki(weak_leaf)
+    weak_ca = _certificate(
+        intermediate.subject, root.subject, weak_key.public_key(),
+        root_key, ca=True,
+    )
+    _write(path, monkeypatch, [weak_ca, root], [
+        _crl(weak_ca, weak_key), _crl(root, root_key),
+    ], root)
+    with pytest.raises(NationalReceiptPkiError):
+        require_national_receipt_pki_ready()

@@ -184,8 +184,29 @@ def _require_supported_cert_extensions(cert: x509.Certificate) -> None:
     independently implemented and reviewed, they cannot authorize receipts.
     Noncritical informational extensions remain permitted.
     """
+    key = cert.public_key()
+    if isinstance(key, rsa.RSAPublicKey):
+        if key.key_size < 2048:
+            raise NationalReceiptPkiError("Weak national receipt RSA key")
+    elif isinstance(key, ec.EllipticCurvePublicKey):
+        if key.key_size < 224:
+            raise NationalReceiptPkiError("Weak national receipt EC key")
+    else:
+        raise NationalReceiptPkiError("Unsupported national receipt certificate key")
     supported = {ExtensionOID.BASIC_CONSTRAINTS, ExtensionOID.KEY_USAGE}
+    # Reject policy-altering extensions even if incorrectly marked noncritical.
+    # Ordinary noncritical CertificatePolicies remain informational until a
+    # reviewed SEFIN policy set and complete path policy processor are available.
+    unsupported_policy_controls = {
+        "2.5.29.33",  # policyMappings
+        "2.5.29.36",  # policyConstraints
+        "2.5.29.54",  # inhibitAnyPolicy
+    }
     for extension in cert.extensions:
+        if extension.oid.dotted_string in unsupported_policy_controls:
+            raise NationalReceiptPkiError(
+                "National receipt policy controls require full path validation"
+            )
         if extension.oid == ExtensionOID.NAME_CONSTRAINTS:
             raise NationalReceiptPkiError(
                 "National receipt NameConstraints require full path validation"
