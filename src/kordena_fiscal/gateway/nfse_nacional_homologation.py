@@ -305,6 +305,7 @@ class NfseNacionalHomologationGateway:
             )
         verify_outgoing_national_dps(
             signed_dps, expected_signer_sha256=a1.certificate_fingerprint_sha256,
+            tp_amb=environment_profile.tp_amb_text,
         )
         # Durable dispatch evidence is written BEFORE the first byte is sent;
         # a failure here is still a certain pre-dispatch refusal.

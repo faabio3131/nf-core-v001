@@ -588,6 +588,12 @@ def _ocsp_bytes(child, issuer, signer, signer_key, *, status=ocsp.OCSPCertStatus
     return builder.sign(signer_key, hashes.SHA256()).public_bytes(serialization.Encoding.DER)
 
 
+def _tampered_signature(raw: bytes) -> bytes:
+    tampered = bytearray(raw)
+    tampered[-1] ^= 0x01
+    return bytes(tampered)
+
+
 def test_configured_ocsp_requires_exact_live_proof_and_does_not_replace_crl(chain):
     path, monkeypatch, root, intermediate, leaf, root_key, intermediate_key = chain
     _write(path, monkeypatch, [root, intermediate], [
@@ -608,7 +614,10 @@ def test_configured_ocsp_requires_exact_live_proof_and_does_not_replace_crl(chai
         _ocsp_bytes(leaf, intermediate, intermediate, intermediate_key,
                     status=ocsp.OCSPCertStatus.UNKNOWN),
         _ocsp_bytes(intermediate, root, root, root_key),
-        _ocsp_bytes(leaf, intermediate, intermediate, root_key),
+        # Wrong signature: current `cryptography` refuses to build a response
+        # signed by a key that does not match the responder, so tamper the
+        # trailing signature byte of an otherwise valid response instead.
+        _tampered_signature(_ocsp_bytes(leaf, intermediate, intermediate, intermediate_key)),
     ):
         filename.write_bytes(raw)
         with pytest.raises(NationalReceiptPkiError):

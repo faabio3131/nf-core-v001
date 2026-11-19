@@ -55,7 +55,14 @@ def test_sp5_national_get_and_post_share_signed_receipt_verifier() -> None:
     receipt = _source("src/kordena_fiscal/gateway/nfse_national_receipt.py")
 
     assert "return validate_official_nfse_receipt(" in query
-    assert "expected=NationalReceiptIdentity.from_request(request, schema_profile=profile)" in query
+    # GET binds the receipt to the archived dispatch identity (or the governed
+    # legacy context), both derived from the canonical request identity.
+    assert "expected, profile = evidence.identity, evidence.schema_profile" in query
+    assert "legacy_national_receipt_context(xml, key, request)" in query
+    assert (
+        "return NationalReceiptIdentity.from_request(request, schema_profile=profile), profile"
+        in receipt
+    )
     assert "document = validate_official_nfse_receipt(" in gateway
     assert "expected=expected, schema_profile=schema_profile" in gateway
     assert "def _verify_nfse_receipt_signature(" in receipt
@@ -72,4 +79,10 @@ def test_sp5_fitness_does_not_hide_nfce_manual_or_icp_trust_gaps() -> None:
         in portal
     )
     assert "not ICP-Brasil path/revocation" in receipt
-    assert 'national_restricted_validator("NFSe_v1.01.xsd")' in receipt
+    # Receipt XSD is selected by explicit profile (NT009 restricted or
+    # production); unsupported profiles still fail closed.
+    assert (
+        "national_nfse_receipt_validator(profile=schema_profile).validate_document(xml)"
+        in receipt
+    )
+    assert "National NFSe receipt schema profile unsupported" in receipt

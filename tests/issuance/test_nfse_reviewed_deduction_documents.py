@@ -96,7 +96,14 @@ def test_durable_evidence_allocation_refuses_other_source_after_policy_rotation(
     from kordena_fiscal.domain import SourceReference
     from kordena_fiscal.persistence import PersistenceConflictError, SqliteFiscalDatabase
 
-    original = replace(_reviewed(), dps_number=None)
+    reviewed = _reviewed()
+    # Durable DPS numbering is partitioned by host namespace; the synthetic
+    # fixture scope has none, which would fail before the evidence gate.
+    scope = replace(reviewed.scope, host_namespace="fm-nfcore")
+    original = replace(
+        reviewed, dps_number=None, scope=scope,
+        issuer=replace(reviewed.issuer, scope=scope),
+    )
     database = SqliteFiscalDatabase(tmp_path / "deductions.sqlite")
     database.initialize()
     application = FiscalApplicationService(database)
