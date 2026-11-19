@@ -304,3 +304,15 @@ test("municipal SP5 form payload fields match reviewed runtime contracts", () =>
   assert.match(script, /"\/v1\/portal\/operations\/" \+ operation/);
   assert.match(script, /NÃO retransmita/);
 });
+
+test("Cajamar read-only investigation exposes evidence without claiming cancellation", () => {
+  const start = script.indexOf("function appendReviewedMunicipalWebAction");
+  const end = script.indexOf("function appendCajamarCancellation", start);
+  const form = script.slice(start, end);
+  assert.match(form, /operation === "inspectCajamarNfseCancellation"/);
+  assert.ok(form.includes("Nota localizada; isso não comprova cancelamento."));
+  assert.ok(form.includes("Código municipal: "));
+  assert.ok(form.includes("Referência da evidência arquivada: "));
+  assert.match(form, /reply\.official_fiscal_confirmation === true/);
+  assert.doesNotMatch(form, /innerHTML|insertAdjacentHTML/);
+});
