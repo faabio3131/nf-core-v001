@@ -973,6 +973,11 @@ class DurableHumanPortalExecutor:
                 # A second Cajamar cancellation must return a scoped HTTP 409
                 # instead of leaking a storage exception or issuing another POST.
                 # All other existing fiscal operations retain their contracts.
+                if operation_id == "inspectCajamarNfseCancellation":
+                    raise _portal_error(
+                        409, "CAJAMAR_RECOVERY_STATE_CONFLICT",
+                        "Original Cajamar cancellation is not pending investigation",
+                    ) from exc
                 if operation_id not in {
                     "cancelCajamarNfse", "cancelOsascoNfse", "substituteOsascoNfse",
                     "cancelBarueriNfse", "substituteBarueriNfse",
