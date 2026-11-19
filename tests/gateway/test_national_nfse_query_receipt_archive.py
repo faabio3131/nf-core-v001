@@ -161,6 +161,8 @@ def test_query_rejects_resigned_receipt_with_same_identity_but_changed_fiscal_fa
 
         from kordena_fiscal.gateway.nfse_national_homologation import (
             OfficialNfseTransportError as PostError,
+        )
+        from kordena_fiscal.gateway.nfse_national_homologation import (
             parse_nfse_homologation_response,
         )
 
