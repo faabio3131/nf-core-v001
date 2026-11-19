@@ -158,3 +158,16 @@ def test_query_rejects_resigned_receipt_with_same_identity_but_changed_fiscal_fa
         # this is not the canonical fiscal document prepared by the customer.
         with pytest.raises(OfficialNfseTransportError, match="differs from canonical DPS"):
             _validate_official_nfse(_response(other_xml), _KEY, expected=expected)
+
+        from kordena_fiscal.gateway.nfse_national_homologation import (
+            OfficialNfseTransportError as PostError,
+            parse_nfse_homologation_response,
+        )
+
+        payload = json.loads(_response(other_xml))
+        payload["chaveAcesso"] = _KEY
+        with pytest.raises(PostError, match="XML retornado"):
+            parse_nfse_homologation_response(
+                json.dumps(payload).encode(), expected=expected,
+                schema_profile=NT009_RESTRICTED_PROFILE,
+            )
