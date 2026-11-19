@@ -48,8 +48,10 @@ def _text(value: object, limit: int = 128) -> bool:
 
 
 def _treatment(data: Any, identity: str, digest: str) -> NfseNationalTaxTreatment:
-    if not isinstance(data, dict) or set(data) not in (
-        _TREATMENT, _TREATMENT | {"municipal_benefit_id"},
+    if (
+        not isinstance(data, dict)
+        or not _TREATMENT <= set(data)
+        or not set(data) <= _TREATMENT | {"municipal_benefit_id", "iss_rate"}
     ):
         raise ValueError("national treatment fields")
     converted = dict(data)
@@ -221,6 +223,8 @@ def require_current_national_treatment_for_live_dispatch(
         raise FiscalValidationError(
             "Live National NFS-e decision differs from current pinned policy"
         )
+    if document.requires_reviewed_iss_rate and current.treatment.iss_rate is None:
+        raise FiscalValidationError("Live National NFS-e requires exact reviewed ISS rate")
     return current
 
 
