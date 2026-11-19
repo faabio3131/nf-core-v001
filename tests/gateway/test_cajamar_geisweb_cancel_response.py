@@ -107,7 +107,35 @@ def test_geisweb_explicit_rejection_is_not_cancelled_and_preserves_official_xml(
     )
     assert result.confirmed is False
     assert result.rejection_code == "8"
+    assert result.requires_reconciliation is False
     verifier.assert_called_once()
+
+
+@pytest.mark.parametrize("code", ["10", "11", "12", "14", "99", "011"])
+def test_geisweb_ambiguous_errors_cannot_restore_authorized(code: str) -> None:
+    inner = (
+        "<CancelaNfseResposta><Msg>"
+        f"<Erro>{code}</Erro><Status>Resultado a investigar</Status>"
+        "</Msg></CancelaNfseResposta>"
+    )
+    result = interpret_cajamar_cancel_response(
+        receipt=_soap(inner), source=_original(), issued=_issued(),
+        verify_official_response=Mock(),
+    )
+    assert result.confirmed is False
+    assert result.requires_reconciliation is True
+    assert result.response_xml == inner.encode()
+
+
+def test_geisweb_rejects_ambiguous_error_code() -> None:
+    with pytest.raises(CajamarGeiswebCancellationError):
+        interpret_cajamar_cancel_response(
+            receipt=_soap(
+                "<CancelaNfseResposta><Msg><Erro>8</Erro><Erro>11</Erro>"
+                "</Msg></CancelaNfseResposta>"
+            ),
+            source=_original(), issued=_issued(), verify_official_response=Mock(),
+        )
 
 
 def test_geisweb_cancellation_rejects_fake_confirmed_flag_without_soap_proof() -> None:

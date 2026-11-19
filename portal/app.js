@@ -1275,7 +1275,9 @@ function appendCajamarCancellation(article) {
       });
       result.textContent = reply.official_fiscal_confirmation
         ? "Cancelamento Cajamar confirmado. Evento arquivado no documento original."
-        : "A prefeitura rejeitou o pedido. Consulte o evento fiscal antes de outra ação.";
+        : reply.recovery_required === true
+          ? "Resultado municipal incerto. Nota em investigação; NÃO retransmita."
+          : "A prefeitura rejeitou o pedido. Consulte o evento fiscal antes de outra ação.";
       attempt = null;
     } catch (error) {
       result.textContent = (error instanceof Error ? error.message : "Cancelamento não confirmado")

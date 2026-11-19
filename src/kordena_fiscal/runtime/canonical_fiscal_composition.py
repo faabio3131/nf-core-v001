@@ -932,6 +932,7 @@ def build_runtime_fiscal_handler_factory(
                     "official_fiscal_confirmation": result.decision.confirmed,
                     "rejection_code": result.decision.rejection_code,
                     "municipality_ibge": "3509205",
+                    "recovery_required": result.decision.requires_reconciliation,
                 }
 
             handlers["cancelCajamarNfse"] = PreflightFiscalOperationHandler(

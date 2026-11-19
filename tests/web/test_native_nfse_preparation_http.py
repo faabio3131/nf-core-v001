@@ -1168,6 +1168,14 @@ def test_cajamar_portal_prepares_sends_recovers_and_downloads_authorized_xml(
         cancelled(request, original, invoice)
         if request.document.source.source_id == "cajamar-second-for-ambiguous-cancel":
             raise RuntimeError("synthetic transport timeout after cancellation claim")
+        if request.document.source.source_id == "cajamar-already-cancelled":
+            return CajamarCancellationDecision(
+                confirmed=False, rejection_code="11",
+                response_xml=(
+                    b"<CancelaNfseResposta><Msg><Erro>11</Erro>"
+                    b"<Status>NFSe ja cancelada</Status></Msg></CancelaNfseResposta>"
+                ),
+            )
         official_cancel = (
             "<CancelaNfseResposta><Nfse><IdentificacaoNfse>"
             f"<NumeroRps>{original.rps_number}</NumeroRps>"
@@ -1450,6 +1458,60 @@ def test_cajamar_portal_prepares_sends_recovers_and_downloads_authorized_xml(
         )
         assert replay_cancel.status_code != 200
         assert cancelled.call_count == 2, "Ambiguous cancel must not be re-posted"
+        with db() as uow:
+            intents = [
+                item for item in uow.archive.list_for_document(original.scope, second_id)
+                if item.media_type == "application/vnd.nfcore.cajamar-cancel-intent.v1+json"
+            ]
+            assert len(intents) == 1
+            assert json.loads(intents[0].content)["document_id"] == second_id
+
+        third = _post(
+            web, payload | {"source_id": "cajamar-already-cancelled"},
+            key="cajamar-third-service-order",
+        )
+        assert third.status_code == 200, third.text
+        third_id = third.json()["document_id"]
+        third_body = body | {"document_id": third_id}
+        for operation, command_key in (
+            ("issueFiscalDocument", "cajamar-third-issue"),
+            ("reconcileFiscalOperation", "cajamar-third-query"),
+        ):
+            result = web.post(
+                "/v1/portal/operations/" + operation, json=third_body,
+                headers={CSRF_HEADER: csrf, "Idempotency-Key": command_key},
+            )
+            assert result.status_code == 200, result.text
+        result = web.post(
+            "/v1/portal/operations/cancelCajamarNfse",
+            json=third_body | {
+                "cancellation_reason": "duplicate_invoice", "human_approval": True,
+            },
+            headers={CSRF_HEADER: csrf, "Idempotency-Key": "cajamar-third-cancel"},
+        )
+        assert result.status_code == 200, result.text
+        assert result.json()["status"] == FiscalDocumentState.CANCEL_REQUESTED.value
+        assert result.json()["official_fiscal_confirmation"] is False
+        assert result.json()["recovery_required"] is True
+        with db() as uow:
+            state = uow.lifecycle.get(third_id)
+            assert state is not None
+            assert state.state is FiscalDocumentState.CANCEL_REQUESTED
+            events = [
+                item for item in uow.archive.list_for_document(original.scope, third_id)
+                if item.kind is FiscalArchiveKind.FISCAL_EVENT
+            ]
+            assert len(events) == 1
+            assert b"<Erro>11</Erro>" in events[0].content
+        denied_retry = web.post(
+            "/v1/portal/operations/cancelCajamarNfse",
+            json=third_body | {
+                "cancellation_reason": "duplicate_invoice", "human_approval": True,
+            },
+            headers={CSRF_HEADER: csrf, "Idempotency-Key": "cajamar-third-cancel-retry"},
+        )
+        assert denied_retry.status_code != 200
+        assert cancelled.call_count == 3
 
 
 def _synthetic_a1_for_native_issuer() -> EphemeralCertificateMaterial:

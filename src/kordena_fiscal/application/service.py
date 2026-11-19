@@ -2483,7 +2483,8 @@ class FiscalApplicationService:
 
         A transport failure leaves CANCEL_REQUESTED for investigation. Replay
         does not issue another CancelaNfse POST. Only correlated official
-        response proof commits CANCELLED; a proven rejection restores AUTHORIZED.
+        response proof commits CANCELLED; a definite request rejection restores
+        AUTHORIZED. Uncertain or already-cancelled codes retain CANCEL_REQUESTED.
         """
         if (
             not callable(submit_verified_cancel)
@@ -2508,6 +2509,29 @@ class FiscalApplicationService:
                 correlation_id=scope.correlation_id,
             )
             uow.lifecycle.save(claim, expected_version=before.version)
+            # Preserve the approved claim before external I/O. No client-supplied
+            # XML or external status is trusted; an investigation can recover
+            # the exact identity even when the process dies after submission.
+            intent = json.dumps({
+                "document_id": document_id,
+                "request_fingerprint": request.request_fingerprint,
+                "issuer_cnpj": original.issuer_cnpj.value,
+                "issuer_ibge": original.issuer_ibge,
+                "rps_number": original.rps_number,
+                "rps_series": original.rps_series,
+                "batch_id": original.municipal_batch_id,
+                "invoice_number": invoice.invoice_number,
+                "verification_code": invoice.verification_code,
+                "authorized_xml_sha256": hashlib.sha256(invoice.authorized_xml).hexdigest(),
+                "claim_version": claim.version,
+                "cancellation_reason": cancellation_reason,
+            }, sort_keys=True, separators=(",", ":")).encode("utf-8")
+            uow.archive.append(FiscalArchiveEntry.build(
+                scope=scope, document_reference=document_id,
+                kind=FiscalArchiveKind.OTHER, content=intent,
+                media_type="application/vnd.nfcore.cajamar-cancel-intent.v1+json",
+                archived_at=occurred_at, retention=retention,
+            ))
             uow.commit()
         decision = submit_verified_cancel(request, original, invoice)
         if not isinstance(decision, CajamarCancellationDecision):
@@ -2525,19 +2549,25 @@ class FiscalApplicationService:
             latest = uow.lifecycle.get(document_id)
             if latest != claim:
                 raise PersistenceConflictError("Cajamar cancellation changed during delivery")
-            target = (
-                FiscalDocumentState.CANCELLED if decision.confirmed
-                else FiscalDocumentState.AUTHORIZED
-            )
-            final = self._state_machine.transition(
-                latest, target, occurred_at=occurred_at,
-                reason=(
-                    "Cajamar cancellation officially confirmed"
-                    if decision.confirmed else "Cajamar cancellation officially rejected"
-                ),
-                correlation_id=scope.correlation_id,
-            )
-            uow.lifecycle.save(final, expected_version=latest.version)
+            if decision.requires_reconciliation:
+                # Includes code 11 (already cancelled), which is not a
+                # correlated cancellation receipt. Preserve the claim AND
+                # returned evidence, without re-authorizing or re-posting.
+                final = latest
+            else:
+                target = (
+                    FiscalDocumentState.CANCELLED if decision.confirmed
+                    else FiscalDocumentState.AUTHORIZED
+                )
+                final = self._state_machine.transition(
+                    latest, target, occurred_at=occurred_at,
+                    reason=(
+                        "Cajamar cancellation officially confirmed"
+                        if decision.confirmed else "Cajamar cancellation officially rejected"
+                    ),
+                    correlation_id=scope.correlation_id,
+                )
+                uow.lifecycle.save(final, expected_version=latest.version)
             entry = uow.archive.append(event)
             uow.commit()
         return DurableCajamarCancellationOutcome(

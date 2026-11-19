@@ -23,6 +23,13 @@ from kordena_fiscal.gateway.sp4_municipal_canonical import (
 )
 
 _LIMIT = 2_097_152
+# GeisWeb manual §13.4: 10 (not found), 11 (already cancelled),
+# 12 (not authenticated), 14 (cancel error) and undocumented codes do not
+# prove the original invoice is still active. Only explicit request-level
+# rejection codes below permit the previous local state to be restored.
+_DEFINITE_REJECTION_CODES = frozenset({
+    "1", "2", "3", "4", "5", "6", "7", "8", "9", "13", "15", "60",
+})
 
 
 class CajamarGeiswebCancellationError(FiscalValidationError):
@@ -130,6 +137,18 @@ class CajamarCancellationDecision:
             raise CajamarGeiswebCancellationError("Missing municipal cancellation evidence")
         if self.confirmed == (self.rejection_code is not None):
             raise CajamarGeiswebCancellationError("Contradictory municipal cancel decision")
+        if self.rejection_code is not None and (
+            not isinstance(self.rejection_code, str)
+            or not self.rejection_code.isascii()
+            or not self.rejection_code.isdecimal()
+            or not 0 < int(self.rejection_code) <= 999
+        ):
+            raise CajamarGeiswebCancellationError("Invalid municipal cancellation rejection")
+
+    @property
+    def requires_reconciliation(self) -> bool:
+        """An error is not positive evidence that the original remains active."""
+        return not self.confirmed and self.rejection_code not in _DEFINITE_REJECTION_CODES
 
 
 def interpret_cajamar_cancel_response(
@@ -200,7 +219,8 @@ def interpret_cajamar_cancel_response(
     if errors:
         if len(errors) != 1 or notes:
             raise CajamarGeiswebCancellationError("Contradictory municipal cancellation result")
-        error_code = errors[0].findtext("Erro")
+        codes = errors[0].findall("Erro")
+        error_code = codes[0].text if len(codes) == 1 else None
         if (
             not isinstance(error_code, str)
             or not error_code.isascii() or not error_code.isdecimal()
