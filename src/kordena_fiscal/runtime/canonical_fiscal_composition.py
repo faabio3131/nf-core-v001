@@ -944,11 +944,11 @@ def build_runtime_fiscal_handler_factory(
         ):
             cajamar_observe = selected_cajamar_ports.observe_invoice
 
-            def inspect_cajamar_cancel(
+            def validate_cajamar_observation(
                 scope: ExecutionScope, payload: Mapping[str, Any], key: str | None,
-            ) -> Mapping[str, Any]:
+            ) -> None:
                 if (
-                    not key or not key.strip() or len(key) > 256
+                    not isinstance(key, str) or not key.strip() or len(key) > 256
                     or set(payload) != {"unit_id", "environment", "document_id"}
                     or payload["unit_id"] != scope.unit_id
                     or payload["environment"] != scope.environment.value
@@ -956,6 +956,14 @@ def build_runtime_fiscal_handler_factory(
                     or not payload["document_id"].strip()
                 ):
                     raise FiscalValidationError("Scoped Cajamar consultation required")
+                application.preflight_cajamar_cancellation_observation(
+                    scope=scope, document_id=payload["document_id"],
+                )
+
+            def inspect_cajamar_cancel(
+                scope: ExecutionScope, payload: Mapping[str, Any], key: str | None,
+            ) -> Mapping[str, Any]:
+                validate_cajamar_observation(scope, payload, key)
                 observation, entry_id = application.observe_cajamar_cancellation(
                     scope=scope, document_id=payload["document_id"],
                     query=cajamar_observe, retention=retention,
@@ -971,7 +979,9 @@ def build_runtime_fiscal_handler_factory(
                     "rejection_code": observation.error_code,
                 }
 
-            handlers["inspectCajamarNfseCancellation"] = inspect_cajamar_cancel
+            handlers["inspectCajamarNfseCancellation"] = PreflightFiscalOperationHandler(
+                inspect_cajamar_cancel, validate_cajamar_observation,
+            )
         if extrema_adapter is not None:
             cancellation_gateway = extrema_adapter
 
