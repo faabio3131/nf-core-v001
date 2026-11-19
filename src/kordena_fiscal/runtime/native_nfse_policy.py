@@ -51,7 +51,9 @@ def _treatment(data: Any, identity: str, digest: str) -> NfseNationalTaxTreatmen
     if (
         not isinstance(data, dict)
         or not _TREATMENT <= set(data)
-        or not set(data) <= _TREATMENT | {"municipal_benefit_id", "iss_rate"}
+        or not set(data) <= _TREATMENT | {
+            "municipal_benefit_id", "iss_rate", "complementary_information",
+        }
     ):
         raise ValueError("national treatment fields")
     converted = dict(data)
@@ -225,6 +227,14 @@ def require_current_national_treatment_for_live_dispatch(
         )
     if document.requires_reviewed_iss_rate and current.treatment.iss_rate is None:
         raise FiscalValidationError("Live National NFS-e requires exact reviewed ISS rate")
+    # PBH notice 29/10/2025, updated 14/08/2026: the identified
+    # cooperative benefit is specifically the differentiated 3% ISS rate.
+    if (
+        document.service_jurisdiction.municipality_ibge_code == "3106200"
+        and decision.municipal_benefit_id is not None
+        and decision.iss_rate != "3.00"
+    ):
+        raise FiscalValidationError("BH cooperative benefit requires reviewed 3 percent ISS")
     return current
 
 

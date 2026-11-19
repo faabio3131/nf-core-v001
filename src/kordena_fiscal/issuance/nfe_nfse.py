@@ -333,6 +333,7 @@ class NfseNationalTaxTreatment:
     policy_id: str | None = None
     policy_sha256: str | None = None
     iss_rate: str | None = None
+    complementary_information: str | None = None
 
     def __post_init__(self) -> None:
         if (self.policy_id is None) != (self.policy_sha256 is None):
@@ -368,6 +369,14 @@ class NfseNationalTaxTreatment:
             or self.special_regime_code == "2"
         ):
             raise FiscalValidationError("Reviewed ISS rate must be explicit and applicable")
+        if self.complementary_information is not None:
+            message = self.complementary_information
+            if (
+                not isinstance(message, str) or not message.strip()
+                or len(message) > 2000
+                or any(ord(char) < 32 and char not in "\t\n\r" for char in message)
+            ):
+                raise FiscalValidationError("Reviewed NFS-e complementary information invalid")
         if self.simples_assessment_code not in {None, "1", "2", "3"}:
             raise FiscalValidationError("National Simples assessment requires code 1..3")
         if type(self.effective_from) is not date:
@@ -708,6 +717,8 @@ def build_nfse_request_fingerprint(document: NfseCanonicalDocument) -> str:
             treatment_payload["policy_sha256"] = treatment.policy_sha256
         if treatment.iss_rate is not None:
             treatment_payload["iss_rate"] = treatment.iss_rate
+        if treatment.complementary_information is not None:
+            treatment_payload["complementary_information"] = treatment.complementary_information
         payload["national_tax_treatment"] = treatment_payload
     if document.service_taker is not None:
         taker = document.service_taker

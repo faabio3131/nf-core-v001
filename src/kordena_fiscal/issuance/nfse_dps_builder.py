@@ -262,6 +262,10 @@ def build_unsigned_dps(
     if is_nt009:
         _child(c_serv, "xDescServ", service.description.strip())
 
+    if treatment is not None and treatment.complementary_information is not None:
+        additional = etree.SubElement(serv, f"{{{_NFSE_NS}}}infoCompl")
+        _child(additional, "xInfComp", treatment.complementary_information)
+
     valores = etree.SubElement(info, f"{{{_NFSE_NS}}}valores")
     v_serv_prest = etree.SubElement(valores, f"{{{_NFSE_NS}}}vServPrest")
     _child(v_serv_prest, "vServ", _money(service.gross_amount.amount))

@@ -139,7 +139,7 @@ def test_live_gateway_checks_policy_before_fiscal_exchange(
     monkeypatch.setattr(gate, "require_national_receipt_signer_pins", Mock())
     from kordena_fiscal.gateway import nfse_receipt_pki
 
-    monkeypatch.setattr(nfse_receipt_pki, "require_national_receipt_pki_ready", Mock())
+    monkeypatch.setattr(nfse_receipt_pki, "require_national_signer_pki_ready", Mock())
     monkeypatch.setattr(gate, "validate_a1_for_issuer", Mock())
     monkeypatch.setattr(gate, "encode_signed_dps", Mock(return_value=b"{}"))
     monkeypatch.setattr(gate, "parse_signed_dps_info", Mock())
@@ -180,7 +180,7 @@ def test_policy_rotation_during_dps_signing_refuses_live_post(
     resolver = Mock(return_value=material)
     monkeypatch.setattr(gate, "_LIVE_EXCHANGE", exchange)
     monkeypatch.setattr(gate, "require_national_receipt_signer_pins", Mock())
-    monkeypatch.setattr(nfse_receipt_pki, "require_national_receipt_pki_ready", Mock())
+    monkeypatch.setattr(nfse_receipt_pki, "require_national_signer_pki_ready", Mock())
     monkeypatch.setattr(gate, "validate_a1_for_issuer", Mock())
     monkeypatch.setattr(gate, "encode_signed_dps", Mock(return_value=b"{}"))
     monkeypatch.setattr(gate, "parse_signed_dps_info", Mock())
