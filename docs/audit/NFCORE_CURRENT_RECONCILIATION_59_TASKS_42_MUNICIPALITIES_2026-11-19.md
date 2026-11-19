@@ -152,3 +152,8 @@ Não apagar esta cidade por erro de contagem. O checkpoint histórico de 13/11 d
 ## 5. Continuidade
 
 Não reabrir H/I por documento antigo. Reabrir só com regressão ou lacuna específica. Preservar IDs/ordem/checkmarks históricos sem promoção de conclusão. Os 59 IDs abrangem decisões, documentação, código e gates, não 59 features. Este inventário inicial por 59 IDs + 43 cidades não equivale à validação completa de todas as operações por regime/competência. Testes e certificação integral ainda pendentes. Nenhuma CI, merge, homologação ou deploy nesta entrega.
+
+
+## CURRENT 19/11/2026 — delta de Cajamar após reconciliação 59/43
+
+**SHA de engenharia:** `0cdd034a293696e376aafd70923a42bfe7dced0f`, ver `docs/operations/CAJAMAR_GEISWEB_RUNTIME_PROVISIONING.md`. Preservadas emissão/consulta de lote/cancelamento/XML e autoridade canônica. GAP-CAJ-01 avançou: intent durável, códigos incertos fail-closed e ConsultaNfse por nota original conectada a Portal/arquivo (`5430c180`, `c3c80feb`, `b129fe6e`, `b52ab1eb`). Sem status oficial inequívoco no manual público, confirmação final de cancelamento incerto depende de contrato/prova autenticada adicional; consulta não muda lifecycle. GAP-CAJ-02: revisão humana agora arquivada, sem simular substituição; integração da confirmação municipal exige formato/contrato comprovado. GAP-CAJ-03: indisponibilidade de impressão oficial em homologação documentada e refletida no Portal; PDF municipal não fabricado (`0cdd034a`). Testes novos escritos, ainda não executados. **IMPLEMENTED_NOT_CERTIFIED** no escopo entregue; não declarar Cajamar nem NFCore completo. Sem CI, merge ou deploy. Não reabrir construção existente sem evidência de regressão.
