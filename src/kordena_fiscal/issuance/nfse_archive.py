@@ -27,6 +27,7 @@ from kordena_fiscal.domain import (
 from .nfe_nfse import (
     NfseAuthorizationRequest,
     NfseCanonicalDocument,
+    NfseDeductionDocument,
     NfseForeignAddress,
     NfseNationalSubstitution,
     NfseNationalTaxTreatment,
@@ -158,6 +159,14 @@ def encode_prepared_nfse(request: NfseAuthorizationRequest) -> bytes:
                     "complementary_information":
                         document.national_tax_treatment.complementary_information,
                 } if document.national_tax_treatment.complementary_information is not None else {}),
+                **({
+                    "deduction_source_type": document.national_tax_treatment.deduction_source_type,
+                    "deduction_source_id": document.national_tax_treatment.deduction_source_id,
+                    "deduction_documents": [
+                        item.as_payload() for item in
+                        document.national_tax_treatment.deduction_documents
+                    ],
+                } if document.national_tax_treatment.deduction_documents else {}),
                 "iss_taxation_code": document.national_tax_treatment.iss_taxation_code,
                 "special_regime_code": document.national_tax_treatment.special_regime_code,
                 "simples_assessment_code": (
@@ -366,6 +375,16 @@ def decode_prepared_nfse(content: bytes, *, scope: ExecutionScope) -> NfseAuthor
         if root.get("national_tax_treatment") is not None:
             decision = _mapping(root["national_tax_treatment"], "national_tax_treatment")
             treatment = NfseNationalTaxTreatment(
+                deduction_source_type=_optional_text(
+                    decision.get("deduction_source_type"), "deduction_source_type",
+                ),
+                deduction_source_id=_optional_text(
+                    decision.get("deduction_source_id"), "deduction_source_id",
+                ),
+                deduction_documents=tuple(
+                    NfseDeductionDocument.from_payload(item)
+                    for item in decision.get("deduction_documents", [])
+                ),
                 policy_id=decision.get("policy_id"),
                 policy_sha256=decision.get("policy_sha256"),
                 iss_rate=_optional_text(decision.get("iss_rate"), "tax_treatment.iss_rate"),

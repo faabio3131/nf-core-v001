@@ -273,7 +273,36 @@ def build_unsigned_dps(
         group = "vAjusteBC" if is_nt009 else "vDedRed"
         amount_field = "vAjusteBCISSQN" if is_nt009 else "vDR"
         ded_red = etree.SubElement(valores, f"{{{_NFSE_NS}}}{group}")
-        _child(ded_red, amount_field, _money(service.deduction_amount.amount))
+        documents = treatment.deduction_documents if treatment is not None else ()
+        if not documents:
+            _child(ded_red, amount_field, _money(service.deduction_amount.amount))
+        else:
+            # The legacy XSD uses a choice, while NT009 admits the document
+            # list alongside the explicit ISS adjustment. Do not infer codes.
+            if is_nt009:
+                _child(ded_red, amount_field, _money(service.deduction_amount.amount))
+            records = etree.SubElement(ded_red, f"{{{_NFSE_NS}}}documentos")
+            for item in documents:
+                name = "docAjusteBC" if is_nt009 else "docDedRed"
+                record = etree.SubElement(records, f"{{{_NFSE_NS}}}{name}")
+                if is_nt009:
+                    _child(record, "tpAjusteBC", item.nt009_code)
+                    if item.description is not None:
+                        _child(record, "xTpAjusteBC", item.description)
+                    _child(record, "vTotDoc", _money(item.eligible_amount.amount))
+                    _child(record, "vAjusteAplic", _money(item.applied_amount.amount))
+                    _child(record, "dtEmiDoc", item.issued_on.isoformat())
+                    dfe = etree.SubElement(record, f"{{{_NFSE_NS}}}dFeNacional")
+                    _child(dfe, "tipoChaveDFe", "2" if item.kind == "nfe" else "1")
+                    _child(dfe, "chaveDFe", item.access_key)
+                else:
+                    _child(record, "chNFe" if item.kind == "nfe" else "chNFSe", item.access_key)
+                    _child(record, "tpDedRed", item.legacy_code)
+                    if item.legacy_code == "99" and item.description is not None:
+                        _child(record, "xDescOutDed", item.description)
+                    _child(record, "dtEmiDoc", item.issued_on.isoformat())
+                    _child(record, "vDedutivelRedutivel", _money(item.eligible_amount.amount))
+                    _child(record, "vDeducaoReducao", _money(item.applied_amount.amount))
     trib = etree.SubElement(valores, f"{{{_NFSE_NS}}}trib")
     trib_mun = etree.SubElement(trib, f"{{{_NFSE_NS}}}tribMun")
     iss_taxation = treatment.iss_taxation_code if treatment is not None else "1"

@@ -13,6 +13,7 @@ from typing import Any
 from kordena_fiscal.domain import ExecutionScope, FiscalDocumentKind, FiscalValidationError
 from kordena_fiscal.issuance.nfe_nfse import (
     NfseCanonicalDocument,
+    NfseDeductionDocument,
     NfseForeignAddress,
     NfseNationalTaxTreatment,
 )
@@ -53,10 +54,18 @@ def _treatment(data: Any, identity: str, digest: str) -> NfseNationalTaxTreatmen
         or not _TREATMENT <= set(data)
         or not set(data) <= _TREATMENT | {
             "municipal_benefit_id", "iss_rate", "complementary_information",
+            "deduction_source_type", "deduction_source_id", "deduction_documents",
         }
     ):
         raise ValueError("national treatment fields")
     converted = dict(data)
+    if "deduction_documents" in converted:
+        raw_documents = converted["deduction_documents"]
+        if not isinstance(raw_documents, list) or not 1 <= len(raw_documents) <= 100:
+            raise ValueError("deduction documents")
+        converted["deduction_documents"] = tuple(
+            NfseDeductionDocument.from_payload(item) for item in raw_documents
+        )
     for key in ("effective_from", "effective_to"):
         value = converted[key]
         if key == "effective_to" and value is None:
@@ -99,7 +108,7 @@ def _validate_selector(selector: Any) -> None:
 
 def resolve_national_treatment(
     environ: Mapping[str, str], scope: ExecutionScope, facts: Mapping[str, Any],
-    competence: date,
+    competence: date, *, source_type: str | None = None, source_id: str | None = None,
 ) -> ReviewedNfsePolicy | None:
     """Only an absent setting permits the existing ordinary-taxable path.
 
@@ -145,6 +154,7 @@ def resolve_national_treatment(
             raise ValueError("policy identity or scope")
         matches = []
         identities = set()
+        deduction_keys: set[tuple[str, str]] = set()
         for rule in data["rules"]:
             if not isinstance(rule, dict) or set(rule) != {"rule_id", "selector", "treatment"}:
                 raise ValueError("rule fields")
@@ -155,6 +165,11 @@ def resolve_national_treatment(
             treatment = _treatment(
                 rule["treatment"], data["policy_id"] + ":" + rule["rule_id"], digest,
             )
+            for item in treatment.deduction_documents:
+                document_key = (item.kind, item.access_key)
+                if document_key in deduction_keys:
+                    raise ValueError("Deduction document duplicated in reviewed policy")
+                deduction_keys.add(document_key)
             # PBH BHISS notice (updated 14 Aug 2026) lists only 1,2,4,5,6,9;
             # zero means no special regime. Code 3 is not admitted by BH.
             if (
@@ -166,7 +181,14 @@ def resolve_national_treatment(
                 rule["selector"] == facts and competence >= treatment.effective_from
                 and (treatment.effective_to is None or competence < treatment.effective_to)
             ):
-                matches.append(treatment)
+                if not treatment.deduction_documents or (
+                    treatment.deduction_source_type == source_type
+                    and treatment.deduction_source_id == source_id
+                ):
+                    matches.append(treatment)
+        specific = [item for item in matches if item.deduction_documents]
+        if specific:
+            matches = specific
         if len(matches) != 1:
             raise ValueError("national decision absent or ambiguous")
         return ReviewedNfsePolicy(data["policy_id"], data["version"], digest, raw, matches[0])
@@ -220,6 +242,7 @@ def require_current_national_treatment_for_live_dispatch(
     }
     current = resolve_national_treatment(
         environ, document.scope, facts, document.competence_date,
+        source_type=document.source.source_type, source_id=document.source.source_id,
     )
     if current is None or current.treatment != decision:
         raise FiscalValidationError(
@@ -267,6 +290,8 @@ def install_reviewed_policy(source: Path, directory: Path) -> str:
             resolve_national_treatment(
                 {POLICY_ENV: work}, scope, rule["selector"],
                 date.fromisoformat(rule["treatment"]["effective_from"]),
+                source_type=rule["treatment"].get("deduction_source_type"),
+                source_id=rule["treatment"].get("deduction_source_id"),
             )
     directory.mkdir(parents=True, exist_ok=True)
     if directory.is_symlink():

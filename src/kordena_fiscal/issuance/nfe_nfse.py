@@ -312,6 +312,96 @@ class NfseServiceTaker:
 
 
 @dataclass(frozen=True, slots=True)
+class NfseDeductionDocument:
+    """Operator-reviewed national fiscal document and allocated deduction.
+
+    The two official profiles have different adjustment taxonomies: both
+    codes are explicit reviewed facts, never inferred by the builder.
+    """
+
+    kind: str
+    access_key: str
+    legacy_code: str
+    nt009_code: str
+    issued_on: date
+    eligible_amount: Money
+    applied_amount: Money
+    evidence_sha256: str
+    description: str | None = None
+
+    def __post_init__(self) -> None:
+        if self.kind not in ("nfe", "nfse"):
+            raise FiscalValidationError("Unsupported documentary deduction kind")
+        width = 44 if self.kind == "nfe" else 50
+        if not isinstance(self.access_key, str) or not re.fullmatch(
+            rf"[0-9]{{{width}}}", self.access_key,
+        ):
+            raise FiscalValidationError("Invalid documentary deduction access key")
+        if self.legacy_code not in {"1", "2", "3", "4", "5", "6", "7", "8", "9", "99"}:
+            raise FiscalValidationError("Invalid legacy documentary deduction code")
+        if self.nt009_code not in {
+            "2", "5", "6", "7", "8", "9", "99",
+            "101", "102", "103", "104", "105", "199",
+        }:
+            raise FiscalValidationError("Invalid NT009 documentary adjustment code")
+        if type(self.issued_on) is not date:
+            raise FiscalValidationError("Documentary deduction date is required")
+        _money(self.eligible_amount, "eligible_amount")
+        _money(self.applied_amount, "applied_amount")
+        if not Decimal("0") < self.applied_amount.amount <= self.eligible_amount.amount:
+            raise FiscalValidationError("Documentary deduction exceeds eligible value")
+        if not isinstance(self.evidence_sha256, str) or not re.fullmatch(
+            r"[0-9a-f]{64}", self.evidence_sha256,
+        ):
+            raise FiscalValidationError("Documentary deduction evidence digest is required")
+        if self.description is not None:
+            object.__setattr__(self, "description", _required(
+                self.description, "deduction.description", 150,
+            ))
+        if (self.legacy_code == "99" or self.nt009_code in {"99", "199"}) and not self.description:
+            raise FiscalValidationError("Other documentary deduction requires description")
+
+    def as_payload(self) -> dict[str, str | None]:
+        return {
+            "kind": self.kind, "access_key": self.access_key,
+            "legacy_code": self.legacy_code, "nt009_code": self.nt009_code,
+            "issued_on": self.issued_on.isoformat(),
+            "eligible_amount": str(self.eligible_amount.amount),
+            "applied_amount": str(self.applied_amount.amount),
+            "evidence_sha256": self.evidence_sha256, "description": self.description,
+        }
+
+    @classmethod
+    def from_payload(cls, data: object) -> NfseDeductionDocument:
+        if not isinstance(data, dict) or set(data) != {
+            "kind", "access_key", "legacy_code", "nt009_code", "issued_on",
+            "eligible_amount", "applied_amount", "evidence_sha256", "description",
+        } or any(
+            not isinstance(value, str)
+            for key, value in data.items() if key != "description"
+        ):
+            raise FiscalValidationError("Invalid reviewed documentary deduction fields")
+        if data["description"] is not None and not isinstance(data["description"], str):
+            raise FiscalValidationError("Invalid documentary deduction description")
+        for key in ("eligible_amount", "applied_amount"):
+            if not re.fullmatch(r"(?:0|[1-9][0-9]{0,12})\.[0-9]{2}", data[key]):
+                raise FiscalValidationError("Documentary deduction requires exact BRL cents")
+        try:
+            issued_on = date.fromisoformat(data["issued_on"])
+            if issued_on.isoformat() != data["issued_on"]:
+                raise ValueError("date format")
+            return cls(
+                kind=data["kind"], access_key=data["access_key"],
+                legacy_code=data["legacy_code"], nt009_code=data["nt009_code"],
+                issued_on=issued_on, eligible_amount=Money(Decimal(data["eligible_amount"])),
+                applied_amount=Money(Decimal(data["applied_amount"])),
+                evidence_sha256=data["evidence_sha256"], description=data["description"],
+            )
+        except (ValueError, ArithmeticError) as exc:
+            raise FiscalValidationError("Invalid reviewed documentary deduction") from exc
+
+
+@dataclass(frozen=True, slots=True)
 class NfseNationalTaxTreatment:
     """Reviewed National DPS 1.01 fiscal treatment for one effective period.
 
@@ -334,6 +424,9 @@ class NfseNationalTaxTreatment:
     policy_sha256: str | None = None
     iss_rate: str | None = None
     complementary_information: str | None = None
+    deduction_source_type: str | None = None
+    deduction_source_id: str | None = None
+    deduction_documents: tuple[NfseDeductionDocument, ...] = ()
 
     def __post_init__(self) -> None:
         if (self.policy_id is None) != (self.policy_sha256 is None):
@@ -346,6 +439,25 @@ class NfseNationalTaxTreatment:
                 character not in "0123456789abcdef" for character in digest
             ):
                 raise FiscalValidationError("National policy SHA-256 is invalid")
+        if not isinstance(self.deduction_documents, tuple) or not all(
+            isinstance(item, NfseDeductionDocument) for item in self.deduction_documents
+        ):
+            raise FiscalValidationError("Documentary deductions must be immutable reviewed records")
+        if self.deduction_documents:
+            if (
+                self.policy_id is None or self.iss_taxation_code != "1"
+                or not isinstance(self.deduction_source_type, str)
+                or not isinstance(self.deduction_source_id, str)
+                or not self.deduction_source_type.strip() or not self.deduction_source_id.strip()
+                or len(self.deduction_source_type) > 128 or len(self.deduction_source_id) > 256
+                or len(self.deduction_documents) > 100
+            ):
+                raise FiscalValidationError("Documentary deductions require scoped reviewed policy")
+            keys = [(item.kind, item.access_key) for item in self.deduction_documents]
+            if len(set(keys)) != len(keys):
+                raise FiscalValidationError("Duplicated documentary deduction")
+        elif self.deduction_source_type is not None or self.deduction_source_id is not None:
+            raise FiscalValidationError("Documentary source requires reviewed documents")
         if self.iss_taxation_code not in {"1", "2", "3", "4"}:
             raise FiscalValidationError("National ISSQN taxation requires official code 1..4")
         if self.special_regime_code not in {"0", "1", "2", "3", "4", "5", "6", "9"}:
@@ -484,24 +596,6 @@ class NfseCanonicalDocument:
         line_numbers = [line.line_number for line in self.services]
         if len(line_numbers) != len(set(line_numbers)):
             raise FiscalValidationError("NFS-e line_number values must be unique")
-        # PBH: these LC116 subitems require documentary support for tax
-        # deductions. No documentary-proof field exists in this canonical
-        # NFS-e contract yet; block before storage, signing or any provider.
-        # The invariant belongs here, not solely in the Portal: internal
-        # clients and direct gateways must not bypass the fiscal decision.
-        if self.issuer.address.jurisdiction.municipality_ibge_code == "3106200":
-            documentary_codes = frozenset({
-                "0702", "0705", "0901", "1001", "1002", "1003",
-                "1004", "1005", "1008", "1706",
-            })
-            if any(
-                line.deduction_amount.amount > 0
-                and (line.national_taxation_code or "")[:4] in documentary_codes
-                for line in self.services
-            ):
-                raise FiscalValidationError(
-                    "BH documentary deduction requires evidence not yet supported"
-                )
         object.__setattr__(
             self,
             "service_taker_reference",
@@ -510,6 +604,31 @@ class NfseCanonicalDocument:
         if self.service_taker is not None and not isinstance(self.service_taker, NfseServiceTaker):
             raise FiscalValidationError("service_taker must be NfseServiceTaker")
         treatment = self.national_tax_treatment
+        if treatment is not None and not isinstance(treatment, NfseNationalTaxTreatment):
+            raise FiscalValidationError("national_tax_treatment must be a reviewed decision")
+        documents = treatment.deduction_documents if treatment is not None else ()
+        documentary_required = self.issuer.address.jurisdiction.municipality_ibge_code == "3106200"
+        documentary_codes = frozenset({
+            "0702", "0705", "0901", "1001", "1002", "1003",
+            "1004", "1005", "1008", "1706",
+        })
+        if documentary_required and any(
+            line.deduction_amount.amount > 0
+            and (line.national_taxation_code or "")[:4] in documentary_codes
+            for line in self.services
+        ) and not documents:
+            raise FiscalValidationError("BH documentary deduction requires reviewed evidence")
+        if documents:
+            assert treatment is not None
+            if (
+                len(self.services) != 1
+                or treatment.deduction_source_type != self.source.source_type
+                or treatment.deduction_source_id != self.source.source_id
+                or any(item.issued_on > self.competence_date for item in documents)
+                or sum((item.applied_amount.amount for item in documents), Decimal("0"))
+                != self.services[0].deduction_amount.amount
+            ):
+                raise FiscalValidationError("Documentary deduction differs from reviewed source or value")
         # MEI pays fixed ISS in DAS-SIMEI; this document must never assess,
         # highlight or withhold per-invoice ISS or claim a special ISS regime.
         # Single domain invariant applies to Portal and all DPS callers.
@@ -719,6 +838,12 @@ def build_nfse_request_fingerprint(document: NfseCanonicalDocument) -> str:
             treatment_payload["iss_rate"] = treatment.iss_rate
         if treatment.complementary_information is not None:
             treatment_payload["complementary_information"] = treatment.complementary_information
+        if treatment.deduction_documents:
+            treatment_payload["deduction_source_type"] = treatment.deduction_source_type
+            treatment_payload["deduction_source_id"] = treatment.deduction_source_id
+            treatment_payload["deduction_documents"] = [
+                item.as_payload() for item in treatment.deduction_documents
+            ]
         payload["national_tax_treatment"] = treatment_payload
     if document.service_taker is not None:
         taker = document.service_taker

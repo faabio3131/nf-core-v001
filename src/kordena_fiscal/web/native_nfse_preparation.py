@@ -384,7 +384,7 @@ def prepare_native_nfse(
                 "municipal_taxation_detail": payload.get("municipal_taxation_detail"),
                 "source_normative": payload["source_normative"].strip(),
                 "rule_version": payload["rule_version"],
-            }, competence)
+            }, competence, source_type=source.source_type, source_id=source.source_id)
             treatment = policy.treatment if policy is not None else None
         if treatment is not None and provider != NACIONAL_HOMOLOGATION_PROVIDER_ID:
             raise FiscalValidationError("National decision cannot change municipal treatment")
