@@ -59,6 +59,7 @@ def _installed_policy(tmp_path: Path, document):
     treatment = {
         "iss_taxation_code": "1",
         "special_regime_code": "0",
+        "iss_rate": "3.00",
         "normative_reference": "urn:nfcore:synthetic:reviewed-for-test",
         "rule_version": 1,
         "effective_from": "2026-01-01",
@@ -208,3 +209,21 @@ def test_policy_rotation_during_dps_signing_refuses_live_post(
         gateway.authorize(NfseAuthorizationRequest.build(document))
     assert resolver.call_count == 1
     exchange.assert_not_called()
+
+
+
+def test_live_dispatch_rejects_legacy_policy_without_exact_reviewed_rate(tmp_path: Path) -> None:
+    env, document, folder, name = _installed_policy(tmp_path, _document())
+    path = folder / (name + ".json")
+    data = json.loads(path.read_text())
+    data["rules"][0]["treatment"].pop("iss_rate")
+    raw = json.dumps(data, sort_keys=True).encode()
+    path.write_bytes(raw)
+    (folder / (name + ".sha256")).write_text(hashlib.sha256(raw).hexdigest())
+    selected = resolve_national_treatment(
+        env, document.scope, data["rules"][0]["selector"], document.competence_date,
+    )
+    assert selected is not None
+    legacy = replace(document, national_tax_treatment=selected.treatment)
+    with pytest.raises(FiscalValidationError, match="exact reviewed ISS rate"):
+        require_current_national_treatment_for_live_dispatch(env, legacy)
