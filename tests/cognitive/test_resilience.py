@@ -97,3 +97,48 @@ def test_deadline_releases_slot_on_success_and_exception() -> None:
         call_with_deadline(failed, 1, on_complete=bulkhead.release)
     bulkhead.acquire()
     bulkhead.release()
+
+
+def test_deadline_releases_cancelled_queued_worker(monkeypatch: pytest.MonkeyPatch) -> None:
+    from concurrent.futures import ThreadPoolExecutor
+    from threading import Event
+
+    from kordena_fiscal.cognitive import resilience
+
+    gate, started, ran = Event(), Event(), Event()
+    with ThreadPoolExecutor(max_workers=1) as executor:
+        monkeypatch.setattr(resilience, "_EXECUTOR", executor)
+
+        def occupy() -> None:
+            started.set()
+            gate.wait(5)
+
+        blocker = executor.submit(occupy)
+        bulkhead = Bulkhead(1)
+        bulkhead.acquire()
+        try:
+            assert started.wait(5)
+            with pytest.raises(DeadlineExceeded):
+                call_with_deadline(ran.set, 0.05, on_complete=bulkhead.release)
+            bulkhead.acquire()
+            bulkhead.release()
+        finally:
+            gate.set()
+            blocker.result(timeout=5)
+    assert not ran.is_set()
+
+
+def test_deadline_releases_slot_on_submission_failure(monkeypatch: pytest.MonkeyPatch) -> None:
+    from concurrent.futures import ThreadPoolExecutor
+
+    from kordena_fiscal.cognitive import resilience
+
+    executor = ThreadPoolExecutor(max_workers=1)
+    executor.shutdown()
+    monkeypatch.setattr(resilience, "_EXECUTOR", executor)
+    bulkhead = Bulkhead(1)
+    bulkhead.acquire()
+    with pytest.raises(RuntimeError):
+        call_with_deadline(lambda: 1, 1, on_complete=bulkhead.release)
+    bulkhead.acquire()
+    bulkhead.release()
