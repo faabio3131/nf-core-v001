@@ -1557,6 +1557,21 @@ def test_cajamar_portal_prepares_sends_recovers_and_downloads_authorized_xml(
             ]
             assert len(evidence) == 1
             assert evidence[0].content == observation.response_xml
+            links = [
+                item for item in uow.archive.list_for_document(original.scope, second_id)
+                if item.media_type == "application/vnd.nfcore.cajamar-query-link.v1+json"
+            ]
+            assert len(links) == 1
+            link = json.loads(links[0].content)
+            current = uow.lifecycle.get(second_id)
+            assert current is not None
+            assert link["document_id"] == second_id
+            assert link["claim_version"] == current.version == second_state.version
+            assert link["observation_archive_reference"] == ref == evidence[0].entry_id
+            assert link["observation_xml_sha256"] == evidence[0].content_sha256
+            assert link["query_error_code"] == "10"
+            assert link["invoice_found"] is False
+            assert link["official_fiscal_confirmation"] is False
         assert cancelled.call_count == 3
 
 
