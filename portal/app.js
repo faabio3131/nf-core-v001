@@ -1171,7 +1171,7 @@ function appendA1UploadForm(article) {
     }
     const chosen = file.files?.[0];
     if (!chosen || chosen.size === 0 || chosen.size > 2 * 1024 * 1024 ||
-        !/\\.(pfx|p12)$/i.test(chosen.name)) {
+        !/\.(pfx|p12)$/i.test(chosen.name)) {
       status.textContent = "Selecione um arquivo A1 .pfx ou .p12 de até 2 MB.";
       return;
     }

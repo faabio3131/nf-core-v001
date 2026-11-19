@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, replace
+from datetime import UTC, datetime
 from types import SimpleNamespace
 from typing import Any
 
@@ -131,7 +132,28 @@ def test_binding_rejects_non_platform_admin() -> None:
     assert not administration.bound
 
 
-def test_commercial_trial_binding_is_platform_only_and_replay_safe() -> None:
+class _FrozenClock(datetime):
+    """The pilot binding hard-codes not_after=2026-11-17; freeze time before it."""
+
+    @classmethod
+    def now(cls, tz: Any = None) -> datetime:
+        return datetime(2026, 11, 16, tzinfo=tz)
+
+
+def test_commercial_trial_binding_denied_after_its_expiry() -> None:
+    administration = _BindingAdmin()
+    client = _client(create_staging_gsm_binding_router(_Identity(_Actor()), administration))
+    client.cookies.update(COOKIES)
+    response = client.post("/internal/staging/commercial-trial-binding", headers=HEADERS)
+    if datetime.now(UTC) >= datetime(2026, 11, 17, tzinfo=UTC):
+        assert response.status_code == 409
+        assert not administration.bound
+
+
+def test_commercial_trial_binding_is_platform_only_and_replay_safe(monkeypatch) -> None:
+    from kordena_fiscal.web import staging_gsm_binding_admin as module
+
+    monkeypatch.setattr(module, "datetime", _FrozenClock)
     administration = _BindingAdmin()
     client = _client(create_staging_gsm_binding_router(_Identity(_Actor()), administration))
     url = "/internal/staging/commercial-trial-binding"
