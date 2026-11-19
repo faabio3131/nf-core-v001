@@ -25,6 +25,7 @@ from kordena_fiscal.gateway.cajamar_geisweb_homologation import (
     CajamarGeiswebWsdl,
     CajamarPreparedNfse,
 )
+from kordena_fiscal.gateway.cajamar_geisweb_invoice_interpreter import CajamarInvoiceObservation
 from kordena_fiscal.gateway.sp4_municipal_canonical import (
     Sp4OriginalRps,
     Sp4VerifiedInvoice,
@@ -59,6 +60,10 @@ class CajamarTrustedRuntimePorts:
     sign_cancel: Callable[[ExecutionScope, Cnpj, bytes], bytes]
     validate_signed_cancel: Callable[[ExecutionScope, Cnpj, bytes], None]
     verify_official_cancel: Callable[[ExecutionScope, Cnpj, bytes], None]
+    observe_invoice: Callable[
+        [NfseAuthorizationRequest, Sp4OriginalRps, Sp4VerifiedInvoice],
+        CajamarInvoiceObservation,
+    ] | None = None
 
     def __post_init__(self) -> None:
         if not isinstance(self.transport, CajamarGeiswebHomologationTransport) or not all(
@@ -74,6 +79,8 @@ class CajamarTrustedRuntimePorts:
             )
         ):
             raise ValueError("Incomplete trusted Cajamar fiscal adapter provisioning")
+        if self.observe_invoice is not None and not callable(self.observe_invoice):
+            raise ValueError("Invalid Cajamar invoice observation port")
 
     def attach(
         self, application: FiscalApplicationService,

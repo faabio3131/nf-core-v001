@@ -17,7 +17,7 @@ from lxml import etree
 
 from kordena_fiscal.domain import Cnpj, FiscalValidationError
 from kordena_fiscal.gateway.cajamar_geisweb_homologation import CajamarPreparedNfse
-from kordena_fiscal.gateway.sp4_municipal_canonical import Sp4OriginalRps
+from kordena_fiscal.gateway.sp4_municipal_canonical import Sp4OriginalRps, Sp4VerifiedInvoice
 
 _MAX = 2_097_152
 
@@ -109,4 +109,65 @@ def prepare_cajamar_original_lot_query(
         scope=source.scope, issuer_cnpj=source.issuer_cnpj,
         tax_regime=tax_regime, competence_date=source.competence_date,
         method="ConsultaLoteRps", signed_request_xml=signed,
+    )
+
+
+def prepare_cajamar_invoice_query(
+    *,
+    source: Sp4OriginalRps,
+    issued: Sp4VerifiedInvoice,
+    tax_regime: object,
+    sign_document: Callable[[bytes], bytes],
+    validate_signed_request: Callable[[bytes], None],
+) -> CajamarPreparedNfse:
+    """GeisWeb20 §13.2: read the original note, never a new fiscal mutation."""
+    from kordena_fiscal.domain import TaxRegimeCode
+    from kordena_fiscal.gateway.cajamar_geisweb_invoice_interpreter import (
+        decode_cajamar_archived_invoice,
+    )
+
+    if (
+        not isinstance(source, Sp4OriginalRps)
+        or source.issuer_ibge != "3509205"
+        or not isinstance(issued, Sp4VerifiedInvoice)
+        or decode_cajamar_archived_invoice(issued.authorized_xml, source) != issued
+        or not isinstance(tax_regime, TaxRegimeCode)
+        or not callable(sign_document)
+        or not callable(validate_signed_request)
+    ):
+        raise CajamarGeiswebBuilderError("Invalid Cajamar original invoice query")
+    root = etree.Element("ConsultaNfse")
+    etree.SubElement(root, "CnpjCpf").text = source.issuer_cnpj.value
+    consulta = etree.SubElement(root, "Consulta")
+    etree.SubElement(consulta, "CnpjCpfPrestador").text = source.issuer_cnpj.value
+    etree.SubElement(consulta, "NumeroNfse").text = issued.invoice_number
+    signed = sign_document(etree.tostring(root, encoding="utf-8", xml_declaration=True))
+    if not isinstance(signed, bytes) or not 0 < len(signed) <= _MAX:
+        raise CajamarGeiswebBuilderError("Cajamar signed query missing or oversized")
+    try:
+        parsed = etree.fromstring(signed, parser=etree.XMLParser(
+            no_network=True, load_dtd=False, resolve_entities=False, huge_tree=False,
+        ))
+    except etree.XMLSyntaxError:
+        raise CajamarGeiswebBuilderError("Invalid Cajamar signed invoice query") from None
+    if parsed.tag != "ConsultaNfse" or parsed.getroottree().docinfo.doctype:
+        raise CajamarGeiswebBuilderError("Invalid Cajamar invoice query root")
+    for path, expected in (
+        ("CnpjCpf", source.issuer_cnpj.value),
+        ("Consulta/CnpjCpfPrestador", source.issuer_cnpj.value),
+        ("Consulta/NumeroNfse", issued.invoice_number),
+    ):
+        nodes = parsed.findall(path)
+        if len(nodes) != 1 or nodes[0].text != expected:
+            raise CajamarGeiswebBuilderError("Signed Cajamar query changed invoice identity")
+    queries = parsed.findall("Consulta")
+    if len(queries) != 1 or [child.tag for child in queries[0]] != [
+        "CnpjCpfPrestador", "NumeroNfse",
+    ]:
+        raise CajamarGeiswebBuilderError("Unexpected Cajamar invoice query selectors")
+    validate_signed_request(signed)
+    return CajamarPreparedNfse(
+        scope=source.scope, issuer_cnpj=source.issuer_cnpj,
+        tax_regime=tax_regime, competence_date=source.competence_date,
+        method="ConsultaNfse", signed_request_xml=signed,
     )

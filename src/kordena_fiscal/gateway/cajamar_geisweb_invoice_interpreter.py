@@ -12,6 +12,8 @@ The historical 2020 manual alone is not activation evidence for Cajamar 2026.
 """
 from __future__ import annotations
 
+from collections.abc import Callable
+from dataclasses import dataclass, field
 from datetime import date
 from decimal import Decimal, InvalidOperation
 
@@ -49,7 +51,9 @@ def _parse(xml: bytes) -> etree._Element:
     return root
 
 
-def _service_result(response_xml: bytes) -> bytes:
+def _service_result(
+    response_xml: bytes, *, method: str = "ConsultaLoteRps",
+) -> bytes:
     root = _parse(response_xml)
     if root.tag != _SOAP + "Envelope":
         raise Sp4CanonicalMunicipalError("GeisWeb response requires SOAP envelope")
@@ -58,19 +62,19 @@ def _service_result(response_xml: bytes) -> bytes:
         raise Sp4CanonicalMunicipalError("GeisWeb fiscal SOAP fault or missing body")
     responses = [
         node for node in body
-        if etree.QName(node).localname == "ConsultaLoteRpsResponse"
+        if etree.QName(node).localname == method + "Response"
     ]
     if len(responses) != 1:
         raise Sp4CanonicalMunicipalError("GeisWeb response method is ambiguous")
     results = [
         node for node in responses[0]
-        if etree.QName(node).localname == "ConsultaLoteRpsResult"
+        if etree.QName(node).localname == method + "Result"
     ]
     if len(results) != 1:
         raise Sp4CanonicalMunicipalError("GeisWeb returned no official consultation result")
     result = results[0]
     if len(result):
-        if len(result) != 1:
+        if len(result) != 1 or (result.text or '').strip():
             raise Sp4CanonicalMunicipalError("GeisWeb returned multiple XML documents")
         candidate = etree.tostring(result[0], encoding="utf-8")
     elif result.text and result.text.strip():
@@ -222,3 +226,60 @@ def interpret_cajamar_geisweb_result(
     return Sp4ProviderOutcome(
         status=AuthorizationStatus.AUTHORIZED, official_invoice=invoice,
     )
+
+
+@dataclass(frozen=True, slots=True)
+class CajamarInvoiceObservation:
+    """Read-only observation, explicitly NOT a cancellation decision."""
+
+    found: bool
+    response_xml: bytes = field(repr=False)
+    error_code: str | None = None
+
+
+def interpret_cajamar_invoice_observation(
+    receipt: CajamarGeiswebResult,
+    original: Sp4OriginalRps,
+    issued: Sp4VerifiedInvoice,
+    *,
+    verify_official_response: Callable[[bytes], None],
+) -> CajamarInvoiceObservation:
+    """GeisWeb20 §13.2: correlate one note; never infer cancellation status."""
+    if (
+        not isinstance(receipt, CajamarGeiswebResult)
+        or receipt.method != "ConsultaNfse"
+        or not isinstance(original, Sp4OriginalRps)
+        or not isinstance(issued, Sp4VerifiedInvoice)
+        or original.issuer_ibge != "3509205"
+        or not callable(verify_official_response)
+        or decode_cajamar_archived_invoice(issued.authorized_xml, original) != issued
+    ):
+        raise Sp4CanonicalMunicipalError("Cajamar original invoice observation required")
+    raw = _service_result(receipt.response_xml, method="ConsultaNfse")
+    root = _parse(raw)
+    if root.tag != "ConsultaNfseResposta":
+        raise Sp4CanonicalMunicipalError("GeisWeb invoice query root mismatch")
+    verify_official_response(raw)
+    errors, notes = root.findall("Msg"), root.findall("Nfse")
+    if errors:
+        if len(errors) != 1 or notes:
+            raise Sp4CanonicalMunicipalError("Ambiguous GeisWeb invoice query error")
+        code = _one(errors[0], "Erro", "query error", limit=3)
+        if not code.isascii() or not code.isdecimal() or int(code) < 1:
+            raise Sp4CanonicalMunicipalError("Invalid GeisWeb query error")
+        return CajamarInvoiceObservation(False, raw, code)
+    if len(notes) != 1:
+        raise Sp4CanonicalMunicipalError("GeisWeb query must contain exactly one invoice")
+    note = notes[0]
+    for path, expected in (
+        ("IdentificacaoNfse/NumeroRps", issued.rps_number),
+        ("IdentificacaoNfse/NumeroNfse", issued.invoice_number),
+        ("IdentificacaoNfse/CodigoVerificacao", issued.verification_code),
+        ("Servico/PrestadorServico/IdentificacaoPrestador/CnpjCpf", issued.issuer_cnpj.value),
+        ("Competencia", issued.competence_date.strftime("%Y-%m")),
+    ):
+        if _one(note, path, path) != expected:
+            raise Sp4CanonicalMunicipalError("GeisWeb consultation differs from original invoice")
+    if _amount(_one(note, "Servico/Valores/ValorServicos", "gross amount")) != issued.gross_amount:
+        raise Sp4CanonicalMunicipalError("GeisWeb consultation differs from original amount")
+    return CajamarInvoiceObservation(True, raw)

@@ -39,7 +39,12 @@ from kordena_fiscal.gateway.cajamar_geisweb_homologation import (
     CajamarGeiswebWsdl,
     CajamarPreparedNfse,
 )
+from kordena_fiscal.gateway.cajamar_geisweb_invoice_interpreter import (
+    CajamarInvoiceObservation,
+    interpret_cajamar_invoice_observation,
+)
 from kordena_fiscal.gateway.cajamar_geisweb_issue_builder import CajamarGeiswebIssueData
+from kordena_fiscal.gateway.cajamar_geisweb_request_builder import prepare_cajamar_invoice_query
 from kordena_fiscal.gateway.sp4_municipal_canonical import Sp4OriginalRps, Sp4VerifiedInvoice
 from kordena_fiscal.issuance.nfe_nfse import NfseAuthorizationRequest
 from kordena_fiscal.runtime.config import RuntimeConfigurationError
@@ -187,7 +192,12 @@ class CajamarReviewedStartup:
                 sha256=digest,
             ) for name, digest in raw_resources.items()
         )
-        roots = _object(data["xsd_roots"], set(_ROOTS), "XSD entrypoints")
+        query_roots = {"ConsultaNfse", "ConsultaNfseResposta"}
+        supplied_roots = data["xsd_roots"]
+        expected_roots = set(_ROOTS)
+        if isinstance(supplied_roots, dict) and query_roots & supplied_roots.keys():
+            expected_roots |= query_roots
+        roots = _object(supplied_roots, expected_roots, "XSD entrypoints")
         if not all(isinstance(root, str) and root in raw_resources
                    for root in roots.values()):
             raise RuntimeConfigurationError("Cajamar XSD entrypoint is missing")
@@ -457,6 +467,31 @@ class CajamarReviewedStartup:
             pinned_contract=self.contract,
             validate_signed_xml=validate_xml,
         )
+        def observe_invoice(
+            request: NfseAuthorizationRequest, source: Sp4OriginalRps,
+            issued: Sp4VerifiedInvoice,
+        ) -> CajamarInvoiceObservation:
+            if (
+                request.document.scope.identity_partition_key
+                != source.scope.identity_partition_key
+                or request.document.issuer.cnpj != source.issuer_cnpj
+                or request.document.document_id != source.document_id
+                or request.request_fingerprint != source.request_fingerprint
+            ):
+                raise FiscalValidationError("Cajamar original consultation scope differs")
+            verified_rps(source)
+            operation = prepare_cajamar_invoice_query(
+                source=source, issued=issued, tax_regime=request.document.issuer.tax_regime,
+                sign_document=lambda raw: sign(source.scope, source.issuer_cnpj, raw),
+                validate_signed_request=lambda raw: verify(source.scope, source.issuer_cnpj, raw),
+            )
+            return interpret_cajamar_invoice_observation(
+                transport.invoke(operation), source, issued,
+                verify_official_response=lambda raw: validate_xml(
+                    raw, self.contract.xsd_package_sha256,
+                ),
+            )
+
         return CajamarTrustedRuntimePorts(
             transport=transport, build_signed_operation=reviewed_operation,
             verify_signed_rps_identity=lambda source, raw: verify(
@@ -468,6 +503,11 @@ class CajamarReviewedStartup:
             sign_cancel=sign, validate_signed_cancel=verify,
             verify_official_cancel=lambda _scope, _cnpj, raw: validate_xml(
                 raw, self.contract.xsd_package_sha256,
+            ),
+            observe_invoice=(
+                observe_invoice
+                if {"ConsultaNfse", "ConsultaNfseResposta"} <= self.validators.keys()
+                else None
             ),
         )
 
