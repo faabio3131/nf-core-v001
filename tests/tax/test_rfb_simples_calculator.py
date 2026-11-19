@@ -56,7 +56,7 @@ def test_calculated_items_are_parsed_as_decimals_with_version_evidence() -> None
     client = RfbSimplesCalculatorClient(
         base_url=BASE, transport=_transport(_reply(_calc()), calls=calls),
     )
-    request = build_request(operation_id="op-1", date="2026-11-19", document_type="NFSe",
+    request = build_request(operation_id="op-1", date="2026-11-19", document_type="55",
                             crt="1", items=[_item()])
     result = client.calculate(request).require_all_calculated()
     assert result.items[0].values["vIBSSN"] == Decimal("1.9")
@@ -74,7 +74,7 @@ def test_http_200_with_a_failed_item_is_never_usable_for_issuance(state) -> None
     client = RfbSimplesCalculatorClient(
         base_url=BASE, transport=_transport(_reply(_calc(1), failed)),
     )
-    request = build_request(operation_id="op-2", date="2026-11-19", document_type="NFSe",
+    request = build_request(operation_id="op-2", date="2026-11-19", document_type="55",
                             crt="1", items=[_item(1), _item(2)])
     result = client.calculate(request)
     with pytest.raises(RfbCalculationRejected) as error:
@@ -102,7 +102,7 @@ def test_unpinned_component_version_is_refused_before_any_calculation() -> None:
     )
     with pytest.raises(RfbCalculatorError, match="differs from pinned"):
         client.calculate(build_request(operation_id="op", date="2026-11-19",
-                                       document_type="NFSe", crt="1", items=[_item()]))
+                                       document_type="55", crt="1", items=[_item()]))
     assert all(method == "GET" for method, _, _ in calls)
 
 
@@ -127,7 +127,7 @@ def test_only_internal_component_urls_are_accepted(url) -> None:
 def test_invalid_inputs_never_reach_the_component(item) -> None:
     with pytest.raises(RfbCalculatorError):
         build_request(
-            operation_id="op", date="2026-11-19", document_type="NFSe", crt="1", items=[item],
+            operation_id="op", date="2026-11-19", document_type="55", crt="1", items=[item],
         )
 
 
@@ -140,3 +140,17 @@ def test_shadow_comparison_only_reports_divergences() -> None:
     assert [(d.numero, d.field, d.nfcore, d.official) for d in divergences] == [
         (2, "vIBSSN", Decimal("1.90"), Decimal("2.0")),
     ]
+
+
+@pytest.mark.parametrize(("document_type", "crt", "regime"), [
+    ("99", "1", None),     # NFS-e is not in the official database load yet
+    ("55", "4", None),     # MEI is out of the official scope
+    ("55", "3", None),     # CRT 3 only with tpRegimeIBSCBS=2
+    ("55", "1", "2"),      # tpRegimeIBSCBS=2 only with CRT 3
+])
+def test_official_scope_is_enforced_before_calling(document_type, crt, regime) -> None:
+    with pytest.raises(RfbCalculatorError):
+        build_request(operation_id="op", date="2026-11-19", document_type=document_type,
+                      crt=crt, items=[_item()], ibs_cbs_regime=regime)
+    assert build_request(operation_id="op", date="2026-11-19", document_type="55", crt="3",
+                         items=[_item()], ibs_cbs_regime="2")["tpRegimeIBSCBS"] == "2"

@@ -152,20 +152,37 @@ class SimplesCalculation:
         return self
 
 
+# Contract of the pinned source (OperacaoSimplesInput, NT 2026.005): tpDoc is
+# the DF-e model code; the current database load covers only 55 and 65.
+SUPPORTED_DOCUMENT_TYPES = frozenset({"55", "65"})
+
+
 def build_request(
     *, operation_id: str, date: str, document_type: str, crt: str,
     items: Sequence[SimplesItem], government_entity: str | None = None,
+    ibs_cbs_regime: str | None = None,
 ) -> dict[str, object]:
     if not isinstance(operation_id, str) or not 1 <= len(operation_id) <= 120:
         raise RfbCalculatorError("Operation id is required")
     if not re.fullmatch(r"[0-9]{4}-[0-9]{2}-[0-9]{2}", date or ""):
         raise RfbCalculatorError("Operation date must be YYYY-MM-DD")
+    if document_type not in SUPPORTED_DOCUMENT_TYPES:
+        raise RfbCalculatorError("Official Simples calculator covers only NF-e (55) and NFC-e (65)")
+    # CRT 4 (MEI) and CRT 3 without tpRegimeIBSCBS=2 are out of the official scope.
+    if crt not in {"1", "2", "3"} or (crt == "3") != (ibs_cbs_regime == "2"):
+        raise RfbCalculatorError("CRT/tpRegimeIBSCBS outside the official Simples scope")
+    if ibs_cbs_regime not in (None, "2"):
+        raise RfbCalculatorError("Only tpRegimeIBSCBS=2 is accepted by this endpoint")
+    if government_entity not in (None, "1", "2", "3", "4"):
+        raise RfbCalculatorError("tpEnteGov must be 1..4")
     if not items or len({item.numero for item in items}) != len(items):
         raise RfbCalculatorError("Items must be present and uniquely numbered")
     request: dict[str, object] = {
         "id": operation_id, "data": date, "tpDoc": document_type, "CRT": crt,
         "itens": [item.as_payload() for item in items],
     }
+    if ibs_cbs_regime is not None:
+        request["tpRegimeIBSCBS"] = ibs_cbs_regime
     if government_entity is not None:
         request["tpEnteGov"] = government_entity
     return request
