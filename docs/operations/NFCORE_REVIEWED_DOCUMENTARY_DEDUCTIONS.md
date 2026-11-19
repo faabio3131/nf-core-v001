@@ -4,9 +4,10 @@ MF-04 / REC-04. Reuse the scoped operator-installed national fiscal policy,
 immutable prepared request archive, fiscal fingerprint and signed DPS builder.
 A document-specific reviewed rule contains deduction_source_type,
 deduction_source_id and deduction_documents in treatment. Each item contains
-kind (nfe/nfse), access_key, legacy_code, nt009_code, issued_on, eligible_amount,
-applied_amount, evidence_sha256 and description (nullable). Values are exact
-BRL cents. The two adjustment codes must be separately reviewed, not inferred.
+kind (nfe/nfse), access_key, legacy_code, nt009_code, issued_on,
+document_total_amount, eligible_amount, applied_amount, evidence_sha256 and
+description (nullable). Values are exact BRL cents. NT009 vTotDoc represents the
+original document total, not the eligible fraction. Applied <= eligible <= total. The two adjustment codes must be separately reviewed, not inferred.
 The existing policy review/installation authority is responsible for checking the
 actual underlying fiscal document, legal deductibility, eligible value and hash.
 The digest is an attestation, not proof of automatic official retrieval.

@@ -324,6 +324,7 @@ class NfseDeductionDocument:
     legacy_code: str
     nt009_code: str
     issued_on: date
+    document_total_amount: Money
     eligible_amount: Money
     applied_amount: Money
     evidence_sha256: str
@@ -346,10 +347,14 @@ class NfseDeductionDocument:
             raise FiscalValidationError("Invalid NT009 documentary adjustment code")
         if type(self.issued_on) is not date:
             raise FiscalValidationError("Documentary deduction date is required")
+        _money(self.document_total_amount, "document_total_amount")
         _money(self.eligible_amount, "eligible_amount")
         _money(self.applied_amount, "applied_amount")
-        if not Decimal("0") < self.applied_amount.amount <= self.eligible_amount.amount:
-            raise FiscalValidationError("Documentary deduction exceeds eligible value")
+        if not (
+            Decimal("0") < self.applied_amount.amount <= self.eligible_amount.amount
+            <= self.document_total_amount.amount
+        ):
+            raise FiscalValidationError("Documentary deduction exceeds eligible or document value")
         if not isinstance(self.evidence_sha256, str) or not re.fullmatch(
             r"[0-9a-f]{64}", self.evidence_sha256,
         ):
@@ -366,6 +371,7 @@ class NfseDeductionDocument:
             "kind": self.kind, "access_key": self.access_key,
             "legacy_code": self.legacy_code, "nt009_code": self.nt009_code,
             "issued_on": self.issued_on.isoformat(),
+            "document_total_amount": str(self.document_total_amount.amount),
             "eligible_amount": str(self.eligible_amount.amount),
             "applied_amount": str(self.applied_amount.amount),
             "evidence_sha256": self.evidence_sha256, "description": self.description,
@@ -375,7 +381,8 @@ class NfseDeductionDocument:
     def from_payload(cls, data: object) -> NfseDeductionDocument:
         if not isinstance(data, dict) or set(data) != {
             "kind", "access_key", "legacy_code", "nt009_code", "issued_on",
-            "eligible_amount", "applied_amount", "evidence_sha256", "description",
+            "document_total_amount", "eligible_amount", "applied_amount",
+            "evidence_sha256", "description",
         } or any(
             not isinstance(value, str)
             for key, value in data.items() if key != "description"
@@ -383,7 +390,7 @@ class NfseDeductionDocument:
             raise FiscalValidationError("Invalid reviewed documentary deduction fields")
         if data["description"] is not None and not isinstance(data["description"], str):
             raise FiscalValidationError("Invalid documentary deduction description")
-        for key in ("eligible_amount", "applied_amount"):
+        for key in ("document_total_amount", "eligible_amount", "applied_amount"):
             if not re.fullmatch(r"(?:0|[1-9][0-9]{0,12})\.[0-9]{2}", data[key]):
                 raise FiscalValidationError("Documentary deduction requires exact BRL cents")
         try:
@@ -393,7 +400,9 @@ class NfseDeductionDocument:
             return cls(
                 kind=data["kind"], access_key=data["access_key"],
                 legacy_code=data["legacy_code"], nt009_code=data["nt009_code"],
-                issued_on=issued_on, eligible_amount=Money(Decimal(data["eligible_amount"])),
+                issued_on=issued_on,
+                document_total_amount=Money(Decimal(data["document_total_amount"])),
+                eligible_amount=Money(Decimal(data["eligible_amount"])),
                 applied_amount=Money(Decimal(data["applied_amount"])),
                 evidence_sha256=data["evidence_sha256"], description=data["description"],
             )

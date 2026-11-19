@@ -203,3 +203,44 @@ def test_guarulhos_startup_requires_explicit_city_and_canonical_vault(tmp_path) 
     manifest.write_text('{}')
     with pytest.raises(RuntimeConfigurationError, match="municipality"):
         JundiaiReviewedStartup.load(str(manifest), municipality_ibge="3518800")
+
+
+def test_giss_read_only_query_signature_preserves_official_root_schema() -> None:
+    from kordena_fiscal.xml.schema import XmlSchemaValidator
+
+    key, certificate = _certificate()
+    namespace = "http://www.giss.com.br/consultar-nfse-rps-envio-v2_04.xsd"
+    types = "http://www.giss.com.br/tipos-v2_04.xsd"
+    root = etree.Element(f"{{{namespace}}}ConsultarNfseRpsEnvio", nsmap={
+        "g": namespace, "t": types,
+    })
+    identification = etree.SubElement(root, f"{{{namespace}}}IdentificacaoRps")
+    for name, value in (("Numero", "42"), ("Serie", "A"), ("Tipo", "1")):
+        etree.SubElement(identification, f"{{{types}}}{name}").text = value
+    issuer = etree.SubElement(root, f"{{{namespace}}}Prestador")
+    identity = etree.SubElement(issuer, f"{{{types}}}CpfCnpj")
+    etree.SubElement(identity, f"{{{types}}}Cnpj").text = "11222333000181"
+    etree.SubElement(issuer, f"{{{types}}}InscricaoMunicipal").text = "1234567"
+    append_nfse_signature(
+        root, root, key, certificate, legacy_abrasf=True, whole_document=True,
+    )
+    xml = etree.tostring(root, encoding="utf-8", xml_declaration=True)
+    folder = Path(__file__).resolve().parents[2] / (
+        "contracts/official/jundiai/giss_v2_04/xsd/Schemas_XSD-Servicos_Prestados"
+    )
+    validator = XmlSchemaValidator(SchemaSet(
+        version="2.04", root_schema="consultar-nfse-rps-envio-v2_04.xsd",
+        resources=tuple(
+            SchemaResource.from_bytes(path.name, path.read_bytes())
+            for path in sorted(folder.glob("*.xsd"))
+        ), source_uri="https://example.invalid/giss",
+    ))
+    validator.validate_document(xml)
+    _verify_signature(xml, certificate=certificate, count=1, whole_document=True)
+    with pytest.raises(FiscalValidationError, match="Id-bound"):
+        _verify_signature(xml, certificate=certificate, count=1)
+    with pytest.raises(FiscalValidationError, match="digest"):
+        _verify_signature(
+            xml.replace(b">42<", b">43<"), certificate=certificate,
+            count=1, whole_document=True,
+        )

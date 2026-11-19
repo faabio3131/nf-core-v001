@@ -104,8 +104,13 @@ def _pinned_file(folder: Path, name: object, digest: object) -> bytes:
 
 def _verify_signature(
     raw: bytes, *, certificate: x509.Certificate, count: int,
+    whole_document: bool = False,
 ) -> None:
-    """Verify signed Id targets, algorithms, digests and cryptographic signatures."""
+    """Verify exact signed targets and cryptographic signatures.
+
+    Only the explicitly selected read-only query profile accepts an empty URI.
+    Its XSD does not allow an Id on the document root.
+    """
     try:
         root = etree.fromstring(raw, parser=_parser())
     except etree.XMLSyntaxError:
@@ -132,9 +137,22 @@ def _verify_signature(
         ):
             raise FiscalValidationError("Untrusted Jundiai XMLDSig identity")
         uri = reference.get("URI")
-        if uri is None or not uri.startswith("#") or len(uri) < 2:
-            raise FiscalValidationError("Jundiai XMLDSig requires Id-bound reference")
-        targets = [n for n in root.iter() if n.get("Id") == uri[1:]]
+        if whole_document:
+            query_root = (
+                "{http://www.giss.com.br/consultar-nfse-rps-envio-v2_04.xsd}"
+                "ConsultarNfseRpsEnvio"
+            )
+            if (
+                root.tag != query_root or count != 1 or uri != ""
+                or signature.getparent() is not root
+                or root.get("Id") is not None
+            ):
+                raise FiscalValidationError("Unexpected Giss read-only query signature")
+            targets = [root]
+        else:
+            if uri is None or not uri.startswith("#") or len(uri) < 2:
+                raise FiscalValidationError("Jundiai XMLDSig requires Id-bound reference")
+            targets = [n for n in root.iter() if n.get("Id") == uri[1:]]
         if len(targets) != 1:
             raise FiscalValidationError("Jundiai XMLDSig target missing or duplicated")
         transforms = reference.find(_DS + "Transforms")
@@ -419,9 +437,10 @@ class JundiaiReviewedStartup:
                 append_nfse_signature(parent, info, key, cert, legacy_abrasf=True)
                 append_nfse_signature(root, lots[0], key, cert, legacy_abrasf=True)
             elif method == "ConsultarNfsePorRps":
-                # An explicit Id is required for the typed query's signed request.
-                root.set("Id", "GissRpsQuery")
-                append_nfse_signature(root, root, key, cert, legacy_abrasf=True)
+                # Official query root has no Id attribute; sign the whole document.
+                append_nfse_signature(
+                    root, root, key, cert, legacy_abrasf=True, whole_document=True,
+                )
             elif method == "CancelarNfse":
                 info = [
                     n for n in root.iter()
@@ -441,6 +460,7 @@ class JundiaiReviewedStartup:
             _, cert = material(scope, issuer)
             _verify_signature(
                 raw, certificate=cert, count=2 if method == "RecepcionarLoteRps" else 1,
+                whole_document=method == "ConsultarNfsePorRps",
             )
 
         def fields(

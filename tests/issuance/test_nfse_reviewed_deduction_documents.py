@@ -24,7 +24,8 @@ def _reviewed():
                      state_registration=replace(issuer.state_registration, state_code="MG"))
     item = NfseDeductionDocument(
         kind="nfse", access_key="3" * 50, legacy_code="7", nt009_code="7",
-        issued_on=date(2026, 10, 1), eligible_amount=Money(Decimal("20.00")),
+        issued_on=date(2026, 10, 1), document_total_amount=Money(Decimal("50.00")),
+        eligible_amount=Money(Decimal("20.00")),
         applied_amount=Money(Decimal("10.00")), evidence_sha256="a" * 64,
     )
     decision = NfseNationalTaxTreatment(
@@ -56,6 +57,7 @@ def test_reviewed_deduction_round_trip_and_xml(profile):
     else:
         assert root.findtext(".//n:docAjusteBC/n:dFeNacional/n:chaveDFe", namespaces=_NS) == "3" * 50
         assert root.findtext(".//n:docAjusteBC/n:vAjusteAplic", namespaces=_NS) == "10.00"
+        assert root.findtext(".//n:docAjusteBC/n:vTotDoc", namespaces=_NS) == "50.00"
 
 
 def test_deduction_cannot_be_replayed_for_other_source_or_amount():
@@ -117,3 +119,10 @@ def test_durable_evidence_allocation_refuses_other_source_after_policy_rotation(
         )
     with database() as uow:
         assert uow.lifecycle.get(other.document_id) is None
+
+
+def test_deduction_eligible_amount_cannot_exceed_original_document():
+    decision = _reviewed().national_tax_treatment
+    assert decision is not None
+    with pytest.raises(FiscalValidationError, match="eligible or document"):
+        replace(decision.deduction_documents[0], document_total_amount=Money(Decimal("9.00")))

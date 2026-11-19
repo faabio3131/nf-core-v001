@@ -289,7 +289,7 @@ def build_unsigned_dps(
                     _child(record, "tpAjusteBC", item.nt009_code)
                     if item.description is not None:
                         _child(record, "xTpAjusteBC", item.description)
-                    _child(record, "vTotDoc", _money(item.eligible_amount.amount))
+                    _child(record, "vTotDoc", _money(item.document_total_amount.amount))
                     _child(record, "vAjusteAplic", _money(item.applied_amount.amount))
                     _child(record, "dtEmiDoc", item.issued_on.isoformat())
                     dfe = etree.SubElement(record, f"{{{_NFSE_NS}}}dFeNacional")

@@ -33,3 +33,13 @@ O fluxo de reemissão cancela o original e emite o substituto separadamente. Nã
 
 Aceite operacional pendente: manifesto real revisado, A1 do emitente, transmissão e
 consulta oficial, confirmação de cancelamento arquivada e prova na revisão implantada.
+
+
+### Correction — 2026-11-19
+The shared official ConsultarNfseRpsEnvio schema does not permit a root Id
+attribute. The reviewed runtime signs the entire read-only request with an
+empty URI and checks that exact root, a single direct enveloped signature,
+digest and pinned A1. Mutating operations and municipal invoice/cancellation
+proof retain Id-bound verification. The official XSD bytes are unchanged.
+A regression test uses the 24 official schema resources and synthetic signing
+material; it has not been executed in this construction round.
