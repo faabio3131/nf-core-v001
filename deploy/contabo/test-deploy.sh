@@ -169,6 +169,19 @@ rm -f "$CTL/unhealthy" "$CTL/restored" "$T/root/.failed-sha"
 
 rc=$(run); chk "depois de corrigido, o mesmo commit implanta" '[ "$rc" = 0 ] && [ "$(sed -n s/^SHA=//p "$T/root/.deployed")" = "$V4" ]'
 
+# Janela de manutencao: o cron nao implanta enquanto houver o arquivo de congelamento.
+VF=$(newcommit cf)
+touch "$T/root/.deploy-freeze"
+rc=$(run); chk "congelado: cron sai 0 sem tocar em nada" '[ "$rc" = 0 ] && grep -q FROZEN "$T/out" && [ ! -s "$CTL/calls" ] && [ "$(sed -n s/^SHA=//p "$T/root/.deployed")" = "$V4" ]'
+rc=$(run --check); chk "congelado: --check continua informando" 'grep -q MUDARIA "$T/out"'
+rm "$T/root/.deploy-freeze"
+# Trava: nunca dois deploys ao mesmo tempo.
+exec 8>"$T/root/.deploy.lock"; flock 8
+rc=$(run); chk "trava ocupada: cron pula sem tocar em nada" '[ "$rc" = 0 ] && grep -q "SKIP: outro deploy" "$T/out" && [ ! -s "$CTL/calls" ]'
+rc=$(run --coordinated); chk "trava ocupada: release coordenada e bloqueada" '[ "$rc" = 42 ] && grep -q "holds the lock" "$T/out"'
+exec 8>&-
+rc=$(run); chk "sem congelamento e sem trava, o deploy segue" '[ "$rc" = 0 ] && [ "$(sed -n s/^SHA=//p "$T/root/.deployed")" = "$VF" ]'
+
 # Production Worker is already active; cron MUST NOT deploy API/Portal alone.
 V5=$(newcommit c5)
 touch "$CTL/worker-present" "$CTL/worker-configured"
