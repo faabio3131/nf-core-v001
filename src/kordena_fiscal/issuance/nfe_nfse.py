@@ -749,7 +749,9 @@ class NfseCanonicalDocument:
                 or sum((item.applied_amount.amount for item in documents), Decimal("0"))
                 != self.services[0].deduction_amount.amount
             ):
-                raise FiscalValidationError("Documentary deduction differs from reviewed source or value")
+                raise FiscalValidationError(
+                    "Documentary deduction differs from reviewed source or value"
+                )
         # MEI pays fixed ISS in DAS-SIMEI; this document must never assess,
         # highlight or withhold per-invoice ISS or claim a special ISS regime.
         # Single domain invariant applies to Portal and all DPS callers.

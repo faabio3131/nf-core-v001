@@ -150,7 +150,8 @@ def prepare_cajamar_invoice_query(
         ))
     except etree.XMLSyntaxError:
         raise CajamarGeiswebBuilderError("Invalid Cajamar signed invoice query") from None
-    if parsed.tag != "ConsultaNfse" or parsed.getroottree().docinfo.doctype:
+    # lxml-stubs 0.5 omits DocInfo.doctype; the attribute exists at runtime.
+    if parsed.tag != "ConsultaNfse" or parsed.getroottree().docinfo.doctype:  # type: ignore[union-attr]
         raise CajamarGeiswebBuilderError("Invalid Cajamar invoice query root")
     for path, expected in (
         ("CnpjCpf", source.issuer_cnpj.value),

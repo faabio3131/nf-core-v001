@@ -58,7 +58,8 @@ def test_reviewed_deduction_round_trip_and_xml(profile):
         assert root.findtext(".//n:docDedRed/n:vDeducaoReducao", namespaces=_NS) == "10.00"
         assert root.find(".//n:vDR", namespaces=_NS) is None
     else:
-        assert root.findtext(".//n:docAjusteBC/n:dFeNacional/n:chaveDFe", namespaces=_NS) == "3" * 50
+        chave = root.findtext(".//n:docAjusteBC/n:dFeNacional/n:chaveDFe", namespaces=_NS)
+        assert chave == "3" * 50
         assert root.findtext(".//n:docAjusteBC/n:vAjusteAplic", namespaces=_NS) == "10.00"
         assert root.findtext(".//n:docAjusteBC/n:vTotDoc", namespaces=_NS) == "50.00"
 

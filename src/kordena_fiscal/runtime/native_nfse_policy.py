@@ -17,7 +17,6 @@ from kordena_fiscal.issuance.nfe_nfse import (
     NfseForeignAddress,
     NfseNationalTaxTreatment,
 )
-
 from kordena_fiscal.issuance.nfse_archive import (
     NFSE_DEDUCTION_EVIDENCE_MAX_BYTES,
     NFSE_DEDUCTION_EVIDENCE_TOTAL_MAX_BYTES,
