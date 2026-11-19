@@ -37,6 +37,8 @@ case "$1 $2" in
   "inspect -f")
     case "$3" in
       *com.docker.compose.project*) echo "nfcore/$4";;
+      *com.docker.compose.config-hash*) printf '%064d\n' 42;;
+      *State.Running*) echo true;;
       *State.Health.Status*) echo healthy;;
       *'.Image'*) container_id "$4";;
       *) exit 1;;
@@ -46,10 +48,27 @@ case "$1 $2" in
     if [ "$3" = --services ]; then
       printf '%s\n' nfcore-api nfcore-portal
       [ -f "$C/worker-configured" ] && echo nfcore-worker
+    elif [ "$3" = --hash ]; then
+      if [ -f "$C/config-drift" ]; then printf '%s %064d\n' "$4" 43
+      else printf '%s %064d\n' "$4" 42; fi
     elif [ "$3" = --format ]; then
-      printf '%s' '{"name":"nfcore","services":{"nfcore-api":{"container_name":"nfcore-api","image":"nfcore-api:current","build":{ "context":"src"}},"nfcore-portal":{"container_name":"nfcore-portal","image":"nfcore-portal:current","build":{"context":"src"}}'
-      if [ -f "$C/worker-configured" ]; then printf '%s' ',"nfcore-worker":{"container_name":"nfcore-worker","image":"nfcore-worker:controlled","build":{"context":"src"}}'; fi
-      printf '%s\n' '}}'
+      python3 - "$NFCORE_ROOT/src" "$C/worker-configured" "$C/wrong-context" <<'PY'
+import json, pathlib, sys
+context = sys.argv[1]
+if pathlib.Path(sys.argv[3]).exists():
+    context = "/tmp/other-src"
+services = {}
+for suffix, tag in (("api", "current"), ("portal", "current"), ("worker", "controlled")):
+    if suffix == "worker" and not pathlib.Path(sys.argv[2]).exists():
+        continue
+    name = "nfcore-" + suffix
+    services[name] = {
+        "container_name": name,
+        "image": name + ":" + tag,
+        "build": {"context": context, "dockerfile": "Dockerfile." + suffix},
+    }
+print(json.dumps({"name": "nfcore", "services": services}))
+PY
     else exit 1; fi
     exit 0;;
   "compose build")
@@ -163,6 +182,12 @@ rc=$(run --coordinated); chk "nao implanta Worker fora do compose efetivo" '[ "$
 touch "$CTL/worker-configured" "$CTL/unknown-worker"
 rc=$(run --coordinated); chk "consumidor desconhecido ativo bloqueia" '[ "$rc" = 42 ] && ! grep -q "compose build" "$CTL/calls"'
 rm "$CTL/unknown-worker"
+touch "$CTL/config-drift"
+rc=$(run --coordinated); chk "deriva de Compose bloqueia antes de build" '[ "$rc" = 42 ] && ! grep -q "compose build" "$CTL/calls"'
+rm "$CTL/config-drift"
+touch "$CTL/wrong-context"
+rc=$(run --coordinated); chk "contexto de build nao canonico bloqueia" '[ "$rc" = 42 ] && ! grep -q "compose build" "$CTL/calls"'
+rm "$CTL/wrong-context"
 rc=$(run --coordinated); chk "release coordenada atualiza Worker e marca SHA somente apos digests/health" '[ "$rc" = 0 ] && grep -q "compose stop nfcore-worker" "$CTL/calls" && grep -q "compose up .*nfcore-worker" "$CTL/calls" && [ "$(sed -n s/^SHA=//p "$T/root/.deployed")" = "$V5" ] && cmp -s "$CTL/img-nfcore-worker:controlled" "$CTL/running-nfcore-worker"'
 unset NFCORE_COORDINATED_DEPLOY_APPROVED_SHA
 (cd "$T/root/src" && git checkout -q -B production "$V1" && git push -q -f origin production)

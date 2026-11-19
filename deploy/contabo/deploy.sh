@@ -64,27 +64,46 @@ tags[nfcore-worker]=nfcore-worker:controlled
 tags[nfcore-bling-worker]=nfcore-bling-worker:controlled
 configured=$(docker compose config --services 2>/dev/null) || blocked "effective Compose unavailable"
 config_check='import json, sys
+from pathlib import Path
+
 config = json.load(sys.stdin)
-assert config["name"] == "nfcore"
-for spec in sys.argv[1:]:
+source = Path(sys.argv[1]).resolve()
+if config.get("name") != "nfcore":
+    raise SystemExit(42)
+for spec in sys.argv[2:]:
     name, tag = spec.split("=", 1)
     service = config["services"][name]
-    assert service.get("container_name") == name
-    assert service.get("image") == tag
-    assert service.get("build"), "selected service must build from canonical source"
+    build = service.get("build") or {}
+    expected = {
+        "nfcore-api": "Dockerfile.api",
+        "nfcore-portal": "Dockerfile.portal",
+        "nfcore-worker": "Dockerfile.worker",
+        "nfcore-bling-worker": "Dockerfile.worker",
+    }[name]
+    if (service.get("container_name") != name or service.get("image") != tag
+            or Path(build.get("context", "")).resolve() != source
+            or (source / build.get("dockerfile", "")).resolve() != source / expected):
+        raise SystemExit(42)
 '
 specs=()
 for svc in "${services[@]}"; do
   grep -Fxq "$svc" <<<"$configured" || blocked "selected service missing in effective Compose: $svc"
   specs+=("$svc=${tags[$svc]}")
 done
-docker compose config --format json 2>/dev/null | python3 -c "$config_check" "${specs[@]}" 2>/dev/null ||
+docker compose config --format json 2>/dev/null | python3 -c "$config_check" "$SRC" "${specs[@]}" 2>/dev/null ||
   blocked "effective Compose project, service or image contract mismatch"
 for svc in "${services[@]}"; do
   [[ "$(docker inspect -f '{{index .Config.Labels "com.docker.compose.project"}}/{{index .Config.Labels "com.docker.compose.service"}}' "$svc")" == "nfcore/$svc" ]] ||
     blocked "container ownership mismatch: $svc"
-  [[ "$(docker inspect -f '{{.State.Health.Status}}' "$svc")" == healthy ]] ||
+  [[ "$(docker inspect -f '{{.State.Running}}' "$svc")" == true &&
+     "$(docker inspect -f '{{.State.Health.Status}}' "$svc")" == healthy ]] ||
     blocked "baseline service not healthy: $svc"
+  live_hash=$(docker inspect -f '{{index .Config.Labels "com.docker.compose.config-hash"}}' "$svc") ||
+    blocked "running Compose config hash unavailable"
+  configured_hash=$(docker compose config --hash "$svc" 2>/dev/null | awk -v svc="$svc" '$1 == svc { print $2 }') ||
+    blocked "effective Compose config hash unavailable"
+  [[ "$live_hash" =~ ^[a-f0-9]{64}$ && "$configured_hash" == "$live_hash" ]] ||
+    blocked "effective Compose differs from running container: $svc"
   previous[$svc]=$(docker inspect -f '{{.Image}}' "$svc") || blocked "running digest unavailable: $svc"
   [[ "${previous[$svc]}" =~ ^sha256:[a-f0-9]{64}$ ]] || blocked "invalid baseline digest"
   [[ "$(docker image inspect -f '{{.Id}}' "${tags[$svc]}")" == "${previous[$svc]}" ]] ||
@@ -93,7 +112,7 @@ done
 
 # Code-only rollback MUST be compatible with the currently installed schema.
 # A v21->v23 cutover is a separate governed operation, never this cron.
-MG=(docker compose run --rm --no-deps -T nfcore-api python scripts/ci/migration_guard.py)
+MG=(docker compose run --rm --no-deps --pull never -T nfcore-api python scripts/ci/migration_guard.py)
 umask 077
 MIGLOG=$(mktemp "$ROOT/.nfcore-migration-check.XXXXXXXX") || blocked "cannot create private migration log"
 trap 'rm -f -- "$MIGLOG"' EXIT
@@ -114,7 +133,9 @@ ready(){
     for svc in "${services[@]}"; do
       if [ "$expected" = previous ]; then expected_id="${previous[$svc]}"; else expected_id="${candidate[$svc]}"; fi
       id=$(docker inspect -f '{{.Image}}' "$svc" 2>/dev/null) || all_ok=false
-      [[ "$id" == "$expected_id" && "$(docker inspect -f '{{.State.Health.Status}}' "$svc" 2>/dev/null)" == healthy ]] || all_ok=false
+      [[ "$id" == "$expected_id" &&
+         "$(docker inspect -f '{{.State.Running}}' "$svc" 2>/dev/null)" == true &&
+         "$(docker inspect -f '{{.State.Health.Status}}' "$svc" 2>/dev/null)" == healthy ]] || all_ok=false
     done
     if [[ "$all_ok" == true ]] &&
        docker exec nfcore-api python -c "import urllib.request as u; u.urlopen('http://127.0.0.1:8080/health/ready', timeout=3).read()" >/dev/null 2>&1 &&
