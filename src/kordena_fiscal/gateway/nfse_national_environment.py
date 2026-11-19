@@ -77,6 +77,8 @@ def resolve_national_environment(
 
 
 ENV_PRODUCTION_GRANTS_FILE = "NFCORE_NFSE_PRODUCTION_GRANTS_FILE"
+# "authorize" also grants read-only "query"; "cancel" must be explicit.
+_GRANTABLE_OPERATIONS = frozenset({"authorize", "cancel"})
 _MAX_GRANTS_BYTES = 64 * 1024
 
 
@@ -86,7 +88,9 @@ def load_nfse_production_authority(env: Mapping[str, str] | None = None):  # typ
     The file is operator-managed on the server (outside the repository and the
     container image). Each entry is one exact human-approved production cell:
     tenant_id, unit_id, uf, municipality_ibge_code, approved_by,
-    approval_reference, external_evidence_id, approved_at (ISO-8601 with TZ).
+    approval_reference, external_evidence_id, approved_at (ISO-8601 with TZ),
+    and optional operations (["authorize"] by default; "cancel" must be listed
+    explicitly; "authorize" also allows the read-only recovery query).
     A configured-but-malformed file fails closed (raises) instead of silently
     granting or silently ignoring entries.
     """
@@ -119,21 +123,66 @@ def load_nfse_production_authority(env: Mapping[str, str] | None = None):  # typ
         for entry in entries:
             if not isinstance(entry, dict):
                 raise ValueError
-            key = ProductionActivationKey(
-                tenant_id=entry["tenant_id"], unit_id=entry["unit_id"],
-                provider_id="nfse-nacional-producao-restrita",
-                document_kind=FiscalDocumentKind.NFSE,
-                jurisdiction=BrazilianJurisdiction(entry["uf"], entry["municipality_ibge_code"]),
-                operation=ProviderOperation.AUTHORIZE,
-            )
-            records.append(ProductionActivationRecord(
-                key=key, state=ProductionActivationState.ACTIVE,
-                approval_reference=entry["approval_reference"],
-                external_evidence_id=entry["external_evidence_id"],
-                changed_by=entry["approved_by"],
-                changed_at=datetime.fromisoformat(entry["approved_at"]),
-                correlation_id="host-grant-file",
-            ))
+            operations = entry.get("operations", ["authorize"])
+            if (
+                not isinstance(operations, list) or not operations
+                or len(set(operations)) != len(operations)
+                or any(op not in _GRANTABLE_OPERATIONS for op in operations)
+            ):
+                raise ValueError
+            granted = {ProviderOperation(op) for op in operations}
+            if ProviderOperation.AUTHORIZE in granted:
+                # Whoever may emit in this exact cell must be able to recover
+                # what was emitted (read-only GET); never implies cancellation.
+                granted.add(ProviderOperation.QUERY)
+            for operation in sorted(granted, key=lambda item: item.value):
+                key = ProductionActivationKey(
+                    tenant_id=entry["tenant_id"], unit_id=entry["unit_id"],
+                    provider_id="nfse-nacional-producao-restrita",
+                    document_kind=FiscalDocumentKind.NFSE,
+                    jurisdiction=BrazilianJurisdiction(
+                        entry["uf"], entry["municipality_ibge_code"],
+                    ),
+                    operation=operation,
+                )
+                records.append(ProductionActivationRecord(
+                    key=key, state=ProductionActivationState.ACTIVE,
+                    approval_reference=entry["approval_reference"],
+                    external_evidence_id=entry["external_evidence_id"],
+                    changed_by=entry["approved_by"],
+                    changed_at=datetime.fromisoformat(entry["approved_at"]),
+                    correlation_id="host-grant-file",
+                ))
     except (OSError, ValueError, KeyError, TypeError, FiscalValidationError):
         raise FiscalValidationError("NFS-e production grants file is invalid") from None
     return ProductionExecutionAuthority(tuple(records))
+
+
+def require_national_production_grant(
+    authority: object, *, tenant_id: str, unit_id: str,
+    jurisdiction: object, operation: object,
+) -> None:
+    """Fail closed unless an exact human production grant exists for the cell."""
+    from kordena_fiscal.domain import FiscalDocumentKind
+    from kordena_fiscal.gateway.production_activation import (
+        FiscalProductionActivationError,
+        ProductionActivationKey,
+        ProductionExecutionAuthority,
+    )
+
+    if not isinstance(authority, ProductionExecutionAuthority):
+        raise FiscalValidationError(
+            "NFS-e production requires an injected human production grant"
+        )
+    try:
+        authority.require_key(ProductionActivationKey(
+            tenant_id=tenant_id, unit_id=unit_id,
+            provider_id="nfse-nacional-producao-restrita",
+            document_kind=FiscalDocumentKind.NFSE,
+            jurisdiction=jurisdiction,  # type: ignore[arg-type]
+            operation=operation,  # type: ignore[arg-type]
+        ))
+    except FiscalProductionActivationError:
+        raise FiscalValidationError(
+            "NFS-e production grant is not active for this exact cell and operation"
+        ) from None

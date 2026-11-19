@@ -9,9 +9,10 @@ from __future__ import annotations
 
 import json
 import ssl
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from datetime import UTC, datetime
 from urllib.error import HTTPError, URLError
+from urllib.parse import urlsplit
 from urllib.request import HTTPSHandler, Request, build_opener
 
 from kordena_fiscal.domain import (
@@ -23,6 +24,11 @@ from kordena_fiscal.domain import (
 )
 from kordena_fiscal.gateway.authorization import AuthorizationStatus, GatewayProviderMetadata
 from kordena_fiscal.gateway.fiscal_tls import RejectFiscalRedirects, build_fiscal_tls_context
+from kordena_fiscal.gateway.nfse_national_environment import (
+    SEFIN_PRODUCTION_HOST,
+    require_national_production_grant,
+    resolve_national_environment,
+)
 from kordena_fiscal.gateway.nfse_national_homologation import (
     SEFIN_HOMOLOGATION_NFSE_URL,
     OfficialNfseTransportError,
@@ -39,7 +45,8 @@ from kordena_fiscal.gateway.nfse_national_receipt import (
 from kordena_fiscal.gateway.nfse_national_receipt import (
     _verify_nfse_receipt_signature as _verify_nfse_receipt_signature,
 )
-from kordena_fiscal.gateway.provider import ProviderSelectionResolver
+from kordena_fiscal.gateway.production_activation import ProductionExecutionAuthority
+from kordena_fiscal.gateway.provider import ProviderOperation, ProviderSelectionResolver
 from kordena_fiscal.issuance.nfe_nfse import (
     NfseAuthorizationRequest,
     NfseAuthorizationResult,
@@ -100,8 +107,22 @@ def _validate_official_nfse(
         raise OfficialNfseTransportError(str(exc)) from None
 
 
+def _allowed_get_path(path: str) -> bool:
+    """Only the pinned restricted base or the official production host."""
+    if not isinstance(path, str) or ".." in path:
+        return False
+    if path.startswith(_URL_BASE + "/"):
+        return True
+    parts = urlsplit(path)
+    return (
+        parts.scheme == "https" and parts.hostname == SEFIN_PRODUCTION_HOST
+        and parts.port in (None, 443) and parts.username is None
+        and not parts.query and not parts.fragment
+    )
+
+
 def _read_only_get(path: str, context: ssl.SSLContext, timeout: float) -> bytes:
-    if not path.startswith(_URL_BASE + "/"):
+    if not _allowed_get_path(path):
         raise OfficialNfseTransportError("National API request path invalid")
     request = Request(
         path, method="GET", headers={"Accept": "application/json"},
@@ -134,6 +155,8 @@ class NfseNationalHomologationQueryGateway:
         timeout_seconds: float = 15,
         load_dispatch: Callable[[NfseAuthorizationRequest], NationalDispatchEvidence | None]
         | None = None,
+        production_authority: ProductionExecutionAuthority | None = None,
+        environ: Mapping[str, str] | None = None,
     ) -> None:
         if (
             not callable(getattr(provider_resolver, "resolve_provider_id", None))
@@ -146,6 +169,8 @@ class NfseNationalHomologationQueryGateway:
         self._get = exchange_get or _read_only_get
         self._timeout = timeout_seconds
         self._load_dispatch = load_dispatch
+        self._production_authority = production_authority
+        self._environ = environ
 
     def query(self, request: NfseAuthorizationRequest) -> NfseAuthorizationResult:
         if not isinstance(request, NfseAuthorizationRequest):
@@ -153,12 +178,21 @@ class NfseNationalHomologationQueryGateway:
         document = request.document
         scope = document.scope
         jurisdiction = document.issuer.address.jurisdiction
-        if (
-            scope.host_namespace is None
-            or scope.environment is not FiscalEnvironment.HOMOLOGATION
-            or jurisdiction.municipality_ibge_code is None
-        ):
+        if scope.host_namespace is None or jurisdiction.municipality_ibge_code is None:
             raise OfficialNfseTransportError("National NFS-e query requires trusted scope")
+        try:
+            environment_profile = resolve_national_environment(
+                scope.environment, env=self._environ,
+            )
+            if environment_profile.environment is FiscalEnvironment.PRODUCTION:
+                require_national_production_grant(
+                    self._production_authority,
+                    tenant_id=scope.tenant_id, unit_id=scope.unit_id,
+                    jurisdiction=jurisdiction, operation=ProviderOperation.QUERY,
+                )
+        except FiscalValidationError as exc:
+            raise OfficialNfseTransportError(str(exc)) from None
+        base_url = environment_profile.base_url
         evidence = self._load_dispatch(request) if self._load_dispatch is not None else None
         dps_id = evidence.identity.dps_id if evidence is not None else _dps_id(request)
         bound = self._provider_resolver.resolve_provider_id(
@@ -183,10 +217,10 @@ class NfseNationalHomologationQueryGateway:
         )
         tls = build_fiscal_tls_context(material)
         key = _parse_key(
-            self._get(f"{_URL_BASE}/dps/{dps_id}", tls, self._timeout),
+            self._get(f"{base_url}/dps/{dps_id}", tls, self._timeout),
             jurisdiction.municipality_ibge_code,
         )
-        raw = self._get(f"{_URL_BASE}/nfse/{key}", tls, self._timeout)
+        raw = self._get(f"{base_url}/nfse/{key}", tls, self._timeout)
         try:
             if evidence is not None:
                 expected, profile = evidence.identity, evidence.schema_profile

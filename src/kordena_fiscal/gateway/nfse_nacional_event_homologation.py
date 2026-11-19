@@ -18,7 +18,7 @@ import io
 import json
 import os
 import ssl
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from urllib.error import HTTPError, URLError
@@ -43,11 +43,16 @@ from kordena_fiscal.gateway.fiscal_tls import RejectFiscalRedirects, build_fisca
 from kordena_fiscal.gateway.nfse_nacional_homologation import (
     NACIONAL_HOMOLOGATION_PROVIDER_ID,
 )
+from kordena_fiscal.gateway.nfse_national_environment import (
+    require_national_production_grant,
+    resolve_national_environment,
+)
 from kordena_fiscal.gateway.nfse_national_homologation import (
     SEFIN_HOMOLOGATION_NFSE_URL,
 )
 from kordena_fiscal.gateway.nfse_national_receipt import _verify_nfse_receipt_signature
-from kordena_fiscal.gateway.provider import ProviderSelectionResolver
+from kordena_fiscal.gateway.production_activation import ProductionExecutionAuthority
+from kordena_fiscal.gateway.provider import ProviderOperation, ProviderSelectionResolver
 from kordena_fiscal.issuance.nfe_nfse import NfseAuthorizationRequest
 from kordena_fiscal.signing.nfse_xmldsig import append_nfse_signature
 from kordena_fiscal.vault import EphemeralCertificateMaterial
@@ -67,6 +72,19 @@ _EVENT_SIGNER_ENV = "NFCORE_NFSE_EVENT_SIGNER_SHA256"
 
 class NationalNfseEventError(FiscalValidationError):
     """No secrets, full XML, certificates or upstream body in error messages."""
+
+
+_EVENT_ENVIRONMENTS = {
+    FiscalEnvironment.HOMOLOGATION: "2",
+    FiscalEnvironment.PRODUCTION: "1",
+}
+
+
+def _event_tp_amb(environment: object) -> str:
+    try:
+        return _EVENT_ENVIRONMENTS[environment]  # type: ignore[index]
+    except (KeyError, TypeError):
+        raise NationalNfseEventError("Unsupported national event environment") from None
 
 
 
@@ -174,7 +192,7 @@ class NationalNfseCancellationIntent:
     def __post_init__(self) -> None:
         if (
             not isinstance(self.scope, ExecutionScope)
-            or self.scope.environment is not FiscalEnvironment.HOMOLOGATION
+            or self.scope.environment not in _EVENT_ENVIRONMENTS
             or not self.scope.host_namespace
             or not isinstance(self.issuer, Cnpj)
             or not isinstance(self.issuer_jurisdiction, BrazilianJurisdiction)
@@ -214,7 +232,7 @@ class NationalNfseCancellationIntent:
                 != str(self.event_sequence)
             )
             or sum(x.get("Id") == info[0].get("Id") for x in root.iter()) != 1
-            or info[0].findtext(f"{_NS_TAG}tpAmb") != "2"
+            or info[0].findtext(f"{_NS_TAG}tpAmb") != _event_tp_amb(self.scope.environment)
             or info[0].findtext(f"{_NS_TAG}CNPJAutor") != self.issuer.value
             or info[0].findtext(f"{_NS_TAG}chNFSe") != self.invoice_reference
             or info[0].find(f"{_NS_TAG}e{_CANCEL_TYPE}") is None
@@ -251,7 +269,8 @@ def _validated_response(payload: bytes, intent: NationalNfseCancellationIntent) 
         raise NationalNfseEventError("Invalid SEFIN event reply")
     try:
         response = json.loads(payload)
-        if not isinstance(response, dict) or response.get("tipoAmbiente") != 2:
+        expected_amb = int(_event_tp_amb(intent.scope.environment))
+        if not isinstance(response, dict) or response.get("tipoAmbiente") != expected_amb:
             raise ValueError
         encoded = response.get("eventoXmlGZipB64")
         if not isinstance(encoded, str) or len(encoded) > _MAX_XML * 2:
@@ -275,7 +294,7 @@ def _validated_response(payload: bytes, intent: NationalNfseCancellationIntent) 
         or request.findtext(f"{_NS_TAG}chNFSe") != intent.invoice_reference
         or request.findtext(f"{_NS_TAG}CNPJAutor") != intent.issuer.value
         or request.find(f"{_NS_TAG}e{_CANCEL_TYPE}") is None
-        or request.findtext(f"{_NS_TAG}tpAmb") != "2"
+        or request.findtext(f"{_NS_TAG}tpAmb") != _event_tp_amb(intent.scope.environment)
     ):
         raise NationalNfseEventError(
             "SEFIN cancellation receipt does not confirm the original invoice"
@@ -284,10 +303,10 @@ def _validated_response(payload: bytes, intent: NationalNfseCancellationIntent) 
 
 
 def _exchange(
-    key: str, body: bytes, tls: ssl.SSLContext, timeout: float,
+    key: str, body: bytes, tls: ssl.SSLContext, timeout: float, *, url: str = _URL,
 ) -> bytes:
     req = Request(
-        _URL + "/" + _key(key) + "/eventos",
+        url + "/" + _key(key) + "/eventos",
         data=body,
         method="POST",
         headers={"Content-Type": "application/json", "Accept": "application/json"},
@@ -307,11 +326,11 @@ def _exchange(
 
 
 def _exchange_event_get(
-    key: str, tls: ssl.SSLContext, timeout: float,
+    key: str, tls: ssl.SSLContext, timeout: float, *, url: str = _URL,
 ) -> bytes | None:
     """Read-only official event 101101, seq=1. HTTP 404 means still pending."""
     req = Request(
-        _URL + "/" + _key(key) + "/eventos/" + _CANCEL_TYPE + "/1",
+        url + "/" + _key(key) + "/eventos/" + _CANCEL_TYPE + "/1",
         method="GET", headers={"Accept": "application/json"},
     )
     try:
@@ -350,6 +369,8 @@ class NationalNfseCancellationHomologationTransport:
         exchange: Callable[[str, bytes, ssl.SSLContext, float], bytes] | None = None,
         exchange_get: Callable[[str, ssl.SSLContext, float], bytes | None] | None = None,
         timeout_seconds: float = 15,
+        production_authority: ProductionExecutionAuthority | None = None,
+        environ: Mapping[str, str] | None = None,
     ) -> None:
         if (
             not callable(getattr(provider_resolver, "resolve_provider_id", None))
@@ -368,6 +389,28 @@ class NationalNfseCancellationHomologationTransport:
         self._exchange = exchange or _exchange
         self._exchange_get = exchange_get or _exchange_event_get
         self._timeout = timeout_seconds
+        self._production_authority = production_authority
+        self._environ = environ
+
+    def _event_url(
+        self, intent: NationalNfseCancellationIntent, operation: ProviderOperation,
+    ) -> str:
+        """Environment endpoint; production needs kill switch + exact human grant."""
+        try:
+            profile = resolve_national_environment(
+                intent.scope.environment, env=self._environ,
+            )
+            if profile.environment is FiscalEnvironment.PRODUCTION:
+                require_national_production_grant(
+                    self._production_authority,
+                    tenant_id=intent.scope.tenant_id, unit_id=intent.scope.unit_id,
+                    jurisdiction=intent.issuer_jurisdiction, operation=operation,
+                )
+        except NationalNfseEventError:
+            raise
+        except FiscalValidationError as exc:
+            raise NationalNfseEventError(str(exc)) from None
+        return profile.nfse_url
 
     def query_cancellation(
         self, intent: NationalNfseCancellationIntent,
@@ -383,6 +426,7 @@ class NationalNfseCancellationHomologationTransport:
         )
         if provider != NACIONAL_HOMOLOGATION_PROVIDER_ID:
             raise NationalNfseEventError("National event query provider binding mismatch")
+        url = self._event_url(intent, ProviderOperation.QUERY)
         if self._exchange_get is _LIVE_EVENT_GET:
             _require_live_event_trust()
         self._approve(intent)
@@ -392,16 +436,19 @@ class NationalNfseCancellationHomologationTransport:
             material.pkcs12_bytes, material.password,
             issuer_cnpj=intent.issuer, at=datetime.now(UTC),
         )
-        response = self._exchange_get(
-            intent.invoice_reference,
-            build_fiscal_tls_context(material),
-            self._timeout,
+        tls = build_fiscal_tls_context(material)
+        response = (
+            _exchange_event_get(intent.invoice_reference, tls, self._timeout, url=url)
+            if self._exchange_get is _LIVE_EVENT_GET
+            else self._exchange_get(intent.invoice_reference, tls, self._timeout)
         )
         if response is None:
             return None
         xml = _validated_response(response, intent)
         if self._exchange_get is _LIVE_EVENT_GET:
-            validate_national_event_xml(xml, kind="response")
+            validate_national_event_xml(
+                xml, kind="response", environment=intent.scope.environment,
+            )
         self._validate_response(xml)
         return NationalNfseCancellationReceipt(
             invoice_reference=intent.invoice_reference,
@@ -421,6 +468,9 @@ class NationalNfseCancellationHomologationTransport:
         )
         if provider != NACIONAL_HOMOLOGATION_PROVIDER_ID:
             raise NationalNfseEventError("National cancellation provider binding mismatch")
+        # Production cancellation is a real fiscal effect: kill switch plus an
+        # explicit "cancel" grant for this exact cell, checked before A1/HTTP.
+        url = self._event_url(intent, ProviderOperation.CANCEL)
         if self._exchange is _LIVE_EVENT_POST:
             _require_live_event_trust()
         self._approve(intent)
@@ -438,15 +488,17 @@ class NationalNfseCancellationHomologationTransport:
                 ).decode("ascii"),
             }, separators=(",", ":"),
         ).encode("ascii")
-        reply = self._exchange(
-            intent.invoice_reference,
-            payload,
-            build_fiscal_tls_context(material),
-            self._timeout,
+        tls = build_fiscal_tls_context(material)
+        reply = (
+            _exchange(intent.invoice_reference, payload, tls, self._timeout, url=url)
+            if self._exchange is _LIVE_EVENT_POST
+            else self._exchange(intent.invoice_reference, payload, tls, self._timeout)
         )
         event_xml = _validated_response(reply, intent)
         if self._exchange is _LIVE_EVENT_POST:
-            validate_national_event_xml(event_xml, kind="response")
+            validate_national_event_xml(
+                event_xml, kind="response", environment=intent.scope.environment,
+            )
         # A structurally correlated XML is not proof it was signed by SEFIN.
         # Require separately pinned official event schema and signature checks.
         self._validate_response(event_xml)
@@ -456,14 +508,18 @@ class NationalNfseCancellationHomologationTransport:
         )
 
 
-def validate_national_event_xml(xml: bytes, *, kind: str) -> None:
+def validate_national_event_xml(
+    xml: bytes, *, kind: str,
+    environment: FiscalEnvironment = FiscalEnvironment.HOMOLOGATION,
+) -> None:
     """Pinned national 1.01 event schema and RSA-SHA256 signed-ID integrity."""
     if kind not in ("request", "response"):
         raise NationalNfseEventError("Unsupported national fiscal event")
-    # This gateway is exclusively SEFIN production-restricted. Match the
-    # endpoint operational date; event/competence dates may be retroactive.
+    _event_tp_amb(environment)
+    # Match the endpoint operational date of the selected environment;
+    # event/competence dates may be retroactive.
     profile = select_national_dps_profile(
-        environment=FiscalEnvironment.HOMOLOGATION, schema_version="1.01",
+        environment=environment, schema_version="1.01",
         effective_on=datetime.now(UTC).date(),
     )
     national_event_validator(kind, profile=profile).validate_document(xml)
@@ -503,7 +559,7 @@ def build_signed_national_cancellation(
     document = request.document
     _key(key)
     if (
-        document.scope.environment is not FiscalEnvironment.HOMOLOGATION
+        document.scope.environment not in _EVENT_ENVIRONMENTS
         or not document.scope.host_namespace
         or document.issuer.address.jurisdiction.state_code != "SP"
         or not key.startswith("35")
@@ -530,7 +586,7 @@ def build_signed_national_cancellation(
     root.set("versao", "1.01")
     info = etree.SubElement(root, _NS_TAG + "infPedReg")
     info.set("Id", "PRE" + key + _CANCEL_TYPE)
-    etree.SubElement(info, _NS_TAG + "tpAmb").text = "2"
+    etree.SubElement(info, _NS_TAG + "tpAmb").text = _event_tp_amb(document.scope.environment)
     etree.SubElement(info, _NS_TAG + "verAplic").text = "nfcore-event-v1"
     etree.SubElement(info, _NS_TAG + "dhEvento").text = occurred_at.astimezone(
         ZoneInfo("America/Sao_Paulo")
@@ -543,7 +599,9 @@ def build_signed_national_cancellation(
     etree.SubElement(cancel, _NS_TAG + "xMotivo").text = reason_description.strip()
     append_nfse_signature(root, info, private, certificate, legacy_abrasf=False)
     signed = etree.tostring(root, encoding="utf-8", xml_declaration=True)
-    validate_national_event_xml(signed, kind="request")
+    validate_national_event_xml(
+        signed, kind="request", environment=document.scope.environment,
+    )
     return NationalNfseCancellationIntent(
         scope=document.scope, issuer=document.issuer.cnpj,
         issuer_jurisdiction=document.issuer.address.jurisdiction,

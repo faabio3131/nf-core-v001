@@ -816,6 +816,7 @@ def build_runtime_fiscal_handler_factory(
                     scope=scope, issuer_cnpj=cnpj,
                 ),
                 load_dispatch=application.load_national_dispatch,
+                production_authority=nfse_production_authority,
             )
         if national_adapter is not None or extrema_adapter is not None or municipal_issue:
             router = _GovernedNfseRouter(
@@ -845,6 +846,7 @@ def build_runtime_fiscal_handler_factory(
                 certificate_vault=certificate_vault,
                 provider_resolver=_CanonicalWebissProviderResolver(application),
                 retention=retention,
+                production_authority=nfse_production_authority,
             )
             for operation, handler in national_handlers.items():
                 if operation in handlers:
