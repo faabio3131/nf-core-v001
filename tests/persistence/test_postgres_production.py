@@ -23,7 +23,11 @@ from kordena_fiscal.domain import (
 )
 from kordena_fiscal.lifecycle import IdempotencyKey
 from kordena_fiscal.numbering import FiscalSequenceKey, FiscalSequencePolicy
-from kordena_fiscal.persistence.iron_a1_delegation import IronA1DelegationStore
+from kordena_fiscal.persistence.iron_a1_delegation import (
+    IronA1DelegationStore,
+    IronA1ScopeBusy,
+    iron_a1_scope_key,
+)
 from kordena_fiscal.persistence.ports import PersistenceStateError
 from kordena_fiscal.persistence.postgres import (
     PostgresFiscalDatabase,
@@ -393,3 +397,33 @@ def test_iron_a1_delegation_postgres_migration_durable_single_use_and_tenant_sco
             "WHERE fiscal_tenant_id = ?",
             ("gym-tenant-b",),
         ).fetchone()[0] is None
+
+
+def test_postgres_iron_a1_withdrawal_serializes_and_fences_old_grants(
+    database: PostgresFiscalDatabase,
+) -> None:
+    store = IronA1DelegationStore(database.connection)
+    scope = dict(host_namespace="fm.iron", tenant_id="tenant-a", unit_id="unit-a",
+                 environment="homologation", issuer_cnpj="11222333000181")
+    key = iron_a1_scope_key(**{
+        "host": scope["host_namespace"], "tenant": scope["tenant_id"], "unit": scope["unit_id"],
+        "environment": scope["environment"], "cnpj": scope["issuer_cnpj"],
+    })
+    origin = "https://app.ironfitcore.com.br"
+    request_id = "a92bbdf1-b8d9-4c73-89bc-ed4b1a6d8976"
+
+    def competing_lock() -> None:
+        with pytest.raises(IronA1ScopeBusy), store.locked(key):
+            pytest.fail("second database session acquired the same scope")
+
+    with store.locked(key) as held:
+        token, _ = held.issue(**scope, allowed_origin=origin, issued_by="owner-a")
+        with ThreadPoolExecutor(max_workers=1) as executor:
+            executor.submit(competing_lock).result(timeout=10)
+        assert held.reserve_withdrawal(**scope, actor_id="owner-a", request_id=request_id)
+        assert held.consume(token=token, origin=origin) is None
+
+    with store.locked(key) as held:
+        replacement, _ = held.issue(**scope, allowed_origin=origin, issued_by="owner-a")
+        assert not held.reserve_withdrawal(**scope, actor_id="owner-a", request_id=request_id)
+        assert held.consume(token=replacement, origin=origin) is not None

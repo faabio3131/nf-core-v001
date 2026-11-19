@@ -613,10 +613,7 @@ def test_reviewed_tax_decision_rejects_conflicts_and_stale_competence() -> None:
 
 
 def test_reviewed_complementary_information_signed_and_preserved():
-    from dataclasses import replace
-
     from kordena_fiscal.issuance.nfse_archive import decode_prepared_nfse, encode_prepared_nfse
-    from kordena_fiscal.issuance.nfse_dps_builder import build_unsigned_dps
 
     base = _document()
     decision = NfseNationalTaxTreatment(
@@ -633,7 +630,7 @@ def test_reviewed_complementary_information_signed_and_preserved():
         decision, complementary_information="Mensagem diferente",
     )))
     assert changed.request_fingerprint != request.request_fingerprint
-    xml = etree.fromstring(build_unsigned_dps(request))
+    xml = etree.fromstring(build_signed_dps(request, _certificate()))
     ns = {"n": "http://www.sped.fazenda.gov.br/nfse"}
     assert xml.xpath("string(//n:serv/n:infoCompl/n:xInfComp)", namespaces=ns) == (
         decision.complementary_information
