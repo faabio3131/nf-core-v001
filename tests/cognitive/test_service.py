@@ -2,9 +2,11 @@ from __future__ import annotations
 
 import re
 from pathlib import Path
+from threading import Event
 
 from kordena_fiscal.cognitive import (
     AdviceStatus,
+    Bulkhead,
     Capability,
     CircuitBreaker,
     CognitiveAdviceService,
@@ -21,6 +23,7 @@ from kordena_fiscal.cognitive.ports import (
 )
 
 from .conftest import (
+    Recorder,
     ScriptedModel,
     good_sections,
     make_request,
@@ -103,11 +106,6 @@ def test_timeout_degrades_without_blocking(build_service) -> None:  # type: igno
 
 
 def test_timeout_retains_bulkhead_slot_until_worker_finishes() -> None:
-    from threading import Event
-
-    from kordena_fiscal.cognitive import Bulkhead
-    from .conftest import Recorder
-
     started, finished, allow_exit = Event(), Event(), Event()
 
     class BlockingModel(ScriptedModel):
@@ -136,9 +134,6 @@ def test_timeout_retains_bulkhead_slot_until_worker_finishes() -> None:
 
 
 def test_saturated_bulkhead_does_not_consume_half_open_probe() -> None:
-    from kordena_fiscal.cognitive import Bulkhead
-    from .conftest import Recorder
-
     now = [0.0]
     breaker = CircuitBreaker(
         failure_threshold=1, recovery_seconds=5, clock=lambda: now[0],
