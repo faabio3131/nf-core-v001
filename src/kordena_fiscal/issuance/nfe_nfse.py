@@ -559,7 +559,9 @@ class NfseCanonicalDocument:
                 )
             if treatment.iss_rate is not None:
                 if not self.requires_reviewed_iss_rate:
-                    raise FiscalValidationError("ISS rate conflicts with reviewed no-highlight regime")
+                    raise FiscalValidationError(
+                        "ISS rate conflicts with reviewed no-highlight regime"
+                    )
                 rate = Decimal(treatment.iss_rate)
                 for line in self.services:
                     expected_iss = (line.taxable_amount.amount * rate / 100).quantize(
