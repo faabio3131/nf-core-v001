@@ -96,13 +96,31 @@ class Bulkhead:
 _EXECUTOR = ThreadPoolExecutor(max_workers=8, thread_name_prefix="cognitive-model")
 
 
-def call_with_deadline(fn: Callable[[], T], seconds: float) -> T:
-    """Run ``fn`` and give up after ``seconds``. The worker thread cannot be killed, so the
-    bulkhead must bound how many abandoned calls can pile up."""
+def call_with_deadline(
+    fn: Callable[[], T], seconds: float, *, on_complete: Callable[[], None] | None = None,
+) -> T:
+    """Bound caller latency; retain any acquired slot until the worker exits.
 
-    future = _EXECUTOR.submit(fn)
+    A timed-out running thread cannot be killed. The completion callback owns
+    the slot even after the caller has returned. A cancelled queued future or
+    a failed submission also returns its slot exactly once.
+    """
+    def run() -> T:
+        try:
+            return fn()
+        finally:
+            if on_complete is not None:
+                on_complete()
+
+    try:
+        future = _EXECUTOR.submit(run)
+    except BaseException:
+        if on_complete is not None:
+            on_complete()
+        raise
     try:
         return future.result(timeout=seconds)
     except FutureTimeout as exc:
-        future.cancel()
+        if future.cancel() and on_complete is not None:
+            on_complete()
         raise DeadlineExceeded(f"model call exceeded {seconds}s") from exc
