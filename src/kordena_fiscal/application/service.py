@@ -3997,8 +3997,8 @@ class FiscalApplicationService:
             state = uow.lifecycle.get(document_id)
             attempts = uow.idempotency.attempts(request.idempotency_key)
             if (
-                jurisdiction.state_code != "SP"
-                or jurisdiction.municipality_ibge_code is None
+                jurisdiction.municipality_ibge_code is None
+                or len(jurisdiction.municipality_ibge_code) != 7
                 or request.document.dps_number is None
                 or state is None or state.state is not FiscalDocumentState.AUTHORIZED
                 or len(attempts) != 1
@@ -4011,7 +4011,8 @@ class FiscalApplicationService:
             key = attempts[0].result_reference
             if (
                 len(key) != 50 or not key.isascii() or not key.isdecimal()
-                or not key.startswith("35")
+                # The national access key starts with the issuer's IBGE UF code.
+                or not key.startswith(jurisdiction.municipality_ibge_code[:2])
             ):
                 raise PersistenceStateError("National original official access key is invalid")
             entries = [
