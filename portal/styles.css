@@ -37,7 +37,8 @@
 html {
   width: 100%;
   max-width: 100%;
-  overflow-x: hidden;
+  /* clip (not hidden): hidden turns html/body into scroll containers and breaks the sticky sidebar */
+  overflow-x: clip;
   background: var(--ink-950);
   scroll-behavior: smooth;
 }
@@ -45,7 +46,7 @@ body {
   width: 100%;
   max-width: 100%;
   min-width: 0;
-  overflow-x: hidden;
+  overflow-x: clip;
   margin: 0;
   min-height: 100vh;
   background:
