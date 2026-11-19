@@ -32,12 +32,10 @@ services=(nfcore-api nfcore-portal)
 workers=()
 names=$(docker ps -a --format '{{.Names}}') || blocked "Docker inventory unavailable"
 running=$(docker ps --format '{{.Names}}') || blocked "Docker running inventory unavailable"
-for svc in nfcore-worker; do
-  if grep -Fxq "$svc" <<<"$names"; then
-    grep -Fxq "$svc" <<<"$running" || blocked "production Worker is stopped; never auto-activate"
-    workers+=("$svc")
-  fi
-done
+if grep -Fxq nfcore-worker <<<"$names"; then
+  grep -Fxq nfcore-worker <<<"$running" || blocked "production Worker is stopped; never auto-activate"
+  workers+=(nfcore-worker)
+fi
 while IFS= read -r name; do
   case "$name" in
     nfcore-worker) ;;
