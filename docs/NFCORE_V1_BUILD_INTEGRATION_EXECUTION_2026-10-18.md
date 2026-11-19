@@ -1,3 +1,5 @@
+# FM NFCORE V1 — Anexo executivo de construção e integração Web (BUILD-ONLY)
+
 > **Entrega incremental 19/11/2026 — REC-03:** verificação OCSP offline complementar à LCR, CertID exato, resposta GOOD válida, assinatura da AC emissora ou responder delegado com EKU e revogação verificadas, mount existente opt-in. Nenhum endpoint externo ativado; materiais oficiais/identidade, LTV e certificação permanecem abertos. Código/testes no mesmo commit sobre `8cc67ababe091db76cf85b04d9636995aebf0f62`, sem execução de testes, nova CI, PR ou deploy. Fonte: RFC 6960. Dossiê `docs/operations/NFCORE_NATIONAL_RECEIPT_TRUST_SIGNER_PINS.md`.
 
 > **Entrega incremental 19/11/2026 — REC-03:** verificação criptográfica do DPS antes de POST, vínculo com fingerprint do A1 do Vault e verificação do arquivo histórico usando seu instante de observação somente para a assinatura DPS. Signatário oficial da NFS-e continua sujeito à confiança atual; não equivale a LTV/OCSP. Mudança e testes no mesmo commit desta nota sobre `22a0c7da9d2f8b334d61ed606882cbbd64e764a1`, testes não executados. Sem nova CI, PR, promoção ou deploy. Dossiê: `docs/operations/NFCORE_NATIONAL_DPS_DISPATCH_EVIDENCE.md`.
@@ -8,7 +10,6 @@
 
 ---
 
-# FM NFCORE V1 — Anexo executivo de construção e integração Web (BUILD-ONLY)
 
 **Status:** APROVADO PARA EXECUÇÃO INTERNA pelo proprietário em 18/10/2026.  
 **Vínculo obrigatório:** `docs/NFCORE_V1_COMPLETION_MASTER_EXECUTION_SCHEDULE_2026-10-05.md` + `docs/NFCORE_V1_EXECUTION_LEDGER.md`.  

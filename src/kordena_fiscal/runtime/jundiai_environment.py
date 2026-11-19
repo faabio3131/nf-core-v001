@@ -144,8 +144,9 @@ def _verify_signature(
             )
             if (
                 root.tag != query_root or count != 1 or uri != ""
-                or signature.getparent() is not root
                 or root.get("Id") is not None
+                # Kept last: mypy narrows `root` to getparent()'s Optional type.
+                or signature.getparent() is not root
             ):
                 raise FiscalValidationError("Unexpected Giss read-only query signature")
             targets = [root]

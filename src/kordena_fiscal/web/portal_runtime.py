@@ -120,7 +120,8 @@ def _is_geisweb_authorized_xml(entry: Any) -> bool:
             no_network=True, load_dtd=False, resolve_entities=False, huge_tree=False,
         ))
         return (
-            not root.getroottree().docinfo.doctype
+            # lxml-stubs 0.5 omits DocInfo.doctype; the attribute exists at runtime.
+            not root.getroottree().docinfo.doctype  # type: ignore[union-attr]
             and root.tag == "ConsultaLoteRpsResposta"
             and len(root.findall("Rps")) == 1
         )

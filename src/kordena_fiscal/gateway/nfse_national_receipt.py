@@ -230,12 +230,12 @@ def _verify_nfse_receipt_signature(
 
 def verify_outgoing_national_dps(
     signed_dps: bytes, *, expected_signer_sha256: str | None = None,
-    archived_dispatch_at: datetime | None = None,
+    archived_dispatch_at: datetime | None = None, tp_amb: str = "2",
 ) -> str:
     """Verify the exact signature and, before dispatch, the scoped Vault A1."""
     from kordena_fiscal.gateway.nfse_national_homologation import parse_signed_dps_info
 
-    info = parse_signed_dps_info(signed_dps)
+    info = parse_signed_dps_info(signed_dps, tp_amb=tp_amb)
     certificate = _verify_nfse_receipt_signature(
         info.getroottree().getroot(), info, info.get("Id", ""),
         archived_dispatch_at=archived_dispatch_at,

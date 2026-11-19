@@ -200,5 +200,7 @@ def test_invalid_pkcs12_returns_controlled_error_without_storing_file(tmp_path) 
         },
     )
     assert result.status_code == 422
-    assert result.json()["detail"]["code"] == "A1_VALIDATION_FAILED"
+    # #565 (in production): unreadable PKCS#12 reports the specific code so the
+    # Portal can say "file or password invalid" instead of a generic failure.
+    assert result.json()["detail"]["code"] == "A1_FILE_OR_PASSWORD_INVALID"
     assert not list(root.glob("*.a1.enc"))

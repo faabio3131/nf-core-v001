@@ -58,7 +58,8 @@ def test_reviewed_deduction_round_trip_and_xml(profile):
         assert root.findtext(".//n:docDedRed/n:vDeducaoReducao", namespaces=_NS) == "10.00"
         assert root.find(".//n:vDR", namespaces=_NS) is None
     else:
-        assert root.findtext(".//n:docAjusteBC/n:dFeNacional/n:chaveDFe", namespaces=_NS) == "3" * 50
+        chave = root.findtext(".//n:docAjusteBC/n:dFeNacional/n:chaveDFe", namespaces=_NS)
+        assert chave == "3" * 50
         assert root.findtext(".//n:docAjusteBC/n:vAjusteAplic", namespaces=_NS) == "10.00"
         assert root.findtext(".//n:docAjusteBC/n:vTotDoc", namespaces=_NS) == "50.00"
 
@@ -95,7 +96,14 @@ def test_durable_evidence_allocation_refuses_other_source_after_policy_rotation(
     from kordena_fiscal.domain import SourceReference
     from kordena_fiscal.persistence import PersistenceConflictError, SqliteFiscalDatabase
 
-    original = replace(_reviewed(), dps_number=None)
+    reviewed = _reviewed()
+    # Durable DPS numbering is partitioned by host namespace; the synthetic
+    # fixture scope has none, which would fail before the evidence gate.
+    scope = replace(reviewed.scope, host_namespace="fm-nfcore")
+    original = replace(
+        reviewed, dps_number=None, scope=scope,
+        issuer=replace(reviewed.issuer, scope=scope),
+    )
     database = SqliteFiscalDatabase(tmp_path / "deductions.sqlite")
     database.initialize()
     application = FiscalApplicationService(database)
