@@ -561,8 +561,9 @@ def build_signed_national_cancellation(
     if (
         document.scope.environment not in _EVENT_ENVIRONMENTS
         or not document.scope.host_namespace
-        or document.issuer.address.jurisdiction.state_code != "SP"
-        or not key.startswith("35")
+        or document.issuer.address.jurisdiction.municipality_ibge_code is None
+        # The national access key starts with the issuer's IBGE UF code.
+        or not key.startswith(document.issuer.address.jurisdiction.municipality_ibge_code[:2])
         or reason_code not in ("1", "2", "9")
         or not isinstance(reason_description, str)
         or not 15 <= len(reason_description.strip()) <= 255
