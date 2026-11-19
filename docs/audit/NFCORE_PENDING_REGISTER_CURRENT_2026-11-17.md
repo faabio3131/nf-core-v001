@@ -214,3 +214,7 @@ Ao fechar um item, inserir: OWNER, data, branch/HEAD, PR/commit, linha/célula, 
 ### REC-22 — Sentinela normativa: detecção de divergência offline (19/11/2026)
 
 Implementação na branch consolidada: `a1e56232` compara bytes observados com o SHA-256 do artefato pinado, sem inferir vigência ou autenticidade; `eac2e673` encaminha divergência ao RegulatoryWatcher para triagem humana, sem promoção de baseline ou regra fiscal; `6d245ca9` rejeita checksums não hexadecimais ASCII (inclusive sinais, separadores e dígitos Unicode). Regressões incluídas em `b1e20c76`, `7d7e5884` e `175b1382`. Referência de engenharia: `175b13825d0811dfabbc7f9e067c81640f42e8bd`. Testes novos escritos, ainda não executados; sem nova CI manual, merge ou deploy. Não equivale a pesquisa periódica de fontes oficiais, autenticação da origem, persistência operacional do watcher ou certificação REC-22; manter esses limites explícitos e os demais gates abertos. Nenhuma regra fiscal foi ativada.
+
+## Passagem de bastão CURRENT — 19/11/2026 15:20 UTC
+
+Consultar [NFCORE_HANDOFF_LIVE_CLOSEOUT_2026-11-19.md](NFCORE_HANDOFF_LIVE_CLOSEOUT_2026-11-19.md) antes de retomar: PRs #563 e #564, P1–P7, branch paralela fix/nfcore-eng-closeout-20261119, bloqueios de produção e incidente de upload A1 com cofre observado vazio. Documento registrado em `e4e65154147097c1f978b6219a0923160bed9f2e`. Reconciliar branches por conteúdo, não presumir integração nem reduzir escopo dos 59 IDs. Testes locais relatados não equivalem a CI; nenhuma PR nova ou deploy autorizado por esta nota.
