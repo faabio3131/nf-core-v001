@@ -58,12 +58,12 @@ class _Vault:
         self.calls = []
         self.evidence = None
 
-    def provision(self, *, scope, issuer_cnpj, pkcs12_bytes, password):
+    def provision(self, *, scope, issuer_cnpj, pkcs12_bytes, password, actor=None):
         self.calls.append((scope, issuer_cnpj, pkcs12_bytes, password))
         self.evidence = SimpleNamespace(expires_at=datetime.now(UTC) + timedelta(days=7))
         return self.evidence
 
-    def withdraw(self, *, scope, issuer_cnpj):
+    def withdraw(self, *, scope, issuer_cnpj, actor=None):
         assert scope.host_namespace == "fm.iron" and issuer_cnpj == _CNPJ
         self.evidence = None
 

@@ -23,6 +23,10 @@ from pathlib import Path
 _VAULT_UID = 10001
 _REMOTE_PREFIXES = ("sftp:", "s3:", "b2:", "azure:", "gs:", "swift:", "rclone:", "rest:https://")
 _RECORD = re.compile(r"[a-f0-9]{64}\.a1\.enc\Z")
+# The only non-record file allowed in the vault directory: the chained A1
+# audit trail written by the application. It is backed up with the directory
+# (restic) but is not an encrypted record and never part of record parity.
+_AUDIT_TRAIL = "a1-audit.jsonl"
 
 
 class VaultOpsError(Exception):
@@ -42,10 +46,14 @@ def _vault_records() -> tuple[Path, dict[str, str]]:
             raise VaultOpsError()
         records: dict[str, str] = {}
         for entry in root.iterdir():
-            if entry.is_symlink() or not _RECORD.fullmatch(entry.name):
+            if entry.is_symlink():
                 raise VaultOpsError()
             details = entry.stat()
             if not stat.S_ISREG(details.st_mode) or stat.S_IMODE(details.st_mode) & 0o077:
+                raise VaultOpsError()
+            if entry.name == _AUDIT_TRAIL:
+                continue
+            if not _RECORD.fullmatch(entry.name):
                 raise VaultOpsError()
             records[entry.name] = hashlib.sha256(entry.read_bytes()).hexdigest()
         return root, records
@@ -106,6 +114,8 @@ def restore_rehearsal() -> int:
             raise VaultOpsError()
         restored: dict[str, str] = {}
         for entry in restored_root.iterdir():
+            if entry.name == _AUDIT_TRAIL and entry.is_file() and not entry.is_symlink():
+                continue
             if entry.is_symlink() or not _RECORD.fullmatch(entry.name) or not entry.is_file():
                 raise VaultOpsError()
             restored[entry.name] = hashlib.sha256(entry.read_bytes()).hexdigest()

@@ -211,3 +211,13 @@ A emissão continua dependente de política revisada, vínculo do provedor,
 A1 autorizado, schema e consulta/cancelamento oficiais.
 
 Teste reproduzível sem ativar containers: `bash deploy/contabo/test-nfse-trust-opt-in.sh`.
+
+## Trilha de auditoria do A1 (E5)
+
+A aplicação grava `a1-audit.jsonl` dentro do diretório do cofre (`/var/lib/nfcore/vault`, bind mount do host). Cada envio, leitura, uso e retirada do certificado vira uma linha JSON, com sucesso ou falha, encadeada por SHA-256 à linha anterior. A linha guarda quando, o escopo, o CNPJ, o fingerprint e o ator. Nunca guarda senha, conteúdo do PKCS#12 ou chave. Se a trilha não puder ser gravada, o envio e a retirada falham antes de alterar o cofre.
+
+`a1-vault-ops.py` aceita esse único arquivo extra, que precisa ser regular e com permissão 0600. Ele vai junto no backup remoto, que copia o diretório inteiro, mas fica fora da paridade de registros cifrados e do export offline. Qualquer outro arquivo ou link no diretório continua bloqueando o backup.
+
+Para verificar a integridade da trilha no container:
+
+    python -c "from kordena_fiscal.vault.a1_audit import verify_a1_audit_chain as v; print(v('/var/lib/nfcore/vault/a1-audit.jsonl'))"
