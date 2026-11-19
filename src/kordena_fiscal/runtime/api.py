@@ -525,7 +525,16 @@ def create_runtime_app(
         finally:
             runtime.close()
 
-    app = FastAPI(title="FM NFCORE Runtime", version="1.0.0", lifespan=lifespan)
+    # Interactive docs and the generated schema describe every route. Keep them
+    # for local development only; staging/production publish nothing here (the
+    # versioned contract lives in contracts/v1/openapi.json).
+    public_docs = resolved.environment.value not in {"staging", "production"}
+    app = FastAPI(
+        title="FM NFCORE Runtime", version="1.0.0", lifespan=lifespan,
+        docs_url="/docs" if public_docs else None,
+        redoc_url="/redoc" if public_docs else None,
+        openapi_url="/openapi.json" if public_docs else None,
+    )
     app.state.nfcore_runtime = runtime
     app.state.nfcore_runtime_composition = composition
     app.state.nfcore_password_recovery = (
@@ -1128,6 +1137,7 @@ def create_runtime_app(
     app.mount(
         "/",
         create_app(
+            public_docs=public_docs,
             security=bridge_security,
             executor=bridge_executor,
             human_identity=human_identity,

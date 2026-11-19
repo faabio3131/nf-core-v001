@@ -257,6 +257,7 @@ def _metric_http_method(method: str) -> str:
 
 def create_app(
     *,
+    public_docs: bool = True,
     security: BridgeSecurityBoundary | None = None,
     executor: BridgeRequestExecutor | None = None,
     human_identity: HumanIdentityService | None = None,
@@ -290,6 +291,9 @@ def create_app(
         title="FM NFCORE Bridge API",
         version="1.0.0",
         description="Web-first HTTP adapter for FM NFCORE fiscal infrastructure.",
+        docs_url="/docs" if public_docs else None,
+        redoc_url="/redoc" if public_docs else None,
+        openapi_url="/openapi.json" if public_docs else None,
     )
 
     http_metrics = runtime_metrics if runtime_metrics is not None else MetricsRegistry()
