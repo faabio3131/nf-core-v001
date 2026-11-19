@@ -19,6 +19,9 @@ from kordena_fiscal.domain import (
     FiscalValidationError,
 )
 
+from .normative_sentinel import assess_normative_drift
+from .rtc import RegulatoryArtifactPin
+
 _ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:/-]{0,127}$")
 _SHA256 = re.compile(r"^[0-9a-f]{64}$")
 _SUBJECT = re.compile(r"^[a-z0-9][a-z0-9._-]{0,127}$")
@@ -288,6 +291,44 @@ class RegulatoryWatcherService:
             raise RegulatoryWatcherConflictError("observation already exists")
         self._observations[observation.observation_id] = observation
         return observation
+
+    def observe_artifact_drift(
+        self,
+        *,
+        observation_id: str,
+        artifact: RegulatoryArtifactPin,
+        observed_payload: bytes,
+        jurisdiction: BrazilianJurisdiction,
+        subject: str,
+        claimed_published_at: datetime,
+        claimed_effective_from: datetime | None = None,
+    ) -> RegulatoryObservation | None:
+        """Record changed bytes for human triage, never as verified legal evidence.
+
+        Publication and effective dates are supplied claims, not inferred from
+        the old pin or the fetch time. The source reference identifies the
+        reviewed baseline location; this method does not authenticate retrieval.
+        Unchanged bytes create no observation or executable proposal.
+        """
+        assessment = assess_normative_drift(artifact, observed_payload)
+        if not assessment.review_required:
+            return None
+        return self.observe(
+            observation_id=observation_id,
+            source_reference=artifact.source_reference,
+            source_sha256=assessment.observed_sha256,
+            jurisdiction=jurisdiction,
+            subject=subject,
+            summary=(
+                f"Unverified byte drift for artifact {assessment.artifact_id}, "
+                f"pinned version {assessment.pinned_version}, "
+                f"pinned SHA-256 {assessment.pinned_sha256}. "
+                "Authenticate source and publication/effective dates before "
+                "interpreting any legal or technical change."
+            ),
+            published_at=claimed_published_at,
+            effective_from=claimed_effective_from,
+        )
 
     def triage(self, observation_id: str) -> RegulatoryObservation:
         observation = self._require_observation(observation_id)
