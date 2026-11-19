@@ -74,8 +74,14 @@ def parse_sale_rule(
     rates = outcome["nfe_rates"]
     if not isinstance(rates, dict):
         raise FiscalValidationError("rate parameters must be an object")
-    if set(selector) != {"state_code", "tax_regime", "recipient_profile", "ncm_prefix"}:
+    required_selector = {"state_code", "tax_regime", "recipient_profile", "ncm_prefix"}
+    if set(selector) not in (required_selector, required_selector | {"destination_state_code"}):
         raise FiscalValidationError("invalid fiscal rule selector fields")
+    if "destination_state_code" in selector and (
+        not isinstance(selector["destination_state_code"], str)
+        or not selector["destination_state_code"].strip()
+    ):
+        raise FiscalValidationError("destination state must be explicit")
     if set(outcome) - {
         "cfop",
         "icms_code",
@@ -134,6 +140,7 @@ def parse_sale_rule(
             operation_type=TaxOperationType.SALE,
             recipient_profile=RecipientTaxProfile(selector["recipient_profile"]),
             ncm_prefix=selector["ncm_prefix"],
+            destination_state_code=selector.get("destination_state_code"),
         ),
         outcome=TaxRuleOutcome(
             cfop=outcome["cfop"],

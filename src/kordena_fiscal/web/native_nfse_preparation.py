@@ -529,6 +529,10 @@ def prepare_native_nfse(
                 and treatment is not None
                 and treatment.policy_id is not None
                 and treatment.policy_sha256 is not None
+                and (
+                    not result.request.document.requires_reviewed_iss_rate
+                    or treatment.iss_rate is not None
+                )
                 else "review_required_before_sefin"
                 if provider == NACIONAL_HOMOLOGATION_PROVIDER_ID
                 else "municipal_provider_contract"

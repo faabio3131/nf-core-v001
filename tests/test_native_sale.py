@@ -642,3 +642,203 @@ def test_http_sale_prepare_emit_query_xml_and_pdf(sale_setup, signing_material, 
     assert len(query_gateway.query_calls) == 1 and len(exchange_calls) == 1
     forbidden = client(db, tenant="other")
     assert forbidden.get(url + "authorized_xml", params=params).status_code == 404
+
+
+
+def _reviewed_recipient(state: str) -> dict:
+    city, ibge, cep = {
+        "SP": ("Sao Paulo", "3550308", "01001000"),
+        "MG": ("Belo Horizonte", "3106200", "30110000"),
+    }[state]
+    return {
+        "document": "52998224725", "name": "Synthetic recipient",
+        "street": "Rua Sintetica", "number": "1", "district": "Centro",
+        "municipality_name": city, "municipality_ibge_code": ibge,
+        "state": state, "postal_code": cep, "ie_indicator": 9, "final_consumer": True,
+    }
+
+
+def test_sp_nfce_identified_consumer_same_state_and_denies_cross_state(
+    sp_sale_setup, signing_material,
+) -> None:
+    db, scope, payload, _, calls, _ = sp_sale_setup
+    web = client(db)
+    denied = post(web, payload | {"recipient": _reviewed_recipient("MG")}, "wrong-uf")
+    assert denied.status_code == 400, denied.text
+    assert calls == []
+    accepted = post(web, payload | {"recipient": _reviewed_recipient("SP")}, "right-uf")
+    assert accepted.status_code == 200, accepted.text
+    prepared = FiscalApplicationService(db).load_prepared_document_authorization(
+        scope, accepted.json()["document_id"],
+    )
+    OfficialNfeEnvelopeValidator()(prepared.signed_xml)
+    xml = etree.fromstring(prepared.signed_xml)
+    verify_official_nfe4_signature(xml, signing_material)
+    ns = {"n": "http://www.portalfiscal.inf.br/nfe"}
+    assert xml.xpath("string(//n:dest/n:CPF)", namespaces=ns) == "52998224725"
+    assert xml.xpath("string(//n:dest/n:enderDest/n:UF)", namespaces=ns) == "SP"
+    assert xml.xpath("string(//n:idDest)", namespaces=ns) == "1"
+    assert prepared.access_key.value[25:34] == "000000001"
+    assert len(calls) == 1
+
+
+def test_sale_policy_version_is_monotonic_and_previous_sale_replays(
+    sp_sale_setup, tmp_path,
+) -> None:
+    from kordena_fiscal.runtime.native_sale_policy import install_reviewed_policy, load_sale_policy
+
+    db, scope, payload, policies, calls, root = sp_sale_setup
+    web = client(db)
+    first = post(web, payload)
+    assert first.status_code == 200, first.text
+    name = sale_policy_key(scope, FiscalDocumentKind.NFCE)
+    source = tmp_path / "reviewed.json"
+    original = (root / (name + ".json")).read_bytes()
+    source.write_bytes(original)
+    assert install_reviewed_policy(source, root) == name
+    policy = json.loads(original)
+    policy["series"] = 2
+    source.write_bytes(json.dumps(policy).encode())
+    with pytest.raises(FiscalValidationError, match="higher reviewed version"):
+        install_reviewed_policy(source, root)
+    assert (root / (name + ".json")).read_bytes() == original
+    policy["version"] = 2
+    source.write_bytes(json.dumps(policy).encode())
+    install_reviewed_policy(source, root)
+    _, updated, _ = load_sale_policy(
+        {"NFCORE_SALE_FISCAL_POLICY_ROOT": str(root)}, scope, FiscalDocumentKind.NFCE,
+    )
+    assert updated != policies["nfce"]
+    source.write_bytes(original)
+    with pytest.raises(FiscalValidationError, match="higher reviewed version"):
+        install_reviewed_policy(source, root)
+    replay = post(web, payload, "original-sale-replay")
+    assert replay.status_code == 200 and replay.json()["replay"] is True
+    assert replay.json()["document_id"] == first.json()["document_id"]
+    stale = post(web, payload | {"source_id": "stale-review"}, "stale-review")
+    assert stale.status_code == 409
+    assert len(calls) == 1
+    fresh = post(web, payload | {"source_id": "new-sale", "policy_sha256": updated}, "new-sale")
+    assert fresh.status_code == 200, fresh.text
+    prepared = FiscalApplicationService(db).load_prepared_document_authorization(
+        scope, fresh.json()["document_id"],
+    )
+    assert prepared.access_key.value[22:25] == "002"
+
+
+def test_sale_policy_installer_rejects_incomplete_pair(sp_sale_setup, tmp_path):
+    from kordena_fiscal.runtime.native_sale_policy import install_reviewed_policy
+
+    _, scope, _, _, _, root = sp_sale_setup
+    name = sale_policy_key(scope, FiscalDocumentKind.NFCE)
+    source = tmp_path / "reviewed.json"
+    source.write_bytes((root / (name + ".json")).read_bytes())
+    (root / (name + ".sha256")).unlink()
+    with pytest.raises(FiscalValidationError, match="incomplete"):
+        install_reviewed_policy(source, root)
+    assert not (root / (name + ".sha256")).exists()
+
+
+def test_manual_nfe_requires_reviewed_exact_interstate_destination(
+    sp_sale_setup, tmp_path, signing_material,
+):
+    from kordena_fiscal.runtime.native_sale_policy import install_reviewed_policy, load_sale_policy
+
+    db, scope, payload, _, calls, root = sp_sale_setup
+    web = client(db)
+    name = sale_policy_key(scope, FiscalDocumentKind.NFE)
+    path = root / (name + ".json")
+    policy = json.loads(path.read_bytes())
+    recipient = _reviewed_recipient("MG")
+    sale = payload | {
+        "document_kind": "nfe", "recipient": recipient,
+        "payments": [{"method": "pix", "amount": "10.00"}], "change_amount": "0.00",
+        "policy_sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
+    }
+    denied = post(web, sale)
+    assert denied.status_code == 400
+    assert calls == []
+    policy["version"] = 2
+    rule = copy.deepcopy(policy["rules"][0])
+    rule["rule_id"] = "synthetic-interstate-only"
+    rule["outcome"]["cfop"] = "6102"
+    policy["rules"].append(rule)
+    source = tmp_path / "reviewed.json"
+    source.write_bytes(json.dumps(policy).encode())
+    with pytest.raises(FiscalValidationError):
+        install_reviewed_policy(source, root)
+    rule["selector"]["destination_state_code"] = "MG"
+    source.write_bytes(json.dumps(policy).encode())
+    install_reviewed_policy(source, root)
+    loaded, digest, _ = load_sale_policy(
+        {"NFCORE_SALE_FISCAL_POLICY_ROOT": str(root)}, scope, FiscalDocumentKind.NFE,
+    )
+    assert loaded["rules"][1]["selector"]["destination_state_code"] == "MG"
+    # Do not invent DIFAL values; even an exact destination rule is not enough
+    # for this final-consumer scenario without a complete approved calculation.
+    assert digest != sale["policy_sha256"]
+    denied_difal = post(web, sale | {"policy_sha256": digest}, "missing-difal")
+    assert denied_difal.status_code == 400, denied_difal.text
+    with db() as uow:
+        assert not uow.lifecycle.list_for_scope(scope)
+    # An explicitly reviewed taxpayer/resale scenario uses a different rule.
+    taxpayer_rule = copy.deepcopy(rule)
+    taxpayer_rule["rule_id"] = "synthetic-interstate-taxpayer-only"
+    taxpayer_rule["selector"]["recipient_profile"] = "taxpayer"
+    policy["rules"].append(taxpayer_rule)
+    policy["version"] = 3
+    source.write_bytes(json.dumps(policy).encode())
+    install_reviewed_policy(source, root)
+    _, current, _ = load_sale_policy(
+        {"NFCORE_SALE_FISCAL_POLICY_ROOT": str(root)}, scope, FiscalDocumentKind.NFE,
+    )
+    taxpayer = recipient | {
+        "document": "11222333000181", "ie_indicator": 1,
+        "final_consumer": False, "state_registration": "123456789",
+    }
+    prepared_response = post(web, sale | {
+        "recipient": taxpayer, "policy_sha256": current,
+    }, "reviewed-taxpayer-sale")
+    assert prepared_response.status_code == 200, prepared_response.text
+    prepared = FiscalApplicationService(db).load_prepared_document_authorization(
+        scope, prepared_response.json()["document_id"],
+    )
+    OfficialNfeEnvelopeValidator()(prepared.signed_xml)
+    xml = etree.fromstring(prepared.signed_xml)
+    verify_official_nfe4_signature(xml, signing_material)
+    ns = {"n": "http://www.portalfiscal.inf.br/nfe"}
+    assert xml.xpath("string(//n:idDest)", namespaces=ns) == "2"
+    assert xml.xpath("string(//n:CFOP)", namespaces=ns) == "6102"
+    assert xml.xpath("string(//n:dest/n:enderDest/n:UF)", namespaces=ns) == "MG"
+    assert prepared.access_key.value[25:34] == "000000001"
+
+
+
+def test_legacy_interstate_policy_can_only_be_replaced_by_reviewed_successor(
+    sp_sale_setup, tmp_path,
+):
+    from kordena_fiscal.runtime.native_sale_policy import install_reviewed_policy, load_sale_policy
+
+    _, scope, _, _, _, root = sp_sale_setup
+    kind = FiscalDocumentKind.NFE
+    name = sale_policy_key(scope, kind)
+    path = root / (name + ".json")
+    legacy = json.loads(path.read_bytes())
+    legacy["rules"][0]["outcome"]["cfop"] = "6102"
+    raw = json.dumps(legacy).encode()
+    path.write_bytes(raw)
+    (root / (name + ".sha256")).write_text(hashlib.sha256(raw).hexdigest())
+    env = {"NFCORE_SALE_FISCAL_POLICY_ROOT": str(root)}
+    with pytest.raises(FiscalValidationError):
+        load_sale_policy(env, scope, kind)
+    candidate = copy.deepcopy(legacy)
+    candidate["rules"][0]["selector"]["destination_state_code"] = "MG"
+    source = tmp_path / "reviewed-successor.json"
+    source.write_bytes(json.dumps(candidate).encode())
+    with pytest.raises(FiscalValidationError, match="higher reviewed version"):
+        install_reviewed_policy(source, root)
+    candidate["version"] = 2
+    source.write_bytes(json.dumps(candidate).encode())
+    assert install_reviewed_policy(source, root) == name
+    loaded, _, _ = load_sale_policy(env, scope, kind)
+    assert loaded["version"] == 2

@@ -291,7 +291,12 @@ def build_signed_dps(
     iss_amount = service.iss_amount.amount
     # XSD 1.01 changed TCTribMunicipal field order: tpRetISSQN before pAliq.
     _child(trib_mun, "tpRetISSQN", "2" if service.iss_withheld else "1")
-    if taxable > 0 and iss_amount > 0:
+    if treatment is not None and treatment.iss_rate is not None:
+        # Exact reviewed rate, never reverse-engineer from a rounded cent amount.
+        _child(trib_mun, "pAliq", treatment.iss_rate)
+    elif taxable > 0 and iss_amount > 0:
+        # Legacy offline/synthetic preparation only; the live SEFIN boundary
+        # rejects ordinary taxable policies without their exact reviewed rate.
         rate = (iss_amount / taxable * 100).quantize(_CENT, rounding=ROUND_HALF_UP)
         _child(trib_mun, "pAliq", _money(rate))
     tot_trib = etree.SubElement(trib, f"{{{_NFSE_NS}}}totTrib")

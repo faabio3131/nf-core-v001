@@ -247,10 +247,23 @@ def native_sale_operation(
             if recipient.ie_indicator in {1, 2}
             else RecipientTaxProfile.NON_TAXPAYER
         )
+        origin_state = issuer.address.jurisdiction.state_code
+        destination_state = (
+            origin_state if recipient is None else recipient.address.jurisdiction.state_code
+        )
+        if kind is FiscalDocumentKind.NFCE and destination_state != origin_state:
+            raise FiscalValidationError("NFC-e requires a same-state recipient")
         raw_items = payload["items"]
         if not isinstance(raw_items, list) or not 1 <= len(raw_items) <= 500:
             raise FiscalValidationError("Sale requires 1 to 500 items")
         rules = tuple(parse_sale_rule(r, document_kind=kind) for r in policy["rules"])
+        # Legacy same-state rules are preserved; no generic rate may authorize
+        # an interstate sale. Selection and ambiguity remain in TaxRuleEngine.
+        if destination_state != origin_state:
+            rules = tuple(
+                rule for rule in rules
+                if rule.selector.destination_state_code == destination_state
+            )
         lines = []
         for index, item in enumerate(raw_items, 1):
             fields = {"product_id", "quantity", "unit_price", "discount", "freight", "other"}
@@ -275,6 +288,7 @@ def native_sale_operation(
                     operation_type=TaxOperationType.SALE,
                     recipient_profile=recipient_profile,
                     product=product,
+                    destination_state_code=destination_state,
                 ),
                 rules,
             )
