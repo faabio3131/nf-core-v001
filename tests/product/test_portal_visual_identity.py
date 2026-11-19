@@ -134,3 +134,18 @@ def test_mobile_premium_density_contract() -> None:
     assert "width: min(100%, 220px)" in css
     assert "font-size: 30px" in css
     assert ".mission-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }" in css
+
+
+def test_desktop_sidebar_stays_fixed_while_main_scrolls() -> None:
+    """overflow-x: hidden on html/body makes them scroll containers and the
+    sticky sidebar scrolls away with the page; clip keeps it fixed."""
+    css = read("styles.css")
+    root_rules = css.split(".skip-link", 1)[0]
+    html_rule = root_rules.split("html {", 1)[1].split("}", 1)[0]
+    body_rule = root_rules.split("body {", 1)[1].split("}", 1)[0]
+    for rule in (html_rule, body_rule):
+        assert "overflow-x: clip" in rule
+        assert "overflow-x: hidden" not in rule
+    sidebar = css.split("\n.sidebar {", 1)[1].split("}", 1)[0]
+    assert "position: sticky" in sidebar
+    assert "height: 100vh" in sidebar
