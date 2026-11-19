@@ -28,7 +28,7 @@ from psycopg_pool import ConnectionPool
 
 from kordena_fiscal.contingency import FiscalOutboxEnqueueResult, FiscalOutboxEntry
 from kordena_fiscal.control_plane.models import ControlPlaneAuditAction, ControlPlaneAuditEvent
-from kordena_fiscal.domain import FiscalValidationError
+from kordena_fiscal.domain import ExecutionScope, FiscalValidationError
 from kordena_fiscal.events import FiscalInboxEntry, FiscalInboxReceiveResult
 from kordena_fiscal.issuance.nfe_nfse import NfseCanonicalDocument
 from kordena_fiscal.lifecycle import IdempotencyKey, IdempotencyReservation
@@ -112,7 +112,7 @@ from .sqlite_core import (
     SqliteLifecycleRepository,
 )
 from .sqlite_delivery import SqliteFiscalDeliveryAuditStore, SqliteFiscalOutboxOrderingStore
-from .sqlite_dps import SqliteDpsNumberingStore
+from .sqlite_dps import DpsCounterFloorResult, SqliteDpsNumberingStore
 from .sqlite_idempotency import SqliteIdempotencyStore
 from .sqlite_inbox import SqliteFiscalInboxStore
 from .sqlite_outbox_archive import SqliteFiscalArchiveStore, SqliteFiscalOutboxStore
@@ -229,6 +229,23 @@ class PostgresDpsNumberingStore(SqliteDpsNumberingStore):
                 f"{scope.environment.value}|{document.dps_series}",
             )
         return super().reserve(document, input_fingerprint=input_fingerprint)
+
+    def raise_floor(
+        self, *, scope: ExecutionScope, issuer_cnpj: str, municipality_ibge: str,
+        series: int, last_used_number: int,
+    ) -> DpsCounterFloorResult:
+        # Same issuer lock material as reserve(): a floor raise and a concurrent
+        # reservation for that legal sequence are strictly serialized.
+        _advisory_lock(
+            self._connection,
+            "dps-issuer:"
+            f"{scope.host_namespace}|{issuer_cnpj}|{municipality_ibge}|"
+            f"{scope.environment.value}|{series}",
+        )
+        return super().raise_floor(
+            scope=scope, issuer_cnpj=issuer_cnpj, municipality_ibge=municipality_ibge,
+            series=series, last_used_number=last_used_number,
+        )
 
 
 class PostgresFiscalInboxStore(SqliteFiscalInboxStore):
