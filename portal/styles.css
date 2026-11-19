@@ -896,6 +896,9 @@ html[data-theme="light"] .shell .row { background: #f6f9fd; border: 1px solid #d
 html[data-theme="light"] .shell .row:hover { background: #eef4fc; border-color: #9db8e0; }
 html[data-theme="light"] .shell .row strong { color: #0f1f33; }
 html[data-theme="light"] .shell .row span { color: #44586f; }
+/* Record details (dt/dd) were white-on-light and invisible in the light theme. */
+html[data-theme="light"] .shell .row dt { color: #44586f; }
+html[data-theme="light"] .shell .row dd { color: #0f1f33; }
 html[data-theme="light"] .shell .row summary,
 html[data-theme="light"] .shell .row details { color: #1d3350; }
 html[data-theme="light"] .shell .eyebrow { color: #2563eb; }
