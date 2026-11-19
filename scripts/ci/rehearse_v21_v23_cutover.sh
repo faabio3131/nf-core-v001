@@ -38,10 +38,10 @@ DB_CID="$(docker run -d --pull=never --name "$DB" --network "$NET" \
   -e POSTGRES_USER=nfcore -e POSTGRES_PASSWORD="$PW" \
   -e POSTGRES_DB=nfcore_cutover_test postgres:16-alpine)"
 for _ in $(seq 1 40); do
-  if docker exec "$DB_CID" pg_isready -U nfcore -d nfcore_cutover_test >/dev/null; then break; fi
+  if docker exec "$DB_CID" pg_isready -h 127.0.0.1 -U nfcore -d nfcore_cutover_test >/dev/null; then break; fi
   sleep 1
 done
-docker exec "$DB_CID" pg_isready -U nfcore -d nfcore_cutover_test >/dev/null
+docker exec "$DB_CID" pg_isready -h 127.0.0.1 -U nfcore -d nfcore_cutover_test >/dev/null
 SRC_DB=nfcore_cutover_test
 RESTORE_DB=nfcore_cutover_rollback_test
 dsn() { printf 'postgresql://nfcore:%s@db:5432/%s' "$PW" "$1"; }
@@ -93,7 +93,7 @@ probe "$OLD_API" "$OLD_WORKER" "$SRC_DB"
 sql "$SRC_DB" "CREATE TABLE cutover_rehearsal_sentinel (id integer PRIMARY KEY, value text NOT NULL)"
 sql "$SRC_DB" "INSERT INTO cutover_rehearsal_sentinel VALUES (1, 'preserve-v21')"
 TABLES="SELECT tablename FROM pg_tables WHERE schemaname='public' ORDER BY tablename"
-sql "$SRC_DB" "$TABLES" > "$TMP/before-tables"
+sql "$SRC_DB" "$TABLES" | LC_ALL=C sort > "$TMP/before-tables"
 # Reuse the canonical backup/restore scripts entirely inside the disposable PG.
 docker cp "$ROOT/scripts/postgres_backup.sh" "$DB_CID:/tmp/nfcore-cutover-backup.sh"
 docker cp "$ROOT/scripts/postgres_restore.sh" "$DB_CID:/tmp/nfcore-cutover-restore.sh"
@@ -107,8 +107,8 @@ guard nfcore-api:test "$SRC_DB" production false --assert-current-production
 guard nfcore-api:test "$SRC_DB" production false --apply
 [[ "$(ledger "$SRC_DB")" == "$(seq -s, 1 23)" ]]
 [[ "$(sql "$SRC_DB" "SELECT value FROM cutover_rehearsal_sentinel WHERE id=1")" == preserve-v21 ]]
-sql "$SRC_DB" "$TABLES" > "$TMP/after-tables"
-[[ -z "$(comm -23 "$TMP/before-tables" "$TMP/after-tables")" ]]
+sql "$SRC_DB" "$TABLES" | LC_ALL=C sort > "$TMP/after-tables"
+[[ -z "$(LC_ALL=C comm -23 "$TMP/before-tables" "$TMP/after-tables")" ]]
 probe nfcore-api:test nfcore-worker:test "$SRC_DB"
 echo 'UPGRADE_V21_V23_PASS'
 # A simple old-image rollback is prohibited once the schema changes.
@@ -124,7 +124,7 @@ docker exec -e DATABASE_URL="postgresql://nfcore:$PW@127.0.0.1:5432/$RESTORE_DB"
   "$DB_CID" sh /tmp/nfcore-cutover-restore.sh /tmp/cutover-v21.dump
 [[ "$(ledger "$RESTORE_DB")" == "$(seq -s, 1 21)" ]]
 [[ "$(sql "$RESTORE_DB" "SELECT value FROM cutover_rehearsal_sentinel WHERE id=1")" == preserve-v21 ]]
-sql "$RESTORE_DB" "$TABLES" > "$TMP/restored-tables"
+sql "$RESTORE_DB" "$TABLES" | LC_ALL=C sort > "$TMP/restored-tables"
 cmp "$TMP/before-tables" "$TMP/restored-tables"
 guard "$OLD_API" "$RESTORE_DB" production true --assert-current-production
 probe "$OLD_API" "$OLD_WORKER" "$RESTORE_DB"
