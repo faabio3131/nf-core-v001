@@ -2327,6 +2327,7 @@ class FiscalApplicationService:
     def review_prepared_cajamar_substitution(
         self, *, scope: ExecutionScope, original_id: str, replacement_id: str,
         reviewed_at: datetime,
+        record_retention: RetentionPolicyMetadata | None = None,
     ) -> CajamarSubstitutionReview:
         """Preflight only: Cajamar 7.311/2024 requires the official city portal.
 
@@ -2338,6 +2339,11 @@ class FiscalApplicationService:
             or scope.environment is not FiscalEnvironment.HOMOLOGATION
             or not isinstance(reviewed_at, datetime)
             or reviewed_at.tzinfo is None
+            or reviewed_at.utcoffset() is None
+            or (
+                record_retention is not None
+                and not isinstance(record_retention, RetentionPolicyMetadata)
+            )
         ):
             raise FiscalValidationError("Cajamar substitution review needs scoped datetime")
         original = self.load_prepared_nfse_authorization(scope, original_id)
@@ -2404,6 +2410,41 @@ class FiscalApplicationService:
                 raise PersistenceConflictError(
                     "Cajamar original authorization and archived XML disagree"
                 )
+            if record_retention is not None:
+                # Persist what the human actually reviewed, not an event or
+                # a replacement authorization. The preflight path does not
+                # call this recording branch. Repeated identical reviews
+                # reuse their exact archived metadata.
+                content = json.dumps({
+                    "original_id": original_id,
+                    "replacement_id": replacement_id,
+                    "original_fingerprint": original.request_fingerprint,
+                    "replacement_fingerprint": candidate.request_fingerprint,
+                    "original_version": previous.version,
+                    "replacement_version": new.version,
+                    "original_xml_sha256": archived_note[0].content_sha256,
+                    "replacement_rps_sha256": candidate_rps[0].content_sha256,
+                    "deadline": eligibility.deadline.isoformat(),
+                    "status": eligibility.municipal_action,
+                    "official_fiscal_confirmation": False,
+                }, sort_keys=True, separators=(",", ":")).encode("utf-8")
+                media = "application/vnd.nfcore.cajamar-substitution-review.v1+json"
+                prior = [
+                    entry for entry in original_archives
+                    if entry.media_type == media and entry.content == content
+                ]
+                if prior:
+                    FiscalArchiveVerifier().verify_entry(prior[0])
+                    reference = prior[0].entry_id
+                else:
+                    reference = uow.archive.append(FiscalArchiveEntry.build(
+                        scope=scope, document_reference=original_id,
+                        kind=FiscalArchiveKind.OTHER, content=content,
+                        media_type=media, archived_at=reviewed_at,
+                        retention=record_retention,
+                    )).entry_id
+                    uow.commit()
+                eligibility = replace(eligibility, archive_reference=reference)
         return eligibility
 
     def preflight_cajamar_nfse_cancellation(

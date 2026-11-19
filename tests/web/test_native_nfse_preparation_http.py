@@ -1323,6 +1323,7 @@ def test_cajamar_portal_prepares_sends_recovers_and_downloads_authorized_xml(
     ]
     assert len(printed) == 1
     assert printed[0]["auxiliary_pdf_available"] is False
+    assert printed[0]["auxiliary_pdf_status"] == "MUNICIPAL_PRINT_HOMOLOGATION_UNAVAILABLE"
     municipal_pdf = web.get(
         f"/v1/portal/documents/{document_id}/artifacts/auxiliary_pdf",
         params={"unit_id": UNIT, "environment": "homologation"},
@@ -1364,6 +1365,25 @@ def test_cajamar_portal_prepares_sends_recovers_and_downloads_authorized_xml(
     assert reviewed.json()["status"] == "MUNICIPAL_PORTAL_SUBSTITUTION_REQUIRED"
     assert reviewed.json()["official_fiscal_confirmation"] is False
     assert reviewed.json()["deadline"] == "2026-11-10"
+    reference = reviewed.json()["review_archive_reference"]
+    assert reference
+    with db() as uow:
+        reviews = [
+            entry for entry in uow.archive.list_for_document(original.scope, document_id)
+            if entry.media_type == "application/vnd.nfcore.cajamar-substitution-review.v1+json"
+        ]
+        assert len(reviews) == 1
+        assert reviews[0].entry_id == reference
+        assert json.loads(reviews[0].content)["replacement_id"] == candidate_id
+        assert json.loads(reviews[0].content)["official_fiscal_confirmation"] is False
+    with patch("kordena_fiscal.runtime.canonical_fiscal_composition.datetime") as clock:
+        clock.now.return_value = datetime(2026, 11, 5, tzinfo=UTC)
+        repeated = web.post(
+            "/v1/portal/operations/reviewCajamarSubstitution",
+            json=reviewed_payload, headers={CSRF_HEADER: csrf},
+        )
+    assert repeated.status_code == 200
+    assert repeated.json()["review_archive_reference"] == reference
     assert submitted.call_count == 1
     with db() as uow:
         assert uow.lifecycle.get(document_id).state is FiscalDocumentState.AUTHORIZED

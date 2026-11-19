@@ -34,6 +34,7 @@ class CajamarSubstitutionReview:
     official_fiscal_confirmation: bool = False
     decree_url: str = CAJAMAR_SUBSTITUTION_DECREE
     portal_url: str = CAJAMAR_MUNICIPAL_PORTAL
+    archive_reference: str | None = None
 
 
 def review_cajamar_substitution(

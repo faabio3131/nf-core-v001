@@ -1149,12 +1149,14 @@ def build_runtime_fiscal_handler_factory(
                 original_id=str(payload["original_id"]),
                 replacement_id=str(payload["replacement_id"]),
                 reviewed_at=datetime.now(UTC),
+                record_retention=retention,
             )
             return {
                 "original_id": review.original_id,
                 "replacement_id": review.replacement_id,
                 "deadline": review.deadline.isoformat(),
                 "status": review.municipal_action,
+                "review_archive_reference": review.archive_reference,
                 "official_fiscal_confirmation": False,
                 "municipal_portal_url": review.portal_url,
                 "regulatory_evidence_url": review.decree_url,

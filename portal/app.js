@@ -2114,6 +2114,12 @@ function fiscalRowElement(row) {
       artifact.rel = "noopener noreferrer";
     }
     wrapper.append(artifact);
+    if (row.auxiliary_pdf_status === "MUNICIPAL_PRINT_HOMOLOGATION_UNAVAILABLE") {
+      const notice = document.createElement("p");
+      notice.textContent = "O GeisWeb não disponibiliza impressão oficial em homologação. "
+        + "O XML autorizado permanece disponível; não é gerado um DANFSe nacional fictício.";
+      wrapper.append(notice);
+    }
     if (kind === "authorized_xml" && row.auxiliary_pdf_available === true) {
       const danfe = document.createElement("a");
       danfe.className = "ghost";

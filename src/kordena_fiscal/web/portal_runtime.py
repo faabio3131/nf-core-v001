@@ -104,6 +104,30 @@ def _portal_error(status_code: int, code: str, message: str) -> HTTPException:
     )
 
 
+def _is_geisweb_authorized_xml(entry: Any) -> bool:
+    """Identify the archived municipal format, not a new printing authority."""
+    if (
+        entry.kind is not FiscalArchiveKind.AUTHORIZED_XML
+        or entry.media_type not in {"application/xml", "text/xml"}
+        or len(entry.content) > 2_097_152
+    ):
+        return False
+    try:
+        from lxml import etree
+
+        FiscalArchiveVerifier().verify_entry(entry)
+        root = etree.fromstring(entry.content, parser=etree.XMLParser(
+            no_network=True, load_dtd=False, resolve_entities=False, huge_tree=False,
+        ))
+        return (
+            not root.getroottree().docinfo.doctype
+            and root.tag == "ConsultaLoteRpsResposta"
+            and len(root.findall("Rps")) == 1
+        )
+    except (ArchiveIntegrityError, etree.XMLSyntaxError, ValueError, TypeError):
+        return False
+
+
 def _printable_authorized_xml(entry: Any) -> bool:
     """Only advertise a PDF action for an archived XML that our renderer supports.
 
@@ -635,6 +659,16 @@ class DurableHumanPortalExecutor:
                             "content_sha256": entry.content_sha256,
                             "media_type": entry.media_type,
                             "auxiliary_pdf_available": _printable_authorized_xml(entry),
+                            **(
+                                {
+                                    "auxiliary_pdf_status": (
+                                        "MUNICIPAL_PRINT_HOMOLOGATION_UNAVAILABLE"
+                                    ),
+                                }
+                                if scope.environment is FiscalEnvironment.HOMOLOGATION
+                                and _is_geisweb_authorized_xml(entry)
+                                else {}
+                            ),
                         }
                     )
             if surface_id in {"issuances", "errors"}:
