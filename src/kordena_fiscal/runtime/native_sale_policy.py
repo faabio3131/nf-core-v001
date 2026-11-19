@@ -5,7 +5,8 @@ from __future__ import annotations
 import hashlib
 import json
 import re
-from collections.abc import Mapping
+from collections.abc import Iterator, Mapping
+from contextlib import contextmanager
 from pathlib import Path
 from typing import Any
 
@@ -24,7 +25,18 @@ def load_sale_policy(
     scope: ExecutionScope,
     kind: FiscalDocumentKind,
 ) -> tuple[dict[str, Any], str, bytes]:
-    """Load the deployed, scoped and checksum-pinned configuration, bounded to 1 MiB."""
+    """Load a current reviewed policy; legacy interstate decisions cannot authorize sales."""
+    return _load_sale_policy(environ, scope, kind, require_reviewed_destination=True)
+
+
+def _load_sale_policy(
+    environ: Mapping[str, str],
+    scope: ExecutionScope,
+    kind: FiscalDocumentKind,
+    *,
+    require_reviewed_destination: bool,
+) -> tuple[dict[str, Any], str, bytes]:
+    """Validate the scoped, checksum-pinned policy bounded to 1 MiB."""
     try:
         root = Path(environ.get("NFCORE_SALE_FISCAL_POLICY_ROOT", ""))
         if not root.is_absolute() or root.is_symlink() or not root.is_dir():
@@ -96,11 +108,55 @@ def load_sale_policy(
         if not isinstance(policy["rules"], list) or not 1 <= len(policy["rules"]) <= 500:
             raise ValueError("rules required")
         for rule in policy["rules"]:
-            parse_sale_rule(rule, document_kind=kind)
+            parsed = parse_sale_rule(rule, document_kind=kind)
+            origin = parsed.selector.state_code
+            destination = parsed.selector.destination_state_code
+            if require_reviewed_destination and parsed.outcome.cfop.startswith("6") and (
+                origin is None or destination is None or destination == origin
+            ):
+                raise ValueError("interstate sale rule requires exact reviewed destination")
+            if destination is not None and (
+                origin is None
+                or parsed.outcome.cfop[0] != ("5" if origin == destination else "6")
+                or (kind is FiscalDocumentKind.NFCE and destination != origin)
+            ):
+                raise ValueError("sale CFOP or model differs from reviewed destination")
         NfeSaleOptions(**policy["sale_options"])
         return policy, expected, raw
     except (OSError, KeyError, TypeError, ValueError, ArithmeticError, RecursionError):
         raise FiscalValidationError("Scoped sale policy unavailable or invalid") from None
+
+
+@contextmanager
+def _serialized_policy_install(directory: Path, name: str) -> Iterator[None]:
+    """Serialize same-scope policy promotions across processes on the host.
+
+    Without a shared lock, a lower-version writer can overwrite a higher one
+    after both have checked the previous version. Readers still fail closed
+    while the signed JSON/SHA pair is replaced.
+    """
+    import fcntl
+    import os
+    import stat
+
+    fd = os.open(
+        directory / (name + ".lock"),
+        os.O_CREAT | os.O_RDWR | os.O_NOFOLLOW | os.O_CLOEXEC,
+        0o600,
+    )
+    try:
+        metadata = os.fstat(fd)
+        if (
+            not stat.S_ISREG(metadata.st_mode)
+            or metadata.st_nlink != 1
+            or metadata.st_uid != os.geteuid()
+            or metadata.st_mode & 0o077
+        ):
+            raise FiscalValidationError("Unsafe scoped fiscal policy install lock")
+        fcntl.flock(fd, fcntl.LOCK_EX)
+        yield
+    finally:
+        os.close(fd)
 
 
 def install_reviewed_policy(source: Path, directory: Path) -> str:
@@ -134,21 +190,41 @@ def install_reviewed_policy(source: Path, directory: Path) -> str:
         (folder / (name + ".sha256")).write_text(digest, encoding="ascii")
         load_sale_policy({"NFCORE_SALE_FISCAL_POLICY_ROOT": work}, scope, kind)
     directory.mkdir(parents=True, exist_ok=True)
-    target, pin = directory / (name + ".json"), directory / (name + ".sha256")
-    if target.is_symlink() or pin.is_symlink():
-        raise FiscalValidationError("Policy destination cannot be a symlink")
-    suffix = "." + uuid4().hex + ".tmp"
-    staged, staged_pin = directory / (name + suffix), directory / (name + suffix + ".sha256")
-    try:
-        staged.write_bytes(raw)
-        staged_pin.write_text(digest + "\n", encoding="ascii")
-        staged.chmod(0o644)
-        staged_pin.chmod(0o644)
-        os.replace(staged, target)
-        os.replace(staged_pin, pin)
-    finally:
-        staged.unlink(missing_ok=True)
-        staged_pin.unlink(missing_ok=True)
+    if directory.is_symlink():
+        raise FiscalValidationError("Sale policy directory cannot be a symlink")
+    with _serialized_policy_install(directory, name):
+        target, pin = directory / (name + ".json"), directory / (name + ".sha256")
+        if target.is_symlink() or pin.is_symlink():
+            raise FiscalValidationError("Policy destination cannot be a symlink")
+        if target.exists() or pin.exists():
+            if not target.is_file() or not pin.is_file():
+                raise FiscalValidationError("Existing sale policy installation is incomplete")
+            # A valid legacy artifact can be read ONLY as the last installed
+            # version, so its corrected successor can be promoted. Runtime and
+            # incoming artifacts continue to require the new destination gate.
+            previous, previous_digest, previous_raw = _load_sale_policy(
+                {"NFCORE_SALE_FISCAL_POLICY_ROOT": str(directory)}, scope, kind,
+                require_reviewed_destination=False,
+            )
+            if previous_digest == digest and previous_raw == raw:
+                return name
+            if policy["version"] <= previous["version"]:
+                raise FiscalValidationError(
+                    "Sale policy changes require a higher reviewed version"
+                )
+        suffix = "." + uuid4().hex + ".tmp"
+        staged = directory / (name + suffix)
+        staged_pin = directory / (name + suffix + ".sha256")
+        try:
+            staged.write_bytes(raw)
+            staged_pin.write_text(digest + "\n", encoding="ascii")
+            staged.chmod(0o644)
+            staged_pin.chmod(0o644)
+            os.replace(staged, target)
+            os.replace(staged_pin, pin)
+        finally:
+            staged.unlink(missing_ok=True)
+            staged_pin.unlink(missing_ok=True)
     return name
 
 

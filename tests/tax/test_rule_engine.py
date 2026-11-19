@@ -970,3 +970,18 @@ def test_art12_rejects_overflow_in_base_subtraction() -> None:
             ipi_excluded=Money(Decimal("0")),
             legacy_taxes_excluded=Money(Decimal("0")),
         )
+
+
+
+def test_destination_specific_rule_selected_by_canonical_engine() -> None:
+    base = _rule("same-state", TaxRuleSelector(state_code="SP"))
+    mg = _rule("to-mg", TaxRuleSelector(state_code="SP", destination_state_code="MG"), cfop="6102")
+    rj = _rule("to-rj", TaxRuleSelector(state_code="SP", destination_state_code="RJ"), cfop="6102")
+    engine = TaxRuleEngine()
+    assert engine.resolve(_context(destination_state_code="MG"), [base, mg, rj]).rule_id == "to-mg"
+    assert engine.resolve(_context(destination_state_code="RJ"), [base, mg, rj]).rule_id == "to-rj"
+    local = engine.resolve(_context(destination_state_code="SP"), [base, mg, rj])
+    assert local.rule_id == "same-state"
+    assert not mg.matches(_context())
+    with pytest.raises(TaxRuleAmbiguityError):
+        engine.resolve(_context(destination_state_code="MG"), [mg, replace(mg, rule_id="tie")])
