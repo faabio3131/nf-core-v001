@@ -11,26 +11,90 @@ mkdir -p "$T/bin" "$T/ctl" "$T/root" "$T/bk"
 cat > "$T/bin/docker" <<'D'
 #!/bin/bash
 C="$CTL"; echo "docker $*" >> "$C/calls"
+id_for(){ printf 'sha256:%064d' "$1"; }
+image_id(){
+  local file="$C/img-$1"
+  if [[ "$1" == sha256:* ]]; then printf '%s\n' "$1"; return; fi
+  [ -f "$file" ] || return 1
+  cat "$file"
+}
+tag_for(){ case "$1" in nfcore-api|nfcore-portal) echo "$1:current";; *) echo "$1:controlled";; esac; }
+container_id(){ cat "$C/running-$1"; }
 case "$1 $2" in
-  "image inspect") [ -f "$C/img-$3" ] ;;
-  "compose build") [ -f "$C/build-fail" ] && { echo "simulated build error"; exit 65; }
-                   touch "$C/img-nfcore-api:current" "$C/img-nfcore-portal:current" ;;
-  "compose run") 
-     if [[ "$*" == *--assert-current-production* && -f "$C/schema-pending" ]]; then echo "schema pending"; exit 1; fi
+  "ps -a"|"ps --format")
+    printf '%s\n' nfcore-db nfcore-api nfcore-portal
+    if [ -f "$C/worker-present" ] && { [ "$2" = -a ] || [ ! -f "$C/worker-stopped" ]; }; then echo nfcore-worker; fi
+    if [ -f "$C/unknown-worker" ]; then echo nfcore-unknown-worker; fi
+    exit 0;;
+  "image inspect")
+    if [ "$3" = -f ]; then
+      case "$4" in
+        *org.opencontainers.image.revision*) cat "$C/sha-$5";;
+        *) image_id "$5";;
+      esac
+    else image_id "$3" >/dev/null; fi
+    exit $?;;
+  "inspect -f")
+    case "$3" in
+      *com.docker.compose.project*) echo "nfcore/$4";;
+      *State.Health.Status*) echo healthy;;
+      *'.Image'*) container_id "$4";;
+      *) exit 1;;
+    esac
+    exit $?;;
+  "compose config")
+    if [ "$3" = --services ]; then
+      printf '%s\n' nfcore-api nfcore-portal
+      [ -f "$C/worker-configured" ] && echo nfcore-worker
+    elif [ "$3" = --format ]; then
+      printf '%s' '{"name":"nfcore","services":{"nfcore-api":{"container_name":"nfcore-api","image":"nfcore-api:current","build":{ "context":"src"}},"nfcore-portal":{"container_name":"nfcore-portal","image":"nfcore-portal:current","build":{"context":"src"}}'
+      if [ -f "$C/worker-configured" ]; then printf '%s' ',"nfcore-worker":{"container_name":"nfcore-worker","image":"nfcore-worker:controlled","build":{"context":"src"}}'; fi
+      printf '%s\n' '}}'
+    else exit 1; fi
+    exit 0;;
+  "compose build")
+    [ -f "$C/build-fail" ] && { echo "simulated build error"; exit 65; }
+    sha=""
+    for arg in "$@"; do
+      case "$arg" in
+        NFCORE_RELEASE_SHA=*) sha="${arg#*=}";;
+        nfcore-api|nfcore-portal|nfcore-worker|nfcore-bling-worker)
+          tag=$(tag_for "$arg")
+          seqno=$(cat "$C/sequence"); seqno=$((seqno+1)); echo "$seqno" > "$C/sequence"
+          id_for "$seqno" > "$C/img-$tag"
+          printf '%s\n' "$sha" > "$C/sha-$tag";;
+      esac
+    done
+    exit 0;;
+  "compose run")
+     if [[ "$*" == *--assert-current-production* && -f "$C/schema-pending" ]]; then
+       # The first is the old image preflight; fail only after build has run.
+       if grep -q 'docker compose build' "$C/calls"; then echo "schema pending"; exit 1; fi
+     fi
      if [[ "$*" == *--check-policy* && -f "$C/mig-policy-fail" ]]; then echo "policy denied"; exit 1; fi
-     [[ "$*" == *--apply* ]] && { echo "UNSAFE APPLY"; exit 91; } ;;
-  "compose up") if [ -f "$C/up-fail" ]; then rm -f "$C/up-fail"; echo "simulated up failure"; exit 71; fi ;;
-  "compose stop") : ;;
+     [[ "$*" == *--apply* ]] && { echo "UNSAFE APPLY"; exit 91; }
+     exit 0;;
+  "compose up")
+    if [ -f "$C/up-fail" ]; then rm -f "$C/up-fail"; echo "simulated up failure"; exit 71; fi
+    if [ -f "$C/rollback-fail" ] && [ "$(grep -c 'docker compose up' "$C/calls")" -gt 1 ]; then exit 71; fi
+    for arg in "$@"; do
+      case "$arg" in nfcore-api|nfcore-portal|nfcore-worker|nfcore-bling-worker)
+        image_id "$(tag_for "$arg")" > "$C/running-$arg";;
+      esac
+    done
+    exit 0;;
+  "compose stop") exit 0;;
 esac
 case "$1" in
-  tag) [ -f "$C/img-$2" ] && touch "$C/img-$3" ;;
+  tag) image_id "$2" > "$C/img-$3" || exit 1;;
   exec)
-    if [[ "$*" == *pg_dump* ]]; then head -c 4096 /dev/urandom; 
+    if [[ "$*" == *pg_dump* ]]; then head -c 4096 /dev/urandom;
     elif [[ "$*" == *pg_restore\ -l* ]]; then cat >/dev/null; for i in $(seq 1 30); do echo "$i; item"; done
     elif [[ "$*" == *pg_restore* ]]; then cat >/dev/null; echo restaurado >> "$C/restored"
     elif [[ "$*" == *select\ max* ]]; then echo 18
-    elif [[ "$*" == *psql* ]]; then :
-    else [ -f "$C/unhealthy" ] && exit 1; fi ;;
+    elif [[ "$*" == *psql* ]]; then :;
+    else [ -f "$C/unhealthy" ] && exit 1; fi;;
+  *) exit 1;;
 esac
 exit 0
 D
@@ -44,8 +108,12 @@ git clone -q "$T/origin.git" "$T/root/src" 2>/dev/null; cd "$T/root/src" || exit
 git config user.email t@t; git config user.name t; git checkout -q -b production
 echo 1 > f; git add f; git commit -q -m c1; git push -q origin production
 V1=$(git rev-parse HEAD); echo "SHA=$V1" > "$T/root/.deployed"
-touch "$CTL/img-nfcore-api:current" "$CTL/img-nfcore-portal:current"
-newcommit(){ (cd "$T/root/src" && git checkout -q production && echo "$1" > f && git add f && git commit -q -m "$1" && git push -q origin production && git rev-parse HEAD); }
+printf 'sha256:%064d\n' 1 > "$CTL/img-nfcore-api:current"
+printf 'sha256:%064d\n' 2 > "$CTL/img-nfcore-portal:current"
+cp "$CTL/img-nfcore-api:current" "$CTL/running-nfcore-api"
+cp "$CTL/img-nfcore-portal:current" "$CTL/running-nfcore-portal"
+echo 10 > "$CTL/sequence"
+newcommit(){ (cd "$T/root/src" && git checkout -q production && echo "$1" > f && git add f && git commit -q -m "$1" && git push -q origin production && git rev-parse HEAD && git checkout -q "$(sed -n s/^SHA=//p "$T/root/.deployed")"); }
 run(){ : > "$CTL/calls"; bash "$T/root/deploy.sh" "$@" > "$T/out" 2>&1; echo $?; }
 
 rc=$(run); chk "sem mudanca: sai 0 e nao faz nada" '[ "$rc" = 0 ] && [ ! -s "$CTL/calls" ]'
@@ -76,11 +144,27 @@ rc=$(run); chk "docker compose up falhou => rollback do codigo" '[ "$rc" = 1 ] &
 rm -f "$T/root/.failed-sha"
 
 touch "$CTL/unhealthy"
-rc=$(run); chk "health falhou => rollback somente codigo, sem restore de banco" '[ "$rc" = 1 ] && [ ! -f "$CTL/restored" ] && grep -q "ROLLBACK" "$T/out" && [ "$(sed -n s/^SHA=//p "$T/root/.deployed")" = "$V2" ]'
+rc=$(run); chk "health falhou => rollback somente codigo, sem restore de banco" '[ "$rc" = 1 ] && [ ! -f "$CTL/restored" ] && grep -q "NO_GO_ROLLBACK_UNVERIFIED" "$T/out" && [ "$(sed -n s/^SHA=//p "$T/root/.deployed")" = "$V2" ]'
 rm -f "$CTL/unhealthy" "$CTL/restored" "$T/root/.failed-sha"
 
 rc=$(run); chk "depois de corrigido, o mesmo commit implanta" '[ "$rc" = 0 ] && [ "$(sed -n s/^SHA=//p "$T/root/.deployed")" = "$V4" ]'
 
+# Production Worker is already active; cron MUST NOT deploy API/Portal alone.
+V5=$(newcommit c5)
+touch "$CTL/worker-present" "$CTL/worker-configured"
+printf 'sha256:%064d\n' 3 > "$CTL/img-nfcore-worker:controlled"
+cp "$CTL/img-nfcore-worker:controlled" "$CTL/running-nfcore-worker"
+rc=$(run); chk "cron recusa release parcial com Worker existente" '[ "$rc" = 42 ] && grep -q "coordinated deployment" "$T/out" && ! grep -q "compose build" "$CTL/calls"'
+touch "$CTL/worker-stopped"
+export NFCORE_COORDINATED_DEPLOY_APPROVED_SHA="$V5"
+rc=$(run --coordinated); chk "nao reativa Worker parado" '[ "$rc" = 42 ] && ! grep -q "compose up" "$CTL/calls"'
+rm "$CTL/worker-stopped" "$CTL/worker-configured"
+rc=$(run --coordinated); chk "nao implanta Worker fora do compose efetivo" '[ "$rc" = 42 ] && ! grep -q "compose build" "$CTL/calls"'
+touch "$CTL/worker-configured" "$CTL/unknown-worker"
+rc=$(run --coordinated); chk "consumidor desconhecido ativo bloqueia" '[ "$rc" = 42 ] && ! grep -q "compose build" "$CTL/calls"'
+rm "$CTL/unknown-worker"
+rc=$(run --coordinated); chk "release coordenada atualiza Worker e marca SHA somente apos digests/health" '[ "$rc" = 0 ] && grep -q "compose stop nfcore-worker" "$CTL/calls" && grep -q "compose up .*nfcore-worker" "$CTL/calls" && [ "$(sed -n s/^SHA=//p "$T/root/.deployed")" = "$V5" ] && cmp -s "$CTL/img-nfcore-worker:controlled" "$CTL/running-nfcore-worker"'
+unset NFCORE_COORDINATED_DEPLOY_APPROVED_SHA
 (cd "$T/root/src" && git checkout -q -B production "$V1" && git push -q -f origin production)
 rc=$(run); chk "historico reescrito e recusado" '[ "$rc" = 2 ] && grep -q "RECUSADO" "$T/out"'
 

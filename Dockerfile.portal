@@ -7,6 +7,8 @@ COPY scripts ./scripts
 RUN npm run build:frontend
 
 FROM python:3.11-alpine AS runtime
+ARG NFCORE_RELEASE_SHA=unrecorded
+LABEL org.opencontainers.image.revision=$NFCORE_RELEASE_SHA
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
 WORKDIR /srv/portal
 RUN addgroup -g 10001 nfcore && adduser -D -u 10001 -G nfcore nfcore

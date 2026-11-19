@@ -1,4 +1,6 @@
 FROM python:3.11-slim-bookworm AS runtime
+ARG NFCORE_RELEASE_SHA=unrecorded
+LABEL org.opencontainers.image.revision=$NFCORE_RELEASE_SHA
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
