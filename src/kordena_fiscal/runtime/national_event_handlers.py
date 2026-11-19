@@ -18,6 +18,7 @@ from kordena_fiscal.gateway.nfse_nacional_event_homologation import (
     build_signed_national_cancellation,
     validate_national_event_xml,
 )
+from kordena_fiscal.gateway.production_activation import ProductionExecutionAuthority
 from kordena_fiscal.gateway.provider import ProviderSelectionResolver
 from kordena_fiscal.vault.encrypted_a1 import EncryptedA1Vault
 
@@ -34,6 +35,7 @@ def build_national_event_handlers(
     certificate_vault: EncryptedA1Vault,
     provider_resolver: ProviderSelectionResolver,
     retention: RetentionPolicyMetadata,
+    production_authority: ProductionExecutionAuthority | None = None,
 ) -> Mapping[str, FiscalOperationHandler]:
     """Register national events only when canonical fiscal authorities exist."""
     if (
@@ -133,12 +135,13 @@ def build_national_event_handlers(
                     scope=s, issuer_cnpj=cnpj,
                 ),
                 validate_signed_event=lambda xml: validate_national_event_xml(
-                    xml, kind="request",
+                    xml, kind="request", environment=scope.environment,
                 ),
                 approve_cancellation=approve,
                 validate_official_event=lambda xml: validate_national_event_xml(
-                    xml, kind="response",
+                    xml, kind="response", environment=scope.environment,
                 ),
+                production_authority=production_authority,
             )
             if (
                 request.document.document_id != document_id
@@ -212,12 +215,13 @@ def build_national_event_handlers(
                     scope=s, issuer_cnpj=cnpj,
                 ),
                 validate_signed_event=lambda xml: validate_national_event_xml(
-                    xml, kind="request",
+                    xml, kind="request", environment=scope.environment,
                 ),
                 approve_cancellation=approve,
                 validate_official_event=lambda xml: validate_national_event_xml(
-                    xml, kind="response",
+                    xml, kind="response", environment=scope.environment,
                 ),
+                production_authority=production_authority,
             )
             return transport.query_cancellation(intent)
 
