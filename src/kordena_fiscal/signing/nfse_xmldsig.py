@@ -53,8 +53,8 @@ def sign_nfse_dps_xml(
     environments = [
         child for child in root.iter() if etree.QName(child).localname == "tpAmb"
     ]
-    if len(environments) != 1 or environments[0].text != "2":
-        raise FiscalValidationError("Assinatura DPS permitida somente em tpAmb=2")
+    if len(environments) != 1 or environments[0].text not in ("1", "2"):
+        raise FiscalValidationError("Assinatura DPS exige tpAmb explícito (1 ou 2)")
     if root.find(f".//{{{_DS}}}Signature") is not None:
         raise FiscalValidationError("DPS já está assinada")
     key, cert, _ = pkcs12.load_key_and_certificates(

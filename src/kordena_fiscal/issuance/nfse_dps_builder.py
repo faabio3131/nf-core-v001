@@ -145,7 +145,12 @@ def build_unsigned_dps(
     root.set("versao", _SCHEMA_VERSION)
     info = etree.SubElement(root, f"{{{_NFSE_NS}}}infDPS", Id=dps_id)
 
-    _child(info, "tpAmb", "2")  # governed gateway only authorizes FiscalEnvironment.HOMOLOGATION
+    # Environment comes only from the durable document scope; the transport
+    # additionally requires an explicit production grant before any send.
+    _child(
+        info, "tpAmb",
+        "1" if document.scope.environment is FiscalEnvironment.PRODUCTION else "2",
+    )
     _child(
         info,
         "dhEmi",
@@ -322,8 +327,10 @@ def validate_sefin_dps_input(document: NfseCanonicalDocument) -> str:
     Dispatch uses the active endpoint release, not the backdated competence or
     issue date. A prepared legacy document is checked again before transmission.
     """
-    if document.scope.environment is not FiscalEnvironment.HOMOLOGATION:
-        raise FiscalValidationError("SEFIN transport is homologation-only")
+    if document.scope.environment not in (
+        FiscalEnvironment.HOMOLOGATION, FiscalEnvironment.PRODUCTION,
+    ):
+        raise FiscalValidationError("Unsupported SEFIN fiscal environment")
     profile = select_national_dps_profile(
         environment=document.scope.environment, schema_version=_SCHEMA_VERSION,
         effective_on=datetime.now(UTC).date(),

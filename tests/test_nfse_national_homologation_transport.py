@@ -115,10 +115,11 @@ def test_dps_signature_is_verifiable_and_envelope_is_gzipped() -> None:
     assert gzip.decompress(base64.b64decode(payload["dpsXmlGZipB64"])) == signed
 
 
-def test_nfse_rejects_production_dps_before_signing() -> None:
+def test_nfse_signs_production_dps_and_refuses_unknown_environment() -> None:
     identity, _ = _ephemeral_certificate()
-    with pytest.raises(FiscalValidationError, match="tpAmb=2"):
-        sign_nfse_dps_xml(_unsigned_dps("1"), identity)
+    assert b"Signature" in sign_nfse_dps_xml(_unsigned_dps("1"), identity)
+    with pytest.raises(FiscalValidationError, match="tpAmb explícito"):
+        sign_nfse_dps_xml(_unsigned_dps("3"), identity)
 
 
 def test_nfse_rejects_missing_xml_signature() -> None:
