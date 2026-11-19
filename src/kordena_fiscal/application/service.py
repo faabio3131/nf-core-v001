@@ -2528,6 +2528,14 @@ class FiscalApplicationService:
             raise FiscalValidationError("Cajamar cancellation provider binding mismatch")
         return request, source, invoice, current
 
+    def preflight_cajamar_cancellation_observation(
+        self, *, scope: ExecutionScope, document_id: str,
+    ) -> None:
+        """Reject invalid recovery requests before claiming a portal intent."""
+        self._load_cajamar_invoice_for_event(
+            scope=scope, document_id=document_id, reconciliation=True,
+        )
+
     def observe_cajamar_cancellation(
         self, *, scope: ExecutionScope, document_id: str,
         query: Callable[
