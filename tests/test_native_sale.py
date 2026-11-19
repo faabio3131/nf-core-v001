@@ -811,3 +811,34 @@ def test_manual_nfe_requires_reviewed_exact_interstate_destination(
     assert xml.xpath("string(//n:CFOP)", namespaces=ns) == "6102"
     assert xml.xpath("string(//n:dest/n:enderDest/n:UF)", namespaces=ns) == "MG"
     assert prepared.access_key.value[25:34] == "000000001"
+
+
+
+def test_legacy_interstate_policy_can_only_be_replaced_by_reviewed_successor(
+    sp_sale_setup, tmp_path,
+):
+    from kordena_fiscal.runtime.native_sale_policy import install_reviewed_policy, load_sale_policy
+
+    _, scope, _, _, _, root = sp_sale_setup
+    kind = FiscalDocumentKind.NFE
+    name = sale_policy_key(scope, kind)
+    path = root / (name + ".json")
+    legacy = json.loads(path.read_bytes())
+    legacy["rules"][0]["outcome"]["cfop"] = "6102"
+    raw = json.dumps(legacy).encode()
+    path.write_bytes(raw)
+    (root / (name + ".sha256")).write_text(hashlib.sha256(raw).hexdigest())
+    env = {"NFCORE_SALE_FISCAL_POLICY_ROOT": str(root)}
+    with pytest.raises(FiscalValidationError):
+        load_sale_policy(env, scope, kind)
+    candidate = copy.deepcopy(legacy)
+    candidate["rules"][0]["selector"]["destination_state_code"] = "MG"
+    source = tmp_path / "reviewed-successor.json"
+    source.write_bytes(json.dumps(candidate).encode())
+    with pytest.raises(FiscalValidationError, match="higher reviewed version"):
+        install_reviewed_policy(source, root)
+    candidate["version"] = 2
+    source.write_bytes(json.dumps(candidate).encode())
+    assert install_reviewed_policy(source, root) == name
+    loaded, _, _ = load_sale_policy(env, scope, kind)
+    assert loaded["version"] == 2

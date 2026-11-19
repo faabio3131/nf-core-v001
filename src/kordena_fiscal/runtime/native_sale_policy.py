@@ -25,7 +25,18 @@ def load_sale_policy(
     scope: ExecutionScope,
     kind: FiscalDocumentKind,
 ) -> tuple[dict[str, Any], str, bytes]:
-    """Load the deployed, scoped and checksum-pinned configuration, bounded to 1 MiB."""
+    """Load a current reviewed policy; legacy interstate decisions cannot authorize sales."""
+    return _load_sale_policy(environ, scope, kind, require_reviewed_destination=True)
+
+
+def _load_sale_policy(
+    environ: Mapping[str, str],
+    scope: ExecutionScope,
+    kind: FiscalDocumentKind,
+    *,
+    require_reviewed_destination: bool,
+) -> tuple[dict[str, Any], str, bytes]:
+    """Validate the scoped, checksum-pinned policy bounded to 1 MiB."""
     try:
         root = Path(environ.get("NFCORE_SALE_FISCAL_POLICY_ROOT", ""))
         if not root.is_absolute() or root.is_symlink() or not root.is_dir():
@@ -100,7 +111,7 @@ def load_sale_policy(
             parsed = parse_sale_rule(rule, document_kind=kind)
             origin = parsed.selector.state_code
             destination = parsed.selector.destination_state_code
-            if parsed.outcome.cfop.startswith("6") and (
+            if require_reviewed_destination and parsed.outcome.cfop.startswith("6") and (
                 origin is None or destination is None or destination == origin
             ):
                 raise ValueError("interstate sale rule requires exact reviewed destination")
@@ -188,8 +199,12 @@ def install_reviewed_policy(source: Path, directory: Path) -> str:
         if target.exists() or pin.exists():
             if not target.is_file() or not pin.is_file():
                 raise FiscalValidationError("Existing sale policy installation is incomplete")
-            previous, previous_digest, previous_raw = load_sale_policy(
+            # A valid legacy artifact can be read ONLY as the last installed
+            # version, so its corrected successor can be promoted. Runtime and
+            # incoming artifacts continue to require the new destination gate.
+            previous, previous_digest, previous_raw = _load_sale_policy(
                 {"NFCORE_SALE_FISCAL_POLICY_ROOT": str(directory)}, scope, kind,
+                require_reviewed_destination=False,
             )
             if previous_digest == digest and previous_raw == raw:
                 return name
