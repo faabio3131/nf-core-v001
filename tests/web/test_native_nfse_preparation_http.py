@@ -1285,6 +1285,10 @@ def test_cajamar_portal_prepares_sends_recovers_and_downloads_authorized_xml(
     )
     assert completed.status_code == 200, completed.text
     assert completed.json()["status"] == FiscalDocumentState.AUTHORIZED.value
+    with pytest.raises(PersistenceStateError, match="authorized original Cajamar"):
+        app.preflight_cajamar_cancellation_observation(
+            scope=original.scope, document_id=document_id,
+        )
     assert submitted.call_count == 1, "read-only recovery must not submit again"
     queried.assert_called_once()
     verified.assert_called_once()
@@ -1536,6 +1540,14 @@ def test_cajamar_portal_prepares_sends_recovers_and_downloads_authorized_xml(
         assert denied_retry.status_code != 200
         assert cancelled.call_count == 3
 
+        # Only a pending cancellation can pass the read-only recovery preflight.
+        app.preflight_cajamar_cancellation_observation(
+            scope=original.scope, document_id=second_id,
+        )
+        with pytest.raises(PersistenceStateError, match="authorized original Cajamar"):
+            app.preflight_cajamar_cancellation_observation(
+                scope=original.scope, document_id=document_id,
+            )
         # Query observation does not authorize a fiscal state transition.
         observation = CajamarInvoiceObservation(
             False, b"<ConsultaNfseResposta><Msg><Erro>10</Erro></Msg></ConsultaNfseResposta>",
