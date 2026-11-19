@@ -29,7 +29,16 @@ def test_ibling_api_overlay_only_extends_existing_api() -> None:
 def test_bling_api_activated_only_by_host_owned_opt_in() -> None:
     base = yaml.safe_load((ROOT / "deploy/contabo/compose.prod.yml").read_text())
     api = base["services"]["nfcore-api"]
-    assert not api.get("volumes")
+    # Production already has exactly one canonical encrypted A1 Vault bind.
+    # Bling opt-in must not be enabled merely because the A1 bind exists.
+    volumes = api.get("volumes", [])
+    assert len(volumes) == 1
+    vault = volumes[0]
+    assert vault["type"] == "bind"
+    assert vault["source"] == "/var/lib/nfcore/vault"
+    assert vault["target"] == "/var/lib/nfcore/vault"
+    assert vault["read_only"] is False
+    assert vault["bind"]["create_host_path"] is False
     assert api["environment"].get("NFCORE_BLING_INSTALLATIONS_ENABLED") != "true"
     assert "nfcore-bling-worker" not in base["services"]
     deploy = (ROOT / "deploy/contabo/deploy.sh").read_text()

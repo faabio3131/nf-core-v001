@@ -1,0 +1,91 @@
+name: NFCore Contabo GSM Read-only Audit (Plan B)
+
+# Only manually dispatched from protected main after root-owned host scripts
+# have been independently installed and verified. Never run on a PR/ref fork.
+on:
+  workflow_dispatch:
+    inputs:
+      expected_production_sha:
+        description: "Exact 40-character SHA on the production branch"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nfcore-contabo-audit-readonly
+  cancel-in-progress: false
+
+jobs:
+  gsm-audit:
+    name: GSM host inventory (no activation)
+    if: github.ref == 'refs/heads/main' && github.ref_protected == true
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    environment: nfcore-contabo-audit
+    steps:
+      - name: Checkout reviewed main only
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Pin production release
+        env:
+          REQUESTED_SHA: ${{ inputs.expected_production_sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$REQUESTED_SHA" =~ ^[0-9a-f]{40}$ ]] || { echo NO_GO_INVALID_SHA; exit 42; }
+          PRODUCTION_SHA=$(git ls-remote --exit-code origin refs/heads/production | awk 'NR==1 {print $1}')
+          [[ "$PRODUCTION_SHA" == "$REQUESTED_SHA" ]] || { echo NO_GO_PRODUCTION_SHA_MISMATCH; exit 42; }
+          echo "PINNED_PRODUCTION_SHA=${REQUESTED_SHA:0:12}"
+      - name: Run pinned root-owned GSM-only preflight via restricted SSH
+        shell: bash
+        env:
+          AUDIT_HOST: ${{ secrets.NFCORE_AUDIT_HOST }}
+          AUDIT_USER: ${{ secrets.NFCORE_AUDIT_USER }}
+          AUDIT_PRIVATE_KEY: ${{ secrets.NFCORE_AUDIT_SSH_PRIVATE_KEY }}
+          AUDIT_KNOWN_HOSTS: ${{ secrets.NFCORE_AUDIT_KNOWN_HOSTS }}
+          REQUESTED_SHA: ${{ inputs.expected_production_sha }}
+        run: |
+          set -euo pipefail
+          umask 077
+          [[ "$AUDIT_HOST" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]] || { echo NO_GO_AUDIT_HOST_UNCONFIGURED; exit 42; }
+          [[ "$AUDIT_USER" =~ ^[a-z_][a-z0-9_-]{0,31}$ ]] || { echo NO_GO_AUDIT_USER_UNCONFIGURED; exit 42; }
+          [[ -n "$AUDIT_PRIVATE_KEY" && -n "$AUDIT_KNOWN_HOSTS" ]] || { echo NO_GO_AUDIT_SSH_NOT_PROVISIONED; exit 42; }
+          work="$RUNNER_TEMP/nfcore-gsm-host-audit"
+          mkdir -m 700 -p "$work"
+          printf '%s\n' "$AUDIT_PRIVATE_KEY" > "$work/identity"
+          printf '%s\n' "$AUDIT_KNOWN_HOSTS" > "$work/known_hosts"
+          chmod 600 "$work/identity" "$work/known_hosts"
+          ssh-keygen -y -f "$work/identity" >/dev/null 2>&1 || { echo NO_GO_INVALID_AUDIT_KEY; exit 42; }
+          ssh-keygen -F "$AUDIT_HOST" -f "$work/known_hosts" >/dev/null 2>&1 || { echo NO_GO_SSH_HOST_NOT_PINNED; exit 42; }
+          script_digest=$(sha256sum deploy/contabo/worker-readonly-preflight.py | awk '{print $1}')
+          rc=0
+          # No remote shell, no script upload, no sudo arguments, no stdout/stderr leaks.
+          ssh -T -F /dev/null -i "$work/identity" -o BatchMode=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$work/known_hosts" -o IdentitiesOnly=yes -o IdentityAgent=none -o ForwardAgent=no -o ClearAllForwardings=yes -o ConnectTimeout=15 -o ServerAliveInterval=10 -o ServerAliveCountMax=2 "$AUDIT_USER@$AUDIT_HOST" "nfcore-gsm-audit $REQUESTED_SHA $script_digest" </dev/null > "$work/raw-output" 2> "$work/ssh-errors" || rc=$?
+          # Strictly bounded, non-secret status values from the verified script.
+          grep -E '^(FORMAT=NFCORE_WORKERS_READONLY_V1|[A-Z0-9_]+=(PASS|NO_GO|ABSENT|PRESENT|RESTRICTED|HEALTHY|NOT_RUNNING|NOT_HEALTHY|NO_HEALTH_PROOF|INSPECT_UNAVAILABLE|UNVERIFIED_EXTERNAL|UNVERIFIED|SYMLINK_DENIED|WRONG_TYPE|ACCESS_TOO_BROAD|OWNER_MISMATCH|CROSS_SAAS_SOURCE_DENIED|INVALID_SOURCE|ABSENT_OR_AMBIGUOUS|NOT_READ_ONLY_BIND|NO_GO_[A-Z0-9_]+|GENERAL_WORKER_[A-Z0-9_]+|BLING_WORKER_[A-Z0-9_]+|WORKERS_PRESENT_EXTERNAL_E2E_UNVERIFIED|NOT_SUPERVISED))$' "$work/raw-output" > "$work/status.txt" || true
+          cat "$work/status.txt"
+          if [[ "$rc" -ne 0 ]] || ! grep -Fxq 'FORMAT=NFCORE_WORKERS_READONLY_V1' "$work/status.txt" || ! grep -Eq '^RESULT=' "$work/status.txt"; then
+            echo NO_GO_GSM_HOST_AUDIT_FAILED_OR_INCOMPLETE
+            exit 1
+          fi
+          echo 'GSM_INVENTORY_CAPTURED_EXTERNAL_IDENTITY_AND_OUTBOX_GATES_UNVERIFIED'
+      - name: Publish sanitized evidence only
+        if: always()
+        shell: bash
+        run: |
+          work="$RUNNER_TEMP/nfcore-gsm-host-audit"
+          {
+            echo '### NFCore GSM worker — restricted read-only inventory'
+            echo 'No credentials, environment file contents or private key material are published.'
+            echo 'This report cannot certify Google IAM, remote Railway consumers, backup restore, or worker cutover.'
+            if [[ -f "$work/status.txt" ]]; then
+              echo '```text'
+              cat "$work/status.txt"
+              echo '```'
+            else
+              echo 'NO_GO: no authenticated GSM host status collected.'
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"

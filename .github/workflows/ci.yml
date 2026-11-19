@@ -20,7 +20,10 @@ concurrency:
 
 jobs:
   quality:
-    runs-on: ubuntu-latest
+    # Pin supported LTS image: ubuntu-latest currently routes to 26.04 (resolute),
+    # where Playwright --with-deps intermittently fails fetching apt fonts.
+    # Keep Chromium OS dependencies and ALL E2E/security gates mandatory.
+    runs-on: ubuntu-24.04
     timeout-minutes: 45
     services:
       postgres:
@@ -98,7 +101,10 @@ jobs:
         run: npm run build:frontend
 
       - name: Install Chromium
-        run: npx playwright install --with-deps chromium
+        # Runner already ships browser shared libraries. Avoid apt downloads
+        # (repeated Azure Ubuntu DNS failures) but still install the exact
+        # Playwright-managed Chromium binary and execute the full E2E gate.
+        run: npx playwright install chromium
 
       - name: E2E critical
         run: npm run test:e2e

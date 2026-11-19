@@ -26,12 +26,16 @@ from kordena_fiscal.security.human_identity import AuthenticatedHuman, PortalPer
 PERMISSIONS = {
     "issueFiscalDocument": PortalPermission.DOCUMENT_ISSUE,
     "cancelFiscalDocument": PortalPermission.DOCUMENT_CANCEL,
+    "cancelExtremaNfse": PortalPermission.DOCUMENT_CANCEL,
+    "substituteExtremaNfse": PortalPermission.DOCUMENT_CANCEL,
     "inutilizeFiscalRange": PortalPermission.DOCUMENT_INUTILIZE,
     "reconcileFiscalOperation": PortalPermission.RECONCILIATION_EXECUTE,
 }
 OPERATIONS = {
     "issueFiscalDocument": frozenset({"issue", "issueFiscalDocument"}),
     "cancelFiscalDocument": frozenset({"cancel", "cancelFiscalDocument"}),
+    "cancelExtremaNfse": frozenset({"cancelExtremaNfse"}),
+    "substituteExtremaNfse": frozenset({"substituteExtremaNfse"}),
     "inutilizeFiscalRange": frozenset({"inutilize", "inutilizeFiscalRange"}),
     "reconcileFiscalOperation": frozenset({"reconcile", "reconcileFiscalOperation"}),
 }

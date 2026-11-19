@@ -4,11 +4,17 @@ from __future__ import annotations
 
 import base64
 import json
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime
 from enum import StrEnum
 
-from kordena_fiscal.archive import FiscalArchiveEntry, FiscalArchiveKind, RetentionPolicyMetadata
+from kordena_fiscal.archive import (
+    FiscalArchiveEntry,
+    FiscalArchiveKind,
+    FiscalArchiveVerifier,
+    RetentionPolicyMetadata,
+)
 from kordena_fiscal.contingency import (
     FiscalOutboxEnqueueResult,
     FiscalOutboxEntry,
@@ -35,6 +41,11 @@ from kordena_fiscal.gateway import (
     AuthorizationStatus,
     FiscalGatewayClient,
 )
+from kordena_fiscal.gateway.webiss_extrema_canonical import (
+    ExtremaCancellationOutcome,
+    ExtremaSubstitutionOutcome,
+    WebissExtremaCanonicalNfseGateway,
+)
 from kordena_fiscal.issuance.nfe_nfse import (
     NfseAuthorizationRequest,
     NfseAuthorizationResult,
@@ -46,6 +57,13 @@ from kordena_fiscal.issuance.nfse_archive import (
     NFSE_PREPARED_MEDIA_TYPE,
     decode_prepared_nfse,
     encode_prepared_nfse,
+)
+from kordena_fiscal.issuance.webiss_extrema_builder import (
+    EXTREMA_INTENT_MEDIA_TYPE,
+    ExtremaRpsIntent,
+    decode_extrema_intent,
+    encode_extrema_intent,
+    validate_extrema_intent,
 )
 from kordena_fiscal.lifecycle import (
     FiscalDocumentState,
@@ -60,6 +78,7 @@ from kordena_fiscal.numbering import (
     FiscalNumberReservation,
     FiscalSequenceKey,
     FiscalSequencePolicy,
+    InternalFiscalSequenceStream,
 )
 from kordena_fiscal.operations import (
     CancellationRequest,
@@ -161,6 +180,20 @@ class DurableCancellationOutcome:
     result: CancellationResult
     lifecycle: FiscalStateSnapshot
     archive_reference: str
+
+@dataclass(frozen=True, slots=True)
+class DurableExtremaCancellationOutcome:
+    result: ExtremaCancellationOutcome
+    lifecycle: FiscalStateSnapshot
+    archive_reference: str
+
+@dataclass(frozen=True, slots=True)
+class DurableExtremaSubstitutionOutcome:
+    result: ExtremaSubstitutionOutcome
+    original_lifecycle: FiscalStateSnapshot
+    replacement_lifecycle: FiscalStateSnapshot
+    archive_reference: str
+
 
 
 class FiscalApplicationService:
@@ -534,6 +567,10 @@ class FiscalApplicationService:
         *,
         occurred_at: datetime,
         retention: RetentionPolicyMetadata,
+        extrema_intent_builder: Callable[
+            [FiscalNumberReservation], ExtremaRpsIntent
+        ] | None = None,
+        extrema_rps_series: int | None = None,
     ) -> DurablePreparedAuthorization:
         """Atomically reserve, validate and archive one provider-neutral NFS-e request."""
         if not isinstance(document, NfseCanonicalDocument):
@@ -541,6 +578,12 @@ class FiscalApplicationService:
         if not isinstance(retention, RetentionPolicyMetadata):
             raise FiscalValidationError("retention must be RetentionPolicyMetadata")
         request = NfseAuthorizationRequest.build(document)
+        if (extrema_intent_builder is None) != (extrema_rps_series is None):
+            raise FiscalValidationError(
+                "WebISS intent builder and RPS numbering series must be supplied together"
+            )
+        if extrema_intent_builder is not None and not callable(extrema_intent_builder):
+            raise FiscalValidationError("WebISS RPS builder must be trusted and callable")
         entry = FiscalArchiveEntry.build(
             scope=document.scope,
             document_reference=document.document_id,
@@ -565,10 +608,60 @@ class FiscalApplicationService:
                 prepared = self._load_prepared_from_uow(uow, document.scope, document.document_id)
                 if not isinstance(prepared, NfseAuthorizationRequest):
                     raise PersistenceStateError("durable request is not NFS-e")
+                prior_intents = [
+                    archived.content
+                    for archived in uow.archive.list_for_document(
+                        document.scope, document.document_id,
+                    )
+                    if archived.media_type == EXTREMA_INTENT_MEDIA_TYPE
+                ]
+                if len(prior_intents) > 1 or bool(prior_intents) != (
+                    extrema_intent_builder is not None
+                ):
+                    raise PersistenceConflictError(
+                        "WebISS fiscal intent cannot change after idempotency reservation"
+                    )
                 uow.commit()
                 return DurablePreparedAuthorization(attempt, current, prepared, True)
             if current is not None:
                 raise PersistenceConflictError("document_id already belongs to an issuance")
+            municipal_entry: FiscalArchiveEntry | None = None
+            if extrema_intent_builder is not None:
+                assert extrema_rps_series is not None
+                if (
+                    not isinstance(extrema_rps_series, int)
+                    or isinstance(extrema_rps_series, bool)
+                    or not 0 <= extrema_rps_series <= 99_999
+                ):
+                    raise FiscalValidationError("Invalid scoped Extrema RPS series")
+                if (
+                    document.scope.environment is not FiscalEnvironment.HOMOLOGATION
+                    or not document.scope.host_namespace
+                    or document.issuer.address.jurisdiction.municipality_ibge_code
+                    != "3125101"
+                ):
+                    raise FiscalValidationError(
+                        "Atomic RPS reservation requires scoped Extrema homologation"
+                    )
+                key = FiscalSequenceKey.from_scope(
+                    document.scope,
+                    model=InternalFiscalSequenceStream.NFSE_RPS,
+                    series=extrema_rps_series,
+                )
+                numbered = uow.sequences.reserve_next(
+                    key, FiscalSequencePolicy(max_number=999_999_999_999_999),
+                )
+                approved_intent = extrema_intent_builder(numbered)
+                validate_extrema_intent(request, approved_intent)
+                municipal_entry = FiscalArchiveEntry.build(
+                    scope=document.scope,
+                    document_reference=document.document_id,
+                    kind=FiscalArchiveKind.OTHER,
+                    content=encode_extrema_intent(approved_intent),
+                    media_type=EXTREMA_INTENT_MEDIA_TYPE,
+                    archived_at=occurred_at,
+                    retention=retention,
+                )
             current = FiscalStateSnapshot.initial(document.document_id, document.issued_at)
             uow.lifecycle.add(current, scope=document.scope)
             for target, reason in (
@@ -587,8 +680,31 @@ class FiscalApplicationService:
                 uow.lifecycle.save(updated, expected_version=current.version)
                 current = updated
             uow.archive.append(entry)
+            if municipal_entry is not None:
+                uow.archive.append(municipal_entry)
             uow.commit()
             return DurablePreparedAuthorization(attempt, current, request, False)
+
+    def load_extrema_rps_intent(
+        self, scope: ExecutionScope, document_id: str,
+    ) -> ExtremaRpsIntent:
+        """Recover the original immutable municipal RPS intent and reserved number.
+
+        The request and provider-specific intent are read from the same scoped
+        archival transaction. An ambiguous or unprepared request fails closed.
+        """
+        with self._uow_factory() as uow:
+            prepared = self._load_prepared_from_uow(uow, scope, document_id)
+            if not isinstance(prepared, NfseAuthorizationRequest):
+                raise PersistenceStateError("Prepared document is not an NFS-e issuance")
+            entries = [
+                item for item in uow.archive.list_for_document(scope, document_id)
+                if item.kind is FiscalArchiveKind.OTHER
+                and item.media_type == EXTREMA_INTENT_MEDIA_TYPE
+            ]
+            if len(entries) != 1:
+                raise PersistenceStateError("WebISS requires exactly one prepared RPS intent")
+            return decode_extrema_intent(entries[0].content, scope=scope, request=prepared)
 
     def load_prepared_authorization(
         self, scope: ExecutionScope, document_id: str
@@ -741,8 +857,7 @@ class FiscalApplicationService:
                         policy_id="nfcore-fiscal-archive", policy_version=1
                     ),
                 )
-                if isinstance(result, AuthorizationResult)
-                and result.authorized_xml is not None else None
+                if result.authorized_xml is not None else None
             )
             self.finalize_authorized(
                 archive_entry=xml_evidence,
@@ -969,6 +1084,13 @@ class FiscalApplicationService:
                 raise PersistenceConflictError("NFS-e transmission changed during provider query")
             if result.status is AuthorizationStatus.AUTHORIZED:
                 assert result.invoice_reference is not None
+                if result.authorized_xml is not None:
+                    uow.archive.append(FiscalArchiveEntry.build(
+                        scope=scope, document_reference=document_id,
+                        kind=FiscalArchiveKind.AUTHORIZED_XML,
+                        content=result.authorized_xml, media_type="application/xml",
+                        archived_at=occurred_at, retention=retention,
+                    ))
                 updated = self._state_machine.transition(
                     current,
                     FiscalDocumentState.AUTHORIZED,
@@ -1080,6 +1202,309 @@ class FiscalApplicationService:
                 uow.lifecycle.save(outcome.lifecycle, expected_version=requested.version)
             uow.commit()
         return DurableCancellationOutcome(result, outcome.lifecycle, archived.entry_id)
+
+    def preflight_extrema_nfse_cancellation(
+        self, *, scope: ExecutionScope, document_id: str,
+    ) -> None:
+        """Read-only check, before committing the portal fiscal intent."""
+        request = self.load_prepared_nfse_authorization(scope, document_id)
+        self.load_extrema_rps_intent(scope, document_id)
+        if (
+            request.document.issuer.address.jurisdiction.municipality_ibge_code
+            != "3125101"
+            or scope.environment is not FiscalEnvironment.HOMOLOGATION
+        ):
+            raise FiscalValidationError("Extrema cancellation is not configured for this scope")
+        with self._uow_factory() as uow:
+            uow.lifecycle.assert_scope(document_id, scope)
+            current = uow.lifecycle.get(document_id)
+            if current is None or current.state is not FiscalDocumentState.AUTHORIZED:
+                raise PersistenceStateError("Original NFS-e must have confirmed authorization")
+            items = [
+                x for x in uow.archive.list_for_document(scope, document_id)
+                if x.kind is FiscalArchiveKind.AUTHORIZED_XML
+                and x.media_type == "application/xml"
+            ]
+            if len(items) != 1:
+                raise PersistenceStateError("Original authorized municipal XML is missing")
+            FiscalArchiveVerifier().verify_entry(items[0])
+
+    def preflight_extrema_nfse_substitution(
+        self, *, scope: ExecutionScope, original_id: str, replacement_id: str,
+    ) -> None:
+        """Verify original authorization and replacement readiness without mutations."""
+        if original_id == replacement_id:
+            raise FiscalValidationError("Substitution requires two different fiscal documents")
+        original = self.load_prepared_nfse_authorization(scope, original_id)
+        replacement = self.load_prepared_nfse_authorization(scope, replacement_id)
+        self.load_extrema_rps_intent(scope, original_id)
+        self.load_extrema_rps_intent(scope, replacement_id)
+        if (
+            original.document.issuer.cnpj != replacement.document.issuer.cnpj
+            or original.document.issuer.address.jurisdiction
+            != replacement.document.issuer.address.jurisdiction
+            or original.document.issuer.address.jurisdiction.municipality_ibge_code
+            != "3125101"
+        ):
+            raise FiscalValidationError("Substitution must preserve issuer and municipality")
+        with self._uow_factory() as uow:
+            uow.lifecycle.assert_scope(original_id, scope)
+            uow.lifecycle.assert_scope(replacement_id, scope)
+            previous = uow.lifecycle.get(original_id)
+            fresh = uow.lifecycle.get(replacement_id)
+            attempts = uow.idempotency.attempts(replacement.idempotency_key)
+            if (
+                previous is None
+                or previous.state is not FiscalDocumentState.AUTHORIZED
+                or fresh is None
+                or fresh.state is not FiscalDocumentState.READY_TO_TRANSMIT
+                or len(attempts) != 1
+                or attempts[0].document_id != replacement_id
+                or attempts[0].request_fingerprint != replacement.request_fingerprint
+                or attempts[0].status is not IssuanceAttemptStatus.RESERVED
+            ):
+                raise PersistenceStateError(
+                    "Substitution requires authorized original and untransmitted replacement"
+                )
+            entries = [
+                x for x in uow.archive.list_for_document(scope, original_id)
+                if x.kind is FiscalArchiveKind.AUTHORIZED_XML
+                and x.media_type == "application/xml"
+            ]
+            if len(entries) != 1:
+                raise PersistenceStateError("Original authorized XML required for substitution")
+            FiscalArchiveVerifier().verify_entry(entries[0])
+
+    def substitute_prepared_extrema_nfse(
+        self, *, scope: ExecutionScope, original_id: str, replacement_id: str,
+        cancellation_code: str, gateway: WebissExtremaCanonicalNfseGateway,
+        occurred_at: datetime, retention: RetentionPolicyMetadata,
+    ) -> DurableExtremaSubstitutionOutcome:
+        """Commit two lifecycle claims before ONE atomic provider substitution POST.
+
+        A delivery timeout leaves old CANCEL_REQUESTED and new TRANSMITTING;
+        never issue a second replacement automatically. Local finalization
+        commits BOTH documents and original provider evidence atomically.
+        """
+        if (
+            not isinstance(gateway, WebissExtremaCanonicalNfseGateway)
+            or not isinstance(scope, ExecutionScope)
+            or not isinstance(retention, RetentionPolicyMetadata)
+            or not isinstance(occurred_at, datetime)
+            or occurred_at.tzinfo is None
+        ):
+            raise FiscalValidationError("Invalid WebISS substitution dependencies")
+        self.preflight_extrema_nfse_substitution(
+            scope=scope, original_id=original_id, replacement_id=replacement_id,
+        )
+        original = self.load_prepared_nfse_authorization(scope, original_id)
+        replacement = self.load_prepared_nfse_authorization(scope, replacement_id)
+        with self._uow_factory() as uow:
+            matches = [
+                x.content for x in uow.archive.list_for_document(scope, original_id)
+                if x.kind is FiscalArchiveKind.AUTHORIZED_XML
+                and x.media_type == "application/xml"
+            ]
+            if len(matches) != 1:
+                raise PersistenceStateError("Original replacement XML changed")
+            authorized_xml = matches[0]
+        signed, original_number = gateway.prepare_substitution(
+            original=original, replacement=replacement, original_xml=authorized_xml,
+            cancellation_code=cancellation_code,
+        )
+        with self._uow_factory() as uow:
+            uow.lifecycle.assert_scope(original_id, scope)
+            uow.lifecycle.assert_scope(replacement_id, scope)
+            before_original = uow.lifecycle.get(original_id)
+            before_replacement = uow.lifecycle.get(replacement_id)
+            if (
+                before_original is None
+                or before_original.state is not FiscalDocumentState.AUTHORIZED
+                or before_replacement is None
+                or before_replacement.state is not FiscalDocumentState.READY_TO_TRANSMIT
+            ):
+                raise PersistenceConflictError("Concurrent WebISS replacement request")
+            claim_old = self._state_machine.transition(
+                before_original, FiscalDocumentState.CANCEL_REQUESTED,
+                occurred_at=occurred_at, reason="official Extrema substitution claim",
+                correlation_id=scope.correlation_id,
+            )
+            claim_new = self._state_machine.transition(
+                before_replacement, FiscalDocumentState.TRANSMITTING,
+                occurred_at=occurred_at, reason="official Extrema replacement claim",
+                correlation_id=scope.correlation_id,
+            )
+            uow.lifecycle.save(claim_old, expected_version=before_original.version)
+            uow.lifecycle.save(claim_new, expected_version=before_replacement.version)
+            uow.commit()
+
+        result = gateway.submit_substitution(
+            original=original, replacement=replacement, envelope=signed,
+            original_number=original_number,
+        )
+        event = FiscalArchiveEntry.build(
+            scope=scope, document_reference=original_id,
+            kind=FiscalArchiveKind.FISCAL_EVENT,
+            content=result.xml, media_type="application/xml",
+            archived_at=occurred_at, retention=retention,
+        )
+        with self._uow_factory() as uow:
+            uow.lifecycle.assert_scope(original_id, scope)
+            uow.lifecycle.assert_scope(replacement_id, scope)
+            old = uow.lifecycle.get(original_id)
+            new = uow.lifecycle.get(replacement_id)
+            attempts = uow.idempotency.attempts(replacement.idempotency_key)
+            if (
+                old != claim_old or new != claim_new
+                or len(attempts) != 1
+                or attempts[0].status is not IssuanceAttemptStatus.RESERVED
+                or attempts[0].document_id != replacement_id
+                or attempts[0].request_fingerprint != replacement.request_fingerprint
+            ):
+                raise PersistenceConflictError("Concurrent fiscal update after substitution")
+            final_old = self._state_machine.transition(
+                old,
+                FiscalDocumentState.CANCELLED
+                if result.confirmed else FiscalDocumentState.AUTHORIZED,
+                occurred_at=occurred_at,
+                reason="WebISS substitution accepted"
+                if result.confirmed else "WebISS substitution rejected",
+                correlation_id=scope.correlation_id,
+            )
+            final_new = self._state_machine.transition(
+                new,
+                FiscalDocumentState.AUTHORIZED
+                if result.confirmed else FiscalDocumentState.REJECTED,
+                occurred_at=occurred_at,
+                reason="WebISS replacement authorized"
+                if result.confirmed else "WebISS replacement rejected",
+                correlation_id=scope.correlation_id,
+            )
+            if result.confirmed:
+                assert result.invoice_reference is not None
+                uow.idempotency.mark_authorized(
+                    replacement.idempotency_key,
+                    attempts[0].generation, result.invoice_reference,
+                )
+                uow.archive.append(FiscalArchiveEntry.build(
+                    scope=scope, document_reference=replacement_id,
+                    kind=FiscalArchiveKind.AUTHORIZED_XML,
+                    content=result.xml, media_type="application/xml",
+                    archived_at=occurred_at, retention=retention,
+                ))
+            else:
+                assert result.rejection_code is not None
+                uow.idempotency.mark_rejected(
+                    replacement.idempotency_key,
+                    attempts[0].generation, result.rejection_code,
+                )
+            uow.lifecycle.save(final_old, expected_version=old.version)
+            uow.lifecycle.save(final_new, expected_version=new.version)
+            archived = uow.archive.append(event)
+            uow.commit()
+        return DurableExtremaSubstitutionOutcome(
+            result=result, original_lifecycle=final_old,
+            replacement_lifecycle=final_new,
+            archive_reference=archived.entry_id,
+        )
+
+    def cancel_prepared_extrema_nfse(
+        self, *, scope: ExecutionScope, document_id: str, cancellation_code: str,
+        gateway: WebissExtremaCanonicalNfseGateway,
+        occurred_at: datetime, retention: RetentionPolicyMetadata,
+    ) -> DurableExtremaCancellationOutcome:
+        """Cancel an authorized Extrema NFS-e exactly once; never blindly resend.
+
+        Validate the archived official XML, sign from the original issuer,
+        commit CANCEL_REQUESTED before SOAP I/O, then atomically archive
+        the official answer and final lifecycle. An ambiguous POST remains
+        CANCEL_REQUESTED and must be consulted; no automatic retry is allowed.
+        """
+        if (
+            not isinstance(scope, ExecutionScope)
+            or not isinstance(gateway, WebissExtremaCanonicalNfseGateway)
+            or not isinstance(retention, RetentionPolicyMetadata)
+            or not isinstance(occurred_at, datetime)
+            or occurred_at.tzinfo is None
+        ):
+            raise FiscalValidationError("Invalid scoped Extrema cancellation dependencies")
+        request = self.load_prepared_nfse_authorization(scope, document_id)
+        self.load_extrema_rps_intent(scope, document_id)
+        with self._uow_factory() as uow:
+            uow.lifecycle.assert_scope(document_id, scope)
+            lifecycle = uow.lifecycle.get(document_id)
+            attempts = uow.idempotency.attempts(request.idempotency_key)
+            if (
+                lifecycle is None
+                or lifecycle.state is not FiscalDocumentState.AUTHORIZED
+                or len(attempts) != 1
+                or attempts[0].status is not IssuanceAttemptStatus.AUTHORIZED
+                or attempts[0].document_id != document_id
+                or attempts[0].request_fingerprint != request.request_fingerprint
+            ):
+                raise PersistenceStateError(
+                    "Extrema cancellation requires one original authorized fiscal document"
+                )
+            snapshots = [
+                entry for entry in uow.archive.list_for_document(scope, document_id)
+                if entry.kind is FiscalArchiveKind.AUTHORIZED_XML
+                and entry.media_type == "application/xml"
+            ]
+            if len(snapshots) != 1:
+                raise PersistenceStateError("Original municipal XML evidence is unavailable")
+            FiscalArchiveVerifier().verify_entry(snapshots[0])
+            original_xml = snapshots[0].content
+
+        envelope, original_number = gateway.prepare_cancellation(
+            request=request, authorized_xml=original_xml,
+            cancellation_code=cancellation_code,
+        )
+        with self._uow_factory() as uow:
+            uow.lifecycle.assert_scope(document_id, scope)
+            current = uow.lifecycle.get(document_id)
+            if current is None or current.state is not FiscalDocumentState.AUTHORIZED:
+                raise PersistenceConflictError("Extrema cancellation was already requested")
+            claim = self._state_machine.transition(
+                current, FiscalDocumentState.CANCEL_REQUESTED,
+                occurred_at=occurred_at, reason="official Extrema cancellation claim",
+                correlation_id=scope.correlation_id,
+            )
+            uow.lifecycle.save(claim, expected_version=current.version)
+            uow.commit()
+
+        # No automatic retry. Any network/parse error leaves CANCEL_REQUESTED.
+        result = gateway.submit_cancellation(
+            request=request, envelope=envelope, original_number=original_number,
+        )
+        archive_entry = FiscalArchiveEntry.build(
+            scope=scope, document_reference=document_id,
+            kind=FiscalArchiveKind.FISCAL_EVENT,
+            content=result.xml, media_type="application/xml",
+            archived_at=occurred_at, retention=retention,
+        )
+        with self._uow_factory() as uow:
+            uow.lifecycle.assert_scope(document_id, scope)
+            current = uow.lifecycle.get(document_id)
+            if current is None or current != claim:
+                raise PersistenceConflictError("Extrema cancellation changed during delivery")
+            target = (
+                FiscalDocumentState.CANCELLED if result.confirmed
+                else FiscalDocumentState.AUTHORIZED
+            )
+            final = self._state_machine.transition(
+                current, target, occurred_at=occurred_at,
+                reason=(
+                    "municipal cancellation confirmed" if result.confirmed
+                    else "municipal cancellation rejected"
+                ),
+                correlation_id=scope.correlation_id,
+            )
+            uow.lifecycle.save(final, expected_version=current.version)
+            archived = uow.archive.append(archive_entry)
+            uow.commit()
+        return DurableExtremaCancellationOutcome(
+            result=result, lifecycle=final, archive_reference=archived.entry_id,
+        )
 
     def reserve_number(
         self,

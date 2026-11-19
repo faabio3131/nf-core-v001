@@ -62,6 +62,8 @@ class PreflightFiscalOperationHandler:
 _CAPABILITY_BY_OPERATION: dict[str, FiscalCapability] = {
     "queryArchiveReference": FiscalCapability.ARCHIVE_READ,
     "cancelFiscalDocument": FiscalCapability.CANCEL,
+    "cancelExtremaNfse": FiscalCapability.CANCEL,
+    "substituteExtremaNfse": FiscalCapability.CANCEL,
     "queryCapabilities": FiscalCapability.CAPABILITIES_READ,
     "inutilizeFiscalRange": FiscalCapability.INUTILIZE,
     "issueFiscalDocument": FiscalCapability.ISSUE,
@@ -72,6 +74,8 @@ _CAPABILITY_BY_OPERATION: dict[str, FiscalCapability] = {
 _BRIDGE_STATUS_BY_OPERATION: dict[str, int] = {
     "queryArchiveReference": 200,
     "cancelFiscalDocument": 202,
+    "cancelExtremaNfse": 202,
+    "substituteExtremaNfse": 202,
     "queryCapabilities": 200,
     "inutilizeFiscalRange": 202,
     "issueFiscalDocument": 202,
@@ -180,6 +184,14 @@ class CanonicalBridgeSecurityBoundary:
         operation_id: str,
         context: BridgeHttpContext,
     ) -> AuthorizedBridgeContext:
+        # Substitution is a high-impact human-approved two-document workflow.
+        # Workload CANCEL scope alone must never confer ISSUE authority.
+        if operation_id == "substituteExtremaNfse":
+            raise HttpContractError(
+                403, "HUMAN_SUBSTITUTION_REQUIRED",
+                "NFS-e replacement requires authorized human fiscal review",
+                context.correlation_id,
+            )
         capability = _CAPABILITY_BY_OPERATION.get(operation_id)
         if capability is None:
             raise HttpContractError(

@@ -1,0 +1,11 @@
+# OPT-IN: not enabled by Git, deploy.sh or install.sh.
+[Unit]
+Description=Daily NFCore A1 Vault offsite backup
+
+[Timer]
+OnCalendar=*-*-* 04:15:00
+Persistent=true
+Unit=nfcore-a1-backup.service
+
+[Install]
+WantedBy=timers.target

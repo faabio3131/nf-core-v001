@@ -1,0 +1,107 @@
+name: NFCore Contabo Read-only Host Audit (Plan B)
+
+# This workflow never deploys, migrates, restarts, or configures production.
+# Never trigger on PRs or run untrusted branches with the SSH credential.
+on:
+  workflow_dispatch:
+    inputs:
+      expected_production_sha:
+        description: "Exact 40-char SHA currently in the protected production branch"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nfcore-contabo-audit-readonly
+  cancel-in-progress: false
+
+jobs:
+  audit:
+    name: Read-only Contabo preflight
+    # Do not expose the SSH identity until main has actual branch/ruleset protection.
+    if: github.ref == 'refs/heads/main' && github.ref_protected == true
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    environment: nfcore-contabo-audit
+    steps:
+      - name: Checkout reviewed main
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Validate request and exact production SHA
+        shell: bash
+        env:
+          REQUESTED_SHA: ${{ inputs.expected_production_sha }}
+        run: |
+          set -euo pipefail
+          [[ "$REQUESTED_SHA" =~ ^[0-9a-f]{40}$ ]] || { echo 'NO_GO_INVALID_SHA'; exit 42; }
+          PRODUCTION_SHA=$(git ls-remote --exit-code origin refs/heads/production | awk 'NR==1 {print $1}')
+          [[ "$PRODUCTION_SHA" == "$REQUESTED_SHA" ]] || { echo 'NO_GO_PRODUCTION_SHA_MISMATCH'; exit 42; }
+          echo "PINNED_PRODUCTION_SHA=${REQUESTED_SHA:0:12}"
+      - name: Execute restricted read-only audit over verified SSH
+        shell: bash
+        env:
+          AUDIT_HOST: ${{ secrets.NFCORE_AUDIT_HOST }}
+          AUDIT_USER: ${{ secrets.NFCORE_AUDIT_USER }}
+          AUDIT_PRIVATE_KEY: ${{ secrets.NFCORE_AUDIT_SSH_PRIVATE_KEY }}
+          AUDIT_KNOWN_HOSTS: ${{ secrets.NFCORE_AUDIT_KNOWN_HOSTS }}
+          REQUESTED_SHA: ${{ inputs.expected_production_sha }}
+        run: |
+          set -euo pipefail
+          umask 077
+          # Missing provisioning must fail closed; never open a password prompt.
+          [[ "$AUDIT_HOST" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]] || { echo 'NO_GO_AUDIT_HOST_UNCONFIGURED'; exit 42; }
+          [[ "$AUDIT_USER" =~ ^[a-z_][a-z0-9_-]{0,31}$ ]] || { echo 'NO_GO_AUDIT_USER_UNCONFIGURED'; exit 42; }
+          [[ -n "$AUDIT_PRIVATE_KEY" && -n "$AUDIT_KNOWN_HOSTS" ]] || { echo 'NO_GO_AUDIT_SSH_NOT_PROVISIONED'; exit 42; }
+          work="$RUNNER_TEMP/nfcore-host-audit"
+          mkdir -m 700 -p "$work"
+          printf '%s\n' "$AUDIT_PRIVATE_KEY" > "$work/identity"
+          printf '%s\n' "$AUDIT_KNOWN_HOSTS" > "$work/known_hosts"
+          chmod 600 "$work/identity" "$work/known_hosts"
+          ssh-keygen -y -f "$work/identity" >/dev/null 2>&1 || { echo 'NO_GO_INVALID_AUDIT_KEY'; exit 42; }
+          ssh-keygen -F "$AUDIT_HOST" -f "$work/known_hosts" >/dev/null 2>&1 || { echo 'NO_GO_SSH_HOST_NOT_PINNED'; exit 42; }
+          script_digest=$(sha256sum deploy/contabo/bling-operational-host-audit.sh | awk '{print $1}')
+          # The audit SSH key must be force-command restricted on the host.
+          # No remote shell, no executable code or caller input sent on stdin.
+          rc=0
+          ssh -T -F /dev/null -i "$work/identity" -o BatchMode=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$work/known_hosts" -o IdentitiesOnly=yes -o IdentityAgent=none -o ForwardAgent=no -o ClearAllForwardings=yes -o ConnectTimeout=15 -o ServerAliveInterval=10 -o ServerAliveCountMax=2 "$AUDIT_USER@$AUDIT_HOST" "nfcore-audit $REQUESTED_SHA $script_digest" </dev/null >"$work/raw-output" 2>"$work/ssh-errors" || rc=$?
+          # Publish only a constrained status vocabulary. No raw SSH output/logs.
+          grep -E '^(EXPECTED_SHA=[a-f0-9]{12}|[A-Za-z0-9_-]+=(PASS|PENDING|BLOCKED|CLEAR|UNVERIFIED_EXTERNAL|NO_GO_HOST_GATES|NO_GO_MISSING_HOST_EVIDENCE|CODE_READY_BUT_BLING_NOT_ACTIVE|HOST_GATES_PASS_EXTERNAL_STILL_UNVERIFIED))$' "$work/raw-output" > "$work/status.txt" || true
+          cat "$work/status.txt"
+          # The classifier must prove host identity, exact SHA and each baseline
+          # field before claiming a valid authenticated channel.
+          bash deploy/contabo/classify-readonly-host-audit.sh "$work/status.txt" "$rc" "$REQUESTED_SHA"
+      - name: Bling operational readiness (independent gate)
+        shell: bash
+        run: |
+          set -euo pipefail
+          result="$RUNNER_TEMP/nfcore-host-audit/status.txt"
+          if grep -Fxq 'RESULT=HOST_GATES_PASS_EXTERNAL_STILL_UNVERIFIED' "$result"; then
+            echo 'BLING_HOST_GATES_PASS_EXTERNAL_HOMOLOGATION_UNVERIFIED'
+            exit 0
+          fi
+          if grep -Fxq 'RESULT=CODE_READY_BUT_BLING_NOT_ACTIVE' "$result"; then
+            echo 'BLING_OPERATIONAL_NO_GO_PENDING_MIGRATIONS_OAUTH_POLICY_WORKER'
+            exit 1
+          fi
+          echo 'NO_GO_UNCLASSIFIED_BLING_AUDIT'
+          exit 1
+      - name: Summarize audited result
+        if: always()
+        shell: bash
+        run: |
+          work="$RUNNER_TEMP/nfcore-host-audit"
+          if [[ -f "$work/status.txt" ]]; then
+            {
+              echo '### NFCore Contabo host audit — read only'
+              echo 'The log is sanitized and proves only local host prerequisites.'
+              echo 'OAuth, A1 and SEFAZ homologation require separate evidence.'
+              echo '```text'
+              cat "$work/status.txt"
+              echo '```'
+            } >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo 'NO_GO: no authenticated host status was collected.' >> "$GITHUB_STEP_SUMMARY"
+          fi

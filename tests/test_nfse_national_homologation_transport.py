@@ -96,9 +96,12 @@ def test_nfse_rejects_missing_xml_signature() -> None:
 
 
 def test_nfse_parses_offline_authorization_receipt() -> None:
-    xml = b"<NFSe xmlns='http://www.sped.fazenda.gov.br/nfse'/>"
+    key = "31" + "0" * 48
+    xml = (
+        f'<NFSe xmlns="{_NS}"><infNFSe Id="NFS{key}"/></NFSe>'
+    ).encode()
     response = json.dumps({
-        "chaveAcesso": "35000000000000000000000000000000000000000000000000",
+        "chaveAcesso": key,
         "nfseXmlGZipB64": base64.b64encode(gzip.compress(xml)).decode("ascii"),
     }).encode("utf-8")
     parsed = parse_nfse_homologation_response(response)
@@ -106,9 +109,51 @@ def test_nfse_parses_offline_authorization_receipt() -> None:
     assert parsed["xml"] == xml.decode()
 
 
+@pytest.mark.parametrize(
+    ("key", "id_suffix"),
+    [
+        ("31" + "0" * 48, "31" + "1" * 48),
+        ("31" + "0" * 42, "31" + "0" * 42),
+        ("AB" + "0" * 48, "AB" + "0" * 48),
+    ],
+)
+def test_nfse_reply_requires_exact_fifty_digit_signed_document_identity(
+    key: str, id_suffix: str,
+) -> None:
+    xml = f'<NFSe xmlns="{_NS}"><infNFSe Id="NFS{id_suffix}"/></NFSe>'.encode()
+    response = json.dumps({
+        "chaveAcesso": key,
+        "nfseXmlGZipB64": base64.b64encode(gzip.compress(xml)).decode(),
+    }).encode()
+    with pytest.raises(OfficialNfseTransportError, match="XML retornado"):
+        parse_nfse_homologation_response(response)
+
+
 def test_nfse_rejects_invalid_response_without_secret_echo() -> None:
     with pytest.raises(OfficialNfseTransportError):
         parse_nfse_homologation_response(b'{"secret":"never echo"}')
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        b"<root/>",
+        b'<NFSe xmlns="https://untrusted.example/"/>',
+        b'<Envelope xmlns="http://schemas.xmlsoap.org/soap/envelope/"/>',
+        (
+            b'<!DOCTYPE NFSe [<!ENTITY x "untrusted">]>'
+            b'<NFSe xmlns="http://www.sped.fazenda.gov.br/nfse"/>'
+        ),
+    ],
+)
+def test_nfse_receipt_refuses_unrelated_root_or_dtd(payload: bytes) -> None:
+    """Official authorization requires a NFS-e namespace/root, not arbitrary XML."""
+    response = json.dumps({
+        "chaveAcesso": "35" + "0" * 42,
+        "nfseXmlGZipB64": base64.b64encode(gzip.compress(payload)).decode("ascii"),
+    }).encode()
+    with pytest.raises(OfficialNfseTransportError, match="XML retornado"):
+        parse_nfse_homologation_response(response)
 
 @pytest.mark.parametrize("canonical", [False, True])
 def test_nfse_mtls_exchange_refuses_redirect(monkeypatch, canonical):

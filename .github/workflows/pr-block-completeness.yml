@@ -1,0 +1,26 @@
+name: PR Block Completeness
+
+# T2 da especificacao NFV1-CLOSING-RULES-001.
+# PR em Draft nao e verificada. PR marcada como pronta so passa se o
+# bloco estiver completo e as evidencias estiverem explicitas.
+
+on:
+  pull_request:
+    types:
+      - opened
+      - reopened
+      - edited
+      - synchronize
+      - ready_for_review
+      - converted_to_draft
+
+permissions:
+  contents: read
+
+jobs:
+  block-completeness:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verificar completude do bloco na descricao da PR
+        run: python3 scripts/ci/check_pr_block_completeness.py

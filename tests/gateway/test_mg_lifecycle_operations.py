@@ -10,6 +10,7 @@ from test_mg_homologation_authorization import material as material
 
 from kordena_fiscal.application.service import FiscalApplicationService
 from kordena_fiscal.control_plane.commercial import ConfiguredFiscalOperation, ProviderBinding
+from kordena_fiscal.control_plane.mg_official_homologation_catalog import mg_homologation_endpoint
 from kordena_fiscal.control_plane.models import FiscalOrganization, FiscalUnitRegistration
 from kordena_fiscal.domain import (
     BrazilianJurisdiction,
@@ -19,6 +20,7 @@ from kordena_fiscal.domain import (
     FiscalValidationError,
 )
 from kordena_fiscal.gateway.nfe_sp_homologation import (
+    MG_NFCE_HOMOLOGATION_PROVIDER_ID,
     MG_NFE_HOMOLOGATION_PROVIDER_ID,
     HomologationAuthorizationTarget,
 )
@@ -35,7 +37,10 @@ from kordena_fiscal.operations import (
     InutilizationRequest,
 )
 from kordena_fiscal.persistence.sqlite import SqliteFiscalDatabase
-from kordena_fiscal.runtime.canonical_fiscal_composition import build_runtime_fiscal_handler_factory
+from kordena_fiscal.runtime.canonical_fiscal_composition import (
+    _GovernedMgQueryGateway,
+    build_runtime_fiscal_handler_factory,
+)
 from kordena_fiscal.xml.official_operation_schema import ROOTS, OfficialOperationXmlValidator
 
 NS = "http://www.portalfiscal.inf.br/nfe"
@@ -156,7 +161,7 @@ def test_canonical_query_dispatches_mg_only_for_exact_enabled_binding(
     ):
         with pytest.raises(FiscalValidationError):
             handler(denied_scope, payload, None)
-    with pytest.raises(FiscalValidationError, match="modelo 55"):
+    with pytest.raises(FiscalValidationError, match="consulta MG"):
         nfce_key = _request(model=ElectronicInvoiceModel.NFCE).access_key.value
         handler(scope, {"access_key": nfce_key}, None)
     vault.resolve.assert_not_called()
@@ -167,6 +172,180 @@ def test_canonical_query_dispatches_mg_only_for_exact_enabled_binding(
         scope=scope, issuer_cnpj=original.access_key.issuer_identifier,
     )
     exchange.assert_called_once()
+
+
+def test_canonical_mg55_cancellation_dispatch_requires_exact_enabled_binding():
+    """Cancellation must not silently fall back to SP or another provider."""
+    request = _cancel()
+    application = Mock()
+    mg = Mock()
+    legacy = Mock()
+    dispatcher = _GovernedMgQueryGateway(
+        application=application, mg=mg, legacy=legacy,
+    )
+    application.resolve_configured_provider_id.return_value = "wrong-provider"
+    with pytest.raises(FiscalValidationError, match="cancelamento MG"):
+        dispatcher.cancel(request)
+    mg.cancel.assert_not_called()
+    legacy.cancel.assert_not_called()
+
+    expected = object()
+    mg.cancel.return_value = expected
+    application.resolve_configured_provider_id.return_value = MG_NFE_HOMOLOGATION_PROVIDER_ID
+    assert dispatcher.cancel(request) is expected
+    mg.cancel.assert_called_once_with(request)
+    legacy.cancel.assert_not_called()
+    kwargs = application.resolve_configured_provider_id.call_args.kwargs
+    assert kwargs["scope"] == request.scope
+    assert kwargs["document_kind"] is FiscalDocumentKind.NFE
+    assert kwargs["jurisdiction"] == BrazilianJurisdiction("MG")
+    assert kwargs["operation"] == ConfiguredFiscalOperation.CANCEL.value
+
+
+def test_mg_cancellation_never_routes_production_or_unprovisioned_nfce():
+    application, mg, legacy = Mock(), Mock(), Mock()
+    dispatcher = _GovernedMgQueryGateway(
+        application=application, mg=mg, legacy=legacy,
+    )
+    original = _cancel()
+    production = replace(
+        original, scope=replace(original.scope, environment=FiscalEnvironment.PRODUCTION),
+    )
+    with pytest.raises(FiscalValidationError, match="homologação"):
+        dispatcher.cancel(production)
+    application.resolve_configured_provider_id.assert_not_called()
+    nfce_request = CancellationRequest.build(
+        scope=original.scope,
+        access_key=_request(model=ElectronicInvoiceModel.NFCE).access_key,
+        authorization_protocol=original.authorization_protocol,
+        justification=original.justification,
+    )
+    application.resolve_configured_provider_id.return_value = MG_NFCE_HOMOLOGATION_PROVIDER_ID
+    with pytest.raises(FiscalValidationError, match="Gateway MG"):
+        dispatcher.cancel(nfce_request)
+    mg.cancel.assert_not_called()
+    legacy.cancel.assert_not_called()
+
+
+@pytest.mark.parametrize("operation", ["query", "cancel"])
+def test_mg_nfce_runtime_selects_only_bound_model65_provider(operation: str):
+    original = _request(model=ElectronicInvoiceModel.NFCE)
+    nfce = Mock()
+    mg_nfe = Mock()
+    legacy = Mock()
+    application = Mock()
+    dispatcher = _GovernedMgQueryGateway(
+        application=application, legacy=legacy, mg=mg_nfe, mg_nfce=nfce,
+    )
+    if operation == "query":
+        request = FiscalQueryRequest(original.scope, original.access_key)
+        handler = dispatcher.query
+        method = nfce.query
+        expected_operation = ConfiguredFiscalOperation.QUERY
+    else:
+        request = CancellationRequest.build(
+            scope=original.scope, access_key=original.access_key,
+            authorization_protocol="131260000000065",
+            justification="Cancelamento sintetico NFC-e MG de teste",
+        )
+        handler = dispatcher.cancel
+        method = nfce.cancel
+        expected_operation = ConfiguredFiscalOperation.CANCEL
+    application.resolve_configured_provider_id.return_value = MG_NFE_HOMOLOGATION_PROVIDER_ID
+    with pytest.raises(FiscalValidationError, match="incompatível"):
+        handler(request)
+    nfce.query.assert_not_called()
+    nfce.cancel.assert_not_called()
+    mg_nfe.query.assert_not_called()
+    mg_nfe.cancel.assert_not_called()
+    legacy.query.assert_not_called()
+    legacy.cancel.assert_not_called()
+
+    expected = object()
+    method.return_value = expected
+    application.resolve_configured_provider_id.return_value = MG_NFCE_HOMOLOGATION_PROVIDER_ID
+    assert handler(request) is expected
+    method.assert_called_once_with(request)
+    binding_args = application.resolve_configured_provider_id.call_args.kwargs
+    assert binding_args["scope"] == original.scope
+    assert binding_args["document_kind"] is FiscalDocumentKind.NFCE
+    assert binding_args["jurisdiction"] == BrazilianJurisdiction("MG")
+    assert binding_args["operation"] == expected_operation.value
+    mg_nfe.query.assert_not_called()
+    mg_nfe.cancel.assert_not_called()
+    legacy.query.assert_not_called()
+    legacy.cancel.assert_not_called()
+
+
+def test_sp_cancellation_remains_in_legacy_adapter():
+    application, mg, legacy = Mock(), Mock(), Mock()
+    request = CancellationRequest.build(
+        scope=_cancel().scope,
+        access_key=_request(uf="35").access_key,
+        authorization_protocol="135260000000001",
+        justification="Cancelamento sintetico de SP preservado",
+    )
+    marker = object()
+    legacy.cancel.return_value = marker
+    dispatcher = _GovernedMgQueryGateway(
+        application=application, mg=mg, legacy=legacy,
+    )
+    assert dispatcher.cancel(request) is marker
+    legacy.cancel.assert_called_once_with(request)
+    mg.cancel.assert_not_called()
+    application.resolve_configured_provider_id.assert_not_called()
+
+
+def test_canonical_provider_factory_selects_model65_gateway_only_with_binding(
+    monkeypatch,
+):
+    """Proof of composition: exactly bound model65 selects SEFAZ/MG NFC-e.
+
+    The provider itself still enforces QR, XSD, XMLDSig and A1 on authorize.
+    """
+    import kordena_fiscal.runtime.canonical_fiscal_composition as composition
+
+    nfe_adapter, nfce_adapter = Mock(), Mock()
+    monkeypatch.setattr(
+        composition, "build_mg_nfe_homologation_gateway",
+        lambda **_kwargs: nfe_adapter,
+    )
+    monkeypatch.setattr(
+        composition, "build_mg_nfce_homologation_gateway",
+        lambda **_kwargs: nfce_adapter,
+    )
+    captured = {}
+
+    def capture_handlers(_operations, **kwargs):
+        captured.update(kwargs)
+        return {
+            "issueFiscalDocument": object(),
+            "queryFiscalDocument": object(),
+            "cancelFiscalDocument": object(),
+            "reconcileFiscalOperation": object(),
+        }
+
+    monkeypatch.setattr(composition, "build_provider_operation_handlers", capture_handlers)
+    app, vault = Mock(), Mock()
+    composition.build_runtime_fiscal_handler_factory(certificate_vault=vault)(app)
+    select = captured["select_xml_gateway"]
+    model65 = _request(model=ElectronicInvoiceModel.NFCE)
+    app.resolve_configured_provider_id.return_value = "wrong-provider"
+    with pytest.raises(FiscalValidationError, match="incompatível"):
+        select(model65)
+    assert vault.resolve.call_count == 0
+
+    app.resolve_configured_provider_id.return_value = MG_NFCE_HOMOLOGATION_PROVIDER_ID
+    assert select(model65)._gateway is nfce_adapter
+    kwargs = app.resolve_configured_provider_id.call_args.kwargs
+    assert kwargs["document_kind"] is FiscalDocumentKind.NFCE
+    assert kwargs["operation"] == ConfiguredFiscalOperation.AUTHORIZE.value
+    assert kwargs["jurisdiction"] == BrazilianJurisdiction("MG")
+
+    app.resolve_configured_provider_id.return_value = MG_NFE_HOMOLOGATION_PROVIDER_ID
+    assert select(_request())._gateway is nfe_adapter
+    assert select(_request(uf="35"))._gateway is not nfce_adapter
+    assert vault.resolve.call_count == 0
 
 
 def test_mg_cancellation_is_signed_xsd_valid_and_correlated(material):
@@ -273,6 +452,116 @@ def test_mismatched_query_reply_never_authorizes(material):
         _gateway(material, exchange).query(FiscalQueryRequest(
             _request().scope, _request().access_key,
         ))
+
+
+def test_mg_nfce_query_uses_distinct_model65_state_endpoint_and_correlates(material):
+    original = _request(model=ElectronicInvoiceModel.NFCE)
+    exchange = Mock(return_value=_soap(
+        f'<retConsSitNFe xmlns="{NS}"><tpAmb>2</tpAmb><cUF>31</cUF>'
+        f'<chNFe>{original.access_key.value}</chNFe><cStat>100</cStat>'
+        '<nProt>131260000000065</nProt></retConsSitNFe>'
+    ))
+    gateway = SefazHomologationOperationsGateway(
+        target=HomologationAuthorizationTarget.MG_NFCE,
+        resolve_certificate=Mock(return_value=material),
+        exchange=exchange,
+    )
+    expected = mg_homologation_endpoint(
+        document_kind=FiscalDocumentKind.NFCE,
+        environment=FiscalEnvironment.HOMOLOGATION,
+        operation=ConfiguredFiscalOperation.QUERY,
+    )
+    assert gateway._mg_endpoints["NFeConsultaProtocolo4"] == expected.url
+    assert "hnfce.fazenda.mg.gov.br" in expected.url
+    result = gateway.query(FiscalQueryRequest(original.scope, original.access_key))
+    assert result.status is FiscalQueryStatus.AUTHORIZED
+    assert result.protocol_reference == "131260000000065"
+    assert result.provider.provider_name == "sefaz-mg-homologacao-nfce4"
+    exchange.assert_called_once()
+
+
+def test_mg_nfce_cancellation_correlates_signed_event_and_model65(material):
+    original = _request(model=ElectronicInvoiceModel.NFCE)
+    request = CancellationRequest.build(
+        scope=original.scope,
+        access_key=original.access_key,
+        authorization_protocol="131260000000065",
+        justification="Cancelamento NFC-e de teste sintetico",
+    )
+    exchange = Mock(return_value=_soap(
+        f'<retEnvEvento xmlns="{NS}"><retEvento><infEvento>'
+        f'<tpAmb>2</tpAmb><cOrgao>31</cOrgao><chNFe>{request.access_key.value}</chNFe>'
+        '<tpEvento>110111</tpEvento><nSeqEvento>1</nSeqEvento>'
+        '<cStat>135</cStat><nProt>131260000000066</nProt>'
+        '</infEvento></retEvento></retEnvEvento>'
+    ))
+    gateway = SefazHomologationOperationsGateway(
+        target=HomologationAuthorizationTarget.MG_NFCE,
+        resolve_certificate=Mock(return_value=material),
+        exchange=exchange,
+    )
+    result = gateway.cancel(request)
+    assert result.status is FiscalEventStatus.ACCEPTED
+    assert result.provider.provider_name == "sefaz-mg-homologacao-nfce4"
+    from mg_golden_fixture import verify_soap_signature
+    verify_soap_signature(exchange.call_args.args[1], material)
+    assert gateway._mg_endpoints["NFeRecepcaoEvento4"] == mg_homologation_endpoint(
+        document_kind=FiscalDocumentKind.NFCE,
+        environment=FiscalEnvironment.HOMOLOGATION,
+        operation=ConfiguredFiscalOperation.CANCEL,
+    ).url
+
+
+def test_mg_nfce_inutilization_uses_model65_signed_xml_and_response(material):
+    year = datetime.now(UTC).strftime("%y")
+    request = _inutilize(ElectronicInvoiceModel.NFCE)
+    exchange = Mock(return_value=_soap(
+        f'<retInutNFe xmlns="{NS}"><infInut><tpAmb>2</tpAmb><cUF>31</cUF>'
+        f'<ano>{year}</ano><CNPJ>11222333000181</CNPJ><mod>65</mod><serie>1</serie>'
+        '<nNFIni>10</nNFIni><nNFFin>12</nNFFin><cStat>102</cStat>'
+        '<nProt>131260000000067</nProt></infInut></retInutNFe>'
+    ))
+    gateway = SefazHomologationOperationsGateway(
+        target=HomologationAuthorizationTarget.MG_NFCE,
+        resolve_certificate=Mock(return_value=material),
+        resolve_issuer=Mock(return_value="11222333000181"),
+        exchange=exchange,
+    )
+    result = gateway.inutilize(request)
+    assert result.status is FiscalEventStatus.ACCEPTED
+    assert result.model is ElectronicInvoiceModel.NFCE
+    assert result.provider.provider_name == "sefaz-mg-homologacao-nfce4"
+    from mg_golden_fixture import verify_soap_signature
+    verify_soap_signature(exchange.call_args.args[1], material)
+    xml = exchange.call_args.args[1]
+    assert b"<mod>65</mod>" in xml
+    assert gateway._mg_endpoints["NFeInutilizacao4"] == mg_homologation_endpoint(
+        document_kind=FiscalDocumentKind.NFCE,
+        environment=FiscalEnvironment.HOMOLOGATION,
+        operation=ConfiguredFiscalOperation.INUTILIZE,
+    ).url
+
+
+@pytest.mark.parametrize("operation", ["query", "cancel", "inutilize"])
+def test_nfce_operations_deny_model55_before_vault(operation):
+    resolver, issuer, exchange = Mock(), Mock(), Mock()
+    gateway = SefazHomologationOperationsGateway(
+        target=HomologationAuthorizationTarget.MG_NFCE,
+        resolve_certificate=resolver,
+        resolve_issuer=issuer,
+        exchange=exchange,
+    )
+    nfe = _request()
+    request = {
+        "query": FiscalQueryRequest(nfe.scope, nfe.access_key),
+        "cancel": _cancel(),
+        "inutilize": _inutilize(ElectronicInvoiceModel.NFE),
+    }[operation]
+    with pytest.raises(OfficialNfeOperationsError):
+        getattr(gateway, operation)(request)
+    resolver.assert_not_called()
+    issuer.assert_not_called()
+    exchange.assert_not_called()
 
 
 def test_sp_wrapper_remains_fixed_and_invalid_target_is_denied():

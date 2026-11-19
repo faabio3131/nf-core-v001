@@ -2,7 +2,7 @@ name: Deploy Contabo (config e teste)
 
 on:
   pull_request:
-    paths: ["deploy/contabo/**", ".github/workflows/deploy-contabo-check.yml"]
+    paths: ["deploy/contabo/**", ".github/workflows/deploy-contabo-check.yml", ".github/workflows/contabo-readonly-host-audit.yml", ".github/workflows/contabo-gsm-readonly-host-audit.yml", ".github/workflows/contabo-a1-readonly-host-audit.yml"]
   push:
     branches: [main]
     paths: ["deploy/contabo/**"]
@@ -29,7 +29,18 @@ jobs:
           bash deploy/contabo/test-bling-api-opt-in.sh
       - name: Certificar overrides do host db para GSM e Bling (sem start)
         run: bash deploy/contabo/test-worker-host-db-override.sh
-      - name: Certificar Bling Worker opt-in e auditoria de host (simulada)
-        run: |
           bash deploy/contabo/test-bling-worker-opt-in.sh
-          bash deploy/contabo/test-bling-operational-host-audit.sh
+      - name: Auditar preflight Bling sem host/segredos
+        run: bash deploy/contabo/test-bling-operational-host-audit.sh
+      - name: Classificacao separada do canal SSH e readiness Bling
+        run: bash deploy/contabo/test-readonly-host-audit-classification.sh
+      - name: Validar comando SSH restrito sem host/segredos
+        run: |
+          bash deploy/contabo/test-host-audit-command.sh
+          python3 -m py_compile deploy/contabo/audit-a1-vault-readonly.py
+      - name: Validar chain of trust e privilegio Docker restrito
+        run: bash deploy/contabo/test-root-host-audit.sh
+      - name: Testar bootstrap administrativo limitado do GSM sem VPS
+        run: bash deploy/contabo/test-bootstrap-gsm-plan-b.sh
+      - name: Validar sintaxe da politica sudoers de exemplo
+        run: sudo visudo -cf deploy/contabo/nfcore-audit.sudoers.example

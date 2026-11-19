@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 from dataclasses import dataclass
+from enum import IntEnum
 from threading import Lock
 from typing import Protocol
 
@@ -15,6 +16,17 @@ from kordena_fiscal.domain import (
     FiscalValidationError,
 )
 from kordena_fiscal.domain.primitives import _normalize_host_namespace
+
+
+class InternalFiscalSequenceStream(IntEnum):
+    """Private numbering namespace; never an official invoice model code.
+
+    Value 90 is reserved only in the NFCore fm_fiscal_sequences persistence
+    partition for municipal RPS. It MUST NOT be serialized as a fiscal
+    document model, access-key model, or NFS-e XML value.
+    """
+
+    NFSE_RPS = 90
 
 
 class SequenceExhaustedError(FiscalDomainError):
@@ -32,7 +44,7 @@ class FiscalSequenceKey:
     tenant_id: str
     unit_id: str
     environment: FiscalEnvironment
-    model: ElectronicInvoiceModel
+    model: ElectronicInvoiceModel | InternalFiscalSequenceStream
     series: int
     host_namespace: str | None = None
 
@@ -45,8 +57,8 @@ class FiscalSequenceKey:
             raise FiscalValidationError("unit_id must not be blank")
         if not isinstance(self.environment, FiscalEnvironment):
             raise FiscalValidationError("environment must be FiscalEnvironment")
-        if not isinstance(self.model, ElectronicInvoiceModel):
-            raise FiscalValidationError("model must be ElectronicInvoiceModel")
+        if not isinstance(self.model, (ElectronicInvoiceModel, InternalFiscalSequenceStream)):
+            raise FiscalValidationError("model must be an approved fiscal sequence stream")
         if not isinstance(self.series, int) or isinstance(self.series, bool):
             raise FiscalValidationError("series must be an integer")
         if self.series < 0:
@@ -65,7 +77,7 @@ class FiscalSequenceKey:
         cls,
         scope: ExecutionScope,
         *,
-        model: ElectronicInvoiceModel,
+        model: ElectronicInvoiceModel | InternalFiscalSequenceStream,
         series: int,
     ) -> FiscalSequenceKey:
         if not isinstance(scope, ExecutionScope):

@@ -18,7 +18,10 @@ from kordena_fiscal.application.command_commercial import CommandCommercialRecei
 from kordena_fiscal.application.commercial_acquisition import CommercialAcquisitionService
 from kordena_fiscal.cognitive.composition import build_cognitive_router
 from kordena_fiscal.cognitive.durable_usage import DurableTokenQuotaStore
-from kordena_fiscal.compliance.nfse_preaudit import nfse_preaudit
+from kordena_fiscal.compliance.nfse_preaudit import (
+    extrema_abrasf_service_preaudit,
+    nfse_preaudit,
+)
 from kordena_fiscal.gateway.production_activation import ProductionExecutionAuthority
 from kordena_fiscal.issuance.nfse_dps_builder import build_signed_dps
 from kordena_fiscal.persistence.command_commercial import CommandCommercialStore
@@ -99,6 +102,7 @@ from .development_commercial_ingress import (
     development_commercial_ingress,
 )
 from .development_fiscal_ingress import development_fiscal_ingress
+from .extrema_webiss_environment import build_extrema_webiss_exchange
 from .fiscal_runtime import FiscalOperationHandler
 from .observability import (
     MetricsRegistry,
@@ -1175,6 +1179,12 @@ app = create_runtime_app(
             certificate_vault=_entrypoint_certificate_vault,
             trusted_signed_dps_builder=build_signed_dps,
             nfse_preaudit=nfse_preaudit,
+            webiss_extrema_exchange=build_extrema_webiss_exchange(os.environ),
+            webiss_service_preaudit=(
+                extrema_abrasf_service_preaudit
+                if os.environ.get("NFCORE_EXTREMA_WEBISS_HOMOLOGATION_URL")
+                else None
+            ),
         )
         if _entrypoint_settings.environment.value in {"staging", "production"}
         else None

@@ -1,0 +1,17 @@
+# OPT-IN: install only after remote repository, key escrow and restore gates.
+# Root reads encrypted files owned by UID 10001 without changing their owner.
+# /etc/nfcore/a1-backup.env MUST be a root-only 0600 file, outside Git.
+[Unit]
+Description=NFCore A1 encrypted Vault offsite backup (governed)
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=root
+Group=root
+UMask=0077
+EnvironmentFile=/etc/nfcore/a1-backup.env
+ExecStart=/usr/bin/python3 /opt/fm/nfcore/src/deploy/contabo/a1-vault-ops.py backup
+NoNewPrivileges=true
+PrivateTmp=true

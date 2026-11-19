@@ -10,6 +10,7 @@ from collections.abc import Callable
 from datetime import UTC, datetime
 from enum import StrEnum
 from urllib.error import HTTPError, URLError
+from urllib.parse import parse_qs, urlsplit
 from urllib.request import HTTPSHandler, Request, build_opener
 
 from lxml import etree
@@ -150,6 +151,7 @@ def _tls_context(material: EphemeralCertificateMaterial) -> ssl.SSLContext:
 
 
 MG_NFE_HOMOLOGATION_PROVIDER_ID = "sefaz-mg-homologacao-nfe4"
+MG_NFCE_HOMOLOGATION_PROVIDER_ID = "sefaz-mg-homologacao-nfce4"
 
 
 class HomologationAuthorizationTarget(StrEnum):
@@ -157,14 +159,19 @@ class HomologationAuthorizationTarget(StrEnum):
 
     SP_NFE = "sp_nfe"
     MG_NFE = "mg_nfe"
+    MG_NFCE = "mg_nfce"
 
 
-def _validate_mg_authorization_scope(request: AuthorizationRequest) -> None:
-    """Reject cross-state/model/XML requests before accessing Vault or transport."""
+def _validate_mg_authorization_scope(
+    request: AuthorizationRequest, *, model: int = 55,
+) -> None:
+    """Fail closed on wrong state/model and malformed NFC-e QR before A1/HTTP."""
+    if model not in (55, 65):
+        raise OfficialNfeTransportError("MG authorizer supports only models 55 and 65")
     if request.scope.environment is not FiscalEnvironment.HOMOLOGATION:
         raise OfficialNfeTransportError("MG authorization requires tpAmb=2")
-    if request.access_key.value[:2] != "31" or request.access_key.value[20:22] != "55":
-        raise OfficialNfeTransportError("MG authorization requires MG model 55 key")
+    if request.access_key.value[:2] != "31" or request.access_key.model.value != model:
+        raise OfficialNfeTransportError(f"MG authorization requires model {model} key")
     root = _parse_xml(request.signed_xml)
     invoices = root.findall(f"{{{NFE_NAMESPACE}}}NFe")
     if root.tag != f"{{{NFE_NAMESPACE}}}enviNFe" or root.get("versao") != "4.00":
@@ -178,11 +185,48 @@ def _validate_mg_authorization_scope(request: AuthorizationRequest) -> None:
     issuer = info.find(f"{{{NFE_NAMESPACE}}}emit")
     if ide is None or issuer is None:
         raise OfficialNfeTransportError("MG XML fiscal identity missing")
-    for field, expected in (("cUF", "31"), ("mod", "55"), ("tpAmb", "2")):
+    for field, expected in (("cUF", "31"), ("mod", str(model)), ("tpAmb", "2")):
         if ide.findtext(f"{{{NFE_NAMESPACE}}}{field}") != expected:
             raise OfficialNfeTransportError("MG XML state/model/environment mismatch")
     if issuer.findtext(f"{{{NFE_NAMESPACE}}}CNPJ") != request.access_key.issuer_identifier:
         raise OfficialNfeTransportError("MG XML issuer mismatch")
+    if model == 65:
+        # NFC-e 65 must use synchronous batch authorization, one invoice.
+        if root.findtext(f"{{{NFE_NAMESPACE}}}indSinc") != "1":
+            raise OfficialNfeTransportError("NFC-e MG65 requires synchronous authorization")
+        supplement = invoices[0].find(f"{{{NFE_NAMESPACE}}}infNFeSupl")
+        qr = supplement.findtext(f"{{{NFE_NAMESPACE}}}qrCode") if supplement is not None else None
+        link = (
+            supplement.findtext(f"{{{NFE_NAMESPACE}}}urlChave")
+            if supplement is not None else None
+        )
+        if not qr or not link:
+            raise OfficialNfeTransportError("NFC-e MG65 requires QR Code and consultation URL")
+        qr_parts, link_parts = urlsplit(qr), urlsplit(link)
+        qr_params = parse_qs(qr_parts.query)
+        values = qr_params.get("p", [])
+        qr_fields = values[0].split("|") if len(values) == 1 else []
+        emission_type = ide.findtext(f"{{{NFE_NAMESPACE}}}tpEmis")
+        if emission_type != "1":
+            # QR v3 offline tpEmis=9 needs A1 signature on 8 fields.
+            # Do not accept a fabricated 'assinatura' or fallback to CSC v2.
+            raise OfficialNfeTransportError(
+                "NFC-e MG65 contingencia exige QR v3 com assinatura certificada"
+            )
+        # NT 2025.001 v1.03: v3 online is exactly chave|3|tpAmb.
+        # v3 contingency and v2 have different cryptographic contracts.
+        if (
+            qr_parts.scheme != "https"
+            or qr_parts.netloc != "portalsped.fazenda.mg.gov.br"
+            or qr_parts.path != "/portalnfce/sistema/qrcode.xhtml"
+            or set(qr_params) != {"p"}
+            or qr_fields != [request.access_key.value, "3", "2"]
+            or link_parts.scheme != "https"
+            or link_parts.netloc != "hportalsped.fazenda.mg.gov.br"
+            or link_parts.path.rstrip("/") != "/portalnfce"
+            or bool(link_parts.query)
+        ):
+            raise OfficialNfeTransportError("NFC-e MG65 QR/consulta divergem da SEFAZ")
 
 
 class SefazHomologationAuthorizationGateway:
@@ -201,24 +245,39 @@ class SefazHomologationAuthorizationGateway:
             raise ValueError("Invalid fiscal transport configuration")
         if not isinstance(target, HomologationAuthorizationTarget):
             raise ValueError("Unknown homologation authorization target")
-        if target is HomologationAuthorizationTarget.MG_NFE and not callable(validate_schema):
+        if target in {
+            HomologationAuthorizationTarget.MG_NFE,
+            HomologationAuthorizationTarget.MG_NFCE,
+        } and not callable(validate_schema):
             raise ValueError("MG authorization requires a trusted XSD validator")
         self._target = target
         self._validate_schema = validate_schema
         self._endpoint = NFE_SP_HOMOLOGATION_AUTHORIZATION_URL
         self._provider = _PROVIDER
-        if target is HomologationAuthorizationTarget.MG_NFE:
+        if target in {
+            HomologationAuthorizationTarget.MG_NFE,
+            HomologationAuthorizationTarget.MG_NFCE,
+        }:
             from kordena_fiscal.control_plane.commercial import ConfiguredFiscalOperation
             from kordena_fiscal.control_plane.mg_official_homologation_catalog import (
                 mg_homologation_endpoint,
             )
 
             self._endpoint = mg_homologation_endpoint(
-                document_kind=FiscalDocumentKind.NFE,
+                document_kind=(
+                    FiscalDocumentKind.NFCE
+                    if target is HomologationAuthorizationTarget.MG_NFCE
+                    else FiscalDocumentKind.NFE
+                ),
                 environment=FiscalEnvironment.HOMOLOGATION,
                 operation=ConfiguredFiscalOperation.AUTHORIZE,
             ).url
-            self._provider = GatewayProviderMetadata(MG_NFE_HOMOLOGATION_PROVIDER_ID, "1.0")
+            provider_id = (
+                MG_NFCE_HOMOLOGATION_PROVIDER_ID
+                if target is HomologationAuthorizationTarget.MG_NFCE
+                else MG_NFE_HOMOLOGATION_PROVIDER_ID
+            )
+            self._provider = GatewayProviderMetadata(provider_id, "1.0")
         self._resolve_certificate = resolve_certificate
         self._timeout = timeout_seconds
         self._exchange = exchange or self._https_exchange
@@ -251,8 +310,15 @@ class SefazHomologationAuthorizationGateway:
     def authorize(self, request: AuthorizationRequest) -> AuthorizationResult:
         if not isinstance(request, AuthorizationRequest):
             raise OfficialNfeTransportError("Solicitação de autorização fiscal inválida")
-        if self._target is HomologationAuthorizationTarget.MG_NFE:
-            _validate_mg_authorization_scope(request)
+        mg_target = self._target in {
+            HomologationAuthorizationTarget.MG_NFE,
+            HomologationAuthorizationTarget.MG_NFCE,
+        }
+        if mg_target:
+            _validate_mg_authorization_scope(
+                request,
+                model=65 if self._target is HomologationAuthorizationTarget.MG_NFCE else 55,
+            )
             if self._validate_schema is None:
                 raise OfficialNfeTransportError("MG XSD validator unavailable")
         material = self._resolve_certificate(
@@ -273,14 +339,14 @@ class SefazHomologationAuthorizationGateway:
                 request.signed_xml, material,
                 profile=(
                     NfeSignatureProfile.NFE4_OFFICIAL_RSA_SHA1
-                    if self._target is HomologationAuthorizationTarget.MG_NFE
+                    if mg_target
                     else NfeSignatureProfile.RSA_SHA256
                 ),
             )
         xml = _signed_homologation_xml(request, signed_bytes)
         if self._validate_schema is not None:
             self._validate_schema(signed_bytes)
-        if self._target is HomologationAuthorizationTarget.MG_NFE:
+        if mg_target:
             verify_official_nfe4_signature(xml, material)
         context = _tls_context(material)
         response = _parse_xml(
@@ -291,7 +357,7 @@ class SefazHomologationAuthorizationGateway:
         result = response.find(".//{" + NFE_NAMESPACE + "}retEnviNFe")
         if result is None or _text(result, "tpAmb") != "2":
             raise OfficialNfeTransportError("Resposta da SEFAZ sem homologação válida")
-        if self._target is HomologationAuthorizationTarget.MG_NFE:
+        if mg_target:
             if _text(result, "cUF") != "31":
                 raise OfficialNfeTransportError("MG response state mismatch")
         code = _text(result, "cStat")
@@ -304,7 +370,7 @@ class SefazHomologationAuthorizationGateway:
             authorization_code = _text(protocol, "cStat") if protocol is not None else None
             protocol_no = _text(protocol, "nProt") if protocol is not None else None
             if code == "104" and authorization_code == "100" and protocol_no:
-                if self._target is HomologationAuthorizationTarget.MG_NFE:
+                if mg_target:
                     digest = xml.findtext(".//{" + XMLDSIG_NAMESPACE + "}DigestValue")
                     if not digest or protocol is None or _text(protocol, "digVal") != digest:
                         raise OfficialNfeTransportError("MG protocol digest mismatch")
@@ -378,6 +444,34 @@ def build_mg_nfe_homologation_gateway(
 
     return SefazHomologationAuthorizationGateway(
         target=HomologationAuthorizationTarget.MG_NFE,
+        resolve_certificate=resolve_certificate,
+        validate_schema=validate_envelope,
+        timeout_seconds=timeout_seconds,
+        exchange=exchange,
+    )
+
+
+def build_mg_nfce_homologation_gateway(
+    *,
+    resolve_certificate: Callable[[ExecutionScope, str], EphemeralCertificateMaterial],
+    timeout_seconds: float = 15.0,
+    exchange: Callable[[bytes, ssl.SSLContext, float], bytes] | None = None,
+) -> SefazHomologationAuthorizationGateway:
+    """Explicit MG NFC-e model 65 gateway; no provider binding or runtime activation.
+
+    QR Code must already be constructed for the authenticated issuer with its
+    applicable NT version. The gateway refuses missing/wrong MG QR values
+    before reading A1; schema/signature/authorization remain mandatory.
+    """
+    from kordena_fiscal.xml.official_operation_schema import OfficialOperationXmlValidator
+
+    validator = OfficialOperationXmlValidator(("NFeAutorizacao4",))
+
+    def validate_envelope(xml: bytes) -> None:
+        validator("NFeAutorizacao4", xml)
+
+    return SefazHomologationAuthorizationGateway(
+        target=HomologationAuthorizationTarget.MG_NFCE,
         resolve_certificate=resolve_certificate,
         validate_schema=validate_envelope,
         timeout_seconds=timeout_seconds,

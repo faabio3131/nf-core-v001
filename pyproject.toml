@@ -53,7 +53,7 @@ where = ["src"]
 
 [tool.setuptools.package-data]
 "kordena_fiscal.cognitive.knowledge" = ["official/*.json"]
-"kordena_fiscal.xml" = ["official/PL_010g_v1.03/*.xsd", "official/PL_010g_v1.03/manifest.json", "official/MG_LIFECYCLE_20261105/manifest.json", "official/MG_LIFECYCLE_20261105/nfe/*.xsd", "official/MG_LIFECYCLE_20261105/event/*.xsd", "official/ABRASF_203/*.xsd", "official/NFSE_NACIONAL_*/*.xsd", "official/NFSE_PAULISTANA_02_7/*.xsd"]
+"kordena_fiscal.xml" = ["official/PL_010g_v1.03/*.xsd", "official/PL_010g_v1.03/manifest.json", "official/MG_LIFECYCLE_20261105/manifest.json", "official/MG_LIFECYCLE_20261105/nfe/*.xsd", "official/MG_LIFECYCLE_20261105/event/*.xsd", "official/ABRASF_203/*.xsd", "official/WEBISS_EXTREMA_RTC_2026/*.xsd", "official/WEBISS_EXTREMA_RTC_2026/*.gz", "official/WEBISS_EXTREMA_RTC_2026/manifest.json", "official/NFSE_NACIONAL_*/*.xsd", "official/NFSE_PAULISTANA_02_7/*.xsd"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
