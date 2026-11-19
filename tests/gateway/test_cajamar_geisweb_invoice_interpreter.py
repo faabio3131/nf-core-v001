@@ -7,11 +7,17 @@ from unittest.mock import Mock
 
 import pytest
 
-from kordena_fiscal.domain import Cnpj, ExecutionScope, FiscalEnvironment
+from kordena_fiscal.domain import Cnpj, ExecutionScope, FiscalEnvironment, TaxRegimeCode
 from kordena_fiscal.gateway.authorization import AuthorizationStatus
 from kordena_fiscal.gateway.cajamar_geisweb_homologation import CajamarGeiswebResult
 from kordena_fiscal.gateway.cajamar_geisweb_invoice_interpreter import (
+    decode_cajamar_archived_invoice,
     interpret_cajamar_geisweb_result,
+    interpret_cajamar_invoice_observation,
+)
+from kordena_fiscal.gateway.cajamar_geisweb_request_builder import (
+    CajamarGeiswebBuilderError,
+    prepare_cajamar_invoice_query,
 )
 from kordena_fiscal.gateway.sp4_municipal_canonical import (
     Sp4CanonicalMunicipalError,
@@ -151,3 +157,77 @@ def test_doctype_mismatch_and_non_fiscal_soap_response_rejected() -> None:
             response_xml=b'<soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/'
                          b'soap/envelope/"><soap:Body/></soap:Envelope>',
         ))
+
+
+def test_exact_invoice_query_is_scoped_and_cannot_add_selectors() -> None:
+    source = _original()
+    issued = decode_cajamar_archived_invoice(_lot_xml().encode(), source)
+    validator = Mock()
+    prepared = prepare_cajamar_invoice_query(
+        source=source, issued=issued, tax_regime=TaxRegimeCode.NORMAL,
+        sign_document=lambda xml: xml, validate_signed_request=validator,
+    )
+    assert prepared.method == "ConsultaNfse"
+    assert prepared.scope == source.scope
+    assert b"<NumeroNfse>8765</NumeroNfse>" in prepared.signed_request_xml
+    validator.assert_called_once_with(prepared.signed_request_xml)
+    with pytest.raises(CajamarGeiswebBuilderError, match="selectors"):
+        prepare_cajamar_invoice_query(
+            source=source, issued=issued, tax_regime=TaxRegimeCode.NORMAL,
+            sign_document=lambda xml: xml.replace(
+                b"</Consulta>", b"<NumeroInicial>1</NumeroInicial></Consulta>",
+            ),
+            validate_signed_request=Mock(),
+        )
+
+
+def _query_xml() -> str:
+    return _lot_xml().replace("ConsultaLoteRpsResposta", "ConsultaNfseResposta").replace(
+        "<Rps>", "<Nfse>",
+    ).replace("</Rps>", "</Nfse>")
+
+
+def test_invoice_found_is_observation_only() -> None:
+    source = _original()
+    issued = decode_cajamar_archived_invoice(_lot_xml().encode(), source)
+    validator = Mock()
+    observation = interpret_cajamar_invoice_observation(
+        _receipt(_query_xml(), method="ConsultaNfse"), source, issued,
+        verify_official_response=validator,
+    )
+    assert observation.found is True
+    assert observation.error_code is None
+    assert observation.response_xml == _query_xml().encode()
+    validator.assert_called_once_with(observation.response_xml)
+
+
+@pytest.mark.parametrize("code", ["10", "2", "8"])
+def test_query_error_is_observation_not_cancellation(code: str) -> None:
+    source = _original()
+    issued = decode_cajamar_archived_invoice(_lot_xml().encode(), source)
+    xml = f"<ConsultaNfseResposta><Msg><Erro>{code}</Erro></Msg></ConsultaNfseResposta>"
+    observation = interpret_cajamar_invoice_observation(
+        _receipt(xml, method="ConsultaNfse"), source, issued,
+        verify_official_response=Mock(),
+    )
+    assert observation.found is False
+    assert observation.error_code == code
+
+
+@pytest.mark.parametrize("original_value,changed", [
+    ("<NumeroNfse>8765", "<NumeroNfse>8766"),
+    ("<NumeroRps>42", "<NumeroRps>43"),
+    ("ABCDEF1234", "OTHER"),
+    ("11222333000181", "00944029000121"),
+    ("150,00", "150,01"),
+])
+def test_invoice_observation_rejects_mismatched_identity(
+    original_value: str, changed: str,
+) -> None:
+    source = _original()
+    issued = decode_cajamar_archived_invoice(_lot_xml().encode(), source)
+    with pytest.raises(Sp4CanonicalMunicipalError, match="differs"):
+        interpret_cajamar_invoice_observation(
+            _receipt(_query_xml().replace(original_value, changed), method="ConsultaNfse"),
+            source, issued, verify_official_response=Mock(),
+        )

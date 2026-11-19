@@ -63,6 +63,9 @@ from kordena_fiscal.gateway.cajamar_geisweb_cancellation_builder import (
     interpret_cajamar_cancel_response,
 )
 from kordena_fiscal.gateway.cajamar_geisweb_homologation import CajamarGeiswebResult
+from kordena_fiscal.gateway.cajamar_geisweb_invoice_interpreter import (
+    CajamarInvoiceObservation,
+)
 from kordena_fiscal.gateway.nfse_nacional_homologation import (
     NACIONAL_HOMOLOGATION_PROVIDER_ID,
     NfseNacionalHomologationGateway,
@@ -1511,6 +1514,29 @@ def test_cajamar_portal_prepares_sends_recovers_and_downloads_authorized_xml(
             headers={CSRF_HEADER: csrf, "Idempotency-Key": "cajamar-third-cancel-retry"},
         )
         assert denied_retry.status_code != 200
+        assert cancelled.call_count == 3
+
+        # Query observation does not authorize a fiscal state transition.
+        observation = CajamarInvoiceObservation(
+            False, b"<ConsultaNfseResposta><Msg><Erro>10</Erro></Msg></ConsultaNfseResposta>",
+            "10",
+        )
+        lookup = Mock(return_value=observation)
+        observed, ref = app.observe_cajamar_cancellation(
+            scope=original.scope, document_id=second_id, query=lookup,
+            retention=RetentionPolicyMetadata("nfcore-fiscal-archive", 1),
+        )
+        assert observed == observation
+        assert ref
+        lookup.assert_called_once()
+        with db() as uow:
+            assert uow.lifecycle.get(second_id).state is FiscalDocumentState.CANCEL_REQUESTED
+            evidence = [
+                item for item in uow.archive.list_for_document(original.scope, second_id)
+                if item.media_type == "application/vnd.nfcore.cajamar-query-observation.v1+xml"
+            ]
+            assert len(evidence) == 1
+            assert evidence[0].content == observation.response_xml
         assert cancelled.call_count == 3
 
 

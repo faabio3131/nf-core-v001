@@ -45,6 +45,8 @@ def _fixture(tmp_path: Path) -> Path:
         b'<xs:element name="ConsultaLoteRps" type="xs:anyType"/>'
         b'<xs:element name="CancelaNfse" type="xs:anyType"/>'
         b'<xs:element name="ConsultaLoteRpsResposta" type="xs:anyType"/>'
+        b'<xs:element name="ConsultaNfse" type="xs:anyType"/>'
+        b'<xs:element name="ConsultaNfseResposta" type="xs:anyType"/>'
         b'<xs:element name="CancelaNfseResposta" type="xs:anyType"/>'
         b'</xs:schema>'
     )
@@ -276,3 +278,30 @@ def test_cajamar_real_cryptographic_ports_sign_verify_and_reject_tampering(
     with pytest.raises(FiscalValidationError):
         ports.sign_cancel(other, issuer, unsigned)
 
+
+
+def test_cajamar_invoice_observation_requires_both_pinned_roots(tmp_path: Path) -> None:
+    manifest = _fixture(tmp_path)
+    vault = EncryptedA1Vault(directory=tmp_path / "vault", master_key=b"a" * 32)
+    db = SqliteFiscalDatabase(tmp_path / "fiscal.sqlite")
+    db.initialize()
+    application = FiscalApplicationService(db)
+
+    def handlers() -> set[str]:
+        builder = build_cajamar_port_builder_from_environ(
+            {"NFCORE_CAJAMAR_GEISWEB_CONFIG_PATH": str(manifest)}, vault=vault,
+        )
+        assert builder is not None
+        return set(build_runtime_fiscal_handler_factory(
+            cajamar_port_builder=builder,
+        )(application))
+
+    assert "inspectCajamarNfseCancellation" not in handlers()
+    data = json.loads(manifest.read_text(encoding="utf-8"))
+    data["xsd_roots"]["ConsultaNfse"] = "test.xsd"
+    manifest.write_text(json.dumps(data), encoding="utf-8")
+    with pytest.raises(RuntimeConfigurationError, match="XSD entrypoints"):
+        CajamarReviewedStartup.load(str(manifest))
+    data["xsd_roots"]["ConsultaNfseResposta"] = "test.xsd"
+    manifest.write_text(json.dumps(data), encoding="utf-8")
+    assert "inspectCajamarNfseCancellation" in handlers()

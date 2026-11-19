@@ -966,7 +966,8 @@ def build_runtime_fiscal_handler_factory(
                     "status": "cancel_requested",
                     "official_fiscal_confirmation": False,
                     "recovery_required": True,
-                    "observation": "invoice_found" if observation.found else "invoice_query_error",
+                    "query_status": "invoice_found" if observation.found else "invoice_query_error",
+                    "result_reference": entry_id,
                     "rejection_code": observation.error_code,
                 }
 

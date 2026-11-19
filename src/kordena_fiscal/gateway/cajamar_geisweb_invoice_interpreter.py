@@ -236,6 +236,25 @@ class CajamarInvoiceObservation:
     response_xml: bytes = field(repr=False)
     error_code: str | None = None
 
+    def __post_init__(self) -> None:
+        if (
+            type(self.found) is not bool
+            or not isinstance(self.response_xml, bytes)
+            or not 0 < len(self.response_xml) <= _LIMIT
+            or self.found == (self.error_code is not None)
+            or (
+                self.error_code is not None
+                and (
+                    not isinstance(self.error_code, str)
+                    or not self.error_code.isascii()
+                    or not self.error_code.isdecimal()
+                    or not 1 <= len(self.error_code) <= 3
+                    or int(self.error_code) < 1
+                )
+            )
+        ):
+            raise Sp4CanonicalMunicipalError("Invalid Cajamar invoice observation")
+
 
 def interpret_cajamar_invoice_observation(
     receipt: CajamarGeiswebResult,
