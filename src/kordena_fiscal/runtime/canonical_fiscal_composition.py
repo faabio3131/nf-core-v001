@@ -938,6 +938,39 @@ def build_runtime_fiscal_handler_factory(
             handlers["cancelCajamarNfse"] = PreflightFiscalOperationHandler(
                 execute_cajamar_cancel, validate_cajamar_cancel,
             )
+        if (
+            selected_cajamar_ports is not None
+            and selected_cajamar_ports.observe_invoice is not None
+        ):
+            cajamar_observe = selected_cajamar_ports.observe_invoice
+
+            def inspect_cajamar_cancel(
+                scope: ExecutionScope, payload: Mapping[str, Any], key: str | None,
+            ) -> Mapping[str, Any]:
+                if (
+                    not key or not key.strip() or len(key) > 256
+                    or set(payload) != {"unit_id", "environment", "document_id"}
+                    or payload["unit_id"] != scope.unit_id
+                    or payload["environment"] != scope.environment.value
+                    or not isinstance(payload["document_id"], str)
+                    or not payload["document_id"].strip()
+                ):
+                    raise FiscalValidationError("Scoped Cajamar consultation required")
+                observation, entry_id = application.observe_cajamar_cancellation(
+                    scope=scope, document_id=payload["document_id"],
+                    query=cajamar_observe, retention=retention,
+                )
+                return {
+                    "document_id": payload["document_id"],
+                    "entry_id": entry_id,
+                    "status": "cancel_requested",
+                    "official_fiscal_confirmation": False,
+                    "recovery_required": True,
+                    "observation": "invoice_found" if observation.found else "invoice_query_error",
+                    "rejection_code": observation.error_code,
+                }
+
+            handlers["inspectCajamarNfseCancellation"] = inspect_cajamar_cancel
         if extrema_adapter is not None:
             cancellation_gateway = extrema_adapter
 

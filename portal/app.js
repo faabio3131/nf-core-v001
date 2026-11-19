@@ -1060,6 +1060,10 @@ const reviewedMunicipalWebActions = Object.freeze({
     codes: ["01", "02", "03", "04", "05", "99"], reason: "reason_description",
     reasonLabel: "Justificativa fiscal revisada (15–255 caracteres)", min: 15, max: 255,
   },
+  inspectCajamarNfseCancellation: {
+    title: "Investigar cancelamento — Cajamar GeisWeb", kind: "recovery",
+    fields: [["document_id", "ID da nota original"]],
+  },
   reconcileSantanaNfseCancellation: {
     title: "Conciliar cancelamento — Santana Simpliss", kind: "recovery",
     fields: [["document_id", "ID da nota original"]],
@@ -1146,7 +1150,9 @@ function appendReviewedMunicipalWebAction(article, operation) {
   }
   const submit = document.createElement("button");
   submit.className = "primary"; submit.type = "submit";
-  submit.textContent = recovery ? "Consultar confirmação municipal" : "Autorizar operação fiscal";
+  submit.textContent = operation === "inspectCajamarNfseCancellation"
+    ? "Consultar nota original (sem retransmitir)"
+    : recovery ? "Consultar confirmação municipal" : "Autorizar operação fiscal";
   const status = document.createElement("p");
   status.setAttribute("role", "status"); status.setAttribute("aria-live", "polite");
   form.append(submit, status); article.append(form);
@@ -3494,6 +3500,7 @@ async function renderSurface(viewId) {
       appendReviewedMunicipalWebAction(article, "substituteSantanaNfse");
     }
     if (viewId === "issuances" || viewId === "reconciliation") {
+      appendReviewedMunicipalWebAction(article, "inspectCajamarNfseCancellation");
       appendReviewedMunicipalWebAction(article, "reconcileSantanaNfseCancellation");
       appendReviewedMunicipalWebAction(article, "reconcileSantanaNfseSubstitution");
       appendReviewedMunicipalWebAction(article, "reconcileJundiaiNfseCancellation");

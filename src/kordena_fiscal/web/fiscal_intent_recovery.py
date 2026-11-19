@@ -38,6 +38,7 @@ PERMISSIONS = {
     "substituteGuarulhosNfse": PortalPermission.DOCUMENT_CANCEL,
     "cancelSantanaNfse": PortalPermission.DOCUMENT_CANCEL,
     "cancelNationalNfse": PortalPermission.DOCUMENT_CANCEL,
+    "inspectCajamarNfseCancellation": PortalPermission.RECONCILIATION_EXECUTE,
     "reconcileNationalNfseCancellation": PortalPermission.RECONCILIATION_EXECUTE,
     "substituteSantanaNfse": PortalPermission.DOCUMENT_CANCEL,
     "reconcileSantanaNfseCancellation": PortalPermission.RECONCILIATION_EXECUTE,
@@ -64,6 +65,7 @@ OPERATIONS = {
     "substituteGuarulhosNfse": frozenset({"substituteGuarulhosNfse"}),
     "cancelSantanaNfse": frozenset({"cancelSantanaNfse"}),
     "cancelNationalNfse": frozenset({"cancelNationalNfse"}),
+    "inspectCajamarNfseCancellation": frozenset({"inspectCajamarNfseCancellation"}),
     "reconcileNationalNfseCancellation": frozenset({"reconcileNationalNfseCancellation"}),
     "substituteSantanaNfse": frozenset({"substituteSantanaNfse"}),
     "reconcileSantanaNfseCancellation": frozenset({"reconcileSantanaNfseCancellation"}),
@@ -81,6 +83,7 @@ _READ_ONLY_POLL = frozenset({
     "reconcileGuarulhosNfseCancellation",
     "reconcileSantanaNfseCancellation",
     "reconcileNationalNfseCancellation",
+    "inspectCajamarNfseCancellation",
     "reconcileSantanaNfseSubstitution",
 })
 POLICY = "T07-v1-24h-same-account-epoch"

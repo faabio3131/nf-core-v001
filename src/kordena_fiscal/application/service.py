@@ -73,6 +73,7 @@ from kordena_fiscal.gateway.cajamar_geisweb_cancellation_builder import (
 )
 from kordena_fiscal.gateway.cajamar_geisweb_homologation import CAJAMAR_GEISWEB_PROVIDER
 from kordena_fiscal.gateway.cajamar_geisweb_invoice_interpreter import (
+    CajamarInvoiceObservation,
     decode_cajamar_archived_invoice,
 )
 from kordena_fiscal.gateway.jundiai_giss_cancellation_result import (
@@ -2409,6 +2410,16 @@ class FiscalApplicationService:
         self, *, scope: ExecutionScope, document_id: str, cancellation_reason: str,
     ) -> tuple[NfseAuthorizationRequest, Sp4OriginalRps, Sp4VerifiedInvoice]:
         """Verify archived original RPS and authorized GeisWeb note in one scoped UoW."""
+        request, original, invoice, _ = self._load_cajamar_invoice_for_event(
+            scope=scope, document_id=document_id, reconciliation=False,
+            cancellation_reason=cancellation_reason,
+        )
+        return request, original, invoice
+
+    def _load_cajamar_invoice_for_event(
+        self, *, scope: ExecutionScope, document_id: str, reconciliation: bool,
+        cancellation_reason: str | None = None,
+    ) -> tuple[NfseAuthorizationRequest, Sp4OriginalRps, Sp4VerifiedInvoice, FiscalStateSnapshot]:
         if (
             not isinstance(scope, ExecutionScope)
             or scope.environment is not FiscalEnvironment.HOMOLOGATION
@@ -2418,17 +2429,23 @@ class FiscalApplicationService:
             request = self._load_prepared_from_uow(uow, scope, document_id)
             if not isinstance(request, NfseAuthorizationRequest):
                 raise PersistenceStateError("Cajamar cancellation requires prepared NFS-e")
-            validate_cajamar_automatic_cancellation(
-                competence=request.document.competence_date,
-                reason=cancellation_reason,
-                reviewed_at=_cajamar_policy_now(),
-            )
+            if not reconciliation:
+                if cancellation_reason is None:
+                    raise FiscalValidationError("Cajamar cancellation reason required")
+                validate_cajamar_automatic_cancellation(
+                    competence=request.document.competence_date,
+                    reason=cancellation_reason,
+                    reviewed_at=_cajamar_policy_now(),
+                )
             uow.lifecycle.assert_scope(document_id, scope)
             current = uow.lifecycle.get(document_id)
             attempts = uow.idempotency.attempts(request.idempotency_key)
             if (
                 current is None
-                or current.state is not FiscalDocumentState.AUTHORIZED
+                or current.state is not (
+                    FiscalDocumentState.CANCEL_REQUESTED
+                    if reconciliation else FiscalDocumentState.AUTHORIZED
+                )
                 or not attempts
                 or attempts[-1].status is not IssuanceAttemptStatus.AUTHORIZED
                 or attempts[-1].document_id != document_id
@@ -2464,11 +2481,43 @@ class FiscalApplicationService:
         binding = self.resolve_configured_provider_id(
             scope=scope, document_kind=FiscalDocumentKind.NFSE,
             jurisdiction=request.document.issuer.address.jurisdiction,
-            operation="cancel",
+            operation="query" if reconciliation else "cancel",
         )
         if binding != CAJAMAR_GEISWEB_PROVIDER:
             raise FiscalValidationError("Cajamar cancellation provider binding mismatch")
-        return request, source, invoice
+        return request, source, invoice, current
+
+    def observe_cajamar_cancellation(
+        self, *, scope: ExecutionScope, document_id: str,
+        query: Callable[
+            [NfseAuthorizationRequest, Sp4OriginalRps, Sp4VerifiedInvoice],
+            CajamarInvoiceObservation,
+        ],
+        retention: RetentionPolicyMetadata,
+    ) -> tuple[CajamarInvoiceObservation, str]:
+        """Collect verified read-only evidence without finalizing an unknown event."""
+        if not callable(query) or not isinstance(retention, RetentionPolicyMetadata):
+            raise FiscalValidationError("Reviewed Cajamar consultation port required")
+        request, original, invoice, claim = self._load_cajamar_invoice_for_event(
+            scope=scope, document_id=document_id, reconciliation=True,
+        )
+        observation = query(request, original, invoice)
+        if not isinstance(observation, CajamarInvoiceObservation):
+            raise FiscalValidationError("Verified Cajamar invoice observation required")
+        entry = FiscalArchiveEntry.build(
+            scope=scope, document_reference=document_id,
+            kind=FiscalArchiveKind.OTHER, content=observation.response_xml,
+            media_type="application/vnd.nfcore.cajamar-query-observation.v1+xml",
+            archived_at=datetime.now(UTC), retention=retention,
+        )
+        with self._uow_factory() as uow:
+            uow.lifecycle.assert_scope(document_id, scope)
+            if uow.lifecycle.get(document_id) != claim:
+                raise PersistenceConflictError("Cajamar cancellation changed during consultation")
+            # An observation cannot establish the true fiscal event outcome.
+            archive_ref = uow.archive.append(entry).entry_id
+            uow.commit()
+        return observation, archive_ref
 
     def cancel_prepared_cajamar_nfse(
         self, *, scope: ExecutionScope, document_id: str,
