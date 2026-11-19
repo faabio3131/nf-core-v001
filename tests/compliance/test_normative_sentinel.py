@@ -18,7 +18,7 @@ from kordena_fiscal.compliance.rtc import (
     RegulatoryArtifactPin,
     RegulatoryBaselineError,
 )
-from kordena_fiscal.domain import BrazilianJurisdiction
+from kordena_fiscal.domain import BrazilianJurisdiction, FiscalValidationError
 
 ORIGINAL = b"reviewed artifact, revision 1"
 CHANGED = b"changed artifact, unidentified revision"
@@ -94,3 +94,12 @@ def test_drift_is_recorded_only_for_manual_triage() -> None:
     with pytest.raises(RegulatoryWatcherConflictError, match="already exists"):
         watcher.observe_artifact_drift(observed_payload=CHANGED, **metadata)
     assert watcher.observations == (observation,)
+
+
+@pytest.mark.parametrize(
+    "digest",
+    ["+" + "a" * 63, "a" * 32 + "_" + "a" * 31, "１" * 64, "g" * 64],
+)
+def test_normative_pin_rejects_noncanonical_digest(digest: str) -> None:
+    with pytest.raises(FiscalValidationError, match="SHA-256 hex"):
+        replace(_pin(), checksum_sha256=digest)
