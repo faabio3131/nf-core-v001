@@ -299,7 +299,9 @@ def test_withdraw_invalidates_issued_grant_and_replay_cannot_remove_replacement(
         "status": "WITHDRAWN", "official_revocation": "NOT_PERFORMED",
         "official_homologation": "NOT_VERIFIED",
     }
-    audit = db.db.execute("SELECT action,actor_id,tenant_id,unit_id FROM fm_control_plane_audit").fetchall()
+    audit = db.db.execute(
+        "SELECT action,actor_id,tenant_id,unit_id FROM fm_control_plane_audit",
+    ).fetchall()
     assert audit == [("certificate.withdrawal_requested", "user-owner-1", "tenant-a", "unit-a")]
     old_upload = {"delegation_token": token, "pfx_base64": base64.b64encode(b"pfx").decode(),
                   "password": "sample-only"}

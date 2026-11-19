@@ -79,7 +79,9 @@ def create_iron_a1_router(
     database: PostgresFiscalDatabase | None, vault: EncryptedA1Vault | None,
     allowed_origin: str | None,
     context_from_request: Callable[[Request], BridgeHttpContext],
-    scope_lock: Callable[[str, IronA1DelegationStore], AbstractContextManager[IronA1DelegationStore]] | None = None,
+    scope_lock: Callable[
+        [str, IronA1DelegationStore], AbstractContextManager[IronA1DelegationStore]
+    ] | None = None,
 ) -> APIRouter:
     router = APIRouter(prefix="/v1/iron/a1", tags=["iron-a1"])
     trusted_origin = trusted_iron_origin(allowed_origin)
@@ -263,7 +265,8 @@ def create_iron_a1_router(
                     actor_id=actor, request_id=request_id,
                 ):
                     raise HttpContractError(
-                        409, "IRON_A1_WITHDRAW_REPLAY", "Do not replay withdrawal", scope.correlation_id,
+                        409, "IRON_A1_WITHDRAW_REPLAY", "Do not replay withdrawal",
+                        scope.correlation_id,
                     )
                 vault.withdraw(scope=scope, issuer_cnpj=cnpj)
         except IronA1ScopeBusy:
@@ -272,7 +275,8 @@ def create_iron_a1_router(
             ) from None
         except (A1VaultUnavailable, FiscalValidationError):
             raise HttpContractError(
-                503, "IRON_A1_WITHDRAW_UNCONFIRMED", "Vault withdrawal failed", scope.correlation_id,
+                503, "IRON_A1_WITHDRAW_UNCONFIRMED", "Vault withdrawal failed",
+                scope.correlation_id,
             ) from None
         return JSONResponse(
             content={"status": "WITHDRAWN", "official_revocation": "NOT_PERFORMED",
