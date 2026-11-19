@@ -172,10 +172,11 @@ class NfseNationalHomologationQueryGateway:
             self._get(f"{_URL_BASE}/dps/{dps_id}", tls, self._timeout),
             jurisdiction.municipality_ibge_code,
         )
+        profile = current_national_receipt_profile()
         authorized_xml = _validate_official_nfse(
             self._get(f"{_URL_BASE}/nfse/{key}", tls, self._timeout), key,
-            expected=NationalReceiptIdentity.from_request(request),
-            schema_profile=current_national_receipt_profile(),
+            expected=NationalReceiptIdentity.from_request(request, schema_profile=profile),
+            schema_profile=profile,
         )
         return NfseAuthorizationResult(
             status=AuthorizationStatus.AUTHORIZED,

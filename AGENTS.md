@@ -12,6 +12,17 @@
 
 > **ÍNDICE CURRENT DE CONTINUIDADE (17/11/2026 — DOCUMENTAL, NÃO CERTIFICAÇÃO):** antes de executar/mergear, consultar [docs/audit/NFCORE_RECONCILIATION_CLOSEOUT_SCHEDULE_2026-11-17.md](docs/audit/NFCORE_RECONCILIATION_CLOSEOUT_SCHEDULE_2026-11-17.md), [docs/audit/NFCORE_PENDING_REGISTER_CURRENT_2026-11-17.md](docs/audit/NFCORE_PENDING_REGISTER_CURRENT_2026-11-17.md) e [docs/audit/NFCORE_PR_RECONCILIATION_LEDGER_CURRENT.md](docs/audit/NFCORE_PR_RECONCILIATION_LEDGER_CURRENT.md). CURRENT do GitHub: main 549ab3c0, production ea4bdd3b, #468 e1632e64 (CI anterior verde, execução posterior vermelha por teste temporal), #498 fbdb3384, #522 42fa40fb CI verde, #523 7962fe7b CI verde. #522/#523 aguardam integração cumulativa; nenhuma publicação. **Preservar integralmente NFCORE-GOV-RELEASE-001, gates fiscais, a ordem SP-22 e os 59 IDs do plano mestre.** Este índice não concede nova autorização nem altera as instruções abaixo.
 
+## CURRENT — release Web conciliada, 16/11/2026
+
+Esta entrega une a release #498 `f4a94926d3ceff7d66203eef270372177052fd91` à candidata #468 `e1632e646e3ed8e960ba51c88d24facf3177ffc7`. A candidata integra #520 e #521; sua árvore é idêntica à origem de Guarulhos `d7fd30ee411ac12f691a957a9a204b9c1f46d737`. SHA resultante e CI final registrados na PR #498; não herdar certificação de outra revisão.
+
+- #520: CI43947807754 SUCCESS, 5.259 Python PASS / 1 SKIP / 75 Playwright PASS; T2 efetivo SUCCESS. Integrada em af1f7b58.
+- #521: CI43950288422 SUCCESS, 5.294 Python PASS / 1 SKIP / 78 Playwright PASS; T2 efetivo43950367595 SUCCESS. Integrada em e1632e64. Skip somente variante SQLite exclusiva PostgreSQL; variante PG executada. Segurança, containers, SBOM e backup/restore passaram no runner; não comprovam o host produtivo.
+- Revisão independente Guarulhos encontrou e confirmou correções do serviço Compose e da dupla permissão em recovery; nenhum bloqueador adicional nesse delta. Reemissão sequencial não é substituição municipal atômica; homologação real não executada.
+- Cinco deltas exclusivos da release preservados: worker host-db overrides, testes, workflow e restore-test.sh com modo100755. Revisão confirmou blobs/modos e ausência de perda da candidata. Checkpoint histórico BH preservado por SHA256; mapas de sucessores documentam as origens423/440.
+- #423: mecanismos MG/WebISS/nacional preservados, 176 testes focais PASS. #440: sucessores canônicos, sem segunda API/contador. Podem ser encerradas como SUBSTITUÍDAS após publicação/gates desta reconciliação, nunca como MG20/BH concluídos. Pendências normativas, E2E operacional, EGM e homologação permanecem na issue426 ABERTA.
+- Main549ab3c0 e productionea4bdd3b não promovidas. O proprietário autorizou concluir e publicar; Desktop Commander tem cota0 e o SSH GitHub conhecido é somente leitura. Sem acesso operacional, não comprovar schema DPS22/cofre/backup/restore/staging nem controlar auto-pull. Nenhum deploy, migration ou emissão real realizado. Não declarar lançamento comercial pronto.
+
 ## CURRENT — MF04 integrado; Guarulhos corrigido após revisão, 16/11/2026
 
 #520 MERGED na candidata `af1f7b58794beba42a92718dea40a44fb1ef90fa`, origem `009c72a1`. CI completa [43947807754](https://github.com/faabio3131/nf-core-v001/actions/runs/43947807754) SUCCESS e T2 efetivo fora de Draft43949507844 SUCCESS. Main/production permanecem `549ab3c0`/`ea4bdd3b`; nenhum deploy.

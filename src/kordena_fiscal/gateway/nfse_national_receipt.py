@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import base64
 import gzip
+import hashlib
 import io
 import json
 import os
@@ -279,28 +280,53 @@ def validate_nfse_xml_integrity(xml: bytes, key: str) -> etree._Element:
     return root
 
 
+def _dps_content_digest(info: etree._Element) -> str:
+    """Bind the signed infDPS, independent of its enclosing receipt namespaces."""
+    if info.tag != f"{{{_NS}}}infDPS":
+        raise NfseReceiptVerificationError("Invalid signed DPS content")
+    return hashlib.sha256(etree.tostring(
+        info, method="c14n", exclusive=True, with_comments=False,
+    )).hexdigest()
+
+
 @dataclass(frozen=True, slots=True)
 class NationalReceiptIdentity:
-    """Identity supplied by canonical request or already validated outgoing DPS."""
+    """Identity and exact fiscal content from canonical or submitted DPS."""
 
     municipality: str
     cnpj: str
     series: int
     number: int
     environment: str
+    dps_content_sha256: str | None = None
 
     @property
     def dps_id(self) -> str:
         return national_dps_id(self.municipality, self.cnpj, self.series, self.number)
 
     @classmethod
-    def from_request(cls, request: NfseAuthorizationRequest) -> NationalReceiptIdentity:
+    def from_request(
+        cls, request: NfseAuthorizationRequest, *, schema_profile: str | None = None,
+    ) -> NationalReceiptIdentity:
+        # No A1, new serial, or fiscal I/O: reuse the canonical XML authority.
+        from kordena_fiscal.issuance.nfse_dps_builder import build_unsigned_dps
+
         doc = request.document
-        city = doc.issuer.address.jurisdiction.municipality_ibge_code
-        if city is None or doc.dps_number is None:
+        if doc.issuer.address.jurisdiction.municipality_ibge_code is None or doc.dps_number is None:
             raise NfseReceiptVerificationError("Receipt requires durably reserved DPS")
-        return cls(city, doc.issuer.cnpj.value, doc.dps_series, doc.dps_number,
-                   "2" if doc.scope.environment is FiscalEnvironment.HOMOLOGATION else "1")
+        profile = schema_profile or select_national_dps_profile(
+            environment=doc.scope.environment, schema_version="1.01",
+            effective_on=datetime.now(UTC).date(),
+        )
+        try:
+            unsigned = build_unsigned_dps(request, schema_profile=profile)
+            root = etree.fromstring(unsigned)
+            info = root.find(f"{{{_NS}}}infDPS")
+            if info is None:
+                raise NfseReceiptVerificationError("Canonical DPS content unavailable")
+            return cls.from_dps_info(info)
+        except (FiscalValidationError, etree.LxmlError):
+            raise NfseReceiptVerificationError("Canonical DPS content unavailable") from None
 
     @classmethod
     def from_dps_info(cls, info: etree._Element) -> NationalReceiptIdentity:
@@ -311,11 +337,12 @@ class NationalReceiptIdentity:
                 int(info.findtext(f"{{{_NS}}}serie", "")),
                 int(info.findtext(f"{{{_NS}}}nDPS", "")),
                 info.findtext(f"{{{_NS}}}tpAmb", ""),
+                _dps_content_digest(info),
             )
             if result.environment not in ("1", "2") or info.get("Id") != result.dps_id:
                 raise ValueError
             return result
-        except (ValueError, FiscalValidationError):
+        except (ValueError, FiscalValidationError, etree.LxmlError):
             raise NfseReceiptVerificationError("Invalid canonical DPS receipt identity") from None
 
 
@@ -342,6 +369,7 @@ def validate_national_nfse_xml(
     dps_info = info.find(f"{{{_NS}}}DPS/{{{_NS}}}infDPS")
     if (
         dps_info is None
+        or expected.dps_content_sha256 is None
         or NationalReceiptIdentity.from_dps_info(dps_info) != expected
         or dps_info.get("Id") != expected.dps_id
         or info.findtext(f"{{{_NS}}}emit/{{{_NS}}}CNPJ") != expected.cnpj

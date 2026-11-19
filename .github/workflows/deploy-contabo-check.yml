@@ -23,11 +23,15 @@ jobs:
         run: |
           printf 'POSTGRES_PASSWORD=x\n' > deploy/contabo/.env   # só no runner; o .env real nunca é versionado
           docker compose -f deploy/contabo/compose.prod.yml config -q
+          NFCORE_GUARULHOS_REVIEWED_HOST_DIR=/tmp docker compose -f deploy/contabo/compose.prod.yml -f deploy/contabo/compose.guarulhos-giss.api.yml config -q
+          NFCORE_NFSE_POLICIES_HOST_DIR=/tmp docker compose -f deploy/contabo/compose.prod.yml -f deploy/contabo/compose.nfse-policy.api.yml config -q
       - name: Testar overlay opt-in do Worker sem iniciá-lo
         run: |
           bash deploy/contabo/test-worker-opt-in.sh
           bash deploy/contabo/test-bling-api-opt-in.sh
           bash deploy/contabo/test-bling-worker-opt-in.sh
+      - name: Certificar overrides de banco do host para GSM e Bling sem iniciar servicos
+        run: bash deploy/contabo/test-worker-host-db-override.sh
       - name: Auditar preflight Bling sem host/segredos
         run: bash deploy/contabo/test-bling-operational-host-audit.sh
       - name: Classificacao separada do canal SSH e readiness Bling

@@ -83,18 +83,17 @@ def _require_durable_dps_numbering(request: NfseAuthorizationRequest) -> tuple[s
         )
     return str(document.dps_series), str(document.dps_number)
 
-def build_signed_dps(
-    request: NfseAuthorizationRequest, certificate: EphemeralCertificateMaterial,
-    *, schema_profile: str = PRODUCTION_PROFILE,
+def build_unsigned_dps(
+    request: NfseAuthorizationRequest, *, schema_profile: str = PRODUCTION_PROFILE,
 ) -> bytes:
-    """Build, schema-validate and sign the national DPS for ``request``.
+    """Build and schema-validate the exact canonical DPS before signing.
 
     Fail-closed: any field this builder cannot populate confidently from
     verified document data raises ``FiscalValidationError`` rather than
     guessing or silently omitting a required XSD element.
     """
     if not isinstance(request, NfseAuthorizationRequest):
-        raise FiscalValidationError("build_signed_dps requires an NfseAuthorizationRequest")
+        raise FiscalValidationError("DPS builder requires an NfseAuthorizationRequest")
     is_nt009 = schema_profile == NT009_RESTRICTED_PROFILE
     validator = national_dps_validator(_SCHEMA_VERSION, profile=schema_profile)
     document = request.document
@@ -304,7 +303,17 @@ def build_signed_dps(
 
     unsigned_xml = etree.tostring(root, encoding="utf-8", xml_declaration=False)
     validator.validate_document(unsigned_xml)
-    return sign_nfse_dps_xml(unsigned_xml, certificate)
+    return unsigned_xml
+
+
+def build_signed_dps(
+    request: NfseAuthorizationRequest, certificate: EphemeralCertificateMaterial,
+    *, schema_profile: str = PRODUCTION_PROFILE,
+) -> bytes:
+    """Sign the same schema-validated DPS used to correlate fiscal receipts."""
+    return sign_nfse_dps_xml(
+        build_unsigned_dps(request, schema_profile=schema_profile), certificate,
+    )
 
 
 def validate_sefin_dps_input(document: NfseCanonicalDocument) -> str:

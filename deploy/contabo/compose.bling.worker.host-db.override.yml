@@ -1,0 +1,10 @@
+# Contabo host-only override for the Bling worker opt-in profile.
+# The installed /opt/fm/nfcore/docker-compose.yml names the PostgreSQL SERVICE 'db'
+# while its container remains 'nfcore-db'. Apply after compose.bling.worker.opt-in.yml.
+# Does not rename/recreate DB; does not enable Bling worker or alter secrets.
+# Requires Docker Compose >= 2.24.4 (VPS verified at v5.6.1).
+services:
+  nfcore-bling-worker:
+    depends_on: !override
+      db:
+        condition: service_healthy

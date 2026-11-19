@@ -29,7 +29,9 @@ autorização do deploy** (decisão do Diretor, 26/10/2026). Nenhum agente entra
 7. Sobe API e Portal; exige `/health/ready` (API) e Portal respondendo por até 2 min.
 8. Falha depois do gate de schema: rollback **somente de imagens/commit**. Não restaura o banco produtivo. O commit que falhou vai para `.failed-sha`.
 
-**Atenção:** o fluxo contém apenas API e Portal. Worker/GSM não está nesse compose; não declarar publicação completa por este deploy. A restauração do banco exige runbook manual com ensaio isolado, sem `DROP SCHEMA public CASCADE` automático.
+**Atenção:** o cron não pode declarar release parcial quando existir Worker produtivo. Nesse caso bloqueia antes de build/backup e exige execução coordenada explicitamente aprovada no SHA de production, com todos os Workers já autorizados e saudáveis presentes no Compose efetivo. Nenhum Worker ausente/parado será ativado. O Worker Bling mantém seu fluxo opt-in separado; se estiver ativo, este runner bloqueia para coordenação explícita por sua autoridade existente, sem recriá-lo. O código-only valida compatibilidade do schema para o código anterior e novo, IDs das imagens, label OCI do SHA, readiness e recuperação de todas as imagens por digest. Falha de recuperação permanece NO_GO, sem alegar restauração. A transição v21→v23 segue o runbook separado; este script NÃO aplica DDL nem restaura banco.
+
+Para manutenção code-only futura, após aprovação e verificação do Compose efetivo (incluindo perfis/overlays já ativos), executar com o lock canônico: `NFCORE_COORDINATED_DEPLOY_APPROVED_SHA=<SHA autorizado> flock -n /tmp/nfcore-deploy.lock /opt/fm/nfcore/deploy.sh --coordinated`. Não usar para o cutover v21→v23; não habilitar Bling por conveniência.
 
 ## Trial público opt-in (`/v1/public/trial-plans`)
 

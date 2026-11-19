@@ -130,3 +130,44 @@ def test_query_rejects_duplicated_signed_info_id() -> None:
     extra.text = "duplicate-reference"
     with pytest.raises(OfficialNfseTransportError, match="signature placement"):
         _validate_official_nfse(_response(etree.tostring(root)), _KEY)
+
+
+
+def test_query_rejects_resigned_receipt_with_same_identity_but_changed_fiscal_facts():
+    from dataclasses import replace
+    from decimal import Decimal
+
+    from kordena_fiscal.domain import Money
+    from kordena_fiscal.issuance.nfe_nfse import NfseAuthorizationRequest
+    from kordena_fiscal.issuance.nfse_dps_builder import build_sefin_signed_dps
+
+    request, material = _receipt_fixture.sample()
+    original_dps = build_sefin_signed_dps(request, material)
+    original_xml = _receipt_fixture.complete_receipt(original_dps, material, key=_KEY)
+    expected = NationalReceiptIdentity.from_request(request)
+    assert _validate_official_nfse(_response(original_xml), _KEY, expected=expected) == original_xml
+
+    for changed in (
+        replace(request.document.services[0], description="Outro servico sintetico"),
+        replace(request.document.services[0], gross_amount=Money(Decimal("200.00"))),
+    ):
+        other = NfseAuthorizationRequest.build(replace(request.document, services=(changed,)))
+        other_dps = build_sefin_signed_dps(other, material)
+        other_xml = _receipt_fixture.complete_receipt(other_dps, material, key=_KEY)
+        # Both signatures and XSD are valid, same CNPJ/series/number/key, but
+        # this is not the canonical fiscal document prepared by the customer.
+        with pytest.raises(OfficialNfseTransportError, match="differs from canonical DPS"):
+            _validate_official_nfse(_response(other_xml), _KEY, expected=expected)
+
+        from kordena_fiscal.gateway.nfse_national_homologation import (
+            OfficialNfseTransportError as PostError,
+            parse_nfse_homologation_response,
+        )
+
+        payload = json.loads(_response(other_xml))
+        payload["chaveAcesso"] = _KEY
+        with pytest.raises(PostError, match="XML retornado"):
+            parse_nfse_homologation_response(
+                json.dumps(payload).encode(), expected=expected,
+                schema_profile=NT009_RESTRICTED_PROFILE,
+            )
