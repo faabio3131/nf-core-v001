@@ -7,12 +7,41 @@ This store is never a second tenant or fiscal-authorization authority.
 from __future__ import annotations
 
 import sqlite3
+from dataclasses import dataclass
 
-from kordena_fiscal.domain import FiscalValidationError
+from kordena_fiscal.domain import ExecutionScope, FiscalValidationError
 from kordena_fiscal.issuance.nfe_nfse import NfseCanonicalDocument
 from kordena_fiscal.numbering.dps import MAX_DPS_NUMBER, DpsNumberReservation
 
 from .ports import PersistenceConflictError
+
+
+@dataclass(frozen=True)
+class DpsCounterFloorResult:
+    """Outcome of a governed floor raise; never lowers an existing counter."""
+
+    previous_last_number: int | None
+    last_number: int
+    changed: bool
+
+
+def validate_dps_floor_key(
+    scope: ExecutionScope, issuer_cnpj: str, municipality_ibge: str,
+    series: int, last_used_number: int,
+) -> None:
+    if not isinstance(scope, ExecutionScope) or scope.host_namespace is None:
+        raise FiscalValidationError("DPS issuer counter requires host namespace")
+    if (
+        not isinstance(issuer_cnpj, str) or not issuer_cnpj.isascii()
+        or not issuer_cnpj.isdecimal() or len(issuer_cnpj) != 14
+        or not isinstance(municipality_ibge, str) or not municipality_ibge.isascii()
+        or not municipality_ibge.isdecimal() or len(municipality_ibge) != 7
+    ):
+        raise FiscalValidationError("DPS counter requires numeric issuer CNPJ and IBGE")
+    if type(series) is not int or not 1 <= series <= 99999:
+        raise FiscalValidationError("DPS series must be within 1..99999")
+    if type(last_used_number) is not int or not 1 <= last_used_number < MAX_DPS_NUMBER:
+        raise FiscalValidationError("Last used DPS number is out of range")
 
 
 class SqliteDpsNumberingStore:
@@ -113,3 +142,56 @@ class SqliteDpsNumberingStore:
             (*document_key, input_fingerprint, cnpj, municipality, series, next_number),
         )
         return DpsNumberReservation(series=series, number=next_number)
+
+    def raise_floor(
+        self, *, scope: ExecutionScope, issuer_cnpj: str, municipality_ibge: str,
+        series: int, last_used_number: int,
+    ) -> DpsCounterFloorResult:
+        """Make the next reservation start after numbers already used elsewhere.
+
+        Monotonic only: an existing counter at or above the floor is untouched,
+        so a stale or repeated command can never lower or reuse a DPS number.
+        The counter stays owned by exactly one fiscal unit.
+        """
+        validate_dps_floor_key(scope, issuer_cnpj, municipality_ibge, series, last_used_number)
+        legal_key = (
+            scope.host_namespace, issuer_cnpj, municipality_ibge,
+            scope.environment.value, series,
+        )
+        owner = (scope.tenant_id, scope.unit_id)
+        current = self._connection.execute(
+            """
+            SELECT owner_tenant_id, owner_unit_id, last_number
+            FROM fm_nfse_dps_counters
+            WHERE host_namespace=? AND issuer_cnpj=? AND issuer_municipality_ibge=?
+              AND environment=? AND series=?
+            """,
+            legal_key,
+        ).fetchone()
+        if current is None:
+            self._connection.execute(
+                """
+                INSERT INTO fm_nfse_dps_counters (
+                    host_namespace, issuer_cnpj, issuer_municipality_ibge,
+                    environment, series, owner_tenant_id, owner_unit_id, last_number
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (*legal_key, *owner, last_used_number),
+            )
+            return DpsCounterFloorResult(None, last_used_number, True)
+        if tuple(current[:2]) != owner:
+            raise PersistenceConflictError(
+                "DPS legal issuer counter already owned by another fiscal unit"
+            )
+        previous = int(current[2])
+        if previous >= last_used_number:
+            return DpsCounterFloorResult(previous, previous, False)
+        self._connection.execute(
+            """
+            UPDATE fm_nfse_dps_counters SET last_number=?
+            WHERE host_namespace=? AND issuer_cnpj=? AND issuer_municipality_ibge=?
+              AND environment=? AND series=? AND last_number=?
+            """,
+            (last_used_number, *legal_key, previous),
+        )
+        return DpsCounterFloorResult(previous, last_used_number, True)
