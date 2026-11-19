@@ -1,0 +1,6 @@
+# NFCore Plan B EXAMPLE ONLY — never auto-installed by CI or deploy.
+# Provision only after explicit host-access authorization and separate review.
+# Must be installed root:root mode 0440 via visudo -cf.
+# Dedicated account nfcoreaudit must NOT belong to docker/sudo/admin groups.
+Defaults:nfcoreaudit env_reset, !setenv, secure_path="/usr/sbin:/usr/bin:/sbin:/bin"
+nfcoreaudit ALL=(root) NOPASSWD: /usr/local/libexec/nfcore-audit/root-audit.sh ""

@@ -8,31 +8,43 @@ against the pinned XSD (``national_dps_validator``) before being handed to
 the existing XMLDSig signer (``sign_nfse_dps_xml``); this module performs no
 cryptography of its own and never reads or writes the A1 vault.
 
-Two provisional, owner-reviewable decisions are documented inline where they
-are made: the ``nDPS``/``serie`` numbering strategy (no sequential-number
-field exists yet on ``NfseCanonicalDocument``; Rule #5 forbids an unsafe
-MAX+1 strategy, so the number is derived deterministically from the
-already-governed request fingerprint instead) and the ``regApTribSN``
-default used when a Simples Nacional sublimit has been exceeded.
+DPS series and serial MUST be reserved by the canonical durable fiscal
+Unit of Work before calling this builder. Neither hashes nor MAX+1 can
+allocate fiscal numbers. Special ISS regimes and Simples sublimit assessment
+require an effective-dated reviewed treatment, never a provisional fallback.
 """
 from __future__ import annotations
 
-import hashlib
-from datetime import UTC
+from datetime import UTC, datetime
 from decimal import ROUND_HALF_UP, Decimal
 
 from lxml import etree
 
-from kordena_fiscal.domain import FiscalValidationError, TaxRegimeCode
-from kordena_fiscal.issuance.nfe_nfse import NfseAuthorizationRequest
+from kordena_fiscal.domain import (
+    Cnpj,
+    Cpf,
+    FiscalEnvironment,
+    FiscalValidationError,
+    TaxRegimeCode,
+)
+from kordena_fiscal.issuance.nfe_nfse import (
+    NfseAuthorizationRequest,
+    NfseCanonicalDocument,
+    NfseForeignAddress,
+)
+from kordena_fiscal.issuance.nfse_dps_identity import national_dps_id
 from kordena_fiscal.signing.nfse_xmldsig import sign_nfse_dps_xml
 from kordena_fiscal.vault import EphemeralCertificateMaterial
 from kordena_fiscal.xml.nfse_nacional_schema import national_dps_validator
+from kordena_fiscal.xml.nfse_national_profiles import (
+    NT009_RESTRICTED_PROFILE,
+    PRODUCTION_PROFILE,
+    select_national_dps_profile,
+)
 
 _NFSE_NS = "http://www.sped.fazenda.gov.br/nfse"
-_SCHEMA_VERSION = "1.00"
+_SCHEMA_VERSION = "1.01"
 _VER_APLIC = "nfcore-dps-v1"  # TSVerAplic: TSString, maxLength 20
-_FEDERAL_INSCRIPTION_TYPE_CNPJ = "1"
 _CENT = Decimal("0.01")
 
 # National DPS "opSimpNac" is a distinct official code table from our domain's
@@ -58,28 +70,22 @@ def _money(value: Decimal) -> str:
     return f"{value:.2f}"
 
 
-def _derive_dps_numbering(request: NfseAuthorizationRequest) -> tuple[str, str]:
-    """Deterministic nDPS (15 numeric digits, no unsafe MAX+1 counter).
+def _require_durable_dps_numbering(request: NfseAuthorizationRequest) -> tuple[str, str]:
+    """Use only a UoW-assigned, fingerprint-bound DPS series and serial.
 
-    PROVISIONAL: ``NfseCanonicalDocument`` carries no sequential fiscal
-    numbering field today. Deriving ``nDPS`` from the hash of the document's
-    own, already-governed ``request_fingerprint`` keeps this gateway
-    fail-closed and deterministic (same document -> same number, no shared
-    mutable counter to race), but it is not a numbering *authority* in the
-    sense other fiscal flows use. Replace with a dedicated numbering
-    authority before this builder is relied on for anything beyond
-    homologation testing.
+    An unnumbered request is safe for read-only preaudit/recovery but must not
+    be signed or transmitted, even to a production-restrita endpoint.
     """
-    seed = f"{request.request_fingerprint}:{request.document.document_id}".encode()
-    digest = int(hashlib.sha256(seed).hexdigest(), 16)
-    n_dps = str(10**14 + digest % (9 * 10**14))
-    if len(n_dps) != 15:  # pragma: no cover - defensive, arithmetic guarantees this
-        raise FiscalValidationError("nDPS derivation did not produce 15 digits")
-    return "1", n_dps
-
+    document = request.document
+    if document.dps_number is None:
+        raise FiscalValidationError(
+            "DPS number not reserved by durable fiscal Unit of Work"
+        )
+    return str(document.dps_series), str(document.dps_number)
 
 def build_signed_dps(
-    request: NfseAuthorizationRequest, certificate: EphemeralCertificateMaterial
+    request: NfseAuthorizationRequest, certificate: EphemeralCertificateMaterial,
+    *, schema_profile: str = PRODUCTION_PROFILE,
 ) -> bytes:
     """Build, schema-validate and sign the national DPS for ``request``.
 
@@ -89,6 +95,8 @@ def build_signed_dps(
     """
     if not isinstance(request, NfseAuthorizationRequest):
         raise FiscalValidationError("build_signed_dps requires an NfseAuthorizationRequest")
+    is_nt009 = schema_profile == NT009_RESTRICTED_PROFILE
+    validator = national_dps_validator(_SCHEMA_VERSION, profile=schema_profile)
     document = request.document
     issuer = document.issuer
 
@@ -131,15 +139,8 @@ def build_signed_dps(
             f"unsupported tax regime for NFS-e Nacional: {issuer.tax_regime!r}"
         )
 
-    serie, n_dps = _derive_dps_numbering(request)
-    dps_id = (
-        "DPS"
-        + issuer_municipality
-        + _FEDERAL_INSCRIPTION_TYPE_CNPJ
-        + cnpj
-        + serie.zfill(5)
-        + n_dps
-    )
+    serie, n_dps = _require_durable_dps_numbering(request)
+    dps_id = national_dps_id(issuer_municipality, cnpj, int(serie), int(n_dps))
 
     root = etree.Element(f"{{{_NFSE_NS}}}DPS", nsmap={None: _NFSE_NS})  # type: ignore[dict-item]
     root.set("versao", _SCHEMA_VERSION)
@@ -156,7 +157,21 @@ def build_signed_dps(
     _child(info, "nDPS", n_dps)
     _child(info, "dCompet", document.competence_date.strftime("%Y-%m-%d"))
     _child(info, "tpEmit", "1")  # Prestador -- this flow always submits on the issuer's own behalf
+    if is_nt009:
+        _child(info, "finNFSe", "0")  # Regular NFS-e; no credit/debit adjustment inferred.
     _child(info, "cLocEmi", issuer_municipality)
+
+    if document.national_substitution is not None:
+        # Official 1.01 order: cLocEmi, subst, prest. A replacement is ONE new
+        # DPS with the original key, never a stand-alone cancellation POST.
+        review = document.national_substitution
+        original_key = review.original_invoice_reference
+        if not original_key.startswith(issuer_municipality[:2]):
+            raise FiscalValidationError("National replacement original UF mismatch")
+        subst = etree.SubElement(info, f"{{{_NFSE_NS}}}subst")
+        _child(subst, "chSubstda", original_key)
+        _child(subst, "cMotivo", review.reason_code)
+        _child(subst, "xMotivo", review.reason_description.strip())
 
     prest = etree.SubElement(info, f"{{{_NFSE_NS}}}prest")
     _child(prest, "CNPJ", cnpj)
@@ -167,6 +182,11 @@ def build_signed_dps(
         _child(prest, "IM", im)
     _child(prest, "xNome", issuer.legal_name.strip())
     end = etree.SubElement(prest, f"{{{_NFSE_NS}}}end")
+    # Official National DPS 1.01 TCEndereco requires endNac/endExt before
+    # xLgr. This issuer carries a Brazilian CNPJ/IBGE and must use endNac.
+    end_nac = etree.SubElement(end, f"{{{_NFSE_NS}}}endNac")
+    _child(end_nac, "cMun", issuer_municipality)
+    _child(end_nac, "CEP", issuer.address.postal_code)
     _child(end, "xLgr", issuer.address.street.strip())
     _child(end, "nro", issuer.address.number.strip())
     if issuer.address.complement:
@@ -174,40 +194,139 @@ def build_signed_dps(
     _child(end, "xBairro", issuer.address.district.strip())
     reg_trib = etree.SubElement(prest, f"{{{_NFSE_NS}}}regTrib")
     _child(reg_trib, "opSimpNac", op_simp_nac)
-    if issuer.tax_regime is TaxRegimeCode.SIMPLES_NACIONAL_EXCESS_SUBLIMIT:
-        # PROVISIONAL default: once a Simples Nacional sublimit is exceeded,
-        # apportion both federal and municipal taxes outside SN per each
-        # tax's own legislation (regApTribSN=3). FiscalProfile does not yet
-        # carry an explicit regApTribSN signal to pick 1/2/3 with certainty;
-        # revisit with the owner before relying on this for real submission.
-        _child(reg_trib, "regApTribSN", "3")
-    _child(reg_trib, "regEspTrib", "0")  # Nenhum; FiscalProfile models no special regime today
+    treatment = document.national_tax_treatment
+    if issuer.tax_regime is TaxRegimeCode.SIMPLES_NACIONAL_EXCESS_SUBLIMIT and (
+        treatment is None or treatment.simples_assessment_code is None
+    ):
+        raise FiscalValidationError(
+            "Simples excess sublimit requires a reviewed regApTribSN decision"
+        )
+    if treatment is not None and treatment.simples_assessment_code is not None:
+        _child(reg_trib, "regApTribSN", treatment.simples_assessment_code)
+    # For an ordinary profile without a special fiscal decision, '0' is
+    # the explicit official "Nenhum" regime. Nonzero regimes can only come
+    # from the reviewed document decision, versioned with competence.
+    _child(reg_trib, "regEspTrib", (
+        treatment.special_regime_code if treatment is not None else "0"
+    ))
+
+    # Toma is placed after prest and before serv under the official 1.01 XSD.
+    # The source reference is NOT a tax identity and is never substituted here.
+    if document.service_taker is not None:
+        taker = document.service_taker
+        toma = etree.SubElement(info, f"{{{_NFSE_NS}}}toma")
+        if isinstance(taker.tax_id, Cnpj):
+            _child(toma, "CNPJ", taker.tax_id.value)
+        elif isinstance(taker.tax_id, Cpf):
+            _child(toma, "CPF", taker.tax_id.value)
+        elif taker.nif is not None:
+            _child(toma, "NIF", taker.nif)
+        elif taker.no_nif_reason is not None:
+            _child(toma, "cNaoNIF", taker.no_nif_reason)
+        else:
+            raise FiscalValidationError("Canonical taker tax identity is missing")
+        if taker.municipal_registration is not None:
+            _child(toma, "IM", taker.municipal_registration)
+        _child(toma, "xNome", taker.legal_name)
+        if taker.address is not None:
+            address = taker.address
+            end_taker = etree.SubElement(toma, f"{{{_NFSE_NS}}}end")
+            if isinstance(address, NfseForeignAddress):
+                ext = etree.SubElement(end_taker, f"{{{_NFSE_NS}}}endExt")
+                _child(ext, "cPais", address.country_code)
+                _child(ext, "cEndPost", address.postal_code)
+                _child(ext, "xCidade", address.city)
+                _child(ext, "xEstProvReg", address.region)
+            else:
+                national = etree.SubElement(end_taker, f"{{{_NFSE_NS}}}endNac")
+                _child(national, "cMun", address.jurisdiction.municipality_ibge_code or "")
+                _child(national, "CEP", address.postal_code)
+            _child(end_taker, "xLgr", address.street)
+            _child(end_taker, "nro", address.number)
+            if address.complement is not None:
+                _child(end_taker, "xCpl", address.complement)
+            _child(end_taker, "xBairro", address.district)
 
     serv = etree.SubElement(info, f"{{{_NFSE_NS}}}serv")
     loc_prest = etree.SubElement(serv, f"{{{_NFSE_NS}}}locPrest")
     _child(loc_prest, "cLocPrestacao", service_municipality)
     c_serv = etree.SubElement(serv, f"{{{_NFSE_NS}}}cServ")
     _child(c_serv, "cTribNac", service.national_taxation_code)
-    _child(c_serv, "xDescServ", service.description.strip())
+    if service.municipal_taxation_detail is not None:
+        _child(c_serv, "cTribMun", service.municipal_taxation_detail)
+    if not is_nt009:
+        _child(c_serv, "xDescServ", service.description.strip())
+    if service.nbs_code is not None:
+        # NBS 2.0 required by Santana's official XSD.
+        # The user must provide the reviewed classification.
+        _child(c_serv, "cNBS", service.nbs_code)
+    if is_nt009:
+        _child(c_serv, "xDescServ", service.description.strip())
 
     valores = etree.SubElement(info, f"{{{_NFSE_NS}}}valores")
     v_serv_prest = etree.SubElement(valores, f"{{{_NFSE_NS}}}vServPrest")
     _child(v_serv_prest, "vServ", _money(service.gross_amount.amount))
     if service.deduction_amount.amount > 0:
-        ded_red = etree.SubElement(valores, f"{{{_NFSE_NS}}}vDedRed")
-        _child(ded_red, "vDR", _money(service.deduction_amount.amount))
+        group = "vAjusteBC" if is_nt009 else "vDedRed"
+        amount_field = "vAjusteBCISSQN" if is_nt009 else "vDR"
+        ded_red = etree.SubElement(valores, f"{{{_NFSE_NS}}}{group}")
+        _child(ded_red, amount_field, _money(service.deduction_amount.amount))
     trib = etree.SubElement(valores, f"{{{_NFSE_NS}}}trib")
     trib_mun = etree.SubElement(trib, f"{{{_NFSE_NS}}}tribMun")
-    _child(trib_mun, "tribISSQN", "1")  # Operacao tributavel; domain models no exemption flag yet
+    iss_taxation = treatment.iss_taxation_code if treatment is not None else "1"
+    _child(trib_mun, "tribISSQN", iss_taxation)
+    if treatment is not None and iss_taxation == "3":
+        if treatment.result_country_code is None:
+            raise FiscalValidationError("Exported ISS service requires country")
+        _child(trib_mun, "cPaisResult", treatment.result_country_code)
+    if treatment is not None and iss_taxation == "2":
+        if treatment.immunity_type_code is None:
+            raise FiscalValidationError("Immune ISS service requires immunity type")
+        _child(trib_mun, "tpImunidade", treatment.immunity_type_code)
+    # The pinned 1.01 XSD orders the optional BM before tpRetISSQN.
+    if treatment is not None and treatment.municipal_benefit_id is not None:
+        benefit = etree.SubElement(trib_mun, f"{{{_NFSE_NS}}}BM")
+        _child(benefit, "nBM", treatment.municipal_benefit_id)
     taxable = service.taxable_amount.amount
     iss_amount = service.iss_amount.amount
-    if taxable > 0 and iss_amount > 0:
+    # XSD 1.01 changed TCTribMunicipal field order: tpRetISSQN before pAliq.
+    _child(trib_mun, "tpRetISSQN", "2" if service.iss_withheld else "1")
+    if treatment is not None and treatment.iss_rate is not None:
+        # Exact reviewed rate, never reverse-engineer from a rounded cent amount.
+        _child(trib_mun, "pAliq", treatment.iss_rate)
+    elif taxable > 0 and iss_amount > 0:
+        # Legacy offline/synthetic preparation only; the live SEFIN boundary
+        # rejects ordinary taxable policies without their exact reviewed rate.
         rate = (iss_amount / taxable * 100).quantize(_CENT, rounding=ROUND_HALF_UP)
         _child(trib_mun, "pAliq", _money(rate))
-    _child(trib_mun, "tpRetISSQN", "2" if service.iss_withheld else "1")
     tot_trib = etree.SubElement(trib, f"{{{_NFSE_NS}}}totTrib")
     _child(tot_trib, "indTotTrib", "0")  # Decreto 8.264/2014: no tax-total estimate declared
 
     unsigned_xml = etree.tostring(root, encoding="utf-8", xml_declaration=False)
-    national_dps_validator(_SCHEMA_VERSION).validate_document(unsigned_xml)
+    validator.validate_document(unsigned_xml)
     return sign_nfse_dps_xml(unsigned_xml, certificate)
+
+
+def validate_sefin_dps_input(document: NfseCanonicalDocument) -> str:
+    """Deterministic profile checks before reservation/dispatch; no A1 or I/O.
+
+    Dispatch uses the active endpoint release, not the backdated competence or
+    issue date. A prepared legacy document is checked again before transmission.
+    """
+    if document.scope.environment is not FiscalEnvironment.HOMOLOGATION:
+        raise FiscalValidationError("SEFIN transport is homologation-only")
+    profile = select_national_dps_profile(
+        environment=document.scope.environment, schema_version=_SCHEMA_VERSION,
+        effective_on=datetime.now(UTC).date(),
+    )
+    if profile == NT009_RESTRICTED_PROFILE and document.dps_series >= 90000:
+        raise FiscalValidationError("NT009 DPS series must be between 1 and 89999")
+    return profile
+
+
+def build_sefin_signed_dps(
+    request: NfseAuthorizationRequest, certificate: EphemeralCertificateMaterial,
+) -> bytes:
+    """SEFIN uses its own dated profile; municipal Simpliss retains its contract."""
+    profile = validate_sefin_dps_input(request.document)
+    return build_signed_dps(request, certificate, schema_profile=profile)

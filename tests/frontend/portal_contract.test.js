@@ -224,3 +224,83 @@ test("cognitive advisor is advisory-only, session-scoped and renders model text 
   // Only the two read-only explanation views expose the panel.
   assert.match(script, /viewId === "errors" \|\| viewId === "reconciliation"\) appendCognitiveAdvisor/);
 });
+
+test("A1 portal displays real scoped vault readback without sending certificate again", () => {
+  assert.match(script, /Verificar A1 armazenado/);
+  assert.match(script, /\/v1\/portal\/certificates\/a1\/status/);
+  assert.match(script, /fingerprint_sha256 === result\.fingerprint_sha256/);
+  assert.match(script, /Persistência após reinício e backup ainda/);
+  assert.match(script, /Não reenvie o certificado antes de investigar o erro/);
+});
+
+
+test("A1 file validator accepts exported .pfx/.p12 instead of requiring a backslash", () => {
+  const start = script.indexOf("function appendA1UploadForm(");
+  const form = script.slice(start, script.indexOf("article.append(form);", start));
+  // Regression: the old /\\.(pfx|p12)$/i incorrectly required a literal slash.
+  assert.ok(form.includes(String.raw`!/\.(pfx|p12)$/i.test(chosen.name)`));
+  assert.ok(!form.includes(String.raw`!/\\.(pfx|p12)$/i.test(chosen.name)`));
+  const acceptsA1File = (name, size) =>
+    size > 0 && size <= 2 * 1024 * 1024 && /\.(pfx|p12)$/i.test(name);
+  assert.equal(acceptsA1File("SISTEM_A1_2026.pfx", 9554), true);
+  assert.equal(acceptsA1File("certificado.P12", 1024), true);
+  assert.equal(acceptsA1File("certificado.pfx.txt", 1024), false);
+  assert.equal(acceptsA1File("certificado.pfx", 0), false);
+  assert.equal(acceptsA1File("certificado.p12", 2 * 1024 * 1024 + 1), false);
+});
+
+
+test("Barueri PMB004 events are accessible through the same governed Portal", () => {
+  assert.match(script, /function appendBarueriFiscalEvent\(article, operation\)/);
+  assert.match(script, /function appendBarueriEventReconciliation\(article\)/);
+  for (const operation of [
+    "cancelBarueriNfse", "substituteBarueriNfse",
+    "reconcileBarueriNfseCancellation",
+  ]) {
+    assert.ok(script.includes(operation));
+  }
+  assert.match(script, /substitution_justification_code: reason\.value/);
+  assert.match(script, /human_approval: approved\.checked/);
+  assert.match(script, /Idempotency-Key": attempt\.key/);
+  assert.match(script, /No reenvie|Não retransmita|não reenvie/);
+  assert.match(script, /reconciliation\.execute/);
+  assert.match(script, /viewId === "issuances"\) appendBarueriFiscalEvent/);
+  assert.match(script, /appendBarueriEventReconciliation\(article\)/);
+  assert.doesNotMatch(script, /tenant_id:\s*selectedFiscalUnit/);
+});
+
+
+test("municipal SP5 event surfaces are discoverable in the authenticated portal", () => {
+  const operations = [
+    "cancelOsascoNfse", "substituteOsascoNfse",
+    "cancelSantanaNfse", "substituteSantanaNfse",
+    "reconcileSantanaNfseCancellation",
+    "reconcileSantanaNfseSubstitution",
+    "reconcileJundiaiNfseCancellation",
+  ];
+  for (const operation of operations) {
+    assert.ok(script.includes('appendReviewedMunicipalWebAction(article, "' + operation + '")'));
+    assert.ok(script.includes(operation + ": {"));
+  }
+  assert.match(script, /!configured\.includes\(operation\)/);
+  assert.match(script, /permissions\.includes\("document\.cancel"\)/);
+  assert.match(script, /permissions\.includes\("document\.issue"\)/);
+  assert.match(script, /permissions\.includes\("reconciliation\.execute"\)/);
+  assert.match(script, /selectedFiscalEnvironment !== "homologation"/);
+  assert.match(script, /headers: \{"X-CSRF-Token": csrfToken\(\), "Idempotency-Key": key\}/);
+  assert.match(script, /if \(!recovery\) attempted = true/);
+  assert.match(script, /if \(recovery\) submit\.disabled = false/);
+});
+
+test("municipal SP5 form payload fields match reviewed runtime contracts", () => {
+  assert.match(script, /reason: "cancellation_reason"/);
+  assert.match(script, /reason: "reason_description"/);
+  assert.match(script, /codes: \["1", "2", "9"\]/);
+  assert.match(script, /codes: \["01", "02", "03", "04", "05", "99"\]/);
+  assert.match(script, /"document_id", "ID da NFS-e original autorizada"/);
+  assert.match(script, /"original_id", "ID da NFS-e original autorizada"/);
+  assert.match(script, /"replacement_id", "ID da nova DPS previamente preparada"/);
+  assert.match(script, /if \(!recovery\) payload\.human_approval/);
+  assert.match(script, /"\/v1\/portal\/operations\/" \+ operation/);
+  assert.match(script, /NÃO retransmita/);
+});

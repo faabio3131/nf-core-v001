@@ -1,0 +1,12 @@
+# Combine with existing overrides; never replace the Bling or security mounts.
+services:
+  nfcore-api:
+    environment:
+      NFCORE_SALE_FISCAL_POLICY_ROOT: /run/nfcore/sale-policies
+    volumes:
+      - type: bind
+        source: ${NFCORE_SALE_POLICIES_HOST_DIR:?required}
+        target: /run/nfcore/sale-policies
+        read_only: true
+        bind:
+          create_host_path: false

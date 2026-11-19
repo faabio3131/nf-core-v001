@@ -62,7 +62,9 @@ for (const status of [409, 503]) {
     await expect(page.getByRole('button', { name: 'Confirmar compra' })).toBeEnabled();
     // Retry reuses the same in-memory token (still in the fragment-derived value, not the URL).
     await page.getByRole('button', { name: 'Confirmar compra' }).click();
-    expect(calls).toBe(2);
+    // The second click starts an asynchronous fetch; wait for the request,
+    // not merely for the click handler to return. Still require exactly two.
+    await expect.poll(() => calls).toBe(2);
   });
 }
 

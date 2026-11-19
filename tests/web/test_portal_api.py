@@ -4,6 +4,7 @@ from collections.abc import Mapping, Sequence
 from datetime import timedelta
 from typing import Any
 
+import pytest
 from fastapi.testclient import TestClient
 
 from kordena_fiscal.security.human_identity import (
@@ -343,3 +344,91 @@ def test_fiscal_artifact_download_fails_closed_without_session_or_reader() -> No
     )
     assert anonymous.get(url).status_code == 401
     assert logged_client(RecordingPortalExecutor()).get(url).status_code == 503
+
+
+@pytest.mark.parametrize("operation", [
+    "cancelBarueriNfse",
+    "substituteBarueriNfse",
+    "cancelJundiaiNfse",
+    "substituteJundiaiNfse",
+    "cancelGuarulhosNfse",
+    "substituteGuarulhosNfse",
+])
+def test_municipal_fiscal_events_use_existing_portal_csrf_rbac_and_idempotency(
+    operation: str,
+) -> None:
+    executor = RecordingPortalExecutor()
+    web = logged_client(executor)
+    url = "/v1/portal/operations/" + operation
+    payload = {"unit_id": "unit-a", "environment": "homologation", "document_id": "DOC-1"}
+    assert web.post(url, json=payload).status_code == 403
+    csrf = web.cookies.get(CSRF_COOKIE)
+    assert csrf
+    missing_key = web.post(url, json=payload, headers={CSRF_HEADER: csrf})
+    assert missing_key.status_code == 400
+    assert missing_key.json()["detail"]["code"] == "MISSING_IDEMPOTENCY_KEY"
+    spoof = web.post(
+        url, json=payload | {"tenant_id": "foreign-tenant"},
+        headers={CSRF_HEADER: csrf, "Idempotency-Key": "municipal-spoof"},
+    )
+    assert spoof.status_code == 400
+    other_unit = web.post(
+        url, json=payload | {"unit_id": "foreign-unit"},
+        headers={CSRF_HEADER: csrf, "Idempotency-Key": "municipal-unit"},
+    )
+    assert other_unit.status_code == 403
+    accepted = web.post(
+        url, json=payload,
+        headers={CSRF_HEADER: csrf, "Idempotency-Key": "municipal-event"},
+    )
+    assert accepted.status_code == 200, accepted.text
+    assert executor.operation_authority is not None
+    assert executor.operation_authority.tenant_id == "tenant-authoritative"
+    assert executor.operation_key == "municipal-event"
+
+
+@pytest.mark.parametrize("operation", [
+    "reconcileBarueriNfseCancellation", "reconcileJundiaiNfseCancellation",
+])
+def test_municipal_reconciliation_has_explicit_scope_and_csrf(operation: str) -> None:
+    executor = RecordingPortalExecutor()
+    web = logged_client(executor)
+    url = "/v1/portal/operations/" + operation
+    payload = {"unit_id": "unit-a", "environment": "homologation", "document_id": "DOC-1"}
+    assert web.post(url, json=payload).status_code == 403
+    csrf = web.cookies.get(CSRF_COOKIE)
+    assert csrf
+    missing_key = web.post(url, json=payload, headers={CSRF_HEADER: csrf})
+    assert missing_key.status_code == 400
+    success = web.post(
+        url, json=payload,
+        headers={CSRF_HEADER: csrf, "Idempotency-Key": "municipal-poll"},
+    )
+    assert success.status_code == 200, success.text
+    assert executor.operation_key == "municipal-poll"
+
+
+def test_municipal_read_only_poll_changes_identity_without_resending_mutations() -> None:
+    from kordena_fiscal.web.fiscal_intent_recovery import FiscalIntentRecovery
+
+    principal = type("Principal", (), {})()
+    # The helper depends only on the authenticated prefix, not a database or gateway.
+    principal.account = type("Account", (), {"account_id": "account"} )()
+    fingerprint = "0123456789abcdef"
+    poll_one = FiscalIntentRecovery.intent_name(
+        principal, "reconcileJundiaiNfseCancellation", fingerprint, "key-1",
+    )
+    poll_two = FiscalIntentRecovery.intent_name(
+        principal, "reconcileJundiaiNfseCancellation", fingerprint, "key-2",
+    )
+    assert poll_one != poll_two
+    assert poll_one == FiscalIntentRecovery.intent_name(
+        principal, "reconcileJundiaiNfseCancellation", fingerprint, "key-1",
+    )
+    mutation_one = FiscalIntentRecovery.intent_name(
+        principal, "cancelJundiaiNfse", fingerprint, "key-1",
+    )
+    mutation_two = FiscalIntentRecovery.intent_name(
+        principal, "cancelJundiaiNfse", fingerprint, "key-2",
+    )
+    assert mutation_one == mutation_two

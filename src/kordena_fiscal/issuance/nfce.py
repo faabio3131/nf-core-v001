@@ -291,11 +291,17 @@ class _XmlInvoiceIssuanceOrchestrator:
 
         if self._application is not None:
             number = self._application.reserve_number(
-                FiscalSequenceKey.from_scope(document.scope, model=model, series=command.series)
+                FiscalSequenceKey.from_scope(
+                    document.scope, model=model, series=command.series,
+                    issuer_cnpj=document.issuer.cnpj.value,
+                )
             )
         else:
             assert self._numbering is not None
-            number = self._numbering.reserve(document.scope, model=model, series=command.series)
+            number = self._numbering.reserve(
+                document.scope, model=model, series=command.series,
+                issuer_cnpj=document.issuer.cnpj.value,
+            )
         numeric_code = self._numeric_code_provider.code_for(document, attempt, number)
         if not isinstance(numeric_code, int) or isinstance(numeric_code, bool):
             raise NfceIssuanceContractError("numeric-code provider must return an integer")

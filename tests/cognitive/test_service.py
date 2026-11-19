@@ -7,7 +7,9 @@ from kordena_fiscal.cognitive import (
     AdviceStatus,
     Capability,
     CircuitBreaker,
+    CognitiveAdviceService,
     SectionKind,
+    default_baselines,
 )
 from kordena_fiscal.cognitive.ports import (
     EntitlementDecision,
@@ -127,6 +129,16 @@ def test_entitlement_denial_affects_only_ai(build_service) -> None:  # type: ign
         assert result.status is AdviceStatus.BASELINE_ONLY
         assert result.provenance.degraded_reason == reason
         assert len(result.sections) == 5
+
+
+def test_missing_audit_sink_blocks_model_but_preserves_baseline() -> None:
+    model = ScriptedModel(sections=good_sections())
+    service = CognitiveAdviceService(baselines=default_baselines(), model=model)
+    result = service.advise(make_request())
+    assert result.status is AdviceStatus.BASELINE_ONLY
+    assert result.provenance.degraded_reason == "audit_unavailable"
+    assert model.calls == 0
+    assert "Duplicidade" in result.sections[0].text
 
 
 def test_audit_failure_blocks_ai_but_not_baseline(build_service, recorder) -> None:  # type: ignore[no-untyped-def]

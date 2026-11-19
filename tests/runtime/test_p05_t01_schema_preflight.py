@@ -21,7 +21,7 @@ def _approved_migration_versions(monkeypatch) -> None:
     # Policy itself is exercised separately by check-policy in the CI.
     # Keep this suite focused on SELECT-only preflight and drift handling.
     monkeypatch.setattr(
-        migration_guard, "validate_policy", lambda: tuple(range(1, 19))
+        migration_guard, "validate_policy", lambda: tuple(range(1, 24))
     )
 
 
@@ -64,9 +64,11 @@ class _Db:
 @pytest.mark.parametrize(
     ("installed", "cakto", "expected_missing"),
     [
-        (tuple(range(1, 13)), None, "fiscal_pending=(13, 14, 15, 16, 17, 18)"),
-        (tuple(range(1, 19)), (1, 2), "fiscal_pending=()"),
+        (tuple(range(1, 13)), None, "fiscal_pending=(13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23)"),
+        (tuple(range(1, 19)), (1, 2), "fiscal_pending=(19, 20, 21, 22, 23)"),
         (tuple(range(1, 15)), (1,), "cakto_pending=(2, 3)"),
+        (tuple(range(1, 24)), (1, 2, 3), "fiscal_pending=()"),
+        ((*range(1, 20), 22, 23), (1, 2, 3), "fiscal_pending=(20, 21)"),
     ],
 )
 def test_preflight_is_read_only(
@@ -89,7 +91,8 @@ def test_preflight_is_read_only(
     ("installed", "cakto"),
     [
         ((1, 3), None),
-        (tuple(range(1, 20)), None),
+        (tuple(range(1, 25)), None),
+        ((*range(1, 20), 23), None),
         (tuple(range(1, 13)), (2,)),
         (tuple(range(1, 13)), (1, 2, 3, 4)),
     ],

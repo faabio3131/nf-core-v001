@@ -1,0 +1,49 @@
+name: Audit Santana Simpliss official contracts
+
+on:
+  push:
+    branches:
+      - feat/nfcore-a-santana-simpliss-20261115
+    paths:
+      - scripts/audit/santana_acquire_official_contracts.py
+      - .github/workflows/santana-official-contracts.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  acquire-official-contracts:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Fetch and inventory official municipal schemas
+        run: python scripts/audit/santana_acquire_official_contracts.py
+      - name: Upload SHA evidence and exact source package
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: santana-simpliss-official-contracts
+          path: contracts/official/santana/simpliss_2026/
+          retention-days: 30
+      - name: Pin XSD bytes and hash manifest in this feature branch
+        if: success()
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm contracts/official/santana/simpliss_2026/source-schemas.zip
+          git add contracts/official/santana/simpliss_2026/
+          if git diff --cached --quiet; then
+            echo "Official contracts unchanged"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "audit(santana): version official Simpliss schemas and SHA provenance"
+          git push origin HEAD:feat/nfcore-a-santana-simpliss-20261115

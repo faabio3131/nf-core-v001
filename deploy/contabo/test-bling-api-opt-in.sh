@@ -17,7 +17,13 @@ import json, sys
 config=json.load(open(sys.argv[1], encoding="utf-8"))
 api=config["services"]["nfcore-api"]
 assert api["environment"].get("NFCORE_BLING_INSTALLATIONS_ENABLED") != "true"
-assert not api.get("volumes")
+vault_mounts = api.get("volumes", [])
+assert len(vault_mounts) == 1, "base must have only canonical A1 Vault"
+vault = vault_mounts[0]
+assert vault["type"] == "bind" and vault["source"] == "/var/lib/nfcore/vault"
+assert vault["target"] == "/var/lib/nfcore/vault"
+assert vault.get("read_only", False) is False
+assert vault.get("bind", {}).get("create_host_path", False) is False
 assert "nfcore-bling-worker" not in config["services"]
 PY
 cp "$HERE/compose.bling.api.opt-in.yml" "$T/docker-compose.override.yml"
@@ -32,9 +38,13 @@ assert api["environment"]["NFCORE_BLING_APPROVED_SCOPES"] == "synthetic"
 assert api["environment"]["NFCORE_BLING_CLIENT_SECRET_FILE"] == "/run/nfcore/bling/client-secret"
 assert api["environment"]["NFCORE_BLING_TOKEN_MASTER_KEY_FILE"] == "/run/nfcore/bling/master-key"
 assert api["environment"]["NFCORE_BLING_FISCAL_POLICY_ROOT"] == "/run/nfcore/bling-policies"
-assert len(api["volumes"]) == 2
+assert len(api["volumes"]) == 3
 mounts={mount["target"]: mount for mount in api["volumes"]}
-assert set(mounts) == {"/run/nfcore/bling", "/run/nfcore/bling-policies"}
+assert set(mounts) == {"/var/lib/nfcore/vault", "/run/nfcore/bling", "/run/nfcore/bling-policies"}
+vault=mounts.pop("/var/lib/nfcore/vault")
+assert vault["type"] == "bind" and vault["source"] == "/var/lib/nfcore/vault"
+assert vault.get("read_only", False) is False
+assert vault.get("bind", {}).get("create_host_path", False) is False
 for mount in mounts.values():
     assert mount["type"] == "bind" and mount["read_only"] is True
     assert mount.get("bind",{}).get("create_host_path") is False

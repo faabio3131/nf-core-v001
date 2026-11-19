@@ -29,7 +29,10 @@ from kordena_fiscal.security.human_identity import (
     HumanIdentityService,
     PortalPermission,
 )
-from kordena_fiscal.signing.contracts import FiscalSigningError
+from kordena_fiscal.signing.contracts import (
+    FiscalSigningError,
+    InvalidCertificateMaterialError,
+)
 from kordena_fiscal.vault.encrypted_a1 import A1VaultUnavailable, EncryptedA1Vault
 from kordena_fiscal.web.human_auth import CSRF_COOKIE, CSRF_HEADER, SESSION_COOKIE
 
@@ -95,12 +98,37 @@ _OPERATION_PERMISSIONS: dict[str, PortalPermission] = {
     "configureIntegrations": PortalPermission.INTEGRATION_MANAGE,
     "configureSettings": PortalPermission.CONFIGURATION_WRITE,
     "registerFiscalProfile": PortalPermission.CONFIGURATION_WRITE,
+    "prepareExtremaNfse": PortalPermission.CONFIGURATION_WRITE,
+    "prepareNativeNfse": PortalPermission.DOCUMENT_ISSUE,
+    "reviewNativeSale": PortalPermission.DOCUMENT_ISSUE,
+    "prepareNativeSale": PortalPermission.DOCUMENT_ISSUE,
     "createUser": PortalPermission.USER_MANAGE,
     "updateUser": PortalPermission.USER_MANAGE,
     "issueFiscalDocument": PortalPermission.DOCUMENT_ISSUE,
     "queryFiscalDocument": PortalPermission.DOCUMENT_QUERY,
     "queryArchiveReference": PortalPermission.DOCUMENT_QUERY,
     "cancelFiscalDocument": PortalPermission.DOCUMENT_CANCEL,
+    "cancelExtremaNfse": PortalPermission.DOCUMENT_CANCEL,
+    "cancelCajamarNfse": PortalPermission.DOCUMENT_CANCEL,
+    "cancelOsascoNfse": PortalPermission.DOCUMENT_CANCEL,
+    "cancelBarueriNfse": PortalPermission.DOCUMENT_CANCEL,
+    "substituteBarueriNfse": PortalPermission.DOCUMENT_CANCEL,
+    "reconcileBarueriNfseCancellation": PortalPermission.RECONCILIATION_EXECUTE,
+    "cancelJundiaiNfse": PortalPermission.DOCUMENT_CANCEL,
+    "cancelGuarulhosNfse": PortalPermission.DOCUMENT_CANCEL,
+    "substituteJundiaiNfse": PortalPermission.DOCUMENT_CANCEL,
+    "substituteGuarulhosNfse": PortalPermission.DOCUMENT_CANCEL,
+    "cancelSantanaNfse": PortalPermission.DOCUMENT_CANCEL,
+    "cancelNationalNfse": PortalPermission.DOCUMENT_CANCEL,
+    "reconcileNationalNfseCancellation": PortalPermission.RECONCILIATION_EXECUTE,
+    "substituteSantanaNfse": PortalPermission.DOCUMENT_CANCEL,
+    "reconcileSantanaNfseCancellation": PortalPermission.RECONCILIATION_EXECUTE,
+    "reconcileSantanaNfseSubstitution": PortalPermission.RECONCILIATION_EXECUTE,
+    "reconcileJundiaiNfseCancellation": PortalPermission.RECONCILIATION_EXECUTE,
+    "reconcileGuarulhosNfseCancellation": PortalPermission.RECONCILIATION_EXECUTE,
+    "substituteOsascoNfse": PortalPermission.DOCUMENT_CANCEL,
+    "substituteExtremaNfse": PortalPermission.DOCUMENT_CANCEL,
+    "reviewCajamarSubstitution": PortalPermission.DOCUMENT_CANCEL,
     "inutilizeFiscalRange": PortalPermission.DOCUMENT_INUTILIZE,
     "reconcileFiscalOperation": PortalPermission.RECONCILIATION_EXECUTE,
 }
@@ -113,10 +141,33 @@ _IDEMPOTENT_MUTATIONS = {
     "configureIntegrations",
     "configureSettings",
     "registerFiscalProfile",
+    "prepareExtremaNfse",
+    "prepareNativeNfse",
+    "prepareNativeSale",
     "createUser",
     "updateUser",
     "issueFiscalDocument",
     "cancelFiscalDocument",
+    "cancelExtremaNfse",
+    "cancelCajamarNfse",
+    "cancelOsascoNfse",
+    "cancelBarueriNfse",
+    "substituteBarueriNfse",
+    "reconcileBarueriNfseCancellation",
+    "cancelJundiaiNfse",
+    "cancelGuarulhosNfse",
+    "substituteJundiaiNfse",
+    "substituteGuarulhosNfse",
+    "cancelSantanaNfse",
+    "cancelNationalNfse",
+    "reconcileNationalNfseCancellation",
+    "substituteSantanaNfse",
+    "reconcileSantanaNfseCancellation",
+    "reconcileSantanaNfseSubstitution",
+    "reconcileJundiaiNfseCancellation",
+    "reconcileGuarulhosNfseCancellation",
+    "substituteOsascoNfse",
+    "substituteExtremaNfse",
     "inutilizeFiscalRange",
     "reconcileFiscalOperation",
 }
@@ -277,6 +328,54 @@ def create_portal_router(
             )
         return executor
 
+    @router.get("/certificates/a1/status")
+    def inspect_a1(
+        request: Request,
+        response: Response,
+        unit_id: str,
+        issuer_cnpj: str,
+        environment: FiscalEnvironment = FiscalEnvironment.HOMOLOGATION,
+    ) -> dict[str, str]:
+        """Confirm current vault readback for the authenticated fiscal scope.
+
+        The endpoint never sends PKCS#12 bytes, password, storage path or
+        decryption key to the browser. No mutation or fiscal operation occurs.
+        """
+        auth = authority(request)
+        _authorized(auth, PortalPermission.CERTIFICATE_MANAGE, unit_id=unit_id)
+        response.headers["Cache-Control"] = "no-store"
+        if environment is not FiscalEnvironment.HOMOLOGATION:
+            raise HTTPException(
+                status_code=400, detail={"code": "A1_STATUS_HOMOLOGATION_ONLY"}
+            )
+        if certificate_vault is None:
+            raise HTTPException(
+                status_code=503, detail={"code": "A1_VAULT_UNAVAILABLE"}
+            )
+        scope = ExecutionScope(
+            tenant_id=auth.tenant_id, unit_id=unit_id,
+            environment=environment, correlation_id=uuid4().hex,
+            host_namespace="fm-nfcore",
+        )
+        try:
+            evidence = certificate_vault.inspect(
+                scope=scope, issuer_cnpj=issuer_cnpj,
+            )
+        except (A1VaultUnavailable, FiscalValidationError, InvalidCertificateMaterialError):
+            raise HTTPException(
+                status_code=503,
+                detail={"code": "A1_STATUS_UNVERIFIABLE",
+                        "message": "Não foi possível confirmar a leitura do certificado"},
+            ) from None
+        if evidence is None:
+            return {"status": "absent"}
+        return {
+            "status": "stored",
+            "issuer_cnpj": evidence.issuer_cnpj,
+            "expires_at": evidence.expires_at.isoformat(),
+            "fingerprint_sha256": evidence.certificate_fingerprint_sha256,
+        }
+
     @router.post("/certificates/a1")
     async def upload_a1(request: Request) -> dict[str, str]:
         auth = authority(request)
@@ -363,7 +462,7 @@ def create_portal_router(
         """Serve immutable fiscal files to the same authorized human session."""
         auth = authority(request)
         _authorized(auth, PortalPermission.DOCUMENT_QUERY, unit_id=unit_id)
-        if kind not in {"authorized_xml", "danfe"}:
+        if kind not in {"authorized_xml", "danfe", "auxiliary_pdf"}:
             raise HTTPException(400, detail={"code": "FISCAL_ARTIFACT_KIND_INVALID"})
         if not 1 <= len(document_reference) <= 256:
             raise HTTPException(400, detail={"code": "FISCAL_ARTIFACT_REFERENCE_INVALID"})

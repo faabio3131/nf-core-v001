@@ -1,0 +1,133 @@
+name: NFCore Contabo A1 Vault Read-only Audit (Plan B)
+
+# Manual, protected-main-only SSH gate; no deploy, migrations, secrets or writes.
+on:
+  workflow_dispatch:
+    inputs:
+      expected_production_sha:
+        description: "Exact 40-character SHA on protected production"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nfcore-contabo-a1-audit-readonly
+  cancel-in-progress: false
+
+jobs:
+  a1-readonly:
+    name: A1 encrypted Vault preflight — read only
+    if: github.ref == 'refs/heads/main' && github.ref_protected == true
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    environment: nfcore-contabo-audit
+    steps:
+      - name: Checkout reviewed protected main
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Verify exact production SHA
+        shell: bash
+        env:
+          REQUESTED_SHA: ${{ inputs.expected_production_sha }}
+        run: |
+          set -euo pipefail
+          [[ "$REQUESTED_SHA" =~ ^[0-9a-f]{40}$ ]] || { echo NO_GO_INVALID_SHA; exit 42; }
+          actual=$(git ls-remote --exit-code origin refs/heads/production | awk 'NR==1 {print $1}')
+          [[ "$actual" == "$REQUESTED_SHA" ]] || { echo NO_GO_PRODUCTION_SHA_MISMATCH; exit 42; }
+          echo 'PRODUCTION_SHA_PIN=VERIFIED'
+
+      - name: Run root-owned A1 audit via restricted SSH
+        shell: bash
+        env:
+          REQUESTED_SHA: ${{ inputs.expected_production_sha }}
+          AUDIT_HOST: ${{ secrets.NFCORE_AUDIT_HOST }}
+          AUDIT_USER: ${{ secrets.NFCORE_AUDIT_USER }}
+          AUDIT_PRIVATE_KEY: ${{ secrets.NFCORE_AUDIT_SSH_PRIVATE_KEY }}
+          AUDIT_KNOWN_HOSTS: ${{ secrets.NFCORE_AUDIT_KNOWN_HOSTS }}
+        run: |
+          set -euo pipefail
+          umask 077
+          [[ "$AUDIT_HOST" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]] || { echo NO_GO_HOST; exit 42; }
+          [[ "$AUDIT_USER" =~ ^[a-z_][a-z0-9_-]{0,31}$ ]] || { echo NO_GO_USER; exit 42; }
+          [[ -n "$AUDIT_PRIVATE_KEY" && -n "$AUDIT_KNOWN_HOSTS" ]] || { echo NO_GO_SSH_CONFIG; exit 42; }
+          work="$RUNNER_TEMP/nfcore-a1-audit"
+          mkdir -m 700 -p "$work"
+          printf '%s\n' "$AUDIT_PRIVATE_KEY" > "$work/identity"
+          printf '%s\n' "$AUDIT_KNOWN_HOSTS" > "$work/known_hosts"
+          chmod 600 "$work/identity" "$work/known_hosts"
+          ssh-keygen -y -f "$work/identity" >/dev/null 2>&1 || { echo NO_GO_INVALID_KEY; exit 42; }
+          ssh-keygen -F "$AUDIT_HOST" -f "$work/known_hosts" >/dev/null 2>&1 || { echo NO_GO_UNPINNED_HOST; exit 42; }
+          digest=$(sha256sum deploy/contabo/audit-a1-vault-readonly.py | awk '{print $1}')
+          rc=0
+          ssh -T -F /dev/null -i "$work/identity" -o BatchMode=yes \
+            -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$work/known_hosts" \
+            -o IdentitiesOnly=yes -o IdentityAgent=none -o ForwardAgent=no \
+            -o ClearAllForwardings=yes -o ConnectTimeout=15 \
+            -o ServerAliveInterval=10 -o ServerAliveCountMax=2 \
+            "$AUDIT_USER@$AUDIT_HOST" "nfcore-a1-audit $REQUESTED_SHA $digest" \
+            </dev/null >"$work/raw-output" 2>"$work/ssh-errors" || rc=$?
+
+          # Never print raw SSH output: only a closed list of status keys/values.
+          python3 - "$work/raw-output" "$work/status.txt" <<'PY'
+          from pathlib import Path
+          import sys
+
+          permitted = {
+              "DEPLOY_SHA_EXACT": {"PASS", "BLOCKED"},
+              "AUDITORIA_A1": {"LEITURA_APENAS"},
+              "API_CONTAINER_EM_EXECUCAO": {"SIM", "NAO"},
+              "VAULT_DIR_CONFIGURADO": {"SIM", "NAO"},
+              "CHAVE_MESTRA_FORMATO_32_BYTES": {"SIM", "NAO"},
+              "MOUNT_PERSISTENTE_DECLARADO": {"SIM", "NAO"},
+              "DIRETORIO_ACESSIVEL": {"SIM", "NAO", "NAO_VERIFICADO"},
+              "DIRETORIO_PERMISSOES_RESTRITAS": {"SIM", "NAO", "NAO_VERIFICADO"},
+              "ARQUIVOS_PERMISSOES_RESTRITAS": {"SIM", "NAO", "NAO_VERIFICADO"},
+              "ARQUIVOS_A1_CIFRADOS_PRESENTES": {"SIM", "NAO", "NAO_VERIFICADO"},
+              "CERTIFICADO_DA_SISTEM_RECUPERAVEL": {"NAO_VERIFICADO"},
+              "BACKUP_EXTERNO_COFRE": {"NAO_VERIFICADO"},
+              "BACKUP_CHAVE_FORA_DA_VPS": {"NAO_VERIFICADO"},
+              "RESTORE_ISOLADO_COFRE": {"NAO_VERIFICADO"},
+              "A1_VAULT_INFRA_GATE": {"PRECHECK_LOCAL_PARCIAL", "REPROVADO_OU_INCONCLUSIVO"},
+          }
+          observed = {}
+          for line in Path(sys.argv[1]).read_text(encoding="utf-8", errors="replace").splitlines():
+              if "=" not in line:
+                  continue
+              key, value = line.split("=", 1)
+              if key in permitted and value in permitted[key] and key not in observed:
+                  observed[key] = value
+          Path(sys.argv[2]).write_text(
+              "".join(f"{key}={value}\n" for key, value in observed.items()),
+              encoding="ascii",
+          )
+          PY
+          cat "$work/status.txt"
+
+          # Transport succeeds only if exact SHA + local encrypted Vault preflight
+          # succeed. A green result does NOT mean escrow, offsite backup or restore.
+          [[ "$rc" == 0 ]] || { echo 'A1_HOST_PREFLIGHT=NO_GO'; exit 1; }
+          grep -Fxq 'DEPLOY_SHA_EXACT=PASS' "$work/status.txt" || exit 1
+          grep -Fxq 'A1_VAULT_INFRA_GATE=PRECHECK_LOCAL_PARCIAL' "$work/status.txt" || exit 1
+          echo 'A1_HOST_PREFLIGHT=PASS_EXTERNAL_BACKUP_RESTORE_UNVERIFIED'
+
+      - name: Summarize only sanitized A1 statuses
+        if: always()
+        shell: bash
+        run: |
+          work="$RUNNER_TEMP/nfcore-a1-audit"
+          {
+            echo '### NFCore A1 Vault — SSH read-only'
+            echo 'Result is an infrastructure precheck, not certificate or fiscal homologation.'
+            if [[ -f "$work/status.txt" ]]; then
+              echo '```text'
+              cat "$work/status.txt"
+              echo '```'
+            else
+              echo 'NO_GO: no authenticated A1 host status available.'
+            fi
+            echo 'External backup, key escrow, isolated restore and real A1 readback are separate gates.'
+          } >> "$GITHUB_STEP_SUMMARY"

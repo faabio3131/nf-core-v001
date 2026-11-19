@@ -1,0 +1,12 @@
+# Add to the active compose stack; preserve sale, Bling, A1 and security mounts.
+services:
+  nfcore-api:
+    environment:
+      NFCORE_NFSE_FISCAL_POLICY_ROOT: /run/nfcore/nfse-policies
+    volumes:
+      - type: bind
+        source: ${NFCORE_NFSE_POLICIES_HOST_DIR:?required}
+        target: /run/nfcore/nfse-policies
+        read_only: true
+        bind:
+          create_host_path: false

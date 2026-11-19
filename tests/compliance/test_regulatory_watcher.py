@@ -220,6 +220,24 @@ def test_mixed_jurisdiction_proposal_fails_closed() -> None:
         )
 
 
+
+def test_proposal_cannot_launder_evidence_from_another_normative_subject() -> None:
+    service = _service()
+    first = _observe(service, observation_id="obs-sp-original")
+    service.triage(first.observation_id)
+
+    with pytest.raises(RegulatoryWatcherConflictError, match="subject mismatch"):
+        service.propose(
+            proposal_id="proposal-wrong-subject",
+            observation_ids=(first.observation_id,),
+            jurisdiction=SP,
+            subject="nfse.tax.update",
+            summary="Unrelated evidence must not justify tax decisions.",
+            required_tests=("schema-contract",),
+        )
+    assert service.proposals == ()
+
+
 def test_missing_observation_and_proposal_raise_explicit_not_found() -> None:
     service = _service()
 

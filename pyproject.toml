@@ -21,7 +21,7 @@ dependencies = [
 web = [
   "fastapi>=0.116,<1",
   "uvicorn[standard]>=0.35,<1",
-  "brazilfiscalreport==1.3.1",
+  "brazilfiscalreport[danfce,danfse]==1.3.1",
 ]
 telemetry = [
   "opentelemetry-sdk>=1.35,<2",
@@ -42,7 +42,7 @@ dev = [
   "ruff>=0.6,<1",
   "mypy>=1.11,<2",
   "lxml-stubs>=0.5,<1",
-  "brazilfiscalreport==1.3.1",
+  "brazilfiscalreport[danfce,danfse]==1.3.1",
 ]
 
 [tool.setuptools]
@@ -53,7 +53,7 @@ where = ["src"]
 
 [tool.setuptools.package-data]
 "kordena_fiscal.cognitive.knowledge" = ["official/*.json"]
-"kordena_fiscal.xml" = ["official/PL_010g_v1.03/*.xsd", "official/PL_010g_v1.03/manifest.json", "official/MG_LIFECYCLE_20261105/manifest.json", "official/MG_LIFECYCLE_20261105/nfe/*.xsd", "official/MG_LIFECYCLE_20261105/event/*.xsd", "official/ABRASF_203/*.xsd", "official/NFSE_NACIONAL_*/*.xsd", "official/NFSE_PAULISTANA_02_7/*.xsd"]
+"kordena_fiscal.xml" = ["official/PL_010g_v1.03/*.xsd", "official/PL_010g_v1.03/manifest.json", "official/MG_LIFECYCLE_20261105/manifest.json", "official/MG_LIFECYCLE_20261105/nfe/*.xsd", "official/MG_LIFECYCLE_20261105/event/*.xsd", "official/ABRASF_203/*.xsd", "official/WEBISS_EXTREMA_RTC_2026/*.xsd", "official/WEBISS_EXTREMA_RTC_2026/*.gz", "official/WEBISS_EXTREMA_RTC_2026/manifest.json", "official/NFSE_NACIONAL_*/*.xsd", "official/NFSE_NACIONAL_*/manifest.json", "official/SANTANA_SIMPLISS_2026/*.xsd", "official/NFSE_PAULISTANA_02_7/*.xsd"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

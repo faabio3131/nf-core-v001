@@ -4,10 +4,12 @@ from __future__ import annotations
 
 import hashlib
 from dataclasses import dataclass
+from enum import IntEnum
 from threading import Lock
 from typing import Protocol
 
 from kordena_fiscal.domain import (
+    Cnpj,
     ElectronicInvoiceModel,
     ExecutionScope,
     FiscalDomainError,
@@ -15,6 +17,17 @@ from kordena_fiscal.domain import (
     FiscalValidationError,
 )
 from kordena_fiscal.domain.primitives import _normalize_host_namespace
+
+
+class InternalFiscalSequenceStream(IntEnum):
+    """Private numbering namespace; never an official invoice model code.
+
+    Value 90 is reserved only in the NFCore fm_fiscal_sequences persistence
+    partition for municipal RPS. It MUST NOT be serialized as a fiscal
+    document model, access-key model, or NFS-e XML value.
+    """
+
+    NFSE_RPS = 90
 
 
 class SequenceExhaustedError(FiscalDomainError):
@@ -32,9 +45,10 @@ class FiscalSequenceKey:
     tenant_id: str
     unit_id: str
     environment: FiscalEnvironment
-    model: ElectronicInvoiceModel
+    model: ElectronicInvoiceModel | InternalFiscalSequenceStream
     series: int
     host_namespace: str | None = None
+    issuer_cnpj: str | None = None
 
     def __post_init__(self) -> None:
         tenant_id = self.tenant_id.strip()
@@ -45,14 +59,18 @@ class FiscalSequenceKey:
             raise FiscalValidationError("unit_id must not be blank")
         if not isinstance(self.environment, FiscalEnvironment):
             raise FiscalValidationError("environment must be FiscalEnvironment")
-        if not isinstance(self.model, ElectronicInvoiceModel):
-            raise FiscalValidationError("model must be ElectronicInvoiceModel")
+        if not isinstance(self.model, (ElectronicInvoiceModel, InternalFiscalSequenceStream)):
+            raise FiscalValidationError("model must be an approved fiscal sequence stream")
         if not isinstance(self.series, int) or isinstance(self.series, bool):
             raise FiscalValidationError("series must be an integer")
         if self.series < 0:
             raise FiscalValidationError("series must be non-negative")
         object.__setattr__(self, "tenant_id", tenant_id)
         object.__setattr__(self, "unit_id", unit_id)
+        if self.issuer_cnpj is not None:
+            Cnpj(self.issuer_cnpj)
+            if not isinstance(self.model, ElectronicInvoiceModel):
+                raise FiscalValidationError("legal invoice numbering requires model 55 or 65")
         if self.host_namespace is not None:
             object.__setattr__(
                 self,
@@ -65,8 +83,9 @@ class FiscalSequenceKey:
         cls,
         scope: ExecutionScope,
         *,
-        model: ElectronicInvoiceModel,
+        model: ElectronicInvoiceModel | InternalFiscalSequenceStream,
         series: int,
+        issuer_cnpj: str | None = None,
     ) -> FiscalSequenceKey:
         if not isinstance(scope, ExecutionScope):
             raise FiscalValidationError("scope must be ExecutionScope")
@@ -77,10 +96,14 @@ class FiscalSequenceKey:
             model=model,
             series=series,
             host_namespace=scope.host_namespace,
+            issuer_cnpj=issuer_cnpj,
         )
 
     @property
     def canonical_material(self) -> str:
+        if self.issuer_cnpj is not None:
+            return "|".join(("legal-invoice", self.issuer_cnpj, self.environment.value,
+                             str(self.model.value), str(self.series)))
         legacy = (
             self.tenant_id,
             self.unit_id,
@@ -150,6 +173,17 @@ class InMemoryFiscalSequenceStore:
         self._lock = Lock()
         self._last_by_key: dict[FiscalSequenceKey, int] = {}
         self._policy_by_key: dict[FiscalSequenceKey, FiscalSequencePolicy] = {}
+        self._legal_keys: dict[str, FiscalSequenceKey] = {}
+
+    def _storage_key(self, key: FiscalSequenceKey, *, create: bool = True) -> FiscalSequenceKey:
+        if key.issuer_cnpj is None:
+            return key
+        previous = self._legal_keys.get(key.canonical_material)
+        if previous is not None and previous.tenant_id != key.tenant_id:
+            raise SequenceStateError("legal numbering stream belongs to another tenant")
+        if previous is None and create:
+            self._legal_keys[key.canonical_material] = key
+        return previous or key
 
     def reserve_next(
         self,
@@ -162,19 +196,20 @@ class InMemoryFiscalSequenceStore:
             raise FiscalValidationError("policy must be FiscalSequencePolicy")
 
         with self._lock:
-            stored_policy = self._policy_by_key.get(key)
+            storage_key = self._storage_key(key)
+            stored_policy = self._policy_by_key.get(storage_key)
             if stored_policy is not None and stored_policy != policy:
                 raise SequenceStateError(
                     "sequence policy cannot change after the first reservation"
                 )
 
-            previous = self._last_by_key.get(key)
+            previous = self._last_by_key.get(storage_key)
             candidate = policy.first_number if previous is None else previous + 1
             if policy.max_number is not None and candidate > policy.max_number:
                 raise SequenceExhaustedError("fiscal sequence has reached its configured maximum")
 
-            self._policy_by_key[key] = policy
-            self._last_by_key[key] = candidate
+            self._policy_by_key[storage_key] = policy
+            self._last_by_key[storage_key] = candidate
             return FiscalNumberReservation(
                 key=key,
                 number=candidate,
@@ -185,7 +220,7 @@ class InMemoryFiscalSequenceStore:
         if not isinstance(key, FiscalSequenceKey):
             raise FiscalValidationError("key must be FiscalSequenceKey")
         with self._lock:
-            return self._last_by_key.get(key)
+            return self._last_by_key.get(self._storage_key(key, create=False))
 
 
 class FiscalSequenceManager:
@@ -206,8 +241,11 @@ class FiscalSequenceManager:
         *,
         model: ElectronicInvoiceModel,
         series: int,
+        issuer_cnpj: str | None = None,
     ) -> FiscalNumberReservation:
-        key = FiscalSequenceKey.from_scope(scope, model=model, series=series)
+        key = FiscalSequenceKey.from_scope(
+            scope, model=model, series=series, issuer_cnpj=issuer_cnpj,
+        )
         return self._store.reserve_next(key, self._policy)
 
     def last_reserved(
@@ -216,8 +254,11 @@ class FiscalSequenceManager:
         *,
         model: ElectronicInvoiceModel,
         series: int,
+        issuer_cnpj: str | None = None,
     ) -> int | None:
-        key = FiscalSequenceKey.from_scope(scope, model=model, series=series)
+        key = FiscalSequenceKey.from_scope(
+            scope, model=model, series=series, issuer_cnpj=issuer_cnpj,
+        )
         return self._store.last_reserved(key)
 
 

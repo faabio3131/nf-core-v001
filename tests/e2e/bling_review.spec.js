@@ -33,6 +33,7 @@ test("Bling review pins a snapshot, escapes supplier text and requires explicit 
   await expect(page.locator("details img")).toHaveCount(0);
   await page.getByRole("button", {name: "Selecionar esta atualização"}).click();
   await expect(page.getByLabel("Documento fiscal preparado no NFCore")).toBeVisible();
+  await expect(page.getByText(/Política fiscal desta empresa e unidade ainda não configurada/)).toBeVisible();
   await page.getByRole("button", {name: "Aprovar envio"}).click();
   expect(approved).toBe(false);
   await page.getByLabel("Documento fiscal preparado no NFCore").fill("prepared-1");

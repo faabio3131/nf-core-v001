@@ -1,3 +1,5 @@
+> **CONTINUIDADE CURRENT — 17/11/2026:** os 59 IDs, sua ordem e respectivos estados de aceite permanecem governados neste ledger e no cronograma mestre; nenhum estado foi alterado. Para o fechamento da reconciliação fiscal/Web em novembro, consultar [cronograma complementar REC-20261117](audit/NFCORE_RECONCILIATION_CLOSEOUT_SCHEDULE_2026-11-17.md) e [registro único de pendências](audit/NFCORE_PENDING_REGISTER_CURRENT_2026-11-17.md). Esse anexo é mapa de execução e não cria tarefas numeradas paralelas aos 59 IDs, não transforma BUILD em homologação e não certifica produção. Conferir sempre HEAD/CI/ambiente antes de atualizar progresso.
+
 # FM NFCORE V1 — LEDGER CANÔNICO DE EXECUÇÃO
 
 > Este arquivo registra **estado e prova** das tarefas definidas em `docs/NFCORE_V1_COMPLETION_MASTER_EXECUTION_SCHEDULE_2026-10-05.md`. Ele não redefine escopo. O cronograma continua sendo a autoridade de escopo, dependências, critérios e gates. O validador exige correspondência exata de IDs e ordem.

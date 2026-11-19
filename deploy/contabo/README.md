@@ -86,3 +86,118 @@ do arquivo e reinício de todos os workers. Verifique
 `bridge_workload_identity_configured` em `/runtime/profile` e valide uma consulta
 autenticada de capacidades. Arquivo configurado inválido bloqueia o arranque.
 Sem o caminho configurado, a API inicia com o Bridge sem credenciais.
+
+
+## Cofre A1 — persistência N3 (somente com evidência de host)
+
+**Auditoria de host 13/11/2026 (Contabo vmi3692211):** a API corrente já usa
+bind RW `/var/lib/nfcore/vault` → `/var/lib/nfcore/vault`.
+O auditor root-owned retornou `A1_VAULT_INFRA_GATE=PRECHECK_LOCAL_PARCIAL`:
+diretório, formato da chave e permissões OK; **zero ciphertexts presentes**;
+backup externo, custódia da chave e restore isolado **NÃO VERIFICADOS**.
+O `compose.prod.yml` do Git foi reconciliado nesta PR e agora também
+preserva explicitamente o **mesmo bind RW** no destino `/var/lib/nfcore/vault`,
+com `create_host_path: false`. O `install.sh` **não** instala Compose;
+o arquivo efetivo do host continua sendo a autoridade operacional e não
+pode ser substituído sem diff, backup e preflight. O overlay candidato
+é opcional e **não deve ser ativado no host já configurado**.
+Não provisionar
+`/var/lib/nfcore/a1-vault`, nem aplicar um segundo mount ao destino.
+Antes de qualquer deploy, confirmar que o Compose **efetivo no host** preserva
+o bind, independentemente da ausência desse mount na versão Git de
+`compose.prod.yml`. Não executar `docker compose up` para validar a hipótese.
+
+A PR #462 prepara `compose.a1-vault.opt-in.yml` e `a1-vault-ops.py` para
+reutilizar o **mesmo** EncryptedA1Vault da API, com arquivos cifrados fora da
+camada efêmera. Nenhum overlay é aplicado por `deploy.sh` ou `install.sh`.
+Até o host ser auditado, **não habilite o overlay nem substitua containers**:
+um mount novo pode ocultar certificados já armazenados na camada antiga.
+
+Após o preflight read-only `audit-a1-vault-readonly.py` e a migração auditada
+de eventuais ciphertexts existentes, provisionar diretório do host com
+UID/GID 10001 e permissões 0700 (arquivos 0600), fora do checkout Git.
+O operador define `NFCORE_A1_VAULT_HOST_DIR` em configuração privada e
+ativa o overlay na composição **canônica**, não em uma segunda API.
+
+Para backup externo cifrado, configurar repositório restic remoto
+(`RESTIC_REPOSITORY`) e arquivo de senha próprio (`RESTIC_PASSWORD_FILE`,
+0600, diferente da chave do Vault). Sob identidade host autorizada:
+
+```sh
+python3 deploy/contabo/a1-vault-ops.py backup
+python3 deploy/contabo/a1-vault-ops.py restore-test
+```
+
+A rotina de restore usa somente diretório temporário isolado, confere SHA-256
+dos arquivos cifrados e **nunca escreve no cofre ativo**. A chave mestra
+`NFCORE_A1_VAULT_KEY_BASE64` exige custódia recuperável **separada do
+repositório restic e fora da VPS**. Backup de ciphertext sem essa chave não
+significa A1 recuperável. Exigir teste de recuperação de A1 com material
+sintético/autorizado, sem expor PKCS#12 ou segredo.
+
+Exemplos `nfcore-a1-backup.service.example` e
+`nfcore-a1-backup.timer.example` preparam agendamento diário com
+`EnvironmentFile=/etc/nfcore/a1-backup.env` privado. São opt-in:
+não foram instalados, habilitados nem testados no servidor; configurar
+alertas, retenção e prova de destino efetivamente offsite antes de GO.
+
+Checklist completo e N3 aprovado:
+`docs/checkpoints/NFCORE_A1_N3_OPERATIONAL_READINESS_2026-11-13.md`.
+
+
+## Confiança SEFIN Nacional — XML autorizado e eventos
+
+`compose.nfse-trust.api.yml` completa a configuração da mesma API para o
+validador de recibos e eventos nacionais. É opt-in e compatível com o overlay
+`compose.nfse-policy.api.yml`. Não habilita emissão, não altera o ambiente
+fiscal da unidade e não substitui o A1 Vault.
+
+Antes da ativação, obter os arquivos **públicos oficiais** da cadeia ICP e
+as CRLs assinadas e vigentes, e validar independentemente a procedência
+dos certificados folha usados pela SEFIN para NFSe e para eventos.
+Registrar origem, data de coleta, fingerprints e aprovação. Não obter pins
+a partir de um retorno fiscal não confiável e não usar o A1 do contribuinte
+como certificado assinante do órgão. Os dados oficiais não estão embutidos
+neste overlay.
+
+No host existente e após aprovação, definir os seguintes nomes no ambiente
+privado de composição:
+
+- `NFCORE_NFSE_TRUST_HOST_DIR`: diretório preexistente fora do Git contendo
+  `ca-bundle.pem` e `crl-bundle.pem` legíveis pela API UID 10001, sem symlinks.
+  O mount é somente leitura, sem criação automática; manter escrita restrita
+  ao operador autorizado. Não colocar chaves privadas neste diretório.
+- `NFCORE_NFSE_RECEIPT_ROOT_SHA256`: hash SHA-256 DER da raiz ICP aprovada.
+- `NFCORE_NFSE_RECEIPT_SIGNER_SHA256`: fingerprints DER das folhas de NFSe,
+  1 a 8 hashes hex, separados por vírgula.
+- `NFCORE_NFSE_EVENT_SIGNER_SHA256`: lista própria de fingerprints dos
+  assinantes de eventos oficiais, com a mesma sintaxe.
+
+Reconciliar o overlay com o Compose efetivo, preservando integralmente
+o bind do A1 Vault, policies por tenant, configurações sale/Bling e outros
+mounts. Não substituir o override efetivo pelo arquivo novo.
+
+Preflight **somente leitura**, executado no container candidato que contém
+os três validadores, sem rede fiscal e sem consultar certificados de clientes:
+
+```sh
+docker compose exec -T nfcore-api python -c '
+from kordena_fiscal.gateway.nfse_national_receipt import require_national_receipt_signer_pins
+from kordena_fiscal.gateway.nfse_nacional_event_homologation import require_national_event_signer_pins
+from kordena_fiscal.gateway.nfse_receipt_pki import require_national_receipt_pki_ready
+require_national_receipt_signer_pins()
+require_national_event_signer_pins()
+require_national_receipt_pki_ready()
+print("SEFIN_TRUST_CONFIG_PASS_ONLY")
+'
+```
+
+O comando valida configuração, cadeias e CRLs, **não** prova confiança
+de um certificado folha real ainda não recebido nem autorização fiscal.
+Qualquer erro mantém envio e confirmação de evento nacional bloqueados.
+Planejar atualização governada de CRLs antes do vencimento e rotação de
+pins, com verificação de rollback; não desativar validação em falha.
+A emissão continua dependente de política revisada, vínculo do provedor,
+A1 autorizado, schema e consulta/cancelamento oficiais.
+
+Teste reproduzível sem ativar containers: `bash deploy/contabo/test-nfse-trust-opt-in.sh`.

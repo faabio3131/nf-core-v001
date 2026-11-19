@@ -24,9 +24,11 @@ from kordena_fiscal.domain import (
 from kordena_fiscal.gateway.authorization import GatewayProviderMetadata
 from kordena_fiscal.gateway.fiscal_tls import RejectFiscalRedirects
 from kordena_fiscal.gateway.nfe_sp_homologation import (
+    MG_NFCE_HOMOLOGATION_PROVIDER_ID,
     MG_NFE_HOMOLOGATION_PROVIDER_ID,
     NFE_NAMESPACE,
     SOAP12_NAMESPACE,
+    SP_NFCE_HOMOLOGATION_PROVIDER_ID,
     HomologationAuthorizationTarget,
     _parse_xml,
     _tls_context,
@@ -68,6 +70,19 @@ def _tag(parent: etree._Element, local: str, value: str) -> etree._Element:
 def _value(node: etree._Element, tag: str) -> str | None:
     element = node.find(".//{" + NFE_NAMESPACE + "}" + tag)
     return element.text.strip() if element is not None and element.text else None
+
+
+def _correlates(
+    node: etree._Element, expected: tuple[tuple[str, str], ...], *, required: bool = True,
+) -> bool:
+    """Match direct, unique response fields; optional rejection fields may be absent."""
+    for name, value in expected:
+        matches = node.findall(f"{{{NFE_NAMESPACE}}}{name}")
+        if not matches and not required:
+            continue
+        if len(matches) != 1 or (matches[0].text or "").strip() != value:
+            return False
+    return True
 
 
 def _envelope(data: etree._Element, service: str) -> bytes:
@@ -140,17 +155,45 @@ class SefazHomologationOperationsGateway:
         if not isinstance(target, HomologationAuthorizationTarget):
             raise ValueError("Unknown fiscal operations target")
         self._target = target
-        self._state = "31" if target is HomologationAuthorizationTarget.MG_NFE else "35"
-        self._provider = (
-            GatewayProviderMetadata(MG_NFE_HOMOLOGATION_PROVIDER_ID, "1.0")
-            if self._state == "31" else _PROVIDER
+        self._state = (
+            "31" if target in {
+                HomologationAuthorizationTarget.MG_NFE,
+                HomologationAuthorizationTarget.MG_NFCE,
+            } else "35"
         )
+        self._model = (
+            "65" if target in {
+                HomologationAuthorizationTarget.MG_NFCE,
+                HomologationAuthorizationTarget.SP_NFCE,
+            } else "55"
+        )
+        if target is HomologationAuthorizationTarget.SP_NFCE:
+            self._provider = GatewayProviderMetadata(SP_NFCE_HOMOLOGATION_PROVIDER_ID, "1.0")
+        elif target is HomologationAuthorizationTarget.MG_NFCE:
+            self._provider = GatewayProviderMetadata(MG_NFCE_HOMOLOGATION_PROVIDER_ID, "1.0")
+        elif target is HomologationAuthorizationTarget.MG_NFE:
+            self._provider = GatewayProviderMetadata(MG_NFE_HOMOLOGATION_PROVIDER_ID, "1.0")
+        else:
+            self._provider = _PROVIDER
         self._profile = (
             NfeSignatureProfile.NFE4_OFFICIAL_RSA_SHA1
-            if self._state == "31" else NfeSignatureProfile.RSA_SHA256
+            if self._state == "31" or self._model == "65"
+            else NfeSignatureProfile.RSA_SHA256
         )
         self._validator: Callable[[str, bytes], None] | None = None
         self._mg_endpoints: dict[str, str] = {}
+        self._sp_nfce_endpoints: dict[str, str] = {}
+        if target is HomologationAuthorizationTarget.SP_NFCE:
+            from kordena_fiscal.xml.official_operation_schema import OfficialOperationXmlValidator
+            self._validator = OfficialOperationXmlValidator(tuple(_SERVICES))
+            for service, route in (
+                ("NFeConsultaProtocolo4", SefazService.QUERY),
+                ("NFeRecepcaoEvento4", SefazService.CANCEL),
+            ):
+                self._sp_nfce_endpoints[service] = resolve_sefaz_endpoint(
+                    state_ibge_code="35", document_kind=FiscalDocumentKind.NFCE,
+                    environment=FiscalEnvironment.HOMOLOGATION, service=route,
+                ).url
         if self._state == "31":
             from kordena_fiscal.control_plane.commercial import ConfiguredFiscalOperation
             from kordena_fiscal.control_plane.mg_official_homologation_catalog import (
@@ -164,7 +207,10 @@ class SefazHomologationOperationsGateway:
                 ("NFeInutilizacao4", ConfiguredFiscalOperation.INUTILIZE),
             ):
                 self._mg_endpoints[service] = mg_homologation_endpoint(
-                    document_kind=FiscalDocumentKind.NFE,
+                    document_kind=(
+                        FiscalDocumentKind.NFCE
+                        if self._model == "65" else FiscalDocumentKind.NFE
+                    ),
                     environment=FiscalEnvironment.HOMOLOGATION, operation=operation,
                 ).url
         self._resolve_certificate = resolve_certificate
@@ -175,6 +221,11 @@ class SefazHomologationOperationsGateway:
     def _https_exchange(
         self, service: str, payload: bytes, context: ssl.SSLContext, timeout: float,
     ) -> bytes:
+        if self._target is HomologationAuthorizationTarget.SP_NFCE:
+            endpoint = self._sp_nfce_endpoints.get(service)
+            if endpoint is None:
+                raise OfficialNfeOperationsError("Unsupported SP NFC-e operation")
+            return _post_xml(service, endpoint, payload, context, timeout)
         if self._state == "35":
             return _post_official(service, payload, context, timeout)
         if service not in self._mg_endpoints:
@@ -182,7 +233,9 @@ class SefazHomologationOperationsGateway:
         return _post_xml(service, self._mg_endpoints[service], payload, context, timeout)
 
     def _validate_key(self, value: str) -> None:
-        if value[:2] != self._state or (self._state == "31" and value[20:22] != "55"):
+        # SP model 55 is as model-specific as MG: a 65 key must never reach
+        # NF-e's SP query/cancel endpoint or its tenant-scoped A1 resolver.
+        if value[:2] != self._state or value[20:22] != self._model:
             raise OfficialNfeOperationsError("Fiscal operation state/model mismatch")
 
     def _certificate(
@@ -227,10 +280,10 @@ class SefazHomologationOperationsGateway:
         response = answer.find(f".//{{{NFE_NAMESPACE}}}retConsSitNFe")
         if response is None or _value(response, "tpAmb") != "2":
             raise OfficialNfeOperationsError("Resposta de consulta não é homologação")
-        if self._state == "31" and _value(response, "cUF") != "31":
-            raise OfficialNfeOperationsError("MG query response state mismatch")
-        if self._state == "31" and _value(response, "chNFe") != request.access_key.value:
-            raise OfficialNfeOperationsError("MG query response key mismatch")
+        if not _correlates(response, (("cUF", self._state),)):
+            raise OfficialNfeOperationsError("Fiscal query response state mismatch")
+        if not _correlates(response, (("chNFe", request.access_key.value),)):
+            raise OfficialNfeOperationsError("Fiscal query response key mismatch")
         code = _value(response, "cStat")
         if code == "100":
             protocol = _value(response, "nProt")
@@ -292,14 +345,14 @@ class SefazHomologationOperationsGateway:
         result = answer.find(f".//{{{NFE_NAMESPACE}}}retEvento/{{{NFE_NAMESPACE}}}infEvento")
         if result is None or _value(result, "tpAmb") != "2":
             raise OfficialNfeOperationsError("Resposta de cancelamento inconsistente")
-        if self._state == "31" and any(
-            _value(result, name) != expected for name, expected in (
-                ("cOrgao", "31"), ("chNFe", request.access_key.value),
-                ("tpEvento", "110111"), ("nSeqEvento", "1"),
-            )
-        ):
-            raise OfficialNfeOperationsError("MG cancellation response correlation mismatch")
         code = _value(result, "cStat")
+        if not _correlates(result, (("cOrgao", self._state),)) or not _correlates(
+            result, (
+                ("chNFe", request.access_key.value),
+                ("tpEvento", "110111"), ("nSeqEvento", "1"),
+            ), required=code in {"135", "155"},
+        ):
+            raise OfficialNfeOperationsError("Fiscal cancellation response correlation mismatch")
         if code in {"135", "155"} and _value(result, "nProt"):
             return CancellationResult(
                 status=FiscalEventStatus.ACCEPTED, scope=request.scope,
@@ -316,19 +369,26 @@ class SefazHomologationOperationsGateway:
         )
 
     def inutilize(self, request: InutilizationRequest) -> InutilizationResult:
+        if self._target is HomologationAuthorizationTarget.SP_NFCE:
+            # SP: national SINIEF 38/2026 removed the obligation in Nov/2026.
+            # Model-65 must never be routed through the old SP55 endpoint.
+            raise OfficialNfeOperationsError(
+                "SP NFC-e inutilization is not available after 2026-11-01"
+            )
         if request.scope.environment is not FiscalEnvironment.HOMOLOGATION:
             raise OfficialNfeOperationsError("Only homologation inutilization allowed")
-        if request.model.value != 55:
-            raise OfficialNfeOperationsError("NFC-e requires model 65 gateway")
+        if request.model.value != int(self._model):
+            raise OfficialNfeOperationsError(
+                f"Inutilization model {request.model.value} disagrees with "
+                f"gateway model {self._model}"
+            )
         if self._resolve_issuer is None:
             raise OfficialNfeOperationsError("Emitente da unidade não configurado")
         issuer = self._resolve_issuer(request.scope)
         material = self._certificate(request.scope, issuer)
-        if request.model.value != 55:
-            raise OfficialNfeOperationsError("NFC-e requer gateway de modelo 65")
         year = datetime.now(UTC).strftime("%y")
         identifier = (
-            "ID" + self._state + year + issuer + "55" + f"{request.series:03}"
+            "ID" + self._state + year + issuer + self._model + f"{request.series:03}"
             + f"{request.first_number:09}" + f"{request.last_number:09}"
         )
         root = etree.Element(
@@ -339,7 +399,7 @@ class SefazHomologationOperationsGateway:
         info = etree.SubElement(root, f"{{{NFE_NAMESPACE}}}infInut", Id=identifier)
         for name, value in (
             ("tpAmb", "2"), ("xServ", "INUTILIZAR"), ("cUF", self._state),
-            ("ano", year), ("CNPJ", issuer), ("mod", "55"),
+            ("ano", year), ("CNPJ", issuer), ("mod", self._model),
             ("serie", str(request.series)), ("nNFIni", str(request.first_number)),
             ("nNFFin", str(request.last_number)), ("xJust", request.justification),
         ):
@@ -353,15 +413,15 @@ class SefazHomologationOperationsGateway:
         result = answer.find(f".//{{{NFE_NAMESPACE}}}retInutNFe/{{{NFE_NAMESPACE}}}infInut")
         if result is None or _value(result, "tpAmb") != "2":
             raise OfficialNfeOperationsError("Resposta de inutilização inconsistente")
-        if self._state == "31" and any(
-            _value(result, name) != expected for name, expected in (
-                ("cUF", "31"), ("ano", year), ("CNPJ", issuer), ("mod", "55"),
+        code = _value(result, "cStat")
+        if not _correlates(result, (("cUF", self._state),)) or not _correlates(
+            result, (
+                ("ano", year), ("CNPJ", issuer), ("mod", self._model),
                 ("serie", str(request.series)), ("nNFIni", str(request.first_number)),
                 ("nNFFin", str(request.last_number)),
-            )
+            ), required=code == "102",
         ):
-            raise OfficialNfeOperationsError("MG inutilization response correlation mismatch")
-        code = _value(result, "cStat")
+            raise OfficialNfeOperationsError("Fiscal inutilization response correlation mismatch")
         if code == "102" and _value(result, "nProt"):
             return InutilizationResult(
                 status=FiscalEventStatus.ACCEPTED, scope=request.scope,

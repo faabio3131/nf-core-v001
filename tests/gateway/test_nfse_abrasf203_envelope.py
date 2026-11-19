@@ -46,6 +46,11 @@ def _payload(operation):
             f'<Prestador><CpfCnpj><Cnpj>{CNPJ}</Cnpj></CpfCnpj></Prestador>'
             '<Protocolo>123456</Protocolo>'
         )
+    elif operation is Abrasf203Operation.QUERY_ISSUED:
+        body = (
+            f'<Prestador><CpfCnpj><Cnpj>{CNPJ}</Cnpj></CpfCnpj></Prestador>'
+            '<NumeroNfse>123</NumeroNfse><Pagina>1</Pagina>'
+        )
     return f'<{name} xmlns="{_A}">{body}</{name}>'.encode()
 
 
@@ -53,6 +58,7 @@ def _payload(operation):
     (Abrasf203Operation.GENERATE, 1),
     (Abrasf203Operation.SUBMIT_BATCH, 2),
     (Abrasf203Operation.QUERY_BATCH, 0),
+    (Abrasf203Operation.QUERY_ISSUED, 0),
 ])
 def test_soap_contains_correct_parts_and_verifiable_signatures(material, operation, count):
     calls = Mock()
@@ -104,3 +110,85 @@ def test_failed_preaudit_never_accesses_vault():
             resolve_certificate=resolve, preaudit=audit,
         )
     resolve.assert_not_called()
+
+
+_CANCEL = (
+    '<CancelarNfseEnvio xmlns="http://www.abrasf.org.br/nfse.xsd">'
+    '<Pedido><InfPedidoCancelamento Id="CANCEL1">'
+    '<IdentificacaoNfse><Numero>123</Numero><CpfCnpj>'
+    f'<Cnpj>{CNPJ}</Cnpj>'
+    '</CpfCnpj><CodigoMunicipio>3125101</CodigoMunicipio></IdentificacaoNfse>'
+    '<CodigoCancelamento>1</CodigoCancelamento>'
+    '</InfPedidoCancelamento></Pedido></CancelarNfseEnvio>'
+)
+
+
+def test_cancellation_uses_independent_audit_scoped_a1_and_verified_xmldsig(
+    material,
+) -> None:
+    calls = Mock()
+    calls.resolve.return_value = material
+    signed = prepare_abrasf203_soap(
+        operation=Abrasf203Operation.CANCEL,
+        xml=_CANCEL.encode(), scope=_request().scope,
+        issuer_cnpj=Cnpj(CNPJ), resolve_certificate=calls.resolve,
+        preaudit=calls.audit, preaudit_cancel=calls.cancel_audit,
+    )
+    assert [call[0] for call in calls.mock_calls] == ["cancel_audit", "resolve"]
+    facts = calls.cancel_audit.call_args.args[0]
+    assert facts.issuer_cnpj == CNPJ
+    assert facts.municipality_ibge == "3125101"
+    assert facts.invoice_number == "123"
+    assert facts.cancellation_code == "1"
+    wrapper = etree.fromstring(signed.body)[0][0]
+    assert wrapper.tag == "{http://nfse.abrasf.org.br}CancelarNfseRequest"
+    payload = etree.fromstring(wrapper.findtext("nfseDadosMsg").encode())
+    signature = payload.find(f".//{{{_DS}}}Signature")
+    assert signature is not None
+    assert signature.getparent().tag == f"{{{_A}}}Pedido"
+    signed_info = signature.find(f"{{{_DS}}}SignedInfo")
+    reference = signed_info.find(f"{{{_DS}}}Reference")
+    target = payload.xpath("//*[@Id=$id]", id=reference.get("URI")[1:])[0]
+    assert target.tag == f"{{{_A}}}InfPedidoCancelamento"
+    assert base64.b64decode(reference.findtext(f"{{{_DS}}}DigestValue")) == (
+        hashlib.sha1(etree.tostring(target, method="c14n")).digest()
+    )
+    _, cert, _ = pkcs12.load_key_and_certificates(
+        material.pkcs12_bytes, material.password
+    )
+    cert.public_key().verify(
+        base64.b64decode(signature.findtext(f"{{{_DS}}}SignatureValue")),
+        etree.tostring(signed_info, method="c14n"),
+        padding.PKCS1v15(), hashes.SHA1(),
+    )
+
+
+def test_cancel_must_fail_before_certificate_for_wrong_issuer_or_policy(material) -> None:
+    calls = Mock()
+    calls.resolve.return_value = material
+    original_scope = _request().scope
+    with pytest.raises(FiscalValidationError, match="Explicit cancellation preaudit"):
+        prepare_abrasf203_soap(
+            operation=Abrasf203Operation.CANCEL, xml=_CANCEL.encode(),
+            scope=original_scope, issuer_cnpj=Cnpj(CNPJ),
+            resolve_certificate=calls.resolve, preaudit=calls.audit,
+        )
+    calls.resolve.assert_not_called()
+    with pytest.raises(FiscalValidationError, match="identity mismatch"):
+        prepare_abrasf203_soap(
+            operation=Abrasf203Operation.CANCEL, xml=_CANCEL.encode(),
+            scope=original_scope, issuer_cnpj=Cnpj("12345678000195"),
+            resolve_certificate=calls.resolve, preaudit=calls.audit,
+            preaudit_cancel=calls.cancel_audit,
+        )
+    calls.resolve.assert_not_called()
+    calls.cancel_audit.assert_not_called()
+    calls.cancel_audit.side_effect = FiscalValidationError("cancellation denied by policy")
+    with pytest.raises(FiscalValidationError, match="cancellation denied by policy"):
+        prepare_abrasf203_soap(
+            operation=Abrasf203Operation.CANCEL, xml=_CANCEL.encode(),
+            scope=original_scope, issuer_cnpj=Cnpj(CNPJ),
+            resolve_certificate=calls.resolve, preaudit=calls.audit,
+            preaudit_cancel=calls.cancel_audit,
+        )
+    calls.resolve.assert_not_called()

@@ -1,3 +1,5 @@
+> **Referência de continuidade NFCore V1 — 17/11/2026:** este tracker V2 preserva certificações históricas de engenharia e NÃO é fonte do CURRENT da linha fiscal/Web de novembro. Consulte [Anexo de reconciliação e cronograma](audit/NFCORE_RECONCILIATION_CLOSEOUT_SCHEDULE_2026-11-17.md) e [Pendências CURRENT](audit/NFCORE_PENDING_REGISTER_CURRENT_2026-11-17.md) antes de interpretar os estados da main/production, municípios, homologação e release. Nenhuma célula fiscal ou deploy foi certificado pela inclusão desta referência.
+
 # FM FISCAL CORE V2 — EXECUTION TRACKER
 
 Data de início: 2026-09-11  

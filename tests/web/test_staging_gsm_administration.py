@@ -132,28 +132,18 @@ def test_binding_rejects_non_platform_admin() -> None:
     assert not administration.bound
 
 
-class _FrozenClock(datetime):
-    """The pilot binding hard-codes not_after=2026-11-17; freeze time before it."""
+def test_commercial_trial_binding_is_platform_only_and_replay_safe(
+    monkeypatch: Any,
+) -> None:
+    # Test the original approved pre-expiry window, not today's date.
+    class BeforeExpiry(datetime):
+        @classmethod
+        def now(cls, tz: Any = None) -> datetime:
+            return datetime(2026, 11, 16, 23, 0, tzinfo=UTC)
 
-    @classmethod
-    def now(cls, tz: Any = None) -> datetime:
-        return datetime(2026, 11, 16, tzinfo=tz)
-
-
-def test_commercial_trial_binding_denied_after_its_expiry() -> None:
-    administration = _BindingAdmin()
-    client = _client(create_staging_gsm_binding_router(_Identity(_Actor()), administration))
-    client.cookies.update(COOKIES)
-    response = client.post("/internal/staging/commercial-trial-binding", headers=HEADERS)
-    if datetime.now(UTC) >= datetime(2026, 11, 17, tzinfo=UTC):
-        assert response.status_code == 409
-        assert not administration.bound
-
-
-def test_commercial_trial_binding_is_platform_only_and_replay_safe(monkeypatch) -> None:
-    from kordena_fiscal.web import staging_gsm_binding_admin as module
-
-    monkeypatch.setattr(module, "datetime", _FrozenClock)
+    monkeypatch.setattr(
+        "kordena_fiscal.web.staging_gsm_binding_admin.datetime", BeforeExpiry,
+    )
     administration = _BindingAdmin()
     client = _client(create_staging_gsm_binding_router(_Identity(_Actor()), administration))
     url = "/internal/staging/commercial-trial-binding"
@@ -174,6 +164,29 @@ def test_commercial_trial_binding_is_platform_only_and_replay_safe(monkeypatch) 
     assert bound.not_after is not None
     assert client.post(url, headers=HEADERS).status_code == 200
     assert len(administration.bound) == 1
+
+
+def test_commercial_trial_expired_binding_refuses_implicit_extension(
+    monkeypatch: Any,
+) -> None:
+    # The staging grant must never be silently extended on the CI clock.
+    class AfterExpiry(datetime):
+        @classmethod
+        def now(cls, tz: Any = None) -> datetime:
+            return datetime(2026, 11, 17, 0, 1, tzinfo=UTC)
+
+    monkeypatch.setattr(
+        "kordena_fiscal.web.staging_gsm_binding_admin.datetime", AfterExpiry,
+    )
+    admin = _BindingAdmin()
+    client = _client(create_staging_gsm_binding_router(_Identity(_Actor()), admin))
+    client.cookies.update(COOKIES)
+    response = client.post(
+        "/internal/staging/commercial-trial-binding", headers=HEADERS,
+    )
+    assert response.status_code == 409
+    assert response.json()["detail"] == "COMMERCIAL_BINDING_DENIED"
+    assert not admin.bound
 
 
 def test_commercial_trial_binding_cannot_be_approved_by_tenant_owner() -> None:

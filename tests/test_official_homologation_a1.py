@@ -106,3 +106,71 @@ def test_signed_nfe_rsa_sha256_and_homologation_soap(test_a1):
     envelope = _parse_xml(soap)
     assert envelope.tag == f"{{{SOAP12_NAMESPACE}}}Envelope"
     assert envelope.find(f".//{{{NFE_NAMESPACE}}}enviNFe") is not None
+
+
+def test_a1_offline_export_restores_real_synthetic_aesgcm_vault(
+    tmp_path, test_a1, monkeypatch,
+):
+    """No Contabo credential: encrypt a valid synthetic PFX, back it up and read it back."""
+    import importlib.util
+    import os
+    import shutil
+    import zipfile
+    from pathlib import Path
+
+    from kordena_fiscal.vault.encrypted_a1 import EncryptedA1Vault
+
+    script = Path(__file__).resolve().parents[1] / "deploy/contabo/a1-vault-ops.py"
+    spec = importlib.util.spec_from_file_location("a1_ops_offline", script)
+    assert spec is not None and spec.loader is not None
+    ops = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(ops)
+
+    vault_dir = tmp_path / "live"
+    vault = EncryptedA1Vault(directory=vault_dir, master_key=b"2" * 32)
+    pfx, password, _ = test_a1
+    vault.provision(
+        scope=_scope(), issuer_cnpj="11222333000181",
+        pkcs12_bytes=pfx, password=password,
+    )
+    original = {p.name: p.read_bytes() for p in vault_dir.glob("*.a1.enc")}
+    assert len(original) == 1
+    assert pfx not in next(iter(original.values()))
+    monkeypatch.setenv("NFCORE_A1_VAULT_HOST_DIR", str(vault_dir))
+    monkeypatch.setattr(ops, "_VAULT_UID", os.getuid())
+
+    recovery_dir = tmp_path / "offline"
+    recovery_dir.mkdir(mode=0o700)
+    recovery_dir.chmod(0o700)
+    archive = recovery_dir / "a1-ciphertexts.zip"
+    assert ops.offline_export(str(archive)) == 0
+    assert (archive.stat().st_mode & 0o777) == 0o600
+    assert ops.offline_restore_test(str(archive)) == 0
+
+    isolated = tmp_path / "isolated-restored"
+    isolated.mkdir(mode=0o700)
+    assert ops._extract_offline(archive, isolated) == 1
+    restored_vault = EncryptedA1Vault(directory=isolated, master_key=b"2" * 32)
+    material = restored_vault.resolve(
+        scope=_scope(), issuer_cnpj="11222333000181",
+    )
+    assert material.pkcs12_bytes == pfx
+    assert material.password == password
+    with pytest.raises(A1VaultUnavailable):
+        restored_vault.resolve(
+            scope=_scope("tenant-b"), issuer_cnpj="11222333000181",
+        )
+    assert {p.name: p.read_bytes() for p in vault_dir.glob("*.a1.enc")} == original
+
+    with pytest.raises(ops.VaultOpsError):
+        ops.offline_export(str(archive))  # no clobber
+    corrupted = recovery_dir / "tampered.zip"
+    shutil.copyfile(archive, corrupted)
+    with zipfile.ZipFile(corrupted, "a") as zf:
+        zf.writestr("unexpected-file", b"evil")
+    with pytest.raises(ops.VaultOpsError):
+        ops.offline_restore_test(str(corrupted))
+
+    (vault_dir / next(iter(original))).unlink()
+    with pytest.raises(ops.VaultOpsError):
+        ops.offline_export(str(recovery_dir / "empty.zip"))
