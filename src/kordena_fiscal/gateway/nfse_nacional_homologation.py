@@ -30,6 +30,7 @@ from kordena_fiscal.gateway.nfse_national_homologation import (
 from kordena_fiscal.gateway.nfse_national_receipt import (
     NationalReceiptIdentity,
     require_national_receipt_signer_pins,
+    verify_outgoing_national_dps,
 )
 from kordena_fiscal.issuance.nfe_nfse import (
     NfseAuthorizationRequest,
@@ -188,7 +189,7 @@ class NfseNacionalHomologationGateway:
                 "Guarulhos: national provider is incompatible with regime/competence"
             ) from None
         material = self._resolve_certificate(document.scope, issuer_cnpj)
-        validate_a1_for_issuer(
+        a1 = validate_a1_for_issuer(
             material.pkcs12_bytes, material.password, issuer_cnpj=Cnpj(issuer_cnpj),
             at=datetime.now(UTC),
         )
@@ -213,6 +214,9 @@ class NfseNacionalHomologationGateway:
             require_current_national_treatment_for_live_dispatch(
                 os.environ, document,
             )
+        verify_outgoing_national_dps(
+            signed_dps, expected_signer_sha256=a1.certificate_fingerprint_sha256,
+        )
         if self._record_dispatch is not None:
             self._record_dispatch(request, profile, signed_dps)
         elif self._exchange is _LIVE_EXCHANGE:

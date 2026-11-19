@@ -113,7 +113,8 @@ def _enforce_national_receipt_signer_pin(root: etree._Element) -> None:
 def _verify_nfse_receipt_signature(
     root: etree._Element, info: etree._Element, identifier: str,
     *, allow_nested_event_signature: bool = False,
-) -> None:
+    archived_dispatch_at: datetime | None = None,
+) -> x509.Certificate:
     """Verify the official RSA-SHA256 enveloped signature over the exact NFS-e Id.
 
     This proves cryptographic integrity and reference binding, not independent
@@ -179,14 +180,24 @@ def _verify_nfse_receipt_signature(
             decode(cert_node.text if cert_node is not None else None)
         )
         now = datetime.now(UTC)
+        is_dps = root.tag == f"{{{_NS}}}DPS"
+        if archived_dispatch_at is not None:
+            if (
+                not is_dps or archived_dispatch_at.tzinfo is None
+                or archived_dispatch_at.utcoffset() is None or archived_dispatch_at > now
+            ):
+                raise ValueError("invalid archived dispatch instant")
+            # Local observation of the submitted DPS, not a trusted timestamp
+            # for an official invoice or its signer. Outer proof stays current.
+            now = archived_dispatch_at
         if not cert.not_valid_before_utc <= now <= cert.not_valid_after_utc:
             raise ValueError("certificate validity")
         usage = cert.extensions.get_extension_for_class(x509.KeyUsage).value
-        if not usage.digital_signature:
+        if not (usage.digital_signature or (is_dps and usage.content_commitment)):
             raise ValueError("certificate not allowed for digital signing")
         key = cert.public_key()
-        if not isinstance(key, rsa.RSAPublicKey):
-            raise ValueError("unexpected key type")
+        if not isinstance(key, rsa.RSAPublicKey) or key.key_size < 2048:
+            raise ValueError("unexpected or weak key type")
         expected_digest = hashes.Hash(hashes.SHA256())
         expected_digest.update(
             etree.tostring(info, method="c14n", exclusive=False, with_comments=False)
@@ -214,6 +225,25 @@ def _verify_nfse_receipt_signature(
         if dps_info is None or not dps_info.get("Id"):
             raise NfseReceiptVerificationError("Missing nested DPS identity")
         _verify_nfse_receipt_signature(dps, dps_info, dps_info.get("Id", ""))
+    return cert
+
+
+def verify_outgoing_national_dps(
+    signed_dps: bytes, *, expected_signer_sha256: str | None = None,
+    archived_dispatch_at: datetime | None = None,
+) -> str:
+    """Verify the exact signature and, before dispatch, the scoped Vault A1."""
+    from kordena_fiscal.gateway.nfse_national_homologation import parse_signed_dps_info
+
+    info = parse_signed_dps_info(signed_dps)
+    certificate = _verify_nfse_receipt_signature(
+        info.getroottree().getroot(), info, info.get("Id", ""),
+        archived_dispatch_at=archived_dispatch_at,
+    )
+    fingerprint = certificate.fingerprint(hashes.SHA256()).hex()
+    if expected_signer_sha256 is not None and fingerprint != expected_signer_sha256:
+        raise NfseReceiptVerificationError("DPS signature differs from scoped Vault A1")
+    return fingerprint
 
 
 def validate_nfse_receipt_integrity(raw: bytes, key: str) -> bytes:
@@ -363,6 +393,7 @@ class NationalDispatchEvidence:
     def capture(
         cls, request: NfseAuthorizationRequest, profile: str, signed_dps: bytes,
     ) -> NationalDispatchEvidence:
+        verify_outgoing_national_dps(signed_dps)
         evidence = cls._from_signed_dps(request, profile, signed_dps)
         if evidence.identity != NationalReceiptIdentity.from_request(
             request, schema_profile=profile,
@@ -403,7 +434,10 @@ class NationalDispatchEvidence:
         }, sort_keys=True, separators=(",", ":")).encode("ascii")
 
     @classmethod
-    def decode(cls, data: bytes, request: NfseAuthorizationRequest) -> NationalDispatchEvidence:
+    def decode(
+        cls, data: bytes, request: NfseAuthorizationRequest, *,
+        archived_dispatch_at: datetime | None = None,
+    ) -> NationalDispatchEvidence:
         try:
             if len(data) > 2 * _MAX_RESPONSE:
                 raise ValueError("dispatch evidence size")
@@ -419,6 +453,7 @@ class NationalDispatchEvidence:
                 or hashlib.sha256(signed).hexdigest() != payload["signed_dps_sha256"]
             ):
                 raise ValueError("dispatch evidence digest")
+            verify_outgoing_national_dps(signed, archived_dispatch_at=archived_dispatch_at)
             evidence = cls._from_signed_dps(request, payload["schema_profile"], signed)
             if evidence.identity.dps_content_sha256 != payload["dps_content_sha256"]:
                 raise ValueError("dispatch DPS digest")

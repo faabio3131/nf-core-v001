@@ -17,3 +17,7 @@ dhProc is not an RFC 3161 timestamp and cannot validate expired/revoked
 certificates at an arbitrary historical instant. This closes schema and
 outgoing-content provenance, not ICP-Brasil LTV, OCSP or external
 homologation. Tests added but not executed during construction.
+
+## Integridade do despacho
+
+A assinatura XMLDSig do DPS de saída é agora validada antes do arquivamento e HTTP, incluindo vínculo ao certificado A1 efetivamente resolvido no Vault, RSA >= 2048, digest, referência e uso de chave. O transporte de baixo nível também compara o certificado configurado com a assinatura. A releitura do DPS arquivado usa o instante local persistido pelo arquivo apenas para validade temporal do certificado desse DPS, preservando a verificação matemática. Não usa esse instante para aceitar signatário SEFIN vencido/revogado nem para simular carimbo de tempo confiável. LTV/OCSP oficial, revisão independente e CI seguem pendentes. Testes escritos sem execução.

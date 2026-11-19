@@ -20,6 +20,7 @@ from kordena_fiscal.gateway.nfse_national_receipt import (
     validate_national_nfse_xml,
     validate_nfse_receipt_integrity,
     validate_official_nfse_receipt,
+    verify_outgoing_national_dps,
 )
 from kordena_fiscal.issuance.nfe_nfse import NfseAuthorizationRequest
 from kordena_fiscal.issuance.nfse_dps_builder import build_sefin_signed_dps, build_signed_dps
@@ -295,3 +296,24 @@ def test_dispatch_evidence_preserves_original_schema_and_signed_bytes(sample):
     other = NfseAuthorizationRequest.build(replace(request.document, dps_number=765))
     with pytest.raises(NfseReceiptVerificationError, match="Invalid archived"):
         NationalDispatchEvidence.decode(evidence.encode(), other)
+
+
+def test_dispatch_denies_tampered_signature_and_wrong_scoped_a1(sample):
+    from cryptography.hazmat.primitives import hashes
+
+    request, material = sample[:2]
+    signed = build_signed_dps(request, material, schema_profile=PRODUCTION_PROFILE)
+    _, certificate, _ = pkcs12.load_key_and_certificates(
+        material.pkcs12_bytes, material.password,
+    )
+    assert certificate is not None
+    expected = certificate.fingerprint(hashes.SHA256()).hex()
+    assert verify_outgoing_national_dps(signed, expected_signer_sha256=expected) == expected
+    with pytest.raises(NfseReceiptVerificationError, match="scoped Vault A1"):
+        verify_outgoing_national_dps(signed, expected_signer_sha256="0" * 64)
+    root = etree.fromstring(signed)
+    root.find(D + "Signature/" + D + "SignatureValue").text = "AAAA"
+    with pytest.raises(NfseReceiptVerificationError, match="XMLDSig integrity"):
+        NationalDispatchEvidence.capture(
+            request, PRODUCTION_PROFILE, etree.tostring(root),
+        )

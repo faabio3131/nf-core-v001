@@ -15,6 +15,8 @@ from datetime import UTC, datetime
 from urllib.error import HTTPError, URLError
 from urllib.request import HTTPSHandler, Request, build_opener
 
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.serialization import pkcs12
 from lxml import etree
 
 from kordena_fiscal.domain import FiscalEnvironment, FiscalValidationError
@@ -24,6 +26,7 @@ from kordena_fiscal.gateway.nfse_national_receipt import (
     NfseReceiptVerificationError,
     require_national_receipt_signer_pins,
     validate_official_nfse_receipt,
+    verify_outgoing_national_dps,
 )
 from kordena_fiscal.issuance.nfe_nfse import NfseRejectionDetail
 from kordena_fiscal.signing.nfse_xmldsig import sign_nfse_dps_xml
@@ -214,6 +217,17 @@ class NfseNationalHomologationTransport:
         # correlation. The envelope helper alone is not permission to transmit.
         national_dps_validator(version, profile=profile).validate_document(signed_dps_xml)
         expected = NationalReceiptIdentity.from_dps_info(info)
+        try:
+            _, cert, _ = pkcs12.load_key_and_certificates(
+                self._certificate.pkcs12_bytes, self._certificate.password,
+            )
+            if cert is None:
+                raise ValueError("missing certificate")
+            verify_outgoing_national_dps(
+                signed_dps_xml, expected_signer_sha256=cert.fingerprint(hashes.SHA256()).hex(),
+            )
+        except (ValueError, TypeError):
+            raise OfficialNfseTransportError("Invalid scoped DPS signing certificate") from None
         body = build_nfse_dps_request(signed_dps_xml, schema_profile=profile)
         if self._requires_receipt_trust:
             pins = require_national_receipt_signer_pins()

@@ -1374,7 +1374,9 @@ class FiscalApplicationService:
             return None
         if len(entries) != 1 or entries[0].kind is not FiscalArchiveKind.OTHER:
             raise PersistenceStateError("Ambiguous National dispatch evidence")
-        return NationalDispatchEvidence.decode(entries[0].content, request)
+        return NationalDispatchEvidence.decode(
+            entries[0].content, request, archived_dispatch_at=entries[0].archived_at,
+        )
 
     def load_national_dispatch(
         self, request: NfseAuthorizationRequest,

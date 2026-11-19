@@ -423,3 +423,18 @@ def test_contagem_requires_federal_national_channel_for_eligible_simples(
     )
     result = gateway.authorize(request)
     assert result.status is AuthorizationStatus.AUTHORIZED
+
+
+def test_canonical_gateway_refuses_signature_from_different_a1_before_network():
+    authorized, unrelated = _certificate(), _certificate()
+    exchange = Mock(side_effect=AssertionError("HTTP dispatched"))
+    record = Mock()
+    gateway = NfseNacionalHomologationGateway(
+        resolve_certificate=lambda *_: authorized,
+        build_signed_dps=lambda req, _: build_sefin_signed_dps(req, unrelated),
+        exchange=exchange, record_dispatch=record,
+    )
+    with pytest.raises(FiscalValidationError, match="scoped Vault A1"):
+        gateway.authorize(_request())
+    record.assert_not_called()
+    exchange.assert_not_called()
