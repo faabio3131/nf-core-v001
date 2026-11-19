@@ -1951,6 +1951,9 @@ async function api(path, options = {}) {
       UNKNOWN_PORTAL_OPERATION: "Operação não reconhecida. Recarregue a página.",
       UNKNOWN_PORTAL_SURFACE: "Tela não reconhecida. Recarregue a página.",
       PORTAL_SECRET_BOUNDARY_VIOLATION: "A resposta foi bloqueada por proteção de dados sensíveis. Nenhum segredo foi exibido. Avise o suporte.",
+      FISCAL_PROFILE_REQUIRED: "Cadastre o perfil fiscal do emitente antes de declarar o regime federal.",
+      FEDERAL_REGIME_INVALID: "Regime, data de início ou evidência inválidos. O regime precisa combinar com o CRT do perfil e a data deve ser posterior à declaração atual.",
+      FEDERAL_REGIME_CONFLICT: "Esta tentativa já foi usada com dados diferentes. Recarregue a página e tente de novo.",
       EGRESS_FORBIDDEN: "Apenas a administração da plataforma pode alterar destinos externos.",
       EGRESS_RUNTIME_NOT_READY: "A gestão de destinos externos ainda não está disponível neste ambiente.",
       INVALID_EGRESS_DECISION: "Pedido de destino externo inválido. Confira o endereço e a validade.",
@@ -3306,6 +3309,10 @@ function appendRtcProfileRegistration(section) {
     option.value = code; option.textContent = label; crt.append(option);
   }
   crtLabel.append(crt);
+  const crtHint = document.createElement("p");
+  crtHint.className = "form-hint";
+  crtHint.textContent = "Lucro Presumido e Lucro Real usam o CRT 3 (Regime normal). O regime federal (Presumido, Real ou Simples) é declarado depois, nesta mesma tela.";
+  crtLabel.append(crtHint);
   const exemptLabel = document.createElement("label");
   const exempt = document.createElement("input");
   exempt.type = "checkbox";
@@ -3414,12 +3421,99 @@ function appendRtcIssuerSummary(article, rows) {
   }
   const pending = document.createElement("p");
   pending.className = "empty-state";
-  pending.textContent = "Regime federal (Lucro Real / Presumido / Simples): sem declaração validada e persistida. O CRT não define sozinho o regime de IRPJ/CSLL.";
+  /** @type {Record<string,string>} */
+  const regimeLabels = {simples_nacional: "Simples Nacional", lucro_presumido: "Lucro Presumido", lucro_real: "Lucro Real"};
+  const regimeStatus = String(issuer.federal_regime_status || "");
+  if (regimeStatus === "declared") {
+    pending.className = "rtc-status";
+    pending.textContent = `Regime federal declarado: ${regimeLabels[String(issuer.federal_income_tax_regime)] || "Não reconhecido"}, desde ${String(issuer.federal_regime_effective_from || "").slice(0, 10)} (versão ${issuer.federal_regime_version}).`;
+  } else if (regimeStatus === "declaration_inconsistent_with_profile") {
+    pending.className = "form-error";
+    pending.textContent = "O regime federal declarado não combina com o CRT do perfil fiscal vigente. Declare o regime correto a partir da data da mudança.";
+  } else {
+    pending.textContent = "Regime federal (Lucro Real / Presumido / Simples): ainda não declarado. O CRT não define sozinho o regime de IRPJ/CSLL.";
+  }
   const calc = document.createElement("p");
   calc.className = "empty-state";
   calc.textContent = "IBS, CBS, IS e classificação CST/cClassTrib: cálculo e tabelas oficiais ainda não certificados para operação. O cadastro inicial exige permissão administrativa; nenhuma emissão ou cálculo fiscal é executado nesta tela.";
-  section.append(pending, calc);
+  section.append(pending);
+  if (configured) appendFederalRegimeDeclaration(section, String(issuer.crt));
+  section.append(calc);
   article.append(section);
+}
+
+/** RTC-02: explicit, dated federal regime declaration (never inferred from CRT).
+ * @param {HTMLElement} section
+ * @param {string} crt
+ */
+function appendFederalRegimeDeclaration(section, crt) {
+  const form = document.createElement("form");
+  form.className = "stacked-form";
+  form.setAttribute("aria-label", "Declarar regime federal");
+  const heading = document.createElement("h3");
+  heading.textContent = "Declarar regime federal (IRPJ/CSLL)";
+  const regimeLabel = document.createElement("label");
+  regimeLabel.textContent = "Regime federal";
+  const regime = document.createElement("select");
+  const simples = ["1", "2", "4"].includes(crt);
+  const choices = simples
+    ? [["simples_nacional", "Simples Nacional"]]
+    : [["lucro_presumido", "Lucro Presumido"], ["lucro_real", "Lucro Real"]];
+  for (const [value, text] of choices) {
+    const option = document.createElement("option");
+    option.value = value; option.textContent = text; regime.append(option);
+  }
+  regimeLabel.append(regime);
+  const startLabel = document.createElement("label");
+  startLabel.textContent = "Vigente desde";
+  const start = document.createElement("input");
+  start.type = "date"; start.required = true;
+  startLabel.append(start);
+  const sourceLabel = document.createElement("label");
+  sourceLabel.textContent = "Evidência (ex.: opção no DCTF/ECF, contrato social, parecer do contador)";
+  const source = document.createElement("input");
+  source.required = true; source.maxLength = 1000; source.autocomplete = "off";
+  sourceLabel.append(source);
+  const submit = document.createElement("button");
+  submit.type = "submit"; submit.className = "primary";
+  submit.textContent = "Declarar regime federal";
+  const statusLine = document.createElement("p");
+  statusLine.setAttribute("role", "status");
+  statusLine.className = "form-error";
+  form.append(heading, regimeLabel, startLabel, sourceLabel, submit, statusLine);
+  /** @type {{fingerprint:string,key:string}|null} */
+  let attempt = null;
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    if (!form.reportValidity()) return;
+    const payload = {
+      unit_id: selectedFiscalUnit,
+      environment: selectedFiscalEnvironment,
+      federal_income_tax_regime: regime.value,
+      effective_from: start.value,
+      source_reference: source.value.trim(),
+    };
+    const fingerprint = JSON.stringify(payload);
+    if (!attempt || attempt.fingerprint !== fingerprint) {
+      attempt = {fingerprint, key: crypto.randomUUID()};
+    }
+    submit.disabled = true;
+    statusLine.textContent = "Registrando a declaração do regime federal...";
+    try {
+      await api("/v1/portal/operations/declareFederalRegime", {
+        method: "POST",
+        headers: {"X-CSRF-Token": csrfToken(), "Idempotency-Key": attempt.key},
+        body: JSON.stringify(payload),
+      });
+      attempt = null;
+      await renderSurface("tax-reform");
+    } catch (error) {
+      statusLine.textContent = error instanceof Error
+        ? error.message : "A declaração foi rejeitada. Verifique os dados e as permissões.";
+      submit.disabled = false;
+    }
+  });
+  section.append(form);
 }
 
 /** @param {string} viewId */
