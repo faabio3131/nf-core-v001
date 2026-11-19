@@ -82,3 +82,38 @@ def test_deduction_proof_enters_fingerprint():
         ),),
     ))
     assert _request(document).request_fingerprint != _request(amended).request_fingerprint
+
+
+def test_durable_evidence_allocation_refuses_other_source_after_policy_rotation(tmp_path):
+    from kordena_fiscal.application import FiscalApplicationService
+    from kordena_fiscal.archive import RetentionPolicyMetadata
+    from kordena_fiscal.domain import SourceReference
+    from kordena_fiscal.persistence import PersistenceConflictError, SqliteFiscalDatabase
+
+    original = replace(_reviewed(), dps_number=None)
+    database = SqliteFiscalDatabase(tmp_path / "deductions.sqlite")
+    database.initialize()
+    application = FiscalApplicationService(database)
+    retention = RetentionPolicyMetadata("deduction-test", 1)
+    first = application.prepare_nfse_authorization(
+        original, occurred_at=original.issued_at, retention=retention,
+    )
+    replay = application.prepare_nfse_authorization(
+        original, occurred_at=original.issued_at, retention=retention,
+    )
+    assert first.request == replay.request
+    decision = original.national_tax_treatment
+    assert decision is not None
+    other = replace(
+        original, document_id="another-dps",
+        source=SourceReference("service-order", "another-order"),
+        national_tax_treatment=replace(
+            decision, deduction_source_id="another-order", policy_sha256="f" * 64,
+        ),
+    )
+    with pytest.raises(PersistenceConflictError, match="configuration idempotency conflict"):
+        application.prepare_nfse_authorization(
+            other, occurred_at=other.issued_at, retention=retention,
+        )
+    with database() as uow:
+        assert uow.lifecycle.get(other.document_id) is None

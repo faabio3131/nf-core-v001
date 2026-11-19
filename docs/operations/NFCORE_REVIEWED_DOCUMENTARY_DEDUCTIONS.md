@@ -22,8 +22,12 @@ layouts preserve individual references rather than only the aggregate amount.
 
 Limitations: document-specific evidence must be reviewed and installed through
 the existing fiscal policy mechanism; no automatic external NF-e/NFS-e lookup,
-deduction sharing across different policy revisions/tenants or full municipal
-document-type catalog is certified. Cross-version double-use must be audited
-by the reviewing operator until durable deduction-allocation control exists.
+full municipal document-type catalog is certified. Within the same scope and
+legal issuer, the existing durable configuration-command ledger now reserves
+one fiscal evidence key for exactly one canonical issuance, including across
+policy revisions; the reservation and fiscal preparation commit atomically.
+No automatic reuse after rejection/cancellation or partial sharing is enabled.
+Cross-unit/tenant legal ownership and external allocations require separate
+review; the allocation ledger is deliberately scoped.
 No municipality, fiscal production or official homologation is promoted.
 Tests authored, not executed in this construction round.

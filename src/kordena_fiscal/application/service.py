@@ -934,6 +934,10 @@ class FiscalApplicationService:
                 raise FiscalValidationError(
                     "SP4 municipal original RPS requires reviewed scope and series"
                 )
+        treatment = document.national_tax_treatment
+        documents = treatment.deduction_documents if treatment is not None else ()
+        if documents and (extrema_intent_builder is not None or sp4_original_builder is not None):
+            raise FiscalValidationError("Documentary deductions require National DPS transport")
         with self._uow_factory() as uow:
             if document.national_substitution is not None:
                 if extrema_intent_builder is not None or sp4_original_builder is not None:
@@ -984,6 +988,31 @@ class FiscalApplicationService:
                 archived_at=occurred_at,
                 retention=retention,
             )
+            # A reviewed evidence key is allocated once in the existing durable
+            # command ledger, in the SAME transaction as fiscal preparation.
+            # Changing policy version/source/amount cannot allocate it again.
+            for item in documents:
+                allocation_key = "nfse-deduction:" + hashlib.sha256(json.dumps([
+                    document.scope.host_namespace, document.issuer.cnpj.value,
+                    item.kind, item.access_key,
+                ], separators=(",", ":")).encode()).hexdigest()
+                allocation = {
+                    "document_id": document.document_id,
+                    "request_fingerprint": request.request_fingerprint,
+                    "evidence_sha256": item.evidence_sha256,
+                }
+                allocation_digest = hashlib.sha256(json.dumps(
+                    allocation, sort_keys=True, separators=(",", ":"),
+                ).encode()).hexdigest()
+                previous = uow.commercial.reserve_configuration_command(
+                    document.scope, allocation_key, allocation_digest,
+                )
+                if previous is None:
+                    uow.commercial.complete_configuration_command(
+                        document.scope, allocation_key, allocation,
+                    )
+                elif previous != allocation:
+                    raise PersistenceConflictError("Documentary deduction allocation conflicts")
             reservation = uow.idempotency.reserve(
                 request.idempotency_key,
                 request.request_fingerprint,
