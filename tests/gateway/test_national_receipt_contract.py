@@ -14,6 +14,7 @@ from cryptography.hazmat.primitives.serialization import pkcs12
 from lxml import etree
 
 from kordena_fiscal.gateway.nfse_national_receipt import (
+    NationalDispatchEvidence,
     NationalReceiptIdentity,
     NfseReceiptVerificationError,
     validate_national_nfse_xml,
@@ -270,3 +271,27 @@ def test_nt009_receipt_cannot_use_february_types(sample):
             expected=NationalReceiptIdentity.from_request(sample[0]),
             schema_profile=PRODUCTION_PROFILE,
         )
+
+
+def test_dispatch_evidence_preserves_original_schema_and_signed_bytes(sample):
+    request, material = sample[:2]
+    signed = build_signed_dps(request, material, schema_profile=PRODUCTION_PROFILE)
+    evidence = NationalDispatchEvidence.capture(request, PRODUCTION_PROFILE, signed)
+    recovered = NationalDispatchEvidence.decode(evidence.encode(), request)
+    assert recovered == evidence
+    assert recovered.signed_dps == signed
+    assert recovered.schema_profile == PRODUCTION_PROFILE
+    xml = fixture.complete_receipt(
+        signed, material, schema_profile=PRODUCTION_PROFILE,
+    )
+    assert validate_national_nfse_xml(
+        xml, fixture.key_for(signed), expected=recovered.identity,
+        schema_profile=recovered.schema_profile,
+    ) == xml
+    tampered = json.loads(evidence.encode())
+    tampered["signed_dps_sha256"] = "0" * 64
+    with pytest.raises(NfseReceiptVerificationError, match="Invalid archived"):
+        NationalDispatchEvidence.decode(json.dumps(tampered).encode(), request)
+    other = NfseAuthorizationRequest.build(replace(request.document, dps_number=765))
+    with pytest.raises(NfseReceiptVerificationError, match="Invalid archived"):
+        NationalDispatchEvidence.decode(evidence.encode(), other)

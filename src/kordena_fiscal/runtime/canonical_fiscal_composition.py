@@ -578,14 +578,6 @@ def build_runtime_fiscal_handler_factory(
             raise ValueError(
                 "WebISS requires A1 vault, canonical audit, service audit and approved exchange"
             )
-    national_nfse = None
-    if certificate_vault is not None and trusted_signed_dps_builder is not None:
-        national_nfse = NfseNacionalHomologationGateway(
-            resolve_certificate=lambda scope, cnpj: certificate_vault.resolve(
-                scope=scope, issuer_cnpj=cnpj
-            ),
-            build_signed_dps=trusted_signed_dps_builder,
-        )
     retention = RetentionPolicyMetadata(
         policy_id="nfcore-fiscal-archive", policy_version=1
     )
@@ -593,6 +585,15 @@ def build_runtime_fiscal_handler_factory(
     def factory(
         application: FiscalApplicationService,
     ) -> Mapping[str, FiscalOperationHandler]:
+        national_nfse = None
+        if certificate_vault is not None and trusted_signed_dps_builder is not None:
+            national_nfse = NfseNacionalHomologationGateway(
+                resolve_certificate=lambda scope, cnpj: certificate_vault.resolve(
+                    scope=scope, issuer_cnpj=cnpj
+                ),
+                build_signed_dps=trusted_signed_dps_builder,
+                record_dispatch=application.record_national_dispatch,
+            )
         # The municipal ports are scoped to the same canonical application.
         # No secondary persistence, fiscal router, auth or signing identity.
         active_municipalities = sp4_reviewed_municipalities
@@ -804,6 +805,7 @@ def build_runtime_fiscal_handler_factory(
                 resolve_certificate=lambda scope, cnpj: certificate_vault.resolve(
                     scope=scope, issuer_cnpj=cnpj,
                 ),
+                load_dispatch=application.load_national_dispatch,
             )
         if national_adapter is not None or extrema_adapter is not None or municipal_issue:
             router = _GovernedNfseRouter(

@@ -28,10 +28,12 @@ from kordena_fiscal.gateway.nfse_national_homologation import (
     OfficialNfseTransportError,
 )
 from kordena_fiscal.gateway.nfse_national_receipt import (
+    NationalDispatchEvidence,
     NationalReceiptIdentity,
     NfseReceiptVerificationError,
-    current_national_receipt_profile,
+    legacy_national_receipt_context,
     require_national_receipt_signer_pins,
+    validate_nfse_receipt_integrity,
     validate_official_nfse_receipt,
 )
 from kordena_fiscal.gateway.nfse_national_receipt import (
@@ -42,6 +44,7 @@ from kordena_fiscal.issuance.nfe_nfse import (
     NfseAuthorizationRequest,
     NfseAuthorizationResult,
 )
+from kordena_fiscal.issuance.nfse_dps_identity import national_dps_id
 from kordena_fiscal.vault import EphemeralCertificateMaterial
 from kordena_fiscal.vault.a1_preflight import validate_a1_for_issuer
 
@@ -53,7 +56,13 @@ _MAX_RESPONSE = 4_194_304
 
 def _dps_id(request: NfseAuthorizationRequest) -> str:
     try:
-        return NationalReceiptIdentity.from_request(request).dps_id
+        document = request.document
+        municipality = document.issuer.address.jurisdiction.municipality_ibge_code
+        if municipality is None or document.dps_number is None:
+            raise FiscalValidationError("Missing durable DPS number")
+        return national_dps_id(
+            municipality, document.issuer.cnpj.value, document.dps_series, document.dps_number,
+        )
     except FiscalValidationError:
         raise OfficialNfseTransportError(
             "Official DPS query requires a durably reserved legal issuer serial"
@@ -123,6 +132,8 @@ class NfseNationalHomologationQueryGateway:
         resolve_certificate: Callable[[ExecutionScope, str], EphemeralCertificateMaterial],
         exchange_get: Callable[[str, ssl.SSLContext, float], bytes] | None = None,
         timeout_seconds: float = 15,
+        load_dispatch: Callable[[NfseAuthorizationRequest], NationalDispatchEvidence | None]
+        | None = None,
     ) -> None:
         if (
             not callable(getattr(provider_resolver, "resolve_provider_id", None))
@@ -134,6 +145,7 @@ class NfseNationalHomologationQueryGateway:
         self._resolve_certificate = resolve_certificate
         self._get = exchange_get or _read_only_get
         self._timeout = timeout_seconds
+        self._load_dispatch = load_dispatch
 
     def query(self, request: NfseAuthorizationRequest) -> NfseAuthorizationResult:
         if not isinstance(request, NfseAuthorizationRequest):
@@ -147,7 +159,8 @@ class NfseNationalHomologationQueryGateway:
             or jurisdiction.municipality_ibge_code is None
         ):
             raise OfficialNfseTransportError("National NFS-e query requires trusted scope")
-        dps_id = _dps_id(request)
+        evidence = self._load_dispatch(request) if self._load_dispatch is not None else None
+        dps_id = evidence.identity.dps_id if evidence is not None else _dps_id(request)
         bound = self._provider_resolver.resolve_provider_id(
             scope=scope, document_kind=FiscalDocumentKind.NFSE,
             jurisdiction=jurisdiction, operation="query",
@@ -173,11 +186,17 @@ class NfseNationalHomologationQueryGateway:
             self._get(f"{_URL_BASE}/dps/{dps_id}", tls, self._timeout),
             jurisdiction.municipality_ibge_code,
         )
-        profile = current_national_receipt_profile()
+        raw = self._get(f"{_URL_BASE}/nfse/{key}", tls, self._timeout)
+        try:
+            if evidence is not None:
+                expected, profile = evidence.identity, evidence.schema_profile
+            else:
+                xml = validate_nfse_receipt_integrity(raw, key)
+                expected, profile = legacy_national_receipt_context(xml, key, request)
+        except NfseReceiptVerificationError as exc:
+            raise OfficialNfseTransportError(str(exc)) from None
         authorized_xml = _validate_official_nfse(
-            self._get(f"{_URL_BASE}/nfse/{key}", tls, self._timeout), key,
-            expected=NationalReceiptIdentity.from_request(request, schema_profile=profile),
-            schema_profile=profile,
+            raw, key, expected=expected, schema_profile=profile,
         )
         return NfseAuthorizationResult(
             status=AuthorizationStatus.AUTHORIZED,

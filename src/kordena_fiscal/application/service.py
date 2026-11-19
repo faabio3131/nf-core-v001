@@ -90,9 +90,10 @@ from kordena_fiscal.gateway.nfse_nacional_homologation import (
     NACIONAL_HOMOLOGATION_PROVIDER_ID,
 )
 from kordena_fiscal.gateway.nfse_national_receipt import (
-    NationalReceiptIdentity,
+    NATIONAL_DISPATCH_MEDIA_TYPE,
+    NationalDispatchEvidence,
     _verify_nfse_receipt_signature,
-    current_national_receipt_profile,
+    legacy_national_receipt_context,
     validate_national_nfse_xml,
 )
 from kordena_fiscal.gateway.osasco_rtc_cancellation_builder import (
@@ -1323,6 +1324,80 @@ class FiscalApplicationService:
         if len(matches) != 1:
             raise PersistenceStateError("one current prepared request is required")
         return matches[0]
+
+    def record_national_dispatch(
+        self, request: NfseAuthorizationRequest, profile: str, signed_dps: bytes,
+    ) -> None:
+        """Archive exact outgoing DPS before HTTP, under the existing dispatch claim."""
+        evidence = NationalDispatchEvidence.capture(request, profile, signed_dps)
+        document = request.document
+        with self._uow_factory() as uow:
+            scope = document.scope
+            uow.lifecycle.assert_scope(document.document_id, scope)
+            state = uow.lifecycle.get(document.document_id)
+            prepared = self._load_prepared_from_uow(uow, scope, document.document_id)
+            attempts = uow.idempotency.attempts(request.idempotency_key)
+            if (
+                state is None or state.state is not FiscalDocumentState.TRANSMITTING
+                or not isinstance(prepared, NfseAuthorizationRequest)
+                or prepared.request_fingerprint != request.request_fingerprint
+                or len(attempts) != 1 or attempts[0].status is not IssuanceAttemptStatus.RESERVED
+            ):
+                raise PersistenceStateError("National dispatch requires durable transmission claim")
+            existing = self._national_dispatch_from_uow(uow, request)
+            if existing is not None:
+                if existing != evidence:
+                    raise PersistenceConflictError("National dispatch evidence changed")
+                return
+            uow.archive.append(FiscalArchiveEntry.build(
+                scope=scope, document_reference=document.document_id,
+                kind=FiscalArchiveKind.OTHER, content=evidence.encode(),
+                media_type=NATIONAL_DISPATCH_MEDIA_TYPE, archived_at=datetime.now(UTC),
+                retention=RetentionPolicyMetadata("nfcore-fiscal-archive", 1),
+            ))
+            uow.commit()
+
+    @staticmethod
+    def _national_dispatch_from_uow(
+        uow: FiscalUnitOfWork, request: NfseAuthorizationRequest,
+    ) -> NationalDispatchEvidence | None:
+        document = request.document
+        uow.lifecycle.assert_scope(document.document_id, document.scope)
+        entries = [
+            entry for entry in uow.archive.list_for_document(document.scope, document.document_id)
+            if entry.media_type == NATIONAL_DISPATCH_MEDIA_TYPE
+        ]
+        if not entries:
+            return None
+        if len(entries) != 1 or entries[0].kind is not FiscalArchiveKind.OTHER:
+            raise PersistenceStateError("Ambiguous National dispatch evidence")
+        return NationalDispatchEvidence.decode(entries[0].content, request)
+
+    def load_national_dispatch(
+        self, request: NfseAuthorizationRequest,
+    ) -> NationalDispatchEvidence | None:
+        """Retrieve only evidence scoped to the immutable prepared request."""
+        with self._uow_factory() as uow:
+            prepared = self._load_prepared_from_uow(
+                uow, request.document.scope, request.document.document_id,
+            )
+            if (
+                not isinstance(prepared, NfseAuthorizationRequest)
+                or prepared.request_fingerprint != request.request_fingerprint
+            ):
+                raise PersistenceConflictError("National dispatch request differs from archive")
+            return self._national_dispatch_from_uow(uow, request)
+
+    @staticmethod
+    def _validate_archived_national_receipt(
+        uow: FiscalUnitOfWork, request: NfseAuthorizationRequest, xml: bytes, key: str,
+    ) -> None:
+        evidence = FiscalApplicationService._national_dispatch_from_uow(uow, request)
+        if evidence is not None:
+            expected, profile = evidence.identity, evidence.schema_profile
+        else:
+            expected, profile = legacy_national_receipt_context(xml, key, request)
+        validate_national_nfse_xml(xml, key, expected=expected, schema_profile=profile)
 
     def authorize_prepared_document(
         self,
@@ -3636,9 +3711,8 @@ class FiscalApplicationService:
                 or info.get("Id") != "NFS" + key
             ):
                 raise ValueError("Louveira original invoice identity is invalid")
-            validate_national_nfse_xml(
-                signed[0].content, key, expected=NationalReceiptIdentity.from_request(original),
-                schema_profile=current_national_receipt_profile(),
+            FiscalApplicationService._validate_archived_national_receipt(
+                uow, original, signed[0].content, key,
             )
             official_issued_at = info.findtext(ns + "dhProc")
             if not official_issued_at:
@@ -3754,10 +3828,7 @@ class FiscalApplicationService:
                 or getattr(root.getroottree().docinfo, "doctype", None)
             ):
                 raise PersistenceStateError("National original signed XML identity mismatch")
-            validate_national_nfse_xml(
-                entries[0].content, key, expected=NationalReceiptIdentity.from_request(request),
-                schema_profile=current_national_receipt_profile(),
-            )
+            self._validate_archived_national_receipt(uow, request, entries[0].content, key)
             self._enforce_louveira_signed_original_window_in_uow(
                 uow=uow, scope=scope, original_id=document_id,
                 requested_at=datetime.now(UTC),

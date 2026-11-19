@@ -102,6 +102,7 @@ class NfseNacionalHomologationGateway:
         build_signed_dps: Callable[[NfseAuthorizationRequest, EphemeralCertificateMaterial], bytes],
         exchange: Callable[[bytes, ssl.SSLContext, float], bytes] | None = None,
         timeout_seconds: float = 15,
+        record_dispatch: Callable[[NfseAuthorizationRequest, str, bytes], None] | None = None,
     ) -> None:
         if not callable(resolve_certificate) or not callable(build_signed_dps):
             raise ValueError("NFS-e requires trusted certificate and DPS preparation ports")
@@ -111,6 +112,7 @@ class NfseNacionalHomologationGateway:
         self._build_signed_dps = build_signed_dps
         self._exchange = exchange or _exchange_http
         self._timeout = timeout_seconds
+        self._record_dispatch = record_dispatch
 
     def validate_pre_dispatch(self, request: NfseAuthorizationRequest) -> None:
         """Validate real SEFIN trust/policy before HTTP intent or A1 access."""
@@ -211,6 +213,10 @@ class NfseNacionalHomologationGateway:
             require_current_national_treatment_for_live_dispatch(
                 os.environ, document,
             )
+        if self._record_dispatch is not None:
+            self._record_dispatch(request, profile, signed_dps)
+        elif self._exchange is _LIVE_EXCHANGE:
+            raise OfficialNfseTransportError("National dispatch evidence archive is required")
         response = self._exchange(payload, build_fiscal_tls_context(material), self._timeout)
         if not isinstance(response, bytes) or len(response) > _MAX_RESPONSE:
             raise OfficialNfseTransportError("Resposta SEFIN inválida")

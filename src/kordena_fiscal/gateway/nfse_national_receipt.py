@@ -347,6 +347,116 @@ class NationalReceiptIdentity:
             raise NfseReceiptVerificationError("Invalid canonical DPS receipt identity") from None
 
 
+NATIONAL_DISPATCH_MEDIA_TYPE = "application/vnd.nfcore.national-dps-dispatch.v1+json"
+
+
+@dataclass(frozen=True, slots=True)
+class NationalDispatchEvidence:
+    """Exact pre-HTTP signed DPS and layout, bound to one durable request."""
+
+    schema_profile: str
+    request_fingerprint: str
+    signed_dps: bytes
+    identity: NationalReceiptIdentity
+
+    @classmethod
+    def capture(
+        cls, request: NfseAuthorizationRequest, profile: str, signed_dps: bytes,
+    ) -> NationalDispatchEvidence:
+        evidence = cls._from_signed_dps(request, profile, signed_dps)
+        if evidence.identity != NationalReceiptIdentity.from_request(
+            request, schema_profile=profile,
+        ):
+            raise NfseReceiptVerificationError("Archived dispatch differs from canonical DPS")
+        return evidence
+
+    @classmethod
+    def _from_signed_dps(
+        cls, request: NfseAuthorizationRequest, profile: str, signed_dps: bytes,
+    ) -> NationalDispatchEvidence:
+        from kordena_fiscal.gateway.nfse_national_homologation import parse_signed_dps_info
+        from kordena_fiscal.xml.nfse_nacional_schema import national_dps_validator
+
+        if profile not in (PRODUCTION_PROFILE, NT009_RESTRICTED_PROFILE):
+            raise NfseReceiptVerificationError("Unsupported archived DPS profile")
+        info = parse_signed_dps_info(signed_dps)
+        national_dps_validator("1.01", profile=profile).validate_document(signed_dps)
+        identity = NationalReceiptIdentity.from_dps_info(info)
+        doc = request.document
+        if (
+            identity.municipality != doc.issuer.address.jurisdiction.municipality_ibge_code
+            or identity.cnpj != doc.issuer.cnpj.value
+            or identity.series != doc.dps_series or identity.number != doc.dps_number
+            or identity.environment != "2"
+            or doc.scope.environment is not FiscalEnvironment.HOMOLOGATION
+        ):
+            raise NfseReceiptVerificationError("Archived dispatch does not match fiscal identity")
+        return cls(profile, request.request_fingerprint, signed_dps, identity)
+
+    def encode(self) -> bytes:
+        return json.dumps({
+            "schema_profile": self.schema_profile,
+            "request_fingerprint": self.request_fingerprint,
+            "signed_dps": base64.b64encode(self.signed_dps).decode("ascii"),
+            "signed_dps_sha256": hashlib.sha256(self.signed_dps).hexdigest(),
+            "dps_content_sha256": self.identity.dps_content_sha256,
+        }, sort_keys=True, separators=(",", ":")).encode("ascii")
+
+    @classmethod
+    def decode(cls, data: bytes, request: NfseAuthorizationRequest) -> NationalDispatchEvidence:
+        try:
+            if len(data) > 2 * _MAX_RESPONSE:
+                raise ValueError("dispatch evidence size")
+            payload = json.loads(data)
+            if not isinstance(payload, dict) or set(payload) != {
+                "schema_profile", "request_fingerprint", "signed_dps",
+                "signed_dps_sha256", "dps_content_sha256",
+            } or not all(isinstance(value, str) for value in payload.values()):
+                raise ValueError("dispatch evidence fields")
+            signed = base64.b64decode(payload["signed_dps"], validate=True)
+            if (
+                payload["request_fingerprint"] != request.request_fingerprint
+                or hashlib.sha256(signed).hexdigest() != payload["signed_dps_sha256"]
+            ):
+                raise ValueError("dispatch evidence digest")
+            evidence = cls._from_signed_dps(request, payload["schema_profile"], signed)
+            if evidence.identity.dps_content_sha256 != payload["dps_content_sha256"]:
+                raise ValueError("dispatch DPS digest")
+            return evidence
+        except (ValueError, TypeError, FiscalValidationError) as exc:
+            raise NfseReceiptVerificationError("Invalid archived National DPS dispatch") from exc
+
+
+def legacy_national_receipt_context(
+    xml: bytes, key: str, request: NfseAuthorizationRequest,
+) -> tuple[NationalReceiptIdentity, str]:
+    """Pre-intent migration path: use verified provider-reported processing date.
+
+    This date selects the historical layout only. It is never used as an
+    independent timestamp or to bypass current certificate validity/CRL checks.
+    Exact canonical DPS correlation and full receipt trust still apply.
+    """
+    root = validate_nfse_xml_integrity(xml, key)
+    info = root.find(f"{{{_NS}}}infNFSe")
+    assert info is not None
+    try:
+        raw = info.findtext(f"{{{_NS}}}dhProc")
+        if not raw:
+            raise ValueError("missing official processing date")
+        processed = datetime.fromisoformat(raw)
+        if processed.tzinfo is None or processed.utcoffset() is None:
+            raise ValueError("missing processing timezone")
+        if processed > datetime.now(UTC):
+            raise ValueError("future processing date")
+        profile = select_national_dps_profile(
+            environment=request.document.scope.environment, schema_version="1.01",
+            effective_on=processed.astimezone(UTC).date(),
+        )
+    except (ValueError, FiscalValidationError) as exc:
+        raise NfseReceiptVerificationError("Historical receipt layout unavailable") from exc
+    return NationalReceiptIdentity.from_request(request, schema_profile=profile), profile
+
+
 def current_national_receipt_profile() -> str:
     return select_national_dps_profile(
         environment=FiscalEnvironment.HOMOLOGATION, schema_version="1.01",
