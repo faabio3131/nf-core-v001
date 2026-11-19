@@ -4,8 +4,7 @@ from __future__ import annotations
 import hashlib
 import json
 import re
-from collections.abc import Iterator, Mapping
-from contextlib import contextmanager
+from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
@@ -18,7 +17,7 @@ from kordena_fiscal.issuance.nfe_nfse import (
     NfseNationalTaxTreatment,
 )
 
-from .native_sale_policy import sale_policy_key
+from .native_sale_policy import _serialized_policy_install, sale_policy_key
 from .sale_facts import _unique
 
 POLICY_ENV = "NFCORE_NFSE_FISCAL_POLICY_ROOT"
@@ -223,38 +222,6 @@ def require_current_national_treatment_for_live_dispatch(
             "Live National NFS-e decision differs from current pinned policy"
         )
     return current
-
-
-@contextmanager
-def _serialized_policy_install(directory: Path, name: str) -> Iterator[None]:
-    """Serialize same-scope policy promotions across processes on the host.
-
-    Without a shared lock, a lower-version writer can overwrite a higher one
-    after both have checked the previous version. Readers still fail closed
-    while the signed JSON/SHA pair is replaced.
-    """
-    import fcntl
-    import os
-    import stat
-
-    fd = os.open(
-        directory / (name + ".lock"),
-        os.O_CREAT | os.O_RDWR | os.O_NOFOLLOW | os.O_CLOEXEC,
-        0o600,
-    )
-    try:
-        metadata = os.fstat(fd)
-        if (
-            not stat.S_ISREG(metadata.st_mode)
-            or metadata.st_nlink != 1
-            or metadata.st_uid != os.geteuid()
-            or metadata.st_mode & 0o077
-        ):
-            raise FiscalValidationError("Unsafe scoped national policy install lock")
-        fcntl.flock(fd, fcntl.LOCK_EX)
-        yield
-    finally:
-        os.close(fd)
 
 
 def install_reviewed_policy(source: Path, directory: Path) -> str:
