@@ -102,6 +102,39 @@ def test_timeout_degrades_without_blocking(build_service) -> None:  # type: igno
     assert result.status is AdviceStatus.BASELINE_ONLY
 
 
+def test_timeout_retains_bulkhead_slot_until_worker_finishes() -> None:
+    from threading import Event
+
+    from kordena_fiscal.cognitive import Bulkhead
+    from .conftest import Recorder
+
+    started, finished, allow_exit = Event(), Event(), Event()
+
+    class BlockingModel(ScriptedModel):
+        def advise(self, *args, **kwargs):  # type: ignore[no-untyped-def]
+            started.set()
+            try:
+                allow_exit.wait(timeout=5)
+                return super().advise(*args, **kwargs)
+            finally:
+                finished.set()
+
+    model = BlockingModel(sections=good_sections())
+    recorder = Recorder()
+    service = CognitiveAdviceService(
+        baselines=default_baselines(), model=model, audit=recorder,
+        bulkhead=Bulkhead(1), deadline_seconds=0.1,
+    )
+    try:
+        assert service.advise(make_request()).provenance.degraded_reason == "timeout"
+        assert started.is_set()
+        assert service.advise(make_request()).provenance.degraded_reason == "overloaded"
+        assert not finished.is_set()
+    finally:
+        allow_exit.set()
+        assert finished.wait(5)
+
+
 def test_circuit_opens_and_stops_calling_provider(build_service) -> None:  # type: ignore[no-untyped-def]
     model = ScriptedModel(error=ModelProviderUnavailable())
     service = build_service(model, breaker=CircuitBreaker(failure_threshold=2, recovery_seconds=60))
