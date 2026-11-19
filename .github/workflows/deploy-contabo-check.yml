@@ -40,5 +40,7 @@ jobs:
         run: bash deploy/contabo/test-root-host-audit.sh
       - name: Testar bootstrap administrativo limitado do GSM sem VPS
         run: bash deploy/contabo/test-bootstrap-gsm-plan-b.sh
+      - name: Validar composição da confiança fiscal SEFIN sem ativação
+        run: bash deploy/contabo/test-nfse-trust-opt-in.sh
       - name: Validar sintaxe da politica sudoers de exemplo
         run: sudo visudo -cf deploy/contabo/nfcore-audit.sudoers.example
