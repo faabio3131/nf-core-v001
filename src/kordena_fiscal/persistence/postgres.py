@@ -1030,6 +1030,19 @@ class PostgresFiscalDatabase:
                 raise
             except Exception as exc:
                 raise PersistenceStateError("DPS serial schema is not ready") from exc
+        if IRON_A1_DELEGATION_VERSION in applied:
+            try:
+                with self.connection() as connection:
+                    delegation = connection.execute(
+                        "SELECT to_regclass('public.fm_iron_a1_delegations'), "
+                        "to_regclass('public.fm_iron_a1_delegations_expires_idx')"
+                    ).fetchone()
+                if delegation is None or len(delegation) != 2 or not all(delegation):
+                    raise PersistenceStateError("A1 delegation schema is incomplete")
+            except PersistenceStateError:
+                raise
+            except Exception as exc:
+                raise PersistenceStateError("A1 delegation schema is not ready") from exc
         if not require_bling:
             return applied
         try:

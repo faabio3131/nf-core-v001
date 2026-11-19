@@ -278,3 +278,47 @@ def test_cakto_schema_guard_is_read_only(tmp_path) -> None:
         connection.execute("DELETE FROM fm_cakto_schema_migrations WHERE version = 2")
     with pytest.raises(CaktoStateConflictError, match="certified migration version"):
         database.require_current_schema()
+
+
+
+@pytest.mark.parametrize("delegation", [
+    ("fm_iron_a1_delegations", "fm_iron_a1_delegations_expires_idx"),
+    (None, "fm_iron_a1_delegations_expires_idx"),
+    ("fm_iron_a1_delegations", None),
+])
+def test_v23_ledger_requires_delegation_table_and_index(monkeypatch, delegation):
+    database = object.__new__(PostgresFiscalDatabase)
+    versions = (*range(1, 20), 22, 23)
+    monkeypatch.setattr(
+        PostgresFiscalDatabase, "applied_migrations", lambda _self: versions,
+    )
+    queries = []
+
+    class Cursor:
+        def __init__(self, row):
+            self.row = row
+
+        def fetchone(self):
+            return self.row
+
+    class Connection:
+        def execute(self, sql):
+            queries.append(sql)
+            assert sql.startswith("SELECT to_regclass(")
+            if "fm_iron_a1_delegations" in sql:
+                return Cursor(delegation)
+            if "fm_nfse_dps_counters" in sql:
+                return Cursor(("fm_nfse_dps_counters", "fm_nfse_dps_reservations"))
+            return Cursor(("fm_cognitive_token_counters", "fm_cognitive_token_reservations"))
+
+    @contextmanager
+    def read_only_connection():
+        yield Connection()
+
+    monkeypatch.setattr(database, "connection", read_only_connection)
+    if all(delegation):
+        assert database.require_current_schema() == versions
+    else:
+        with pytest.raises(PersistenceStateError, match="A1 delegation schema"):
+            database.require_current_schema()
+    assert len(queries) == 3

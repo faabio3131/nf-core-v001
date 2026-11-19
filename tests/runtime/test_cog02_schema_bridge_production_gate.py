@@ -65,7 +65,7 @@ class Database:
 
 @pytest.fixture
 def setup(monkeypatch: pytest.MonkeyPatch):
-    monkeypatch.setattr(guard, "validate_policy", lambda: tuple(range(1, 23)))
+    monkeypatch.setattr(guard, "validate_policy", lambda: tuple(range(1, 24)))
     monkeypatch.setenv("NFCORE_ENVIRONMENT", "production")
     monkeypatch.setenv("DATABASE_URL", "postgresql://synthetic.invalid/release")
     monkeypatch.delenv("RAILWAY_SERVICE_ID", raising=False)
@@ -84,18 +84,20 @@ def setup(monkeypatch: pytest.MonkeyPatch):
     [
         (tuple(range(1, 19)), False),
         (tuple(range(1, 20)), False),
-        ((*tuple(range(1, 20)), 22), True),
-        (tuple(range(1, 23)), True),
+        ((*tuple(range(1, 20)), 22), False),
+        (tuple(range(1, 23)), False),
+        ((*tuple(range(1, 20)), 22, 23), True),
+        (tuple(range(1, 24)), True),
     ],
 )
-def test_release_gate_requires_dps_22_after_cog02_19_without_write(
+def test_release_gate_requires_dps_22_and_a1_23_without_write(
     setup, capsys: pytest.CaptureFixture[str],
     fiscal: tuple[int, ...], allowed: bool,
 ) -> None:
     database = setup(fiscal, (1, 2, 3))
     if allowed:
         guard.assert_current_production()
-        assert database.schema_checks == [False]
+        assert database.schema_checks == [21 in fiscal]
     else:
         with pytest.raises(RuntimeError, match="DPS v22 required"):
             guard.assert_current_production()
@@ -111,9 +113,9 @@ def test_release_gate_requires_dps_22_after_cog02_19_without_write(
     [
         (tuple(range(1, 18)), (1, 2, 3)),
         (tuple(range(1, 21)), (1, 2, 3)),
-        ((*tuple(range(1, 20)), 22), None),
-        ((*tuple(range(1, 20)), 22), (1,)),
-        ((*tuple(range(1, 20)), 22), (1, 2, 3, 4)),
+        ((*tuple(range(1, 20)), 22, 23), None),
+        ((*tuple(range(1, 20)), 22, 23), (1,)),
+        ((*tuple(range(1, 20)), 22, 23), (1, 2, 3, 4)),
     ],
 )
 def test_release_deploy_gate_rejects_schema_drift(
