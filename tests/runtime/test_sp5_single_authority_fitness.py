@@ -55,7 +55,7 @@ def test_sp5_national_get_and_post_share_signed_receipt_verifier() -> None:
     receipt = _source("src/kordena_fiscal/gateway/nfse_national_receipt.py")
 
     assert "return validate_official_nfse_receipt(" in query
-    assert "expected=NationalReceiptIdentity.from_request(request)" in query
+    assert "expected=NationalReceiptIdentity.from_request(request, schema_profile=profile)" in query
     assert "document = validate_official_nfse_receipt(" in gateway
     assert "expected=expected, schema_profile=schema_profile" in gateway
     assert "def _verify_nfse_receipt_signature(" in receipt
