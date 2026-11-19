@@ -198,7 +198,7 @@ class NfseNacionalHomologationGateway:
             signed_dps, issuer_cnpj=issuer_cnpj, issuer_municipality_ibge=issuer_municipality,
             schema_profile=profile,
         )
-        expected = NationalReceiptIdentity.from_request(request)
+        expected = NationalReceiptIdentity.from_request(request, schema_profile=profile)
         if NationalReceiptIdentity.from_dps_info(parse_signed_dps_info(signed_dps)) != expected:
             raise OfficialNfseTransportError("Outgoing DPS differs from canonical request")
         # A policy might rotate after preflight while the A1 was resolved and
