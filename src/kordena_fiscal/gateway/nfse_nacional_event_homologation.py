@@ -88,21 +88,20 @@ def require_national_event_signer_pins() -> frozenset[str]:
 
 def _require_live_event_trust() -> None:
     """Fail before contacting SEFIN when ICP revocation evidence is missing."""
-    require_national_event_signer_pins()
+    pins = require_national_event_signer_pins()
     from kordena_fiscal.gateway.nfse_receipt_pki import (
-        require_national_receipt_pki_ready,
+        EVENT_SIGNER_BUNDLE,
+        require_national_signer_pki_ready,
     )
-    require_national_receipt_pki_ready()
+    require_national_signer_pki_ready(pins, bundle_env=EVENT_SIGNER_BUNDLE)
 
 
 def _enforce_national_event_signer(root: etree._Element) -> None:
     """Bind only the outer official event signer to leaf pin and ICP/CRL."""
+    from kordena_fiscal.gateway.nfse_receipt_pki import TRUST_MATERIAL_SETTINGS
+
     if _EVENT_SIGNER_ENV not in os.environ:
-        if any(name in os.environ for name in (
-            "NFCORE_NFSE_RECEIPT_CA_BUNDLE",
-            "NFCORE_NFSE_RECEIPT_CRL_BUNDLE",
-            "NFCORE_NFSE_RECEIPT_ROOT_SHA256",
-        )):
+        if any(name in os.environ for name in TRUST_MATERIAL_SETTINGS):
             raise NationalNfseEventError("Official NFS-e event signer pins unavailable")
         # Offline synthetic tests do not establish operational trust. Both
         # default live POST and GET demand pins and PKI *before* HTTP.

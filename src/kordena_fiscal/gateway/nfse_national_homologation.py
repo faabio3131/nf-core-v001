@@ -216,11 +216,12 @@ class NfseNationalHomologationTransport:
         expected = NationalReceiptIdentity.from_dps_info(info)
         body = build_nfse_dps_request(signed_dps_xml, schema_profile=profile)
         if self._requires_receipt_trust:
-            require_national_receipt_signer_pins()
+            pins = require_national_receipt_signer_pins()
             from kordena_fiscal.gateway.nfse_receipt_pki import (
-                require_national_receipt_pki_ready,
+                INVOICE_SIGNER_BUNDLE,
+                require_national_signer_pki_ready,
             )
-            require_national_receipt_pki_ready()
+            require_national_signer_pki_ready(pins, bundle_env=INVOICE_SIGNER_BUNDLE)
         return parse_nfse_homologation_response(
             self._exchange(body, build_fiscal_tls_context(self._certificate), self._timeout),
             expected=expected, schema_profile=profile,

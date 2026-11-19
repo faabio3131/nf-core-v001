@@ -118,11 +118,12 @@ class NfseNacionalHomologationGateway:
             raise OfficialNfseTransportError("Solicitação NFS-e inválida")
         validate_sefin_dps_input(request.document)
         if self._exchange is _LIVE_EXCHANGE:
-            require_national_receipt_signer_pins()
+            pins = require_national_receipt_signer_pins()
             from kordena_fiscal.gateway.nfse_receipt_pki import (
-                require_national_receipt_pki_ready,
+                INVOICE_SIGNER_BUNDLE,
+                require_national_signer_pki_ready,
             )
-            require_national_receipt_pki_ready()
+            require_national_signer_pki_ready(pins, bundle_env=INVOICE_SIGNER_BUNDLE)
             from kordena_fiscal.runtime.native_nfse_policy import (
                 require_current_national_treatment_for_live_dispatch,
             )

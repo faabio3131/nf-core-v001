@@ -90,3 +90,6 @@ na ausência de pins; Ruff/Mypy/Pytest/PostgreSQL/Browser/container em CI
 do HEAD exato; revisão EGM independente. Sem dados, certificações,
 ambiente ou credenciais reais incluídos. Não promover production antes
 dos demais gates de FIS-03 e de infraestrutura.
+
+## Pré-validação das folhas oficiais (19/11/2026)
+A cadeia e a LCR da AC, sem o certificado folha, não comprovam que o signatário esperado permanece válido antes de um POST irreversível. O runtime exige agora bundles PEM separados de folhas de notas e eventos (`NFCORE_NFSE_RECEIPT_SIGNER_BUNDLE` e `NFCORE_NFSE_EVENT_SIGNER_BUNDLE`), idênticos em conjunto aos respectivos pins aprovados. Cada folha precisa passar na autoridade PKI existente antes da rede fiscal. Material parcial, duplicado, divergente, vencido ou revogado bloqueia. Não instalar do retorno não verificado. A fonte pública primária de raízes e LCRs é o repositório AC-Raiz do ITI (https://www.gov.br/iti/pt-br/assuntos/repositorio/repositorio-ac-raiz), atualizado em 13/11/2026 na consulta. Ainda é necessária evidência independente da identidade e finalidade do signatário SEFIN, do conjunto oficial e da validação histórica. Nenhum artefato oficial real foi instalado nesta alteração.

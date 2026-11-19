@@ -166,7 +166,8 @@ No host existente e após aprovação, definir os seguintes nomes no ambiente
 privado de composição:
 
 - `NFCORE_NFSE_TRUST_HOST_DIR`: diretório preexistente fora do Git contendo
-  `ca-bundle.pem` e `crl-bundle.pem` legíveis pela API UID 10001, sem symlinks.
+  `ca-bundle.pem`, `crl-bundle.pem`, `invoice-signers.pem` e
+  `event-signers.pem` legíveis pela API UID 10001, sem symlinks.
   O mount é somente leitura, sem criação automática; manter escrita restrita
   ao operador autorizado. Não colocar chaves privadas neste diretório.
 - `NFCORE_NFSE_RECEIPT_ROOT_SHA256`: hash SHA-256 DER da raiz ICP aprovada.
@@ -186,16 +187,23 @@ os três validadores, sem rede fiscal e sem consultar certificados de clientes:
 docker compose exec -T nfcore-api python -c '
 from kordena_fiscal.gateway.nfse_national_receipt import require_national_receipt_signer_pins
 from kordena_fiscal.gateway.nfse_nacional_event_homologation import require_national_event_signer_pins
-from kordena_fiscal.gateway.nfse_receipt_pki import require_national_receipt_pki_ready
-require_national_receipt_signer_pins()
-require_national_event_signer_pins()
-require_national_receipt_pki_ready()
+from kordena_fiscal.gateway.nfse_receipt_pki import (
+    INVOICE_SIGNER_BUNDLE, EVENT_SIGNER_BUNDLE, require_national_signer_pki_ready,
+)
+require_national_signer_pki_ready(
+    require_national_receipt_signer_pins(), bundle_env=INVOICE_SIGNER_BUNDLE,
+)
+require_national_signer_pki_ready(
+    require_national_event_signer_pins(), bundle_env=EVENT_SIGNER_BUNDLE,
+)
 print("SEFIN_TRUST_CONFIG_PASS_ONLY")
 '
 ```
 
-O comando valida configuração, cadeias e CRLs, **não** prova confiança
-de um certificado folha real ainda não recebido nem autorização fiscal.
+O comando verifica também todos os certificados folha previamente obtidos
+e aprovados, exigindo conjunto exato de hashes, validade e não revogação.
+Não prova por si só a procedência oficial, finalidade do signatário nem
+autorização fiscal. Obter os certificados de forma independente é obrigatório.
 Qualquer erro mantém envio e confirmação de evento nacional bloqueados.
 Planejar atualização governada de CRLs antes do vencimento e rotação de
 pins, com verificação de rollback; não desativar validação em falha.

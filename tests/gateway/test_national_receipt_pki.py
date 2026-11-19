@@ -11,9 +11,12 @@ from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.x509.oid import ExtendedKeyUsageOID, NameOID, ObjectIdentifier
 
 from kordena_fiscal.gateway.nfse_receipt_pki import (
+    EVENT_SIGNER_BUNDLE,
+    INVOICE_SIGNER_BUNDLE,
     NationalReceiptPkiError,
     _require_supported_cert_extensions,
     require_national_receipt_pki_ready,
+    require_national_signer_pki_ready,
     verify_national_receipt_pki,
 )
 
@@ -481,3 +484,32 @@ def test_unprocessed_eku_ca_blocks_preflight_and_receipt(chain, critical) -> Non
         require_national_receipt_pki_ready()
     with pytest.raises(NationalReceiptPkiError, match="ICP path or CRL rejected"):
         verify_national_receipt_pki(leaf)
+
+
+
+@pytest.mark.parametrize("bundle_env", [INVOICE_SIGNER_BUNDLE, EVENT_SIGNER_BUNDLE])
+def test_live_leaf_preflight_requires_exact_and_nonrevoked_leaf_bundle(chain, bundle_env):
+    path, monkeypatch, root, intermediate, leaf, root_key, intermediate_key = chain
+    _write(path, monkeypatch, [intermediate, root], [
+        _crl(intermediate, intermediate_key), _crl(root, root_key),
+    ], root)
+    pin = leaf.fingerprint(hashes.SHA256()).hex()
+    monkeypatch.delenv(bundle_env, raising=False)
+    with pytest.raises(NationalReceiptPkiError):
+        require_national_signer_pki_ready(frozenset({pin}), bundle_env=bundle_env)
+    bundle = path / "signers.pem"
+    bundle.write_bytes(leaf.public_bytes(serialization.Encoding.PEM))
+    monkeypatch.setenv(bundle_env, str(bundle))
+    require_national_signer_pki_ready(frozenset({pin}), bundle_env=bundle_env)
+    with pytest.raises(NationalReceiptPkiError):
+        require_national_signer_pki_ready(frozenset({"0" * 64}), bundle_env=bundle_env)
+    bundle.write_bytes(leaf.public_bytes(serialization.Encoding.PEM) * 2)
+    with pytest.raises(NationalReceiptPkiError):
+        require_national_signer_pki_ready(frozenset({pin}), bundle_env=bundle_env)
+    bundle.write_bytes(leaf.public_bytes(serialization.Encoding.PEM))
+    _write(path, monkeypatch, [intermediate, root], [
+        _crl(intermediate, intermediate_key, revoke=leaf.serial_number),
+        _crl(root, root_key),
+    ], root)
+    with pytest.raises(NationalReceiptPkiError):
+        require_national_signer_pki_ready(frozenset({pin}), bundle_env=bundle_env)

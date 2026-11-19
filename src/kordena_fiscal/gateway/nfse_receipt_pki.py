@@ -22,6 +22,13 @@ from cryptography.x509.oid import ExtensionOID
 _CA_PATH = "NFCORE_NFSE_RECEIPT_CA_BUNDLE"
 _CRL_PATH = "NFCORE_NFSE_RECEIPT_CRL_BUNDLE"
 _ROOT_PIN = "NFCORE_NFSE_RECEIPT_ROOT_SHA256"
+INVOICE_SIGNER_BUNDLE = "NFCORE_NFSE_RECEIPT_SIGNER_BUNDLE"
+EVENT_SIGNER_BUNDLE = "NFCORE_NFSE_EVENT_SIGNER_BUNDLE"
+
+# A partially configured live trust boundary is never synthetic/offline.
+TRUST_MATERIAL_SETTINGS = (
+    _CA_PATH, _CRL_PATH, _ROOT_PIN, INVOICE_SIGNER_BUNDLE, EVENT_SIGNER_BUNDLE,
+)
 _MAX_CA_BYTES = 131072
 _MAX_CRL_BYTES = 1048576
 _MAX_DEPTH = 5
@@ -323,3 +330,36 @@ def verify_national_receipt_pki(
         x509.ExtensionNotFound,
     ):
         raise NationalReceiptPkiError("National receipt ICP path or CRL rejected") from None
+
+
+
+def require_national_signer_pki_ready(
+    pins: frozenset[str], *, bundle_env: str,
+) -> None:
+    """Verify every approved leaf before fiscal I/O, not only the CA chain.
+
+    The bundle is obtained and approved independently of any fiscal response.
+    A valid CA chain alone does not prove a particular signer is available,
+    currently valid or non-revoked. Use independent invoice/event pin sets.
+    """
+    if bundle_env not in (INVOICE_SIGNER_BUNDLE, EVENT_SIGNER_BUNDLE):
+        raise NationalReceiptPkiError("Unsupported national signer trust purpose")
+    try:
+        require_national_receipt_pki_ready()
+        leaves = [
+            x509.load_pem_x509_certificate(block)
+            for block in _split_pem(
+                _read_pem(bundle_env, _MAX_CA_BYTES),
+                begin=b"-----BEGIN CERTIFICATE-----",
+                end=b"-----END CERTIFICATE-----",
+                maximum=8,
+            )
+        ]
+        actual = [leaf.fingerprint(hashes.SHA256()).hex() for leaf in leaves]
+        if len(actual) != len(pins) or frozenset(actual) != pins:
+            raise NationalReceiptPkiError("National signer bundle differs from approved pins")
+        instant = datetime.now(UTC)
+        for leaf in leaves:
+            verify_national_receipt_pki(leaf, instant=instant)
+    except (ValueError, TypeError, OSError, InvalidSignature, x509.ExtensionNotFound):
+        raise NationalReceiptPkiError("National signer ICP trust unavailable") from None

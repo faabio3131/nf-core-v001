@@ -71,9 +71,16 @@ def require_national_receipt_signer_pins() -> frozenset[str]:
 
 def _enforce_national_receipt_signer_pin(root: etree._Element) -> None:
     """Bind the verified outer XMLDSig certificate to the operator's exact pin."""
+    from kordena_fiscal.gateway.nfse_receipt_pki import (
+        TRUST_MATERIAL_SETTINGS,
+        NationalReceiptPkiError,
+        verify_national_receipt_pki,
+    )
+
     if _TRUST_PINS_ENV not in os.environ:
-        # Synthetic callers have no live transport; real HTTP POST/GET
-        # require pins *before* network access. See both gateway guards.
+        if any(name in os.environ for name in TRUST_MATERIAL_SETTINGS):
+            raise NfseReceiptVerificationError("National NFS-e signer trust pins unavailable")
+        # Only synthetic callers may omit operational trust entirely.
         return
     pins = require_national_receipt_signer_pins()
     node = root.find(
@@ -92,14 +99,7 @@ def _enforce_national_receipt_signer_pin(root: etree._Element) -> None:
     # Synthetic validation may run without operational trust files. The default
     # real HTTP transports require these files before any network dispatch.
     # If ANY PKI setting is present, partial configuration cannot silently pass.
-    from kordena_fiscal.gateway.nfse_receipt_pki import (
-        NationalReceiptPkiError,
-        verify_national_receipt_pki,
-    )
-    if any(name in os.environ for name in (
-        "NFCORE_NFSE_RECEIPT_CA_BUNDLE", "NFCORE_NFSE_RECEIPT_CRL_BUNDLE",
-        "NFCORE_NFSE_RECEIPT_ROOT_SHA256",
-    )):
+    if any(name in os.environ for name in TRUST_MATERIAL_SETTINGS):
         try:
             verify_national_receipt_pki(certificate)
         except NationalReceiptPkiError:

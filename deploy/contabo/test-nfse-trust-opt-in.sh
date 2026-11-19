@@ -35,6 +35,8 @@ assert api["image"] == original["image"]
 env = api["environment"]
 assert env["NFCORE_NFSE_RECEIPT_CA_BUNDLE"] == "/run/nfcore/sefin-trust/ca-bundle.pem"
 assert env["NFCORE_NFSE_RECEIPT_CRL_BUNDLE"] == "/run/nfcore/sefin-trust/crl-bundle.pem"
+assert env["NFCORE_NFSE_RECEIPT_SIGNER_BUNDLE"] == "/run/nfcore/sefin-trust/invoice-signers.pem"
+assert env["NFCORE_NFSE_EVENT_SIGNER_BUNDLE"] == "/run/nfcore/sefin-trust/event-signers.pem"
 assert env["NFCORE_NFSE_FISCAL_POLICY_ROOT"] == "/run/nfcore/nfse-policies"
 assert len({env[k] for k in (
     "NFCORE_NFSE_RECEIPT_ROOT_SHA256",

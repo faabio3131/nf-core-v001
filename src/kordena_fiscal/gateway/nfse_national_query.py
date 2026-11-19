@@ -156,11 +156,12 @@ class NfseNationalHomologationQueryGateway:
             raise OfficialNfseTransportError("National NFS-e query provider is not bound")
         # A read-only recovery must not trust an arbitrary XMLDSig leaf either.
         if self._get is _LIVE_GET:
-            require_national_receipt_signer_pins()
+            pins = require_national_receipt_signer_pins()
             from kordena_fiscal.gateway.nfse_receipt_pki import (
-                require_national_receipt_pki_ready,
+                INVOICE_SIGNER_BUNDLE,
+                require_national_signer_pki_ready,
             )
-            require_national_receipt_pki_ready()
+            require_national_signer_pki_ready(pins, bundle_env=INVOICE_SIGNER_BUNDLE)
         issuer_cnpj = document.issuer.cnpj.value
         material = self._resolve_certificate(scope, issuer_cnpj)
         validate_a1_for_issuer(
