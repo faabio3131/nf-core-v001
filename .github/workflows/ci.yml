@@ -357,3 +357,9 @@ jobs:
               response = client.get('/health/ready')
               assert response.status_code == 200, response.text
           PY
+
+      - name: Rehearse exact v21 to v23 transition and pre-cutover recovery
+        run: |
+          git fetch --no-tags --depth=1 origin ea4bdd3bcb9b61e6522081a14e5cc9ad1ced9599
+          bash -n scripts/ci/rehearse_v21_v23_cutover.sh
+          bash scripts/ci/rehearse_v21_v23_cutover.sh
