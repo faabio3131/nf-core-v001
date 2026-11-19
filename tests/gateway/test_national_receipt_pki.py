@@ -8,11 +8,13 @@ import pytest
 from cryptography import x509
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
+from cryptography.x509 import ocsp
 from cryptography.x509.oid import ExtendedKeyUsageOID, NameOID, ObjectIdentifier
 
 from kordena_fiscal.gateway.nfse_receipt_pki import (
     EVENT_SIGNER_BUNDLE,
     INVOICE_SIGNER_BUNDLE,
+    OCSP_DIRECTORY,
     NationalReceiptPkiError,
     _require_supported_cert_extensions,
     require_national_receipt_pki_ready,
@@ -569,3 +571,91 @@ def test_weak_rsa_signer_and_ca_are_rejected(chain) -> None:
     ], root)
     with pytest.raises(NationalReceiptPkiError):
         require_national_receipt_pki_ready()
+
+
+def _ocsp_bytes(child, issuer, signer, signer_key, *, status=ocsp.OCSPCertStatus.GOOD,
+                stale=False, embedded=()):
+    now = datetime.now(UTC)
+    builder = ocsp.OCSPResponseBuilder().add_response(
+        child, issuer, hashes.SHA256(), status,
+        now - timedelta(hours=2 if stale else 0, minutes=1),
+        now - timedelta(hours=1) if stale else now + timedelta(hours=1),
+        now - timedelta(minutes=2) if status is ocsp.OCSPCertStatus.REVOKED else None,
+        x509.ReasonFlags.key_compromise if status is ocsp.OCSPCertStatus.REVOKED else None,
+    ).responder_id(ocsp.OCSPResponderEncoding.HASH, signer)
+    if embedded:
+        builder = builder.certificates(list(embedded))
+    return builder.sign(signer_key, hashes.SHA256()).public_bytes(serialization.Encoding.DER)
+
+
+def test_configured_ocsp_requires_exact_live_proof_and_does_not_replace_crl(chain):
+    path, monkeypatch, root, intermediate, leaf, root_key, intermediate_key = chain
+    _write(path, monkeypatch, [root, intermediate], [
+        _crl(root, root_key), _crl(intermediate, intermediate_key),
+    ], root)
+    folder = path / "ocsp"
+    folder.mkdir()
+    monkeypatch.setenv(OCSP_DIRECTORY, str(folder))
+    filename = folder / (leaf.fingerprint(hashes.SHA256()).hex() + ".der")
+    with pytest.raises(NationalReceiptPkiError):
+        verify_national_receipt_pki(leaf)
+    filename.write_bytes(_ocsp_bytes(leaf, intermediate, intermediate, intermediate_key))
+    verify_national_receipt_pki(leaf)
+    for raw in (
+        _ocsp_bytes(leaf, intermediate, intermediate, intermediate_key, stale=True),
+        _ocsp_bytes(leaf, intermediate, intermediate, intermediate_key,
+                    status=ocsp.OCSPCertStatus.REVOKED),
+        _ocsp_bytes(leaf, intermediate, intermediate, intermediate_key,
+                    status=ocsp.OCSPCertStatus.UNKNOWN),
+        _ocsp_bytes(intermediate, root, root, root_key),
+        _ocsp_bytes(leaf, intermediate, intermediate, root_key),
+    ):
+        filename.write_bytes(raw)
+        with pytest.raises(NationalReceiptPkiError):
+            verify_national_receipt_pki(leaf)
+    filename.write_bytes(_ocsp_bytes(leaf, intermediate, intermediate, intermediate_key))
+    _write(path, monkeypatch, [root, intermediate], [
+        _crl(root, root_key), _crl(intermediate, intermediate_key, revoke=leaf.serial_number),
+    ], root)
+    with pytest.raises(NationalReceiptPkiError):
+        verify_national_receipt_pki(leaf)
+
+
+def test_directly_delegated_ocsp_responder_requires_eku_and_nonrevocation(chain):
+    path, monkeypatch, root, intermediate, leaf, root_key, intermediate_key = chain
+    responder_key = _key()
+    responder = _certificate(
+        _name("Synthetic delegated OCSP"), intermediate.subject, responder_key.public_key(),
+        intermediate_key, ca=False, extra_extension=x509.ExtendedKeyUsage([
+            ExtendedKeyUsageOID.OCSP_SIGNING,
+        ]), critical=True,
+    )
+    unapproved = _certificate(
+        _name("Unapproved responder"), intermediate.subject, responder_key.public_key(),
+        intermediate_key, ca=False,
+    )
+    _write(path, monkeypatch, [root, intermediate], [
+        _crl(root, root_key), _crl(intermediate, intermediate_key),
+    ], root)
+    folder = path / "ocsp"
+    folder.mkdir()
+    monkeypatch.setenv(OCSP_DIRECTORY, str(folder))
+    filename = folder / (leaf.fingerprint(hashes.SHA256()).hex() + ".der")
+    filename.write_bytes(_ocsp_bytes(
+        leaf, intermediate, responder, responder_key, embedded=(responder,),
+    ))
+    verify_national_receipt_pki(leaf)
+    filename.write_bytes(_ocsp_bytes(
+        leaf, intermediate, unapproved, responder_key, embedded=(unapproved,),
+    ))
+    with pytest.raises(NationalReceiptPkiError):
+        verify_national_receipt_pki(leaf)
+    filename.write_bytes(_ocsp_bytes(
+        leaf, intermediate, responder, responder_key, embedded=(responder,),
+    ))
+    _write(path, monkeypatch, [root, intermediate], [
+        _crl(root, root_key),
+        _crl(intermediate, intermediate_key, revoke=responder.serial_number),
+    ], root)
+    with pytest.raises(NationalReceiptPkiError):
+        verify_national_receipt_pki(leaf)

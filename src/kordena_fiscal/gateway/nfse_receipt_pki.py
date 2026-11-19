@@ -17,17 +17,20 @@ from cryptography import x509
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import ec, padding, rsa
-from cryptography.x509.oid import ExtensionOID
+from cryptography.x509 import ocsp
+from cryptography.x509.oid import ExtendedKeyUsageOID, ExtensionOID
 
 _CA_PATH = "NFCORE_NFSE_RECEIPT_CA_BUNDLE"
 _CRL_PATH = "NFCORE_NFSE_RECEIPT_CRL_BUNDLE"
 _ROOT_PIN = "NFCORE_NFSE_RECEIPT_ROOT_SHA256"
 INVOICE_SIGNER_BUNDLE = "NFCORE_NFSE_RECEIPT_SIGNER_BUNDLE"
 EVENT_SIGNER_BUNDLE = "NFCORE_NFSE_EVENT_SIGNER_BUNDLE"
+OCSP_DIRECTORY = "NFCORE_NFSE_RECEIPT_OCSP_DIR"
 
 # A partially configured live trust boundary is never synthetic/offline.
 TRUST_MATERIAL_SETTINGS = (
     _CA_PATH, _CRL_PATH, _ROOT_PIN, INVOICE_SIGNER_BUNDLE, EVENT_SIGNER_BUNDLE,
+    OCSP_DIRECTORY,
 )
 _MAX_CA_BYTES = 131072
 _MAX_CRL_BYTES = 1048576
@@ -177,7 +180,9 @@ def _verify_cert(child: x509.Certificate, issuer: x509.Certificate) -> None:
     )
 
 
-def _require_supported_cert_extensions(cert: x509.Certificate) -> None:
+def _require_supported_cert_extensions(
+    cert: x509.Certificate, *, ocsp_responder: bool = False,
+) -> None:
     """RFC 5280: never ignore an unprocessed critical certificate constraint.
 
     Until name-constrained paths and any critical policy/EKU profiles are
@@ -212,6 +217,11 @@ def _require_supported_cert_extensions(cert: x509.Certificate) -> None:
                 "National receipt NameConstraints require full path validation"
             )
         if extension.oid == ExtensionOID.EXTENDED_KEY_USAGE:
+            if (
+                ocsp_responder and isinstance(extension.value, x509.ExtendedKeyUsage)
+                and set(extension.value) == {ExtendedKeyUsageOID.OCSP_SIGNING}
+            ):
+                continue
             raise NationalReceiptPkiError(
                 "National receipt EKU requires reviewed usage validation"
             )
@@ -305,6 +315,102 @@ def _check_revocation(
         raise NationalReceiptPkiError("National receipt certificate revoked")
 
 
+def _check_ocsp_response(
+    raw: bytes, *, child: x509.Certificate, issuer: x509.Certificate,
+    crls: list[x509.CertificateRevocationList], instant: datetime,
+) -> None:
+    """RFC 6960 offline evidence, scoped to the exact CertID and approved chain.
+
+    This is additive to complete, fresh CRLs, never a fallback around revocation.
+    The issuer or a directly delegated, unrevoked OCSP signer must authenticate
+    the response. No URL in the fiscal XML/certificate initiates network I/O.
+    """
+    if not isinstance(raw, bytes) or not 0 < len(raw) <= 131072:
+        raise NationalReceiptPkiError("Invalid receipt OCSP response size")
+    response = ocsp.load_der_ocsp_response(raw)
+    if response.response_status is not ocsp.OCSPResponseStatus.SUCCESSFUL:
+        raise NationalReceiptPkiError("Receipt OCSP response unsuccessful")
+    responses = list(response.responses)
+    if len(responses) != 1:
+        raise NationalReceiptPkiError("Receipt OCSP requires exactly one CertID")
+    single = responses[0]
+    algorithm = single.hash_algorithm
+    if algorithm.name not in {"sha1", "sha256", "sha384", "sha512"}:
+        raise NationalReceiptPkiError("Unsupported receipt OCSP CertID hash")
+    expected = ocsp.OCSPRequestBuilder().add_certificate(child, issuer, algorithm).build()
+    if (
+        single.serial_number != child.serial_number
+        or single.issuer_name_hash != expected.issuer_name_hash
+        or single.issuer_key_hash != expected.issuer_key_hash
+        or single.certificate_status is not ocsp.OCSPCertStatus.GOOD
+    ):
+        raise NationalReceiptPkiError("Receipt OCSP identity or non-revocation rejected")
+    if (
+        single.next_update_utc is None
+        or not single.this_update_utc <= response.produced_at_utc <= instant
+        or not instant < single.next_update_utc
+    ):
+        raise NationalReceiptPkiError("Receipt OCSP response stale or future-dated")
+    # This is reviewed pre-produced status evidence, not nonce-correlated
+    # online OCSP. Do not ignore critical semantics or an unexpected nonce.
+    if any(ext.critical for ext in response.extensions) or any(
+        ext.critical for ext in response.single_extensions
+    ) or any(isinstance(ext.value, x509.OCSPNonce) for ext in response.extensions):
+        raise NationalReceiptPkiError("Unsupported receipt OCSP response extension")
+    if len(response.certificates) > 4:
+        raise NationalReceiptPkiError("Excessive receipt OCSP responder certificates")
+    candidates = {
+        cert.fingerprint(hashes.SHA256()): cert
+        for cert in [issuer, *response.certificates]
+    }
+    matches = [
+        cert for cert in candidates.values()
+        if ((response.responder_name is not None and cert.subject == response.responder_name)
+            or (response.responder_key_hash is not None
+                and x509.SubjectKeyIdentifier.from_public_key(cert.public_key()).digest
+                == response.responder_key_hash))
+    ]
+    if len(matches) != 1:
+        raise NationalReceiptPkiError("Ambiguous receipt OCSP responder identity")
+    signer = matches[0]
+    if signer.fingerprint(hashes.SHA256()) != issuer.fingerprint(hashes.SHA256()):
+        _require_supported_cert_extensions(signer, ocsp_responder=True)
+        if not signer.not_valid_before_utc <= response.produced_at_utc <= instant <= (
+            signer.not_valid_after_utc
+        ):
+            raise NationalReceiptPkiError("Receipt OCSP responder expired")
+        basic = signer.extensions.get_extension_for_class(x509.BasicConstraints).value
+        usage = signer.extensions.get_extension_for_class(x509.KeyUsage).value
+        eku = signer.extensions.get_extension_for_class(x509.ExtendedKeyUsage).value
+        if basic.ca or not usage.digital_signature or set(eku) != {
+            ExtendedKeyUsageOID.OCSP_SIGNING,
+        }:
+            raise NationalReceiptPkiError("Unauthorized receipt OCSP responder use")
+        _verify_cert(signer, issuer)
+        _check_revocation(signer, issuer, crls, instant)
+    _verify_signed_data(
+        signer.public_key(), response.signature, response.tbs_response_bytes,
+        response.signature_hash_algorithm,
+    )
+
+
+def _check_configured_ocsp(
+    child: x509.Certificate, issuer: x509.Certificate,
+    crls: list[x509.CertificateRevocationList], instant: datetime,
+) -> None:
+    if OCSP_DIRECTORY not in os.environ:
+        return
+    directory = Path(os.environ[OCSP_DIRECTORY])
+    if not directory.is_absolute() or directory.is_symlink() or not directory.is_dir():
+        raise NationalReceiptPkiError("Receipt OCSP evidence directory unavailable")
+    path = directory / (child.fingerprint(hashes.SHA256()).hex() + ".der")
+    if path.is_symlink() or not path.is_file():
+        raise NationalReceiptPkiError("Exact receipt OCSP evidence unavailable")
+    with path.open("rb") as stream:
+        raw = stream.read(131073)
+    _check_ocsp_response(raw, child=child, issuer=issuer, crls=crls, instant=instant)
+
+
 def verify_national_receipt_pki(
     leaf: x509.Certificate, *, instant: datetime | None = None,
 ) -> None:
@@ -339,6 +445,8 @@ def verify_national_receipt_pki(
             _check_ca_path_length(issuer, subordinate_ca_count)
             _verify_cert(current, issuer)
             _check_revocation(current, issuer, crls, now)
+            if current is leaf:
+                _check_configured_ocsp(current, issuer, crls, now)
             if issuer.fingerprint(hashes.SHA256()).hex() == root_pin:
                 if issuer.subject != issuer.issuer:
                     raise NationalReceiptPkiError("Trust anchor must be self-issued")

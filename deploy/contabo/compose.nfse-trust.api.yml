@@ -4,6 +4,9 @@
 services:
   nfcore-api:
     environment:
+      # Optional pass-through; when configured, require exact signed DER evidence.
+      # Set to /run/nfcore/sefin-trust/ocsp; no second mount or network lookup.
+      NFCORE_NFSE_RECEIPT_OCSP_DIR:
       NFCORE_NFSE_RECEIPT_CA_BUNDLE: /run/nfcore/sefin-trust/ca-bundle.pem
       NFCORE_NFSE_RECEIPT_CRL_BUNDLE: /run/nfcore/sefin-trust/crl-bundle.pem
       NFCORE_NFSE_RECEIPT_SIGNER_BUNDLE: /run/nfcore/sefin-trust/invoice-signers.pem

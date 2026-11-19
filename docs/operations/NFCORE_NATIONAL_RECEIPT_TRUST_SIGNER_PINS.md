@@ -96,3 +96,21 @@ A cadeia e a LCR da AC, sem o certificado folha, não comprovam que o signatári
 
 ## Controles adicionais de caminho (19/11/2026)
 O verificador rejeita policyMappings, policyConstraints e inhibitAnyPolicy mesmo quando marcados como não críticos, enquanto não existir processamento revisado de políticas de certificação. Também exige chaves RSA de pelo menos 2048 bits ou EC de pelo menos 224 bits em toda a cadeia, incluindo a folha e a raiz. Referências: RFC 5280 §§4.2.1.5, 4.2.1.11 e 4.2.1.14; RFC 9618. Esta é uma restrição defensiva local, não comprovação de conformidade integral ICP-Brasil, nem aprovação do perfil oficial SEFIN. Extensões CertificatePolicies não críticas continuam informativas. Regressões sintéticas adicionadas, não executadas nesta rodada.
+
+
+## Evidência OCSP adicional (19/11/2026)
+
+A mesma autoridade PKI aceita verificação **offline e opt-in** do RFC 6960.
+Definir NFCORE_NFSE_RECEIPT_OCSP_DIR=/run/nfcore/sefin-trust/ocsp no ambiente
+Compose já utilizado, após provisionar uma resposta DER oficial por folha,
+com nome <sha256-da-folha>.der. Se configurado, ausência, ambiguidade,
+UNKNOWN/REVOKED, CertID divergente, assinatura inválida, período vencido
+ou futuro bloqueiam preflight e recibo. Exige resposta assinada pela AC
+emissora ou por um responder diretamente delegado com id-kp-OCSPSigning,
+assinatura de certificado e LCR válidas. LCRs continuam obrigatórias para
+cada ligação, inclusive responder delegado; não existe fallback de CRL
+revogada para OCSP GOOD. Não segue URLs de AIA do XML nem acessa a rede.
+Não provisionado nesta sessão; a produção não ganha aprovação. OCSP online,
+perfis de delegação não suportados, carimbo RFC 3161 e renovação LTV são
+requisitos distintos. Fonte: https://www.rfc-editor.org/rfc/rfc6960.html.
+Testes escritos, não executados.
