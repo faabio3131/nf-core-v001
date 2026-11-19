@@ -13,14 +13,20 @@ import base64
 import binascii
 import json
 from collections.abc import Callable
+from contextlib import AbstractContextManager
 from datetime import UTC, datetime
 from urllib.parse import urlsplit
+from uuid import UUID
 
 from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
 
 from kordena_fiscal.domain import Cnpj, ExecutionScope, FiscalEnvironment, FiscalValidationError
-from kordena_fiscal.persistence.iron_a1_delegation import IronA1DelegationStore
+from kordena_fiscal.persistence.iron_a1_delegation import (
+    IronA1DelegationStore,
+    IronA1ScopeBusy,
+    iron_a1_scope_key,
+)
 from kordena_fiscal.persistence.postgres import PostgresFiscalDatabase
 from kordena_fiscal.signing.contracts import InvalidCertificateMaterialError
 from kordena_fiscal.vault.encrypted_a1 import A1VaultUnavailable, EncryptedA1Vault
@@ -73,10 +79,18 @@ def create_iron_a1_router(
     database: PostgresFiscalDatabase | None, vault: EncryptedA1Vault | None,
     allowed_origin: str | None,
     context_from_request: Callable[[Request], BridgeHttpContext],
+    scope_lock: Callable[[str, IronA1DelegationStore], AbstractContextManager[IronA1DelegationStore]] | None = None,
 ) -> APIRouter:
     router = APIRouter(prefix="/v1/iron/a1", tags=["iron-a1"])
     trusted_origin = trusted_iron_origin(allowed_origin)
     store = None if database is None else IronA1DelegationStore(database.connection)
+
+    def locked(scope: ExecutionScope, cnpj: str) -> AbstractContextManager[IronA1DelegationStore]:
+        assert store is not None
+        key = iron_a1_scope_key(
+            "fm.iron", scope.tenant_id, scope.unit_id, scope.environment.value, cnpj,
+        )
+        return scope_lock(key, store) if scope_lock is not None else store.locked(key)
 
     def is_json_content(request: Request) -> bool:
         content_type = request.headers.get("content-type", "").split(";")[0]
@@ -158,11 +172,17 @@ def create_iron_a1_router(
             ) from None
         cnpj = verified_profile(scope, body["issuer_cnpj"])
         assert store is not None and trusted_origin is not None
-        token, expires = store.issue(
-            host_namespace="fm.iron", tenant_id=scope.tenant_id, unit_id=scope.unit_id,
-            environment=scope.environment.value, issuer_cnpj=cnpj,
-            allowed_origin=trusted_origin, issued_by=actor,
-        )
+        try:
+            with locked(scope, cnpj) as held:
+                token, expires = held.issue(
+                    host_namespace="fm.iron", tenant_id=scope.tenant_id, unit_id=scope.unit_id,
+                    environment=scope.environment.value, issuer_cnpj=cnpj,
+                    allowed_origin=trusted_origin, issued_by=actor,
+                )
+        except IronA1ScopeBusy:
+            raise HttpContractError(
+                409, "IRON_A1_SCOPE_BUSY", "Try again", scope.correlation_id,
+            ) from None
         return JSONResponse(
             content={"delegation_token": token, "expires_at": expires.isoformat(),
                      "upload_path": _UPLOAD_PATH, "status": "PENDING_UPLOAD"},
@@ -201,6 +221,61 @@ def create_iron_a1_router(
         return JSONResponse(
             content={"status": "STORED" if evidence is not None else "ABSENT",
                      "expires_at": None if evidence is None else evidence.expires_at.isoformat(),
+                     "official_homologation": "NOT_VERIFIED"},
+            headers={"Cache-Control": "no-store"},
+        )
+
+    @router.post("/withdraw")
+    async def withdraw(request: Request) -> JSONResponse:
+        scope = authorize(request, "withdrawIronA1")
+        if not is_json_content(request):
+            raise HttpContractError(
+                415, "INVALID_CONTENT_TYPE", "JSON required", scope.correlation_id,
+            )
+        raw = await _read_bounded_body(request, 1024)
+        if raw is None:
+            raise HttpContractError(
+                413, "A1_WITHDRAW_TOO_LARGE", "Request too large", scope.correlation_id,
+            )
+        try:
+            body = json.loads(raw)
+            if not isinstance(body, dict) or set(body) != {
+                "issuer_cnpj", "actor_user_id", "request_id",
+            }:
+                raise ValueError
+            actor, request_id = body["actor_user_id"], body["request_id"]
+            if (
+                not isinstance(actor, str) or not 3 <= len(actor) <= 128 or not actor.isascii()
+                or not isinstance(request_id, str) or str(UUID(request_id)) != request_id
+            ):
+                raise ValueError
+        except (ValueError, TypeError, AttributeError):
+            raise HttpContractError(
+                400, "INVALID_A1_WITHDRAW", "Request invalid", scope.correlation_id,
+            ) from None
+        cnpj = verified_profile(scope, body["issuer_cnpj"])
+        assert vault is not None
+        try:
+            with locked(scope, cnpj) as held:
+                if not held.reserve_withdrawal(
+                    host_namespace="fm.iron", tenant_id=scope.tenant_id, unit_id=scope.unit_id,
+                    environment=scope.environment.value, issuer_cnpj=cnpj,
+                    actor_id=actor, request_id=request_id,
+                ):
+                    raise HttpContractError(
+                        409, "IRON_A1_WITHDRAW_REPLAY", "Do not replay withdrawal", scope.correlation_id,
+                    )
+                vault.withdraw(scope=scope, issuer_cnpj=cnpj)
+        except IronA1ScopeBusy:
+            raise HttpContractError(
+                409, "IRON_A1_SCOPE_BUSY", "Try again", scope.correlation_id,
+            ) from None
+        except (A1VaultUnavailable, FiscalValidationError):
+            raise HttpContractError(
+                503, "IRON_A1_WITHDRAW_UNCONFIRMED", "Vault withdrawal failed", scope.correlation_id,
+            ) from None
+        return JSONResponse(
+            content={"status": "WITHDRAWN", "official_revocation": "NOT_PERFORMED",
                      "official_homologation": "NOT_VERIFIED"},
             headers={"Cache-Control": "no-store"},
         )
@@ -259,8 +334,8 @@ def create_iron_a1_router(
         except (ValueError, UnicodeError, binascii.Error, TypeError):
             return denied("INVALID_A1_UPLOAD", 400)
 
-        # Atomic consume PRECEDES Vault mutation. Replay/concurrency returns 409.
-        record = store.consume(token=body["delegation_token"], origin=origin)
+        # Lock the same scope for upload, issuance and withdrawal.
+        record = store.lookup_scope(token=body["delegation_token"], origin=origin)
         if (
             record is None
             or record["host_namespace"] != "fm.iron"
@@ -272,17 +347,27 @@ def create_iron_a1_router(
             unit_id=record["unit_id"], environment=FiscalEnvironment.HOMOLOGATION,
             correlation_id="iron-a1-direct-upload",
         )
+        profile_verified = True
         try:
             verified_profile(scope, record["issuer_cnpj"])
         except HttpContractError:
-            return denied("IRON_A1_ISSUER_REVOKED", 403)
+            profile_verified = False
         try:
-            evidence = vault.provision(
-                scope=scope, issuer_cnpj=record["issuer_cnpj"],
-                pkcs12_bytes=pfx, password=password,
-            )
-        except (A1VaultUnavailable, FiscalValidationError, InvalidCertificateMaterialError):
-            return denied("IRON_A1_VALIDATION_FAILED", 422)
+            with locked(scope, record["issuer_cnpj"]) as held:
+                consumed = held.consume(token=body["delegation_token"], origin=origin)
+                if consumed != record:
+                    return denied("IRON_A1_DELEGATION_INVALID", 409)
+                if not profile_verified:
+                    return denied("IRON_A1_ISSUER_REVOKED", 403)
+                try:
+                    evidence = vault.provision(
+                        scope=scope, issuer_cnpj=record["issuer_cnpj"],
+                        pkcs12_bytes=pfx, password=password,
+                    )
+                except (A1VaultUnavailable, FiscalValidationError, InvalidCertificateMaterialError):
+                    return denied("IRON_A1_VALIDATION_FAILED", 422)
+        except IronA1ScopeBusy:
+            return denied("IRON_A1_SCOPE_BUSY", 409)
         return JSONResponse(
             content={"status": "STORED", "expires_at": evidence.expires_at.isoformat(),
                      "official_homologation": "NOT_VERIFIED"},

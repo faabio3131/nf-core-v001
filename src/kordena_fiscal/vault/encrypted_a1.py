@@ -15,6 +15,7 @@ import tempfile
 from datetime import UTC, datetime
 from pathlib import Path
 
+from cryptography.exceptions import InvalidTag
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
 from kordena_fiscal.domain import Cnpj, ExecutionScope, FiscalEnvironment, FiscalValidationError
@@ -110,6 +111,24 @@ class EncryptedA1Vault:
                 os.unlink(temporary)
         return evidence
 
+    def withdraw(self, *, scope: ExecutionScope, issuer_cnpj: str) -> None:
+        """Withdraw the exact IRON homologation record; not ICP-Brasil revocation."""
+        if scope.host_namespace != "fm.iron":
+            raise A1VaultUnavailable("Retirada A1 fora do escopo IRON")
+        path = self._path(self._aad(scope, Cnpj(issuer_cnpj)))
+        if path.is_symlink() or (path.exists() and not path.is_file()):
+            raise A1VaultUnavailable("A1 Vault destination is not trusted")
+        try:
+            path.unlink(missing_ok=True)
+            if hasattr(os, "O_DIRECTORY"):
+                descriptor = os.open(self._directory, os.O_RDONLY | os.O_DIRECTORY)
+                try:
+                    os.fsync(descriptor)
+                finally:
+                    os.close(descriptor)
+        except OSError:
+            raise A1VaultUnavailable("Retirada A1 não confirmada") from None
+
     def inspect(
         self, *, scope: ExecutionScope, issuer_cnpj: str,
     ) -> A1CertificatePreflight | None:
@@ -161,5 +180,5 @@ class EncryptedA1Vault:
                 pkcs12_bytes=pfx,
                 password=password,
             )
-        except (ValueError, TypeError, KeyError, json.JSONDecodeError, OSError):
+        except (ValueError, TypeError, KeyError, json.JSONDecodeError, OSError, InvalidTag):
             raise A1VaultUnavailable("Certificado A1 indisponível ou inválido") from None
