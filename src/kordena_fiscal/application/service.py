@@ -2557,6 +2557,27 @@ class FiscalApplicationService:
                 raise PersistenceConflictError("Cajamar cancellation changed during consultation")
             # An observation cannot establish the true fiscal event outcome.
             archive_ref = uow.archive.append(entry).entry_id
+            # Link the untouched municipal XML to the exact cancellation
+            # claim. A later claim for the same document must not inherit
+            # this observation as evidence of its own outcome.
+            evidence = json.dumps({
+                "document_id": document_id,
+                "claim_version": claim.version,
+                "request_fingerprint": request.request_fingerprint,
+                "invoice_number": invoice.invoice_number,
+                "authorized_xml_sha256": hashlib.sha256(invoice.authorized_xml).hexdigest(),
+                "observation_archive_reference": archive_ref,
+                "observation_xml_sha256": entry.content_sha256,
+                "invoice_found": observation.found,
+                "query_error_code": observation.error_code,
+                "official_fiscal_confirmation": False,
+            }, sort_keys=True, separators=(",", ":")).encode("utf-8")
+            uow.archive.append(FiscalArchiveEntry.build(
+                scope=scope, document_reference=document_id,
+                kind=FiscalArchiveKind.OTHER, content=evidence,
+                media_type="application/vnd.nfcore.cajamar-query-link.v1+json",
+                archived_at=entry.archived_at, retention=retention,
+            ))
             uow.commit()
         return observation, archive_ref
 
