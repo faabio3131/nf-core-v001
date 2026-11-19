@@ -112,9 +112,11 @@ class EncryptedA1Vault:
         return evidence
 
     def withdraw(self, *, scope: ExecutionScope, issuer_cnpj: str) -> None:
-        """Withdraw the exact IRON homologation record; not ICP-Brasil revocation."""
-        if scope.host_namespace != "fm.iron":
-            raise A1VaultUnavailable("Retirada A1 fora do escopo IRON")
+        """Withdraw the exact authorized homologation record; not ICP-Brasil revocation.
+
+        Product authorization belongs to the calling boundary. The existing
+        AAD enforces host, tenant, unit, environment and issuer isolation.
+        """
         path = self._path(self._aad(scope, Cnpj(issuer_cnpj)))
         if path.is_symlink() or (path.exists() and not path.is_file()):
             raise A1VaultUnavailable("A1 Vault destination is not trusted")
