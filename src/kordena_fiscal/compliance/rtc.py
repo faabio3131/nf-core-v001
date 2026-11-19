@@ -110,13 +110,11 @@ def _percent(value: Decimal, field_name: str) -> Decimal:
 def _sha256_optional(value: str | None) -> str | None:
     if value is None:
         return None
-    normalized = value.strip().lower()
-    if len(normalized) != 64:
+    if not isinstance(value, str):
         raise FiscalValidationError("checksum_sha256 must be SHA-256 hex")
-    try:
-        int(normalized, 16)
-    except ValueError as exc:
-        raise FiscalValidationError("checksum_sha256 must be hexadecimal") from exc
+    normalized = value.strip().lower()
+    if not re.fullmatch(r"[0-9a-f]{64}", normalized):
+        raise FiscalValidationError("checksum_sha256 must be SHA-256 hex")
     return normalized
 
 
