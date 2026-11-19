@@ -10,10 +10,17 @@ import os
 import ssl
 from collections.abc import Callable
 from datetime import UTC, datetime
+from typing import Any
 from urllib.error import HTTPError, URLError
 from urllib.request import HTTPSHandler, Request, build_opener
 
-from kordena_fiscal.domain import Cnpj, ExecutionScope, FiscalEnvironment, FiscalValidationError
+from kordena_fiscal.domain import (
+    Cnpj,
+    ExecutionScope,
+    FiscalEnvironment,
+    FiscalPreDispatchError,
+    FiscalValidationError,
+)
 from kordena_fiscal.gateway.authorization import (
     AuthorizationStatus,
     GatewayProviderMetadata,
@@ -54,6 +61,10 @@ class OfficialNfseTransportError(FiscalValidationError):
     """Transport failure with secrets and upstream response stripped."""
 
 
+class NfsePreDispatchError(OfficialNfseTransportError, FiscalPreDispatchError):
+    """Refusal certain to have happened before any request reached SEFIN."""
+
+
 def encode_signed_dps(
     signed_dps: bytes, *, issuer_cnpj: str | None = None,
     issuer_municipality_ibge: str | None = None,
@@ -82,7 +93,29 @@ def _exchange_http(payload: bytes, context: ssl.SSLContext, timeout: float) -> b
         if len(data) > _MAX_RESPONSE:
             raise OfficialNfseTransportError("Resposta nacional excede limite")
         return bytes(data)
-    except (HTTPError, URLError, TimeoutError, OSError, ssl.SSLError):
+    except HTTPError as exc:
+        # A 4xx carrying the official rejection list is a definitive answer,
+        # not an outage: surface it so the gateway records REJECTED instead
+        # of leaving the document in TRANSMITTING forever. Anything else
+        # (5xx, 4xx without a structured rejection body) stays uncertain.
+        if 400 <= exc.code < 500:
+            try:
+                body = exc.read(_MAX_RESPONSE + 1)
+                if len(body) <= _MAX_RESPONSE:
+                    parsed = json.loads(body)
+                    if (
+                        isinstance(parsed, dict)
+                        and "chaveAcesso" not in parsed
+                        and isinstance(parsed.get("erros"), list)
+                        and parsed["erros"]
+                    ):
+                        return bytes(body)
+            except (ValueError, UnicodeDecodeError, RecursionError, OSError):
+                pass
+        raise OfficialNfseTransportError(
+            "Comunicação com SEFIN Nacional indisponível; consulte antes de retransmitir"
+        ) from None
+    except (URLError, TimeoutError, OSError, ssl.SSLError):
         raise OfficialNfseTransportError(
             "Comunicação com SEFIN Nacional indisponível; consulte antes de retransmitir"
         ) from None
@@ -130,10 +163,10 @@ class NfseNacionalHomologationGateway:
                 os.environ, request.document,
             )
 
-    def authorize(self, request: NfseAuthorizationRequest) -> NfseAuthorizationResult:
-        if not isinstance(request, NfseAuthorizationRequest):
-            raise OfficialNfseTransportError("Solicitação NFS-e inválida")
-        self.validate_pre_dispatch(request)
+    def _prepare_dispatch(
+        self, request: NfseAuthorizationRequest,
+    ) -> tuple[Any, bytes, ssl.SSLContext, NationalReceiptIdentity, str]:
+        """Everything that must succeed BEFORE the first byte is sent."""
         document = request.document
         if document.scope.environment is not FiscalEnvironment.HOMOLOGATION:
             raise OfficialNfseTransportError("NFS-e disponível apenas com tpAmb=2")
@@ -210,12 +243,39 @@ class NfseNacionalHomologationGateway:
             require_current_national_treatment_for_live_dispatch(
                 os.environ, document,
             )
-        response = self._exchange(payload, build_fiscal_tls_context(material), self._timeout)
+        return document, payload, build_fiscal_tls_context(material), expected, profile
+
+    def authorize(self, request: NfseAuthorizationRequest) -> NfseAuthorizationResult:
+        if not isinstance(request, NfseAuthorizationRequest):
+            raise NfsePreDispatchError("Solicitação NFS-e inválida")
+        # Trust/policy readiness keeps its own, more specific error types and
+        # already runs before the durable claim; do not re-wrap it here.
+        self.validate_pre_dispatch(request)
+        try:
+            document, payload, context, expected, profile = self._prepare_dispatch(request)
+        except NfsePreDispatchError:
+            raise
+        except FiscalValidationError as exc:
+            # Safe, secret-free message by construction of this module.
+            raise NfsePreDispatchError(str(exc)) from None
+        except Exception as exc:  # A1/vault/IO failure: still before any send.
+            raise NfsePreDispatchError(
+                f"NFS-e pre-dispatch dependency failed ({type(exc).__name__})"
+            ) from None
+        response = self._exchange(payload, context, self._timeout)
         if not isinstance(response, bytes) or len(response) > _MAX_RESPONSE:
             raise OfficialNfseTransportError("Resposta SEFIN inválida")
         try:
             result = json.loads(response)
-            if not isinstance(result, dict) or result.get("tipoAmbiente") != 2:
+            if not isinstance(result, dict):
+                raise ValueError
+            environment_code = result.get("tipoAmbiente")
+            if environment_code is None:
+                # Only an official rejection list may omit the environment;
+                # an authorization must always declare it.
+                if "chaveAcesso" in result or not isinstance(result.get("erros"), list):
+                    raise ValueError
+            elif environment_code != 2:
                 raise ValueError
         except (ValueError, UnicodeDecodeError):
             raise OfficialNfseTransportError("Resposta SEFIN sem homologação válida") from None
