@@ -10,6 +10,21 @@ MODE=${1:-run}
 log(){ echo "$(date -u +%FT%TZ) $*"; }
 blocked(){ log "NO_GO: $*"; exit 42; }
 case "$MODE" in run|--check|status|--coordinated) ;; *) blocked "invalid deploy mode";; esac
+# Maintenance window: an operator-created freeze file stops the cron auto-deploy
+# (mode run) without touching anything. Read-only modes and the explicitly
+# approved --coordinated release used inside the window keep working.
+FREEZE=${NFCORE_DEPLOY_FREEZE_FILE:-$ROOT/.deploy-freeze}
+if [ "$MODE" = run ] && [ -e "$FREEZE" ]; then
+  log "FROZEN: deploy automatico suspenso pela janela de manutencao ($FREEZE)"; exit 0
+fi
+# Never run two mutating deploys at once (5-minute cron vs. a slow build).
+if [ "$MODE" = run ] || [ "$MODE" = --coordinated ]; then
+  exec 9>"${NFCORE_DEPLOY_LOCK_FILE:-$ROOT/.deploy.lock}" || blocked "deploy lock unavailable"
+  if ! flock -n 9; then
+    [ "$MODE" = run ] && { log "SKIP: outro deploy em andamento"; exit 0; }
+    blocked "another deploy holds the lock"
+  fi
+fi
 # shellcheck source=/dev/null
 . "$ROOT/deploy-lib.sh"
 cd "$SRC" || exit 1

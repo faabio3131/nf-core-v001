@@ -17,3 +17,10 @@ CURRENT confirmado em 18/11/2026: produção `ea4bdd3bcb9b61e6522081a14e5cc9ad1c
 7. Depois de reabrir tráfego, o snapshot pré-cutover NÃO é rollback seguro: nenhuma restauração sobre dados novos, nem emissão por versão antiga sem garantias de numeração. Preferir suspensão governada e recuperação/forward fix; restauração pós-cutover exige reconciliação de dados e efeitos externos, aprovação e procedimento específico.
 
 Este runbook define a fronteira segura; não concede autorização, não automatiza DDL produtiva e não encerra os gates físicos da Contabo, GSM, PKI/SEFIN, A1, EGM ou homologação. O ensaio automatizado deve ficar verde no HEAD exato.
+
+## Controles operacionais disponíveis (E2/E6, 19/11/2026)
+
+- **Congelar o cron na janela:** `touch /opt/fm/nfcore/.deploy-freeze` (ou o caminho definido em `NFCORE_DEPLOY_FREEZE_FILE`). Enquanto o arquivo existir, o `deploy.sh` do cron registra `FROZEN` e não faz nada. `--check`, `status` e o `--coordinated` aprovado continuam funcionando. Para reabrir, remova o arquivo.
+- **Uma execução por vez:** o `deploy.sh` toma um `flock` em `/opt/fm/nfcore/.deploy.lock`. Se outra execução estiver rodando, o cron registra `SKIP` e o `--coordinated` é bloqueado com código 42.
+- **Numeração da DPS após restaurar um backup:** antes de reabrir a emissão, descubra o último número de DPS realmente enviado para cada CNPJ, município, série e ambiente (pela SEFIN ou pelo portal municipal). Rode `scripts/admin/raise_dps_counter_floor.py` primeiro sem `--apply`, confira, e depois com `--apply`, informando quem aprovou e a referência. O contador só sobe e o comando fica auditado.
+
