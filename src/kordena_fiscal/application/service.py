@@ -2366,9 +2366,11 @@ class FiscalApplicationService:
                 or not old_attempts
                 or old_attempts[-1].status is not IssuanceAttemptStatus.AUTHORIZED
                 or old_attempts[-1].document_id != original_id
+                or old_attempts[-1].request_fingerprint != original.request_fingerprint
                 or not candidate_attempts
                 or candidate_attempts[-1].status is not IssuanceAttemptStatus.RESERVED
                 or candidate_attempts[-1].document_id != replacement_id
+                or candidate_attempts[-1].request_fingerprint != candidate.request_fingerprint
             ):
                 raise PersistenceStateError(
                     "Cajamar review requires an authorized original and unissued candidate"
