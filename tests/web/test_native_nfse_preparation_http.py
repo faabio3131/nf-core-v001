@@ -990,6 +990,25 @@ def test_cajamar_official_substitution_rules_do_not_infer_soap_completion(
                 reviewed_at=datetime(2026, 11, 5, tzinfo=UTC),
             )
 
+    # The same CNPJ may have a changed effective issuer address. The service
+    # location alone must not authorize replacement by another municipality.
+    foreign_issuer = replace(
+        replacement.document.issuer,
+        address=replace(
+            replacement.document.issuer.address,
+            municipality_name="São Paulo",
+            jurisdiction=BrazilianJurisdiction("SP", "3550308"),
+        ),
+    )
+    with pytest.raises(FiscalValidationError, match="preserve tenant, unit and issuer"):
+        review_cajamar_substitution(
+            original=original,
+            replacement=NfseAuthorizationRequest.build(replace(
+                replacement.document, issuer=foreign_issuer,
+            )),
+            reviewed_at=datetime(2026, 11, 5, tzinfo=UTC),
+        )
+
     # Prepared alone cannot be mistaken for substitution completed by city.
     with pytest.raises(PersistenceStateError):
         app.review_prepared_cajamar_substitution(

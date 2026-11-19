@@ -1,0 +1,12 @@
+# Opt-in reviewed homologation on existing canonical API; no fiscal production.
+services:
+  nfcore-api:
+    environment:
+      NFCORE_CAJAMAR_GEISWEB_CONFIG_PATH: /run/nfcore/cajamar/manifest.json
+    volumes:
+      - type: bind
+        source: ${NFCORE_CAJAMAR_REVIEWED_HOST_DIR:?Reviewed Cajamar contract directory required}
+        target: /run/nfcore/cajamar
+        read_only: true
+        bind:
+          create_host_path: false

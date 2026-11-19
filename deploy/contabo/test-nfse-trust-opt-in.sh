@@ -4,18 +4,19 @@ set -euo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
 T="$(mktemp -d)"
 trap 'rm -rf "$T"' EXIT
-cp "$HERE/compose.prod.yml" "$HERE/compose.nfse-policy.api.yml" "$HERE/compose.nfse-trust.api.yml" "$T/"
-mkdir -p "$T/src" "$T/policies" "$T/trust"
+cp "$HERE/compose.prod.yml" "$HERE/compose.nfse-policy.api.yml" "$HERE/compose.nfse-trust.api.yml" "$HERE/compose.cajamar-geisweb.api.yml" "$T/"
+mkdir -p "$T/src" "$T/policies" "$T/trust" "$T/cajamar"
 printf 'POSTGRES_PASSWORD=synthetic-ci-only\n' > "$T/.env"
 export POSTGRES_PASSWORD=synthetic-ci-only
 export NFCORE_NFSE_POLICIES_HOST_DIR="$T/policies"
 export NFCORE_NFSE_TRUST_HOST_DIR="$T/trust"
+export NFCORE_CAJAMAR_REVIEWED_HOST_DIR="$T/cajamar"
 printf -v NFCORE_NFSE_RECEIPT_ROOT_SHA256 '%064d' 1
 printf -v NFCORE_NFSE_RECEIPT_SIGNER_SHA256 '%064d' 2
 printf -v NFCORE_NFSE_EVENT_SIGNER_SHA256 '%064d' 3
 export NFCORE_NFSE_RECEIPT_ROOT_SHA256 NFCORE_NFSE_RECEIPT_SIGNER_SHA256 NFCORE_NFSE_EVENT_SIGNER_SHA256
 base=(docker compose -f "$T/compose.prod.yml")
-full=(docker compose -f "$T/compose.prod.yml" -f "$T/compose.nfse-policy.api.yml" -f "$T/compose.nfse-trust.api.yml")
+full=(docker compose -f "$T/compose.prod.yml" -f "$T/compose.nfse-policy.api.yml" -f "$T/compose.nfse-trust.api.yml" -f "$T/compose.cajamar-geisweb.api.yml")
 "${base[@]}" config --format json > "$T/base.json"
 "${full[@]}" config --format json > "$T/full.json"
 python3 - "$T/base.json" "$T/full.json" <<'PY'
@@ -38,6 +39,8 @@ assert env["NFCORE_NFSE_RECEIPT_CRL_BUNDLE"] == "/run/nfcore/sefin-trust/crl-bun
 assert env["NFCORE_NFSE_RECEIPT_SIGNER_BUNDLE"] == "/run/nfcore/sefin-trust/invoice-signers.pem"
 assert env["NFCORE_NFSE_EVENT_SIGNER_BUNDLE"] == "/run/nfcore/sefin-trust/event-signers.pem"
 assert env["NFCORE_NFSE_FISCAL_POLICY_ROOT"] == "/run/nfcore/nfse-policies"
+assert "NFCORE_CAJAMAR_GEISWEB_CONFIG_PATH" not in original["environment"]
+assert env["NFCORE_CAJAMAR_GEISWEB_CONFIG_PATH"] == "/run/nfcore/cajamar/manifest.json"
 assert len({env[k] for k in (
     "NFCORE_NFSE_RECEIPT_ROOT_SHA256",
     "NFCORE_NFSE_RECEIPT_SIGNER_SHA256",
@@ -45,15 +48,16 @@ assert len({env[k] for k in (
 )}) == 3
 mounts = {m["target"]: m for m in api["volumes"]}
 assert set(mounts) == {
-    "/var/lib/nfcore/vault", "/run/nfcore/nfse-policies", "/run/nfcore/sefin-trust"
+    "/var/lib/nfcore/vault", "/run/nfcore/nfse-policies", "/run/nfcore/sefin-trust",
+    "/run/nfcore/cajamar"
 }
 assert mounts["/var/lib/nfcore/vault"] == original["volumes"][0]
-for target in ("/run/nfcore/nfse-policies", "/run/nfcore/sefin-trust"):
+for target in ("/run/nfcore/nfse-policies", "/run/nfcore/sefin-trust", "/run/nfcore/cajamar"):
     assert mounts[target]["type"] == "bind"
     assert mounts[target]["read_only"] is True
     assert mounts[target]["bind"]["create_host_path"] is False
 PY
-for key in NFCORE_NFSE_TRUST_HOST_DIR NFCORE_NFSE_RECEIPT_ROOT_SHA256 NFCORE_NFSE_RECEIPT_SIGNER_SHA256 NFCORE_NFSE_EVENT_SIGNER_SHA256; do
+for key in NFCORE_CAJAMAR_REVIEWED_HOST_DIR NFCORE_NFSE_TRUST_HOST_DIR NFCORE_NFSE_RECEIPT_ROOT_SHA256 NFCORE_NFSE_RECEIPT_SIGNER_SHA256 NFCORE_NFSE_EVENT_SIGNER_SHA256; do
   if env -u "$key" "${full[@]}" config -q >/dev/null 2>&1; then
     echo "FAIL: required trust input missing: $key"
     exit 1

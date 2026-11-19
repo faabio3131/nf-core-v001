@@ -60,6 +60,7 @@ def review_cajamar_substitution(
         old.scope.identity_partition_key != new.scope.identity_partition_key
         or old.issuer.cnpj != new.issuer.cnpj
         or old.issuer.address.jurisdiction.municipality_ibge_code != _CAJA_IBGE
+        or new.issuer.address.jurisdiction != old.issuer.address.jurisdiction
         or old.service_jurisdiction != new.service_jurisdiction
         or old.service_jurisdiction.municipality_ibge_code != _CAJA_IBGE
     ):

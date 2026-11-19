@@ -85,3 +85,9 @@ e confrontados com a prefeitura antes de habilitar o runtime.
 fiscal real, certificado de cliente, link oficial de impressão ou operação
 SOAP nativa de substituição. A análise de substituição do Decreto Municipal
 7.311/2024 exige operação humana no sistema do município e prova externa.
+
+## Reconciliation 19/11/2026 — embalagem Contabo e identidade da substituição
+
+O entrypoint já estava composto. O overlay versionado `deploy/contabo/compose.cajamar-geisweb.api.yml` agora oferece montagem somente leitura, opt-in, no MESMO serviço API, sem criação automática de pasta ou segundo cofre. Exige `NFCORE_CAJAMAR_REVIEWED_HOST_DIR` apontando ao diretório oficial previamente revisado, com `manifest.json` e WSDL/XSD. Integrar esse overlay somente depois de gates, autorização e material revisado. Nenhuma alteração no host realizada. O teste de composição existente recebeu asserções da montagem, preservação do Vault e falha sem input; não foi executado nesta entrega.
+
+A revisão de substituição agora exige que a jurisdição do emitente candidato seja a mesma do original, além do CNPJ, unidade e local do serviço, com regressão escrita. Não cria SOAP de substituição, não fecha CANCEL_REQUESTED após timeout, não fabrica PDF municipal; esses itens são distintos. A ausência de contrato/prova externa de substituição não constitui autorização para criar regra fiscal.
