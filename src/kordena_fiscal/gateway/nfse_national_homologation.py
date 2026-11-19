@@ -21,6 +21,9 @@ from lxml import etree
 
 from kordena_fiscal.domain import FiscalEnvironment, FiscalValidationError
 from kordena_fiscal.gateway.fiscal_tls import RejectFiscalRedirects, build_fiscal_tls_context
+from kordena_fiscal.gateway.nfse_national_environment import (
+    SEFIN_HOMOLOGATION_NFSE_URL as SEFIN_HOMOLOGATION_NFSE_URL,
+)
 from kordena_fiscal.gateway.nfse_national_receipt import (
     NationalReceiptIdentity,
     NfseReceiptVerificationError,
@@ -37,9 +40,6 @@ from kordena_fiscal.xml.nfse_national_profiles import (
     select_national_dps_profile,
 )
 
-SEFIN_HOMOLOGATION_NFSE_URL = (
-    "https://sefin.producaorestrita.nfse.gov.br/API/SefinNacional/nfse"
-)
 _MAX_DPS_BYTES = 2_097_152
 _MAX_RESPONSE_BYTES = 4_194_304
 
@@ -52,7 +52,7 @@ _NFSE = "http://www.sped.fazenda.gov.br/nfse"
 _DS = "http://www.w3.org/2000/09/xmldsig#"
 
 
-def parse_signed_dps_info(signed_dps_xml: bytes) -> etree._Element:
+def parse_signed_dps_info(signed_dps_xml: bytes, *, tp_amb: str = "2") -> etree._Element:
     if not isinstance(signed_dps_xml, bytes) or not 0 < len(signed_dps_xml) <= _MAX_DPS_BYTES:
         raise OfficialNfseTransportError("Invalid DPS size")
     try:
@@ -73,8 +73,8 @@ def parse_signed_dps_info(signed_dps_xml: bytes) -> etree._Element:
     if not identifier or sum(node.get("Id") == identifier for node in root.iter()) != 1:
         raise OfficialNfseTransportError("DPS signature Id is missing or ambiguous")
     envs = root.findall(".//nfse:tpAmb", ns)
-    if len(envs) != 1 or envs[0].getparent() is not info or envs[0].text != "2":
-        raise OfficialNfseTransportError("DPS requires tpAmb=2")
+    if len(envs) != 1 or envs[0].getparent() is not info or envs[0].text != tp_amb:
+        raise OfficialNfseTransportError(f"DPS requires tpAmb={tp_amb}")
     references = signatures[0].findall("ds:SignedInfo/ds:Reference", ns)
     if len(references) != 1 or references[0].get("URI") != "#" + identifier:
         raise OfficialNfseTransportError("DPS signature reference does not match infDPS")
@@ -84,10 +84,10 @@ def parse_signed_dps_info(signed_dps_xml: bytes) -> etree._Element:
 def build_nfse_dps_request(
     signed_dps_xml: bytes, *, issuer_cnpj: str | None = None,
     issuer_municipality_ibge: str | None = None,
-    schema_profile: str = PRODUCTION_PROFILE,
+    schema_profile: str = PRODUCTION_PROFILE, tp_amb: str = "2",
 ) -> bytes:
     """Build the public Emissor Nacional API JSON envelope from signed DPS XML."""
-    info = parse_signed_dps_info(signed_dps_xml)
+    info = parse_signed_dps_info(signed_dps_xml, tp_amb=tp_amb)
     if (
         issuer_municipality_ibge is not None
         and info.findtext(f"{{{_NFSE}}}cLocEmi") != issuer_municipality_ibge

@@ -8,7 +8,7 @@ from .binding import (
     HostNamespace,
     HostScope,
 )
-from .errors import FiscalDomainError, FiscalValidationError
+from .errors import FiscalDomainError, FiscalPreDispatchError, FiscalValidationError
 from .events import FiscalDomainEvent
 from .identifiers import CnaeCode, Cnpj, Cpf
 from .primitives import (
@@ -57,6 +57,7 @@ __all__ = [
     "FiscalProfile",
     "FiscalUnitCode",
     "FiscalUnitId",
+    "FiscalPreDispatchError",
     "FiscalValidationError",
     "Gtin",
     "HostNamespace",

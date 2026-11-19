@@ -45,6 +45,7 @@ from kordena_fiscal.domain import (
     FiscalAccountBinding,
     FiscalDocumentKind,
     FiscalEnvironment,
+    FiscalPreDispatchError,
     FiscalValidationError,
     HostScope,
     SourceReference,
@@ -1552,12 +1553,34 @@ class FiscalApplicationService:
             uow.lifecycle.save(transmitting, expected_version=current.version)
             uow.commit()
 
-        if isinstance(request, AuthorizationRequest) and isinstance(gateway, FiscalGatewayClient):
-            result: AuthorizationResult | NfseAuthorizationResult = gateway.authorize(request)
-        else:
-            assert isinstance(request, NfseAuthorizationRequest)
-            assert isinstance(gateway, NfseGatewayClient)
-            result = gateway.authorize(request)
+        try:
+            if isinstance(request, AuthorizationRequest) and isinstance(
+                gateway, FiscalGatewayClient
+            ):
+                result: AuthorizationResult | NfseAuthorizationResult = gateway.authorize(request)
+            else:
+                assert isinstance(request, NfseAuthorizationRequest)
+                assert isinstance(gateway, NfseGatewayClient)
+                result = gateway.authorize(request)
+        except FiscalPreDispatchError:
+            # Certain: nothing left the process, so the provider holds no
+            # document for this claim. Close it locally (terminal, visible,
+            # re-preparable) instead of stranding it in TRANSMITTING, where
+            # no GET can ever resolve it. The reason text is not persisted
+            # because upstream callers may include operational detail.
+            self.finalize_rejected(
+                key=attempt.key,
+                generation=attempt.generation,
+                document_id=document_id,
+                rejection_reason="LOCAL_PRE_DISPATCH_FAILED",
+                occurred_at=occurred_at,
+                correlation_id=scope.correlation_id,
+            )
+            with self._uow_factory() as uow:
+                latest = uow.idempotency.attempts(attempt.key)[-1]
+                lifecycle = uow.lifecycle.get(document_id)
+                assert lifecycle is not None
+                return DurableAuthorizationOutcome(latest, lifecycle, False, False)
         if result.status is AuthorizationStatus.AUTHORIZED:
             if (
                 isinstance(request, NfseAuthorizationRequest)
