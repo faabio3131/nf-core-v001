@@ -125,8 +125,9 @@ def classify_revenue(
     if totals[Market.DOMESTIC] != domestic_cents or totals[Market.EXPORT] != export_cents:
         raise FiscalValidationError("revenue control totals do not reconcile")
     buckets = [
-        {"activity": a, "market": m, "federal": f, "local": l, "cents": cents}
-        for (a, m, f, l), cents in sorted(groups.items())
+        {"activity": activity, "market": market, "federal": federal,
+         "local": local, "cents": cents}
+        for (activity, market, federal, local), cents in sorted(groups.items())
     ]
     payload: dict[str, object] = {
         "version": VERSION, "competence": competence.isoformat(),
