@@ -60,7 +60,8 @@ def test_all_categories_and_scoped_alerts_restart_and_replay(tmp_path: Path):
     ids = {x["alert_id"] for x in result["alerts"]}
     for other in (scope("b"), scope(unit="other"), scope(env=FiscalEnvironment.PRODUCTION),
                   scope(host="other")):
-        assert ids.isdisjoint(x["alert_id"] for x in project_radar(state, other, now=WHEN)["alerts"])
+        foreign = project_radar(state, other, now=WHEN)["alerts"]
+        assert ids.isdisjoint(x["alert_id"] for x in foreign)
     replay = poll_normative_sources(
         state_path=state, fetch=fixture_fetch, observed_at=WHEN + timedelta(days=1), economy=True,
     )
