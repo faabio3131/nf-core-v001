@@ -22,7 +22,7 @@ from .api import create_cognitive_router
 from .command_api import create_command_metrics_router
 from .durable_usage import DurableTokenQuotaStore
 from .economy_reader import EconomyReader
-from .federal_benefits_api import FederalBenefitRunner
+from .federal_benefits_api import FederalBenefitRunner, FederalBenefitSearchRunner
 from .governance import DEFAULT_PILOT_DAILY_LIMIT, InMemoryUsageLedger, pilot_entitlement
 from .knowledge.official import OfficialTablesError, cached_official_catalog
 from .normative_radar_api import build_normative_reader
@@ -59,6 +59,7 @@ def build_cognitive_routers(
     segregation_runner: DiagnosticRunner | None = None,
     assessment_runner: DiagnosticRunner | None = None,
     federal_benefit_runner: FederalBenefitRunner | None = None,
+    federal_benefit_search_runner: FederalBenefitSearchRunner | None = None,
 ) -> list[APIRouter]:
     """Portal advisory route (opt-in) plus the Command read-only metrics route (always mounted).
 
@@ -137,6 +138,7 @@ def build_cognitive_routers(
             segregation_runner=segregation_runner,
             assessment_runner=assessment_runner,
             federal_benefit_runner=federal_benefit_runner,
+            federal_benefit_search_runner=federal_benefit_search_runner,
         ),
         create_command_metrics_router(aggregates, environ, ai_enabled=model is not None),
     ]
@@ -156,6 +158,7 @@ def build_cognitive_router(
     segregation_runner: DiagnosticRunner | None = None,
     assessment_runner: DiagnosticRunner | None = None,
     federal_benefit_runner: FederalBenefitRunner | None = None,
+    federal_benefit_search_runner: FederalBenefitSearchRunner | None = None,
 ) -> APIRouter | None:
     """One router mounting the Portal advisory route and the Command metrics route."""
     routers = build_cognitive_routers(
@@ -169,6 +172,7 @@ def build_cognitive_router(
         segregation_runner=segregation_runner,
         assessment_runner=assessment_runner,
         federal_benefit_runner=federal_benefit_runner,
+        federal_benefit_search_runner=federal_benefit_search_runner,
     )
     if not routers:
         return None

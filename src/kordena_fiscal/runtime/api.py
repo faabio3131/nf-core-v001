@@ -22,7 +22,10 @@ from kordena_fiscal.application.service import FiscalApplicationService
 from kordena_fiscal.cognitive.composition import build_cognitive_router
 from kordena_fiscal.cognitive.durable_usage import DurableTokenQuotaStore
 from kordena_fiscal.cognitive.economy_reader import read_economy_evidence
-from kordena_fiscal.cognitive.federal_benefits_api import build_federal_benefit_runner
+from kordena_fiscal.cognitive.federal_benefits_api import (
+    build_federal_benefit_runner,
+    build_federal_benefit_search_runner,
+)
 from kordena_fiscal.cognitive.simples_diagnostic_api import build_diagnostic_runner
 from kordena_fiscal.compliance.nfse_preaudit import (
     extrema_abrasf_service_preaudit,
@@ -1227,6 +1230,14 @@ def create_runtime_app(
                 ),
                 federal_benefit_runner=(
                     build_federal_benefit_runner(
+                        portal_executor, partial(runtime.database.economy, read_only=True),
+                        runtime.database,
+                    )
+                    if runtime.database is not None and portal_executor is not None
+                    and os.environ.get("NFCORE_ECONOMY_ENABLED") == "true" else None
+                ),
+                federal_benefit_search_runner=(
+                    build_federal_benefit_search_runner(
                         portal_executor, partial(runtime.database.economy, read_only=True),
                         runtime.database,
                     )

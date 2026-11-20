@@ -74,8 +74,16 @@ class FakeStore:
     def __init__(self):
         self.rows = {}
 
-    def record(self, table, record_id, version):
+    def record(self, table, record_id, version=None):
+        if version is None:
+            matches = [value for (name, rid, _), value in self.rows.items()
+                       if name == table and rid == record_id]
+            return max(matches, key=lambda row: row["version"]) if matches else None
         return self.rows.get((table, record_id, version))
+
+    def records(self, table, *, limit=100):
+        return tuple(row for (name, _, _), row in self.rows.items()
+                     if name == table)[:limit]
 
     def append_snapshot(self, *, record_id, version, competence, issuer, content):
         self.rows[("fm_economy_snapshots", record_id, version)] = {
@@ -173,3 +181,128 @@ def test_canonical_cnae_or_scope_conflict_rejected():
         import_reviewed_federal_benefit(
             FakeStore(), **bundle(), verify_issuer=wrong_cnae,
         )
+
+
+
+def test_newer_reviewed_policy_blocks_stale_candidate_for_same_month():
+    store = FakeStore()
+    import_reviewed_federal_benefit(store, **bundle(), verify_issuer=verify)
+    first = bundle()
+    replacement = first["benefit_content"].copy()
+    replacement["review_status"] = "revoked"
+    store.append_benefit(
+        record_id="lei-do-bem", version=2, tax_code="IRPJ_CSLL",
+        jurisdiction="BR", normative_reference=PROGRAMS["LEI_DO_BEM"].legal_act,
+        valid_from=date(2026, 1, 1), valid_until=date(2027, 1, 1),
+        content=replacement,
+    )
+    with pytest.raises(FiscalValidationError, match="superseded"):
+        evaluate_federal_benefit(
+            store, snapshot_id="federal-snapshot", snapshot_version=1,
+            benefit_id="lei-do-bem", benefit_version=1, verify_issuer=verify,
+        )
+
+
+
+def test_search_federal_benefits_discovers_scoped_reviewed_program():
+    from kordena_fiscal.application.federal_benefits_service import search_federal_benefits
+
+    store = FakeStore()
+    with pytest.raises(FiscalValidationError, match="unavailable"):
+        search_federal_benefits(
+            store, snapshot_id="federal-snapshot", snapshot_version=1,
+            verify_issuer=verify,
+        )
+    import_reviewed_federal_benefit(store, **bundle(), verify_issuer=verify)
+    result = search_federal_benefits(
+        store, snapshot_id="federal-snapshot", snapshot_version=1,
+        verify_issuer=verify,
+    )
+    assert result["status"] == "advisory"
+    assert result["counts"]["potential"] == 1
+    assert result["results"][0]["program_code"] == "LEI_DO_BEM"
+    assert result["results"][0]["issuance_authorized"] is False
+    assert result["results"][0]["estimated_cents"] is None
+    assert result["complete_national_coverage"] is False
+    assert result["coverage_truncated"] is False
+    assert result == search_federal_benefits(
+        store, snapshot_id="federal-snapshot", snapshot_version=1,
+        verify_issuer=verify,
+    )
+
+
+def test_search_excludes_different_tax_benefits_and_never_replays_revoked_version():
+    from kordena_fiscal.application.federal_benefits_service import search_federal_benefits
+
+    store = FakeStore()
+    import_reviewed_federal_benefit(store, **bundle(), verify_issuer=verify)
+    store.append_benefit(
+        record_id="ordinary-simples-rule", version=1, tax_code="SIMPLES",
+        jurisdiction="BR", normative_reference="CGSN-140",
+        valid_from=date(2026, 1, 1), valid_until=date(2027, 1, 1),
+        content={"schema_version": "other.domain.rule/v1"},
+    )
+    assert search_federal_benefits(
+        store, snapshot_id="federal-snapshot", snapshot_version=1,
+        verify_issuer=verify,
+    )["counts"]["potential"] == 1
+    revoked = bundle()["benefit_content"] | {"review_status": "revoked"}
+    store.append_benefit(
+        record_id="lei-do-bem", version=2, tax_code="IRPJ_CSLL",
+        jurisdiction="BR", normative_reference=PROGRAMS["LEI_DO_BEM"].legal_act,
+        valid_from=date(2026, 1, 1), valid_until=date(2027, 1, 1),
+        content=revoked,
+    )
+    result = search_federal_benefits(
+        store, snapshot_id="federal-snapshot", snapshot_version=1,
+        verify_issuer=verify,
+    )
+    assert result["counts"]["potential"] == 0
+    assert result["counts"]["review_required"] == 1
+    assert result["results"][0]["benefit_version"] == 2
+    assert result["results"][0]["reason_codes"] == ["rule_not_reviewed"]
+    assert result["status"] == "review_required"
+
+
+def test_search_denies_foreign_scope_and_enforces_bounded_coverage():
+    from kordena_fiscal.application.federal_benefits_service import search_federal_benefits
+
+    store = FakeStore()
+    import_reviewed_federal_benefit(store, **bundle(), verify_issuer=verify)
+    assert search_federal_benefits(
+        store, snapshot_id="federal-snapshot", snapshot_version=1,
+        verify_issuer=verify, limit=1,
+    )["coverage_truncated"] is True
+    store.scope_identity = ("fm-nfcore", "foreign", "unit-a", "homologation")
+    result = search_federal_benefits(
+        store, snapshot_id="federal-snapshot", snapshot_version=1,
+        verify_issuer=verify,
+    )
+    assert result["counts"]["potential"] == 0
+    assert result["counts"]["review_required"] == 1
+    for invalid in (True, -1, 0, 501):
+        with pytest.raises(FiscalValidationError, match="limit"):
+            search_federal_benefits(
+                store, snapshot_id="federal-snapshot", snapshot_version=1,
+                verify_issuer=verify, limit=invalid,
+            )
+
+
+
+def test_federal_search_distinguishes_absent_reviewed_catalog_from_no_eligibility():
+    from kordena_fiscal.application.federal_benefits_service import search_federal_benefits
+
+    store = FakeStore()
+    row = bundle()
+    store.append_snapshot(
+        record_id=row["snapshot_id"], version=row["snapshot_version"],
+        competence=row["competence"], issuer=row["issuer"], content=row["content"],
+    )
+    result = search_federal_benefits(
+        store, snapshot_id="federal-snapshot", snapshot_version=1,
+        verify_issuer=verify,
+    )
+    assert result["status"] == "no_reviewed_catalog"
+    assert result["results"] == []
+    assert result["complete_national_coverage"] is False
+    assert result["review_required"] is True

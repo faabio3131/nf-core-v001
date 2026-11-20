@@ -9,7 +9,10 @@ from zoneinfo import ZoneInfo
 
 from fastapi import HTTPException
 
-from kordena_fiscal.application.federal_benefits_service import evaluate_federal_benefit
+from kordena_fiscal.application.federal_benefits_service import (
+    evaluate_federal_benefit,
+    search_federal_benefits,
+)
 from kordena_fiscal.application.federal_regime_store import load_federal_regime_declarations
 from kordena_fiscal.domain import (
     ExecutionScope,
@@ -26,6 +29,9 @@ from .portal_evidence import SurfaceReader
 
 FederalBenefitRunner = Callable[
     [AuthenticatedHuman, str, FiscalEnvironment, str, int, str, int], dict[str, Any]
+]
+FederalBenefitSearchRunner = Callable[
+    [AuthenticatedHuman, str, FiscalEnvironment, str, int], dict[str, Any]
 ]
 
 
@@ -79,21 +85,7 @@ def build_federal_benefit_runner(
         authority: AuthenticatedHuman, unit_id: str, environment: FiscalEnvironment,
         snapshot_id: str, snapshot_version: int, benefit_id: str, benefit_version: int,
     ) -> dict[str, Any]:
-        authority.assert_permission(PortalPermission.AUDIT_READ, unit_id=unit_id)
-        rows = reader.surface(
-            surface_id="units", authority=authority, unit_id=unit_id, environment=environment,
-        )
-        if not any(
-            row.get("unit_id") == unit_id
-            and row.get("tenant_id", authority.tenant_id) == authority.tenant_id
-            and environment.value in (row.get("enabled_environments") or ())
-            for row in rows
-        ):
-            raise HTTPException(403, detail={"code": "FEDERAL_BENEFIT_SCOPE_FORBIDDEN"})
-        scope = ExecutionScope(
-            tenant_id=authority.tenant_id, unit_id=unit_id, environment=environment,
-            correlation_id="federal-benefit-advisory", host_namespace="fm-nfcore",
-        )
+        scope = _authorized_federal_scope(reader, authority, unit_id, environment)
         try:
             verify = build_federal_issuer_verifier(uow_factory, scope)
             with store_factory(scope) as store:
@@ -101,6 +93,54 @@ def build_federal_benefit_runner(
                     store, snapshot_id=snapshot_id, snapshot_version=snapshot_version,
                     benefit_id=benefit_id, benefit_version=benefit_version,
                     verify_issuer=verify,
+                )
+        except FiscalValidationError:
+            raise HTTPException(
+                422, detail={"code": "FEDERAL_BENEFIT_EVIDENCE_INSUFFICIENT"},
+            ) from None
+    return run
+
+
+
+def _authorized_federal_scope(
+    reader: SurfaceReader, authority: AuthenticatedHuman, unit_id: str,
+    environment: FiscalEnvironment,
+) -> ExecutionScope:
+    """One authority for both catalog lookup and policy search."""
+    authority.assert_permission(PortalPermission.AUDIT_READ, unit_id=unit_id)
+    rows = reader.surface(
+        surface_id="units", authority=authority, unit_id=unit_id, environment=environment,
+    )
+    if not any(
+        row.get("unit_id") == unit_id
+        and row.get("tenant_id", authority.tenant_id) == authority.tenant_id
+        and environment.value in (row.get("enabled_environments") or ())
+        for row in rows
+    ):
+        raise HTTPException(403, detail={"code": "FEDERAL_BENEFIT_SCOPE_FORBIDDEN"})
+    return ExecutionScope(
+        tenant_id=authority.tenant_id, unit_id=unit_id, environment=environment,
+        correlation_id="federal-benefit-advisory", host_namespace="fm-nfcore",
+    )
+
+
+def build_federal_benefit_search_runner(
+    reader: SurfaceReader,
+    store_factory: Callable[[ExecutionScope], AbstractContextManager[EconomyStore]],
+    uow_factory: Callable[[], AbstractContextManager[Any]],
+) -> FederalBenefitSearchRunner:
+    """Bounded deterministic search of reviewed T01 benefits, never the internet."""
+    def run(
+        authority: AuthenticatedHuman, unit_id: str, environment: FiscalEnvironment,
+        snapshot_id: str, snapshot_version: int,
+    ) -> dict[str, Any]:
+        scope = _authorized_federal_scope(reader, authority, unit_id, environment)
+        try:
+            verifier = build_federal_issuer_verifier(uow_factory, scope)
+            with store_factory(scope) as store:
+                return search_federal_benefits(
+                    store, snapshot_id=snapshot_id, snapshot_version=snapshot_version,
+                    verify_issuer=verifier,
                 )
         except FiscalValidationError:
             raise HTTPException(

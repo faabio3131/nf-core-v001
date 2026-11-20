@@ -17,6 +17,7 @@ from fastapi import APIRouter, Body, HTTPException, Request, status
 from fastapi.concurrency import run_in_threadpool
 
 from kordena_fiscal.domain import ExecutionScope, FiscalEnvironment
+from kordena_fiscal.tax.federal_benefits import PROGRAMS
 from kordena_fiscal.security.human_identity import (
     AuthenticatedHuman,
     HumanIdentityService,
@@ -31,7 +32,7 @@ from kordena_fiscal.web.portal_api import (
 
 from .contracts import AdviceRequest, AdviceResult, AdviceStatus, Capability, Evidence, stable_hash
 from .economy_contract import CAPABILITIES, EconomyAdvice, project_economy
-from .federal_benefits_api import FederalBenefitRunner
+from .federal_benefits_api import FederalBenefitRunner, FederalBenefitSearchRunner
 from .service import CognitiveAdviceService
 from .simples_diagnostic_api import DiagnosticRunner
 
@@ -121,6 +122,7 @@ def create_cognitive_router(
     segregation_runner: DiagnosticRunner | None = None,
     assessment_runner: DiagnosticRunner | None = None,
     federal_benefit_runner: FederalBenefitRunner | None = None,
+    federal_benefit_search_runner: FederalBenefitSearchRunner | None = None,
 ) -> APIRouter:
     router = APIRouter(prefix="/v1/portal/cognitive", tags=["cognitive-advisory"])
 
@@ -228,6 +230,26 @@ def create_cognitive_router(
             body["rule_id"].strip(), body["rule_version"],
         )
 
+    @router.get("/economy/federal-programs")
+    async def federal_programs(request: Request, unit_id: str) -> dict[str, Any]:
+        """Published registry is a SOURCE INDEX, not a granted fiscal incentive."""
+        auth = _authenticated(request, identity, now=datetime.now(UTC))
+        _authorized(auth, PortalPermission.AUDIT_READ, unit_id=unit_id)
+        return {
+            "schema_version": "nfcore.federal-program-index/v1",
+            "advisory_only": True, "eligibility_certified": False,
+            "issuance_authorized": False, "complete_national_coverage": False,
+            "programs": [
+                {
+                    "program_code": item.code, "tax_code": item.tax_code,
+                    "operation": item.operation, "legal_act": item.legal_act,
+                    "official_source": item.official_url,
+                    "requires_reviewed_policy": True,
+                }
+                for item in sorted(PROGRAMS.values(), key=lambda x: x.code)
+            ],
+        }
+
     @router.post("/economy/federal-benefit")
     async def federal_benefit(
         request: Request, body: Annotated[dict[str, Any], Body()],
@@ -258,6 +280,38 @@ def create_cognitive_router(
             federal_benefit_runner, auth, unit_id, environment,
             body["snapshot_id"].strip(), body["snapshot_version"],
             body["benefit_id"].strip(), body["benefit_version"],
+        )
+
+    @router.post("/economy/federal-benefit-search")
+    async def federal_benefit_search(
+        request: Request, body: Annotated[dict[str, Any], Body()],
+    ) -> dict[str, Any]:
+        auth = _authenticated(request, identity, now=datetime.now(UTC))
+        _reject_browser_authority(body)
+        fields = {"unit_id", "environment", "snapshot_id", "snapshot_version"}
+        if set(body) != fields:
+            raise _bad("INVALID_FEDERAL_BENEFIT_SEARCH",
+                       "Only scoped reviewed snapshot references are accepted")
+        for key in ("unit_id", "snapshot_id"):
+            if not isinstance(body[key], str) or not 1 <= len(body[key].strip()) <= 128:
+                raise _bad("INVALID_FEDERAL_BENEFIT_REFERENCE", "Invalid record reference")
+        if type(body["snapshot_version"]) is not int or not 1 <= body[
+            "snapshot_version"
+        ] <= 2147483647:
+            raise _bad("INVALID_FEDERAL_BENEFIT_VERSION", "Invalid record version")
+        unit_id = body["unit_id"].strip()
+        _authorized(auth, PortalPermission.AUDIT_READ, unit_id=unit_id)
+        _csrf(request, identity, auth)
+        try:
+            environment = FiscalEnvironment(body["environment"])
+        except (TypeError, ValueError) as exc:
+            raise _bad("INVALID_ENVIRONMENT", "Unknown environment") from exc
+        if federal_benefit_search_runner is None:
+            raise _bad("FEDERAL_BENEFIT_NOT_CONFIGURED",
+                       "Federal benefit search unavailable", 503)
+        return await run_in_threadpool(
+            federal_benefit_search_runner, auth, unit_id, environment,
+            body["snapshot_id"].strip(), body["snapshot_version"],
         )
 
     @router.get("/economy/schema")

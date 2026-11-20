@@ -70,6 +70,44 @@ PROGRAMS: dict[str, FederalProgram] = {
          "regular_ibs_cbs_status", "reviewed_purchase", "current_rate_source"),
         date(2027, 1, 1),
     ),
+    "RECAP": FederalProgram(
+        "RECAP", "PIS_COFINS", "Lei 11.196/2005, arts. 12 a 16",
+        "https://www.gov.br/pt-br/servicos/habilitar-empresa-no-recap",
+        "export_capital_goods",
+        ("recap_habilitation", "export_revenue_review", "capital_acquisition_review",
+         "current_regime_conditions"),
+        date(2005, 11, 21),
+    ),
+    "REINTEGRA": FederalProgram(
+        "REINTEGRA", "PIS_COFINS", "Lei 13.043/2014, arts. 21 e seguintes",
+        "https://www.gov.br/receitafederal/pt-br/assuntos/orientacao-tributaria/"
+        "restituicao-ressarcimento-reembolso-e-compensacao/creditos/"
+        "reintegra/conceito%20e%20prazos",
+        "goods_export",
+        ("export_document_review", "goods_origin_status",
+         "industrialized_in_brazil_review", "tipi_classification_review",
+         "imported_inputs_condition", "current_regime_conditions",
+         "current_rate_source"),
+        date(2014, 11, 13),
+    ),
+    "SISPROM": FederalProgram(
+        "SISPROM", "IRRF", "SISPROM — redução IR sobre promoção no exterior",
+        "https://www.gov.br/pt-br/servicos/informar-operacoes-de-promocoes-"
+        "de-produtos-e-servicos-no-exterior-com-reducao-do-ir",
+        "export_promotion",
+        ("sisprom_registration", "reviewed_foreign_payment",
+         "promotion_scope_review"),
+        date(2026, 1, 1),
+    ),
+    "IPI_EXPORTADOR": FederalProgram(
+        "IPI_EXPORTADOR", "IPI", "Suspensão IPI — exportador habilitado",
+        "https://www.gov.br/pt-br/servicos/habilitar-empresa-no-regime-especial-"
+        "de-suspensao-do-ipi-imposto-sobre-produtos-industrializados",
+        "ipi_export_acquisition",
+        ("ipi_contributor_status", "export_revenue_review",
+         "ipi_suspension_habilitation", "reviewed_purchase"),
+        date(2026, 1, 1),
+    ),
 }
 
 

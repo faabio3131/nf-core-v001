@@ -625,6 +625,7 @@ def _certify_t08_federal(database):
     from kordena_fiscal.application.federal_benefits_service import (
         evaluate_federal_benefit,
         import_reviewed_federal_benefit,
+        search_federal_benefits,
     )
     from kordena_fiscal.tax.federal_benefits import (
         FACTS_SCHEMA,
@@ -701,6 +702,14 @@ def _certify_t08_federal(database):
             store, snapshot_id="t08-snapshot", snapshot_version=1,
             benefit_id="t08-benefit", benefit_version=1, verify_issuer=verify,
         ) == first
+        search = search_federal_benefits(
+            store, snapshot_id="t08-snapshot", snapshot_version=1,
+            verify_issuer=verify,
+        )
+        assert search["counts"]["potential"] == 1
+        assert search["results"][0] == first
+        assert search["coverage_truncated"] is False
+        assert search["complete_national_coverage"] is False
     with database.economy(_scope(tenant="economy-t08-foreign"), read_only=True) as store:
         assert store.record("fm_economy_snapshots", "t08-snapshot", 1) is None
         assert store.record("fm_economy_benefits", "t08-benefit", 1) is None

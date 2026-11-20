@@ -170,3 +170,17 @@ def test_operation_requires_matching_program_and_extra_evidence():
     }, facts_override={
         "evidence": {**facts()["evidence"], "special-approval": "reviewed-proof"},
     })["status"] == "potential"
+
+
+@pytest.mark.parametrize(
+    "code", ["LEI_DO_BEM", "REIDI", "RECAP", "REINTEGRA",
+             "SISPROM", "IPI_EXPORTADOR", "IBS_CBS_RURAL", "IBS_CBS_RECICLAGEM"],
+)
+def test_all_registered_federal_programs_require_advisory_human_review(code):
+    result = evaluate(code, period=date(2027, 1, 1))
+    assert result["status"] == "potential"
+    assert result["requires_human_approval"] is True
+    assert result["eligibility_certified"] is False
+    assert result["estimated_cents"] is None
+    assert result["issuance_authorized"] is False
+    assert PROGRAMS[code].official_url.startswith("https://www.")

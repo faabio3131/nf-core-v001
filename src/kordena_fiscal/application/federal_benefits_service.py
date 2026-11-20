@@ -14,6 +14,7 @@ from kordena_fiscal.domain import Cnpj, FiscalValidationError
 from kordena_fiscal.persistence.economy_store import EconomyStore, _digest
 from kordena_fiscal.tax.federal_benefits import (
     ENGINE_VERSION,
+    RULE_SCHEMA,
     ReviewedFederalIssuer,
     assess_federal_program,
     decode_facts,
@@ -113,6 +114,14 @@ def evaluate_federal_benefit(
     benefit = store.record("fm_economy_benefits", benefit_id, benefit_version)
     if snapshot is None or benefit is None:
         raise FiscalValidationError("scoped federal facts or benefit version unavailable")
+    latest = store.record("fm_economy_benefits", benefit_id)
+    if latest is not None and latest["version"] > benefit_version:
+        month = date.fromisoformat(snapshot["competence"])
+        if date.fromisoformat(latest["valid_from"]) <= month and (
+            latest["valid_until"] is None
+            or date.fromisoformat(latest["valid_until"]) > month
+        ):
+            raise FiscalValidationError("federal benefit version superseded for competence")
     return _evaluate(snapshot, benefit, store.scope_identity, verify_issuer)
 
 
@@ -172,3 +181,70 @@ def import_reviewed_federal_benefit(
             valid_from=valid_from, valid_until=valid_until, content=benefit_content,
         )
     return result
+
+
+
+def search_federal_benefits(
+    store: EconomyStore, *, snapshot_id: str, snapshot_version: int,
+    verify_issuer: IssuerVerifier, limit: int = 500,
+) -> dict[str, Any]:
+    """Search reviewed federal rules within the existing T01 tenant/unit partition.
+
+    Latest version wins even if it is revoked or invalid: older policy must not
+    reappear as a candidate. Never search global sources as if granted benefits.
+    """
+    if type(limit) is not int or not 1 <= limit <= 500:
+        raise FiscalValidationError("invalid federal benefit search limit")
+    snapshot = store.record("fm_economy_snapshots", snapshot_id, snapshot_version)
+    if snapshot is None:
+        raise FiscalValidationError("scoped federal facts unavailable")
+    rows = store.records("fm_economy_benefits", limit=limit)
+    latest: dict[str, dict[str, Any]] = {}
+    for row in rows:
+        policy = row.get("content")
+        if not isinstance(policy, dict) or policy.get("schema_version") != RULE_SCHEMA:
+            continue
+        key = str(row["record_id"])
+        if key not in latest or row["version"] > latest[key]["version"]:
+            latest[key] = row
+    outcomes: list[dict[str, Any]] = []
+    cache: dict[tuple[str, date], ReviewedFederalIssuer] = {}
+
+    def verified(issuer: str, competence: date) -> ReviewedFederalIssuer:
+        key = (issuer, competence)
+        if key not in cache:
+            cache[key] = verify_issuer(issuer, competence)
+        return cache[key]
+
+    for benefit in sorted(latest.values(), key=lambda b: str(b["record_id"])):
+        policy = benefit["content"]
+        if policy.get("review_status") != "reviewed":
+            outcomes.append({
+                "benefit_id": benefit["record_id"], "benefit_version": benefit["version"],
+                "status": "review_required", "reason_codes": ["rule_not_reviewed"],
+            })
+            continue
+        try:
+            result = _evaluate(snapshot, benefit, store.scope_identity, verified)
+        except FiscalValidationError:
+            outcomes.append({
+                "benefit_id": benefit["record_id"], "benefit_version": benefit["version"],
+                "status": "review_required", "reason_codes": ["invalid_reviewed_evidence"],
+            })
+        else:
+            outcomes.append(result)
+    counts = {
+        state: sum(row["status"] == state for row in outcomes)
+        for state in ("potential", "insufficient_basis", "not_applicable", "review_required")
+    }
+    return {
+        "schema_version": "nfcore.federal-benefit-search/v1",
+        "status": ("review_required" if counts["review_required"] or len(rows) == limit
+                   else "no_reviewed_catalog" if not outcomes else "advisory"),
+        "advisory_only": True, "issuance_authorized": False,
+        "eligibility_certified": False, "complete_national_coverage": False,
+        "coverage_truncated": len(rows) == limit, "review_required": True,
+        "snapshot_id": snapshot_id, "snapshot_version": snapshot_version,
+        "scope_digest": _digest({"scope": list(store.scope_identity)})[1],
+        "counts": counts, "results": outcomes,
+    }
