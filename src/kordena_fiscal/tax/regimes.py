@@ -348,9 +348,79 @@ class SimplesRegularOptionReceipt2027H2:
             raise FiscalValidationError("regular IBS/CBS H2 cancellation outside window")
 
 
+@dataclass(frozen=True, slots=True)
+class SimplesOpeningOptionReceipt:
+    """Reviewed simultaneous MAT registration/option (art. 40-D §§3–4)."""
+
+    scope: ExecutionScope
+    profile_id: str
+    profile_version: int
+    crt: TaxRegimeCode
+    registered_on: date
+    submitted_at: datetime
+    confirmed_at: datetime
+    protocol_reference: str
+    simples_protocol_reference: str
+    registration_reference: str
+
+    def __post_init__(self) -> None:
+        if type(self.registered_on) is not date or not (
+            date(2026, 10, 1) <= self.registered_on <= date(2027, 12, 31)
+        ):
+            raise FiscalValidationError("opening option registration outside reviewed horizon")
+        for value in (self.submitted_at, self.confirmed_at):
+            if not isinstance(value, datetime) or value.utcoffset() is None:
+                raise FiscalValidationError("opening receipt must be timezone-aware")
+        if (
+            self.submitted_at.astimezone(ZoneInfo("America/Sao_Paulo")).date()
+            != self.registered_on or self.confirmed_at < self.submitted_at
+        ):
+            raise FiscalValidationError("opening option must be simultaneous with registration")
+        for ref in (self.protocol_reference, self.simples_protocol_reference,
+                    self.registration_reference):
+            if not isinstance(ref, str) or not ref.strip():
+                raise FiscalValidationError("opening option requires reviewed protocols")
+
+
+@dataclass(frozen=True, slots=True)
+class SimplesRenunciationReceipt2027H2:
+    """March renunciation effective July, not cancellation of the H1 receipt."""
+
+    scope: ExecutionScope
+    profile_id: str
+    profile_version: int
+    crt: TaxRegimeCode
+    submitted_at: datetime
+    confirmed_at: datetime
+    protocol_reference: str
+    prior_protocol_reference: str
+    cancelled_at: datetime | None = None
+
+    def __post_init__(self) -> None:
+        for value in (self.submitted_at, self.confirmed_at, self.cancelled_at):
+            if value is not None and (
+                not isinstance(value, datetime) or value.utcoffset() is None
+            ):
+                raise FiscalValidationError("renunciation evidence must be timezone-aware")
+        local = ZoneInfo("America/Sao_Paulo")
+        if not date(2027, 3, 1) <= self.submitted_at.astimezone(local).date() <= date(
+            2027, 3, 31
+        ) or self.confirmed_at < self.submitted_at:
+            raise FiscalValidationError("renunciation outside filing window")
+        for ref in (self.protocol_reference, self.prior_protocol_reference):
+            if not isinstance(ref, str) or not ref.strip():
+                raise FiscalValidationError("renunciation requires reviewed prior protocol")
+        if self.cancelled_at is not None and (
+            self.cancelled_at < self.submitted_at
+            or self.cancelled_at.astimezone(local).date() > date(2027, 5, 31)
+        ):
+            raise FiscalValidationError("renunciation cancellation outside window")
+
+
 def _assert_option_receipt(
     profile: FiscalProfile,
-    receipt: SimplesRegularOptionReceipt2027H1 | SimplesRegularOptionReceipt2027H2,
+    receipt: (SimplesRegularOptionReceipt2027H1 | SimplesRegularOptionReceipt2027H2
+              | SimplesOpeningOptionReceipt | SimplesRenunciationReceipt2027H2),
     instant: datetime,
 ) -> None:
     if receipt.scope.identity_partition_key != profile.scope.identity_partition_key:
@@ -359,7 +429,7 @@ def _assert_option_receipt(
         raise FiscalValidationError("regular option receipt profile mismatch")
     if receipt.crt is not profile.tax_regime:
         raise FiscalValidationError("regular option receipt CRT mismatch")
-    if receipt.cancelled_at is not None:
+    if not isinstance(receipt, SimplesOpeningOptionReceipt) and receipt.cancelled_at is not None:
         raise FiscalValidationError("regular option receipt was cancelled")
     if receipt.confirmed_at > instant:
         raise FiscalValidationError("regular option confirmation is in the future")
@@ -372,6 +442,8 @@ def resolve_simples_ibs_cbs_mode(
     *,
     regular_option_receipt_2027_h1: SimplesRegularOptionReceipt2027H1 | None = None,
     regular_option_receipt_2027_h2: SimplesRegularOptionReceipt2027H2 | None = None,
+    opening_receipt: SimplesOpeningOptionReceipt | None = None,
+    renunciation_receipt: SimplesRenunciationReceipt2027H2 | None = None,
 ) -> SimplesIbsCbsMode:
     """Resolve fiscal-period applicability without calculating IBS/CBS amounts.
 
@@ -433,7 +505,41 @@ def resolve_simples_ibs_cbs_mode(
             "explicit effective Simples IBS/CBS election is required from 2027"
         )
     mode = matching[0].mode
+    if opening_receipt is not None:
+        _assert_option_receipt(profile, opening_receipt, instant)
+        if local_date < opening_receipt.registered_on:
+            raise FiscalValidationError("opening registration is in the future")
+    prior_option = regular_option_receipt_2027_h1
+    prior_opening = (opening_receipt if opening_receipt is not None
+                     and opening_receipt.registered_on < date(2027, 7, 1) else None)
+    if mode is SimplesIbsCbsMode.SIMPLES_UNIFIED:
+        if opening_receipt is not None and (
+            local_date < date(2027, 7, 1)
+            or opening_receipt.registered_on >= date(2027, 4, 1)
+        ):
+            raise FiscalValidationError("opening regular option conflicts with unified mode")
+        if local_date >= date(2027, 7, 1):
+            active_prior = (
+                prior_option if prior_option is not None and prior_option.cancelled_at is None
+                else prior_opening
+            )
+            if active_prior is not None:
+                _assert_option_receipt(profile, active_prior, instant)
+                if (not isinstance(renunciation_receipt, SimplesRenunciationReceipt2027H2)
+                        or renunciation_receipt.prior_protocol_reference
+                        != active_prior.protocol_reference):
+                    raise FiscalValidationError("reviewed renunciation required")
+                _assert_option_receipt(profile, renunciation_receipt, instant)
     if mode is SimplesIbsCbsMode.REGULAR_SEPARATE:
+        if (renunciation_receipt is not None and renunciation_receipt.cancelled_at is None
+                and local_date >= date(2027, 7, 1)):
+            raise FiscalValidationError("active renunciation conflicts with regular option")
+        if opening_receipt is not None:
+            opened = opening_receipt.registered_on
+            horizon = (date(2027, 6, 30) if opened < date(2027, 4, 1)
+                       else date(2027, 12, 31))
+            if local_date <= horizon:
+                return mode
         if date(2027, 1, 1) <= local_date <= date(2027, 6, 30):
             receipt = regular_option_receipt_2027_h1
             if not isinstance(receipt, SimplesRegularOptionReceipt2027H1):
@@ -445,12 +551,13 @@ def resolve_simples_ibs_cbs_mode(
                 raise FiscalValidationError("regular IBS/CBS option period not verified")
             _assert_option_receipt(profile, receipt_h2, instant)
             if receipt_h2.submitted_at is None:
-                prior_receipt = regular_option_receipt_2027_h1
-                if not isinstance(prior_receipt, SimplesRegularOptionReceipt2027H1) or (
-                    prior_receipt.protocol_reference != receipt_h2.prior_protocol_reference
-                ):
+                continuation_prior = (
+                    prior_option if prior_option is not None else prior_opening
+                )
+                if (continuation_prior is None or continuation_prior.protocol_reference
+                        != receipt_h2.prior_protocol_reference):
                     raise FiscalValidationError("continuation requires prior reviewed option")
-                _assert_option_receipt(profile, prior_receipt, instant)
+                _assert_option_receipt(profile, continuation_prior, instant)
         else:
             raise FiscalValidationError("regular IBS/CBS option period not verified")
     return mode

@@ -1,7 +1,7 @@
 """RTC-02 contract: corporate income-tax regime must match issuer profile scope/CRT."""
 
 from dataclasses import replace
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 
 import pytest
 
@@ -22,8 +22,10 @@ from kordena_fiscal.tax.regimes import (
     FederalRegimeDeclaration,
     SimplesIbsCbsElection,
     SimplesIbsCbsMode,
+    SimplesOpeningOptionReceipt,
     SimplesRegularOptionReceipt2027H1,
     SimplesRegularOptionReceipt2027H2,
+    SimplesRenunciationReceipt2027H2,
     resolve_federal_regime_for_profile,
     resolve_federal_regime_timeline,
     resolve_simples_ibs_cbs_mode,
@@ -492,3 +494,48 @@ def test_regular_2027_h2_new_option_and_confirmed_continuation() -> None:
                 fresh, cancelled_at=datetime(2027, 5, 15, 12, tzinfo=UTC),
             ),
         )
+
+
+def test_h2_renunciation_requires_prior_protocol_and_not_cancelled() -> None:
+    profile = _simples_profile()
+    prior = _simples_receipt(profile)
+    election = _simples_election(profile)
+    instant = datetime(2027, 7, 1, 12, tzinfo=UTC)
+    receipt = SimplesRenunciationReceipt2027H2(
+        profile.scope, profile.profile_id, profile.version, profile.tax_regime,
+        datetime(2027, 3, 15, 12, tzinfo=UTC), datetime(2027, 3, 15, 13, tzinfo=UTC),
+        "renunciation-fixture", prior.protocol_reference,
+    )
+    with pytest.raises(FiscalValidationError, match="renunciation"):
+        resolve_simples_ibs_cbs_mode(
+            profile, (election,), instant, regular_option_receipt_2027_h1=prior,
+        )
+    assert resolve_simples_ibs_cbs_mode(
+        profile, (election,), instant, regular_option_receipt_2027_h1=prior,
+        renunciation_receipt=receipt,
+    ) is SimplesIbsCbsMode.SIMPLES_UNIFIED
+    with pytest.raises(FiscalValidationError, match="cancelled"):
+        resolve_simples_ibs_cbs_mode(
+            profile, (election,), instant, regular_option_receipt_2027_h1=prior,
+            renunciation_receipt=replace(
+                receipt, cancelled_at=datetime(2027, 5, 31, 12, tzinfo=UTC),
+            ),
+        )
+
+
+def test_opening_april_option_covers_second_semester() -> None:
+    profile = _simples_profile()
+    opening = SimplesOpeningOptionReceipt(
+        profile.scope, profile.profile_id, profile.version, profile.tax_regime,
+        date(2027, 4, 10), datetime(2027, 4, 10, 12, tzinfo=UTC),
+        datetime(2027, 4, 10, 13, tzinfo=UTC), "regular", "simples", "mat",
+    )
+    election = _simples_election(
+        profile, mode=SimplesIbsCbsMode.REGULAR_SEPARATE,
+        effective_from=datetime(2027, 4, 10, 3, tzinfo=UTC),
+    )
+    assert resolve_simples_ibs_cbs_mode(
+        profile, (election,), datetime(2027, 7, 1, 12, tzinfo=UTC), opening_receipt=opening,
+    ) is SimplesIbsCbsMode.REGULAR_SEPARATE
+    with pytest.raises(FiscalValidationError, match="simultaneous"):
+        replace(opening, registered_on=date(2027, 4, 9))

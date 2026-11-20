@@ -13,8 +13,10 @@ from kordena_fiscal.persistence.economy_store import EconomyStore, _digest
 from kordena_fiscal.tax.regimes import (
     SimplesIbsCbsElection,
     SimplesIbsCbsMode,
+    SimplesOpeningOptionReceipt,
     SimplesRegularOptionReceipt2027H1,
     SimplesRegularOptionReceipt2027H2,
+    SimplesRenunciationReceipt2027H2,
     resolve_simples_ibs_cbs_mode,
 )
 from kordena_fiscal.tax.simples_cash import reconcile_cash_detail, verify_cash_continuity
@@ -95,7 +97,7 @@ def _verify_cash_predecessor(
 
 def _reviewed_mode(
     profile: FiscalProfile | None, snapshot: dict[str, Any], competence: date,
-    scope_identity: tuple[str, ...],
+    scope_identity: tuple[str, ...], facts: SimplesFacts,
 ) -> SimplesIbsCbsMode:
     if not isinstance(profile, FiscalProfile) or (
         tuple(profile.scope.identity_material) != scope_identity
@@ -151,20 +153,57 @@ def _reviewed_mode(
             cancelled_at=(datetime.fromisoformat(raw_h2["cancelled_at"])
                           if raw_h2.get("cancelled_at") is not None else None),
         )
+    opening = None
+    raw_opening = evidence.get("opening_receipt")
+    if raw_opening is not None:
+        bound(raw_opening)
+        opening = SimplesOpeningOptionReceipt(
+            scope=profile.scope, profile_id=raw_opening["profile_id"],
+            profile_version=raw_opening["profile_version"],
+            crt=TaxRegimeCode(raw_opening["crt"]),
+            registered_on=date.fromisoformat(raw_opening["registered_on"]),
+            submitted_at=datetime.fromisoformat(raw_opening["submitted_at"]),
+            confirmed_at=datetime.fromisoformat(raw_opening["confirmed_at"]),
+            protocol_reference=raw_opening["protocol_reference"],
+            simples_protocol_reference=raw_opening["simples_protocol_reference"],
+            registration_reference=raw_opening["registration_reference"],
+        )
+        if opening.registered_on != facts.registered_on:
+            raise FiscalValidationError("opening option does not match reviewed registration")
+    renunciation = None
+    raw_renunciation = evidence.get("renunciation_receipt_2027_h2")
+    if raw_renunciation is not None:
+        bound(raw_renunciation)
+        renunciation = SimplesRenunciationReceipt2027H2(
+            scope=profile.scope, profile_id=raw_renunciation["profile_id"],
+            profile_version=raw_renunciation["profile_version"],
+            crt=TaxRegimeCode(raw_renunciation["crt"]),
+            submitted_at=datetime.fromisoformat(raw_renunciation["submitted_at"]),
+            confirmed_at=datetime.fromisoformat(raw_renunciation["confirmed_at"]),
+            protocol_reference=raw_renunciation["protocol_reference"],
+            prior_protocol_reference=raw_renunciation["prior_protocol_reference"],
+            cancelled_at=(datetime.fromisoformat(raw_renunciation["cancelled_at"])
+                          if raw_renunciation.get("cancelled_at") is not None else None),
+        )
     if election.mode is SimplesIbsCbsMode.SIMPLES_UNIFIED:
         active_receipt = receipt if competence.month <= 6 else receipt_h2
         if active_receipt is not None and active_receipt.cancelled_at is None:
             raise FiscalValidationError("unresolved regular option conflicts with unified mode")
-        if (competence.month >= 7 and receipt is not None and receipt.cancelled_at is None):
-            raise FiscalValidationError("reviewed renunciation of prior regular option required")
         if evidence.get("refund_restriction_clear") is not True:
             raise FiscalValidationError("reviewed CGSN art. 40-E eligibility required")
     start = datetime.combine(competence, time.min, tzinfo=ZoneInfo("America/Sao_Paulo"))
     end = (start.replace(day=28) + timedelta(days=4)).replace(day=1)
+    if facts.registered_on is not None and facts.opened_month == competence:
+        start = datetime.combine(facts.registered_on, time.min, tzinfo=start.tzinfo)
+        if opening is not None:
+            start = max(start, opening.confirmed_at, profile.effective_from)
+        if start >= end:
+            raise FiscalValidationError("opening option confirmed outside competence")
     modes = {
         resolve_simples_ibs_cbs_mode(
             profile, (election,), instant, regular_option_receipt_2027_h1=receipt,
             regular_option_receipt_2027_h2=receipt_h2,
+            opening_receipt=opening, renunciation_receipt=renunciation,
         ) for instant in (start, end - timedelta(microseconds=1))
     }
     if len(modes) != 1:
@@ -240,9 +279,13 @@ def _evaluate(
             ) for row in content["months"]),
             content["company_history_reference"], content["activity_reference"],
             content["optant_reference"],
+            date.fromisoformat(content["registered_on"]) if "registered_on" in content else None,
         )
         profile = verify_issuer(snapshot["issuer_cnpj"], facts)
-        mode = _reviewed_mode(profile, snapshot, competence, scope_identity) if transition else None
+        mode = (
+            _reviewed_mode(profile, snapshot, competence, scope_identity, facts)
+            if transition else None
+        )
         if transition and content["basis"] != "accrual":
             raise FiscalValidationError("cash recognition unavailable from 2027")
         if not transition and "ibs_cbs_election" in content:

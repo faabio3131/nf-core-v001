@@ -178,10 +178,16 @@ class SimplesFacts:
     company_history_reference: str
     activity_reference: str
     optant_reference: str
+    registered_on: date | None = None
 
     def __post_init__(self) -> None:
         _month(self.competence)
         _month(self.opened_month)
+        if self.registered_on is not None and (
+            self.competence.year != 2027 or type(self.registered_on) is not date
+            or self.registered_on.replace(day=1) != self.opened_month
+        ):
+            raise FiscalValidationError("registration date must match reviewed opening month")
         if self.competence.year not in {2026, 2027} or self.opened_month > self.competence:
             raise FiscalValidationError("only reviewed 2026/2027 rules are available")
         if self.uf not in UF_CODES or not isinstance(self.activity, Activity):

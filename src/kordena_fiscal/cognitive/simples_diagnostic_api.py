@@ -88,6 +88,8 @@ def build_issuer_verifier(
             facts.competence, time.min, tzinfo=ZoneInfo("America/Sao_Paulo"),
         )
         end = (start.replace(day=28) + timedelta(days=4)).replace(day=1)
+        if facts.registered_on is not None and facts.opened_month == facts.competence:
+            start = datetime.combine(facts.registered_on, time.min, tzinfo=start.tzinfo)
         with uow_factory() as uow:
             profile = uow.control_plane.resolve_profile(
                 host_namespace="fm-nfcore", tenant_id=scope.tenant_id,
