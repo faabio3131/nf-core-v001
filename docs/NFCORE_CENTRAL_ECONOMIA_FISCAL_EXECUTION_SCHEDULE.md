@@ -6,8 +6,8 @@ A folha T23–T33, a Trilha 2 H01–H06 e a reformulação Enterprise não integ
 |---|---|---|
 | T01 | Modelagem de dados, oportunidades, benefícios, ledger, dossiês, RLS | DoD interno aprovado — 44 PASS, 0 SKIP/FAIL (44678481529, 570170f3) |
 | T02 | Contrato Core Cognitivo | ENTREGUE — DoD interno aprovado em 20/11/2026; 308 PASS, 0 SKIP/FAIL; 24 casos focais (44718504072, d53a2c62) |
-| T03 | Sentinela Normativa e anistias/REFIS | EM EXECUÇÃO — pipeline e projeção; certificação pendente |
-| T04 | Motor Simples e Fator R | Bloqueado |
+| T03 | Sentinela Normativa e anistias/REFIS | ENTREGUE — DoD interno aprovado em 20/11/2026; 525 PASS, 0 SKIP/FAIL; 6 casos focais (44720120616, 6a0cf5be) |
+| T04 | Motor Simples e Fator R | LIBERADO para engenharia interna — não iniciado |
 | T05 | Diagnóstico e otimizador Fator R | Bloqueado |
 | T06 | Classificador de receitas segregáveis | Bloqueado |
 | T07 | Apuração/PGDAS segregada | Bloqueado |
@@ -59,3 +59,9 @@ CURRENT: vigia de quatro portais, comparação de bytes e cache atômico, timer 
 Fontes oficiais iniciais incluem PGFN Editais, RFB Transação e RFB Legislação, além dos quatro portais existentes. Identificador estável por sinal e por escopo; links públicos da mesma origem, sem query/fragmento e sem armazenar títulos livres. Para ativar: migrar mediante cópia auditada do cache anterior para o diretório dedicado, manter timer diário existente, montar somente esse diretório no API via compose opt-in, confirmar NFCORE_COGNITIVE_ENABLED=true. Nenhum dado fiscal privado no cache. Vigência/prazos, elegibilidade, histórico completo de publicações e cobertura estadual/municipal não inferidos da classificação de títulos; permanecem governados pela revisão e T08–T10.
 
 Regressão integral herdada da T02 (CI 44718511040): gate de dependências do motor base detectou Pydantic no pacote fiscal base. Corrigido deslocando para extras cognitive/web/dev, sem modificar o teste constitucional nem as dependências base. A suíte da T03 inclui esse gate explicitamente; 5803 PASS, 1 FAIL, 2 SKIP foram o resultado anterior, não uma CI integral aprovada.
+
+### Certificação T03 — 20/11/2026
+- HEAD certificado de código: `6a0cf5bee4562807180cc0e60bd69bb84cd8bdb4`; PR #587 (draft). DoD da planilha: pipeline interno com fixtures/fontes normativas e editais de anistia gerando alertas automáticos por tenant — PASS.
+- https://github.com/faabio3131/nf-core-v001/actions/runs/44720120616 — SUCCESS, 525 PASS, 0 SKIP/FAIL, 1 warning; 6 casos focais T03; Ruff, mypy (447 arquivos), migração, PostgreSQL real da regressão T01–T02 e compose opt-in PASS. Gate de dependências V2-12 original aprovado após reposicionamento do Pydantic nos extras cognitivo/web/dev.
+- T03 usa a sentinela e o timer diário existentes, sete fontes públicas iniciais, cache atômico v2, alertas de alterações e categorias e API autenticada por unidade/ambiente. Não há prova de coleta real contínua no host, vigência ou elegibilidade, nem de cobertura estadual/municipal integral. A coleta por fixtures não é homologação fiscal externa. Estado atual das fontes é projeção de triagem, não histórico completo de editais ou regras. Timer e compose apenas preparados; instalação/ativação não executada.
+- CI integral do código: https://github.com/faabio3131/nf-core-v001/actions/runs/44720129576 em execução na certificação. Gate de promoção integral continua aberto; sem merge, deploy, mudança em main/production ou migration produtiva. Fase 0 certificada internamente por DoDs T01/T02/T03. T04 liberada pela trava específica, não iniciada.
