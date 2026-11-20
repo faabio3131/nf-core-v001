@@ -10,6 +10,7 @@ from dataclasses import dataclass
 from kordena_fiscal.domain import FiscalValidationError
 
 from .contracts import AdviceRequest, Evidence, stable_hash
+from .economy_contract import CAPABILITIES, REVIEW_ACTIONS
 from .ports import ModelPrompt
 from .redaction import Redactor
 
@@ -115,7 +116,11 @@ class ContextPackBuilder:
         )
         prompt = ModelPrompt(
             capability=request.capability,
-            system=SYSTEM_INSTRUCTIONS,
+            system=(SYSTEM_INSTRUCTIONS + "\nPara esta consulta de economia fiscal, "
+                    "retorne exclusivamente ações de revisão abaixo, citando todos os IDs "
+                    "da avaliação e das fontes legais. Não proponha valores ou normas. "
+                    + " | ".join(REVIEW_ACTIONS)
+                    if request.capability in CAPABILITIES else SYSTEM_INSTRUCTIONS),
             trusted_facts="\n".join(trusted_lines),
             untrusted_data=fenced,
             boundary=boundary,

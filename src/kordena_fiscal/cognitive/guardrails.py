@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from decimal import Decimal
 
 from .context import INJECTION_MARKERS
+from .economy_contract import CAPABILITIES, economy_model_action_allowed
 from .contracts import (
     MAX_SECTION_CHARS,
     AdviceRequest,
@@ -133,6 +134,11 @@ class OutputGuard:
                 for item_id in section.evidence_ids if item_id in trusted_by_id
             )
             reason = self._reject_reason(section, known_ids, cited_corpus, cited_facts)
+            if request.capability in CAPABILITIES and (
+                section.kind is not SectionKind.ACTION
+                or not economy_model_action_allowed(request, section.text, section.evidence_ids)
+            ):
+                reason = "economy_unapproved_advice"
             if reason is not None:
                 findings.append(f"{tag}:{reason}")
                 continue

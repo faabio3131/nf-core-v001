@@ -4,8 +4,8 @@ A folha T23–T33, a Trilha 2 H01–H06 e a reformulação Enterprise não integ
 
 | ID | Entrega | Estado |
 |---|---|---|
-| T01 | Modelagem de dados, oportunidades, benefícios, ledger, dossiês, RLS | Em construção |
-| T02 | Contrato Core Cognitivo | Bloqueado por T01 |
+| T01 | Modelagem de dados, oportunidades, benefícios, ledger, dossiês, RLS | DoD interno aprovado — 44 PASS, 0 SKIP/FAIL (44678481529, 570170f3) |
+| T02 | Contrato Core Cognitivo | Em execução — contrato v1 e integração; certificação pendente |
 | T03 | Sentinela Normativa e anistias/REFIS | Bloqueado |
 | T04 | Motor Simples e Fator R | Bloqueado |
 | T05 | Diagnóstico e otimizador Fator R | Bloqueado |
@@ -41,3 +41,7 @@ Vinculação final de schema e segurança: readiness confere RLS e predicados de
 
 ### Operação e aceite do T01
 O schema v25 é aditivo e opt-in. O provisionamento do papel PostgreSQL deve anteceder a migração, em ambiente de sandbox/staging autorizado: papel dedicado NOLOGIN, NOSUPERUSER, NOBYPASSRLS, NOCREATEROLE e NOCREATEDB, não proprietário das tabelas; a conta do serviço deve poder assumir esse papel por SET LOCAL ROLE. A autoridade migration_guard concede USAGE/SELECT/INSERT somente quando NFCORE_ECONOMY_ENABLED=true e NFCORE_ECONOMY_RUNTIME_ROLE está definido. O papel do aplicativo não deve ser exposto a clientes, AI ou SQL arbitrário. O desligamento de feature não remove a migração; schema posterior com flag desligada falha fechado. Nenhum segredo registrado. A readiness testa predicados, RLS FORCE e índices válidos; regressão real testa alteração proposital de policy e índice somente no PostgreSQL isolado da suíte. T01 continua em execução até o teste real passar; T02 não iniciada.
+
+## T02 — contrato cognitivo estruturado (20/11/2026)
+T01 DoD comprovado: https://github.com/faabio3131/nf-core-v001/actions/runs/44678481529 (44 PASS, zero skip/fail, SHA 570170f3). A CI integral anterior passou Python mas falhou no E2E de layout herdado do MFA; não houve promoção.
+T02: `nfcore.cognitive.economy/v1`; três capabilities (Opportunity Radar, Credit Recovery, Tax Simulation). API de aconselhamento e schema JSON autenticados; avaliação e referências vinculadas ao snapshot/regra e competência, hashes e fonte legal oficial/revisada obrigatórios. Valores somente estimados pelo motor, aprovação/realização nulas; sem mutação. O modelo seleciona ações consultivas de vocabulário fechado, usando o orçamento, auditoria e guardrails existentes. Dados incompletos não geram candidatos. T03 e T04+ produzirão catálogo, regras e resultados reais; nenhuma elegibilidade ou recuperação é simulada pelo T02. Revisão fiscal real das normas pertence aos pacotes posteriores.
