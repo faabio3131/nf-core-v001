@@ -29,6 +29,7 @@ from kordena_fiscal.web.portal_api import (
 )
 
 from .contracts import AdviceRequest, AdviceResult, AdviceStatus, Capability, Evidence, stable_hash
+from .economy_contract import CAPABILITIES, EconomyAdvice, project_economy
 from .service import CognitiveAdviceService
 
 HOST_NAMESPACE = "fm-nfcore"
@@ -38,6 +39,9 @@ CAPABILITY_PERMISSIONS: dict[Capability, PortalPermission] = {
     Capability.EXPLAIN_RECONCILIATION: PortalPermission.DOCUMENT_QUERY,
     Capability.ANSWER_ACCOUNTANT_QUESTION: PortalPermission.DOCUMENT_QUERY,
     Capability.SUGGEST_CLASSIFICATION: PortalPermission.CONFIGURATION_WRITE,
+    Capability.OPPORTUNITY_RADAR: PortalPermission.AUDIT_READ,
+    Capability.CREDIT_RECOVERY: PortalPermission.AUDIT_READ,
+    Capability.TAX_SIMULATION: PortalPermission.AUDIT_READ,
 }
 
 
@@ -111,6 +115,12 @@ def create_cognitive_router(
 ) -> APIRouter:
     router = APIRouter(prefix="/v1/portal/cognitive", tags=["cognitive-advisory"])
 
+    @router.get("/economy/schema")
+    async def economy_schema(request: Request) -> dict[str, Any]:
+        auth = _authenticated(request, identity, now=datetime.now(UTC))
+        _authorized(auth, PortalPermission.AUDIT_READ)
+        return EconomyAdvice.model_json_schema()
+
     @router.post("/advise")
     async def advise(
         request: Request, body: Annotated[dict[str, Any], Body()]
@@ -151,6 +161,11 @@ def create_cognitive_router(
                 "Cognitive advisory is not configured",
                 status.HTTP_503_SERVICE_UNAVAILABLE,
             )
+        if capability in CAPABILITIES:
+            if subject_id is None:
+                raise _bad("SUBJECT_REQUIRED", "Economy advice requires an evaluation id")
+            if set(body) - {"capability", "unit_id", "environment", "subject_id", "question"}:
+                raise _bad("INVALID_ECONOMY_INPUT", "Fiscal evidence is server controlled")
         facts = await run_in_threadpool(
             evidence.collect,
             authority=auth,
@@ -195,6 +210,9 @@ def create_cognitive_router(
             raise _bad(
                 "COGNITIVE_FORBIDDEN", "Operation is not permitted", status.HTTP_403_FORBIDDEN
             )
-        return project_result(result, ai_enabled=ai_enabled)
+        response = project_result(result, ai_enabled=ai_enabled)
+        if capability in CAPABILITIES:
+            response["economy"] = project_economy(advice, result).model_dump(mode="json")
+        return response
 
     return router

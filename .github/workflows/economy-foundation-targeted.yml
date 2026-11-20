@@ -1,4 +1,4 @@
-name: NFCore Economia - validacao focal T01
+name: NFCore Economia - validacao focal T02
 on:
   push:
     branches: ["validation/nfcore-economy-foundation-20261120"]
@@ -8,7 +8,7 @@ concurrency:
   group: nfcore-economy-foundation-validation
   cancel-in-progress: true
 jobs:
-  t01:
+  t02:
     runs-on: ubuntu-24.04
     timeout-minutes: 12
     services:
@@ -28,36 +28,33 @@ jobs:
     env:
       NFCORE_TEST_POSTGRES_DSN: postgresql://nfcore:nfcore_test_password@127.0.0.1:5432/nfcore_test
     steps:
-      - name: Checkout HEAD exato da PR 587
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
-          ref: 570170f30ef7e1e515b05f06aa6de73453a6f8d7
-      - name: Confirmar revision sob teste
-        run: test "$(git rev-parse HEAD)" = "570170f30ef7e1e515b05f06aa6de73453a6f8d7"
+          ref: b587903ccfb7260cae3b6cde69fcab7907f8e73c
+      - name: Confirmar HEAD T02
+        run: test "$(git rev-parse HEAD)" = "b587903ccfb7260cae3b6cde69fcab7907f8e73c"
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
           cache: pip
       - run: python -m pip install -e ".[dev,telemetry]"
-      - name: Governanca da migracao
+      - name: Ruff
+        run: ruff check .
+      - name: Mypy
+        run: mypy
+      - name: Migration policy
         run: python scripts/ci/migration_guard.py --check-policy
-      - name: Testes obrigatorios T01 com PostgreSQL real
+      - name: Cognitive core and real PostgreSQL regressions
         run: |
-          pytest -ra --junitxml=/tmp/nfcore-t01.xml tests/persistence/test_economy_schema_postgres.py tests/persistence/test_postgres_production.py::test_economy_v25_readiness_detects_policy_and_index_drift tests/runtime/test_bling_production_migration_plan.py
+          pytest -ra --junitxml=/tmp/nfcore-t02.xml tests/cognitive tests/persistence/test_economy_schema_postgres.py tests/persistence/test_postgres_production.py::test_economy_v25_readiness_detects_policy_and_index_drift
           python - <<'PY'
           import xml.etree.ElementTree as ET
-          root = ET.parse("/tmp/nfcore-t01.xml").getroot()
+          root = ET.parse("/tmp/nfcore-t02.xml").getroot()
           cases = root.findall(".//testcase")
-          names = {case.get("name") for case in cases}
-          required = {
-              "test_real_postgres_economy_schema_scope_and_immutability",
-              "test_economy_v25_readiness_detects_policy_and_index_drift",
-              "test_rls_predicate_pin_rejects_tenant_bypass",
-              "test_economy_optional_migration_boundaries",
-              "test_economy_existing_schema_can_enable_mfa_later",
-          }
-          assert required <= names, required - names
-          assert not root.findall(".//skipped"), "certificacao T01 nao aceita skips"
+          selected = [c for c in cases if "test_economy_contract" in c.get("classname","") or c.get("name","").startswith(("test_economy_contract_api", "test_real_postgres_economy_schema", "test_economy_v25_readiness"))]
+          assert len(selected) >= 20, len(selected)
           assert not root.findall(".//failure") and not root.findall(".//error")
-          print(f"T01: {len(cases)} testes, zero skip/failure/error, migration v25 PostgreSQL real")
+          assert not any(c.find("skipped") is not None for c in selected)
+          print(f"T02: {len(selected)} targeted cases PASS; total {len(cases)} regression cases")
+          print(f"Regression skips: {len(root.findall('.//skipped'))}")
           PY

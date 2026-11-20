@@ -15,6 +15,7 @@ from .contracts import (
     EvidenceKind,
     SectionKind,
 )
+from .economy_contract import CAPABILITIES, economy_model_action_allowed
 from .ports import ProviderSection
 from .redaction import Redactor
 
@@ -133,6 +134,11 @@ class OutputGuard:
                 for item_id in section.evidence_ids if item_id in trusted_by_id
             )
             reason = self._reject_reason(section, known_ids, cited_corpus, cited_facts)
+            if request.capability in CAPABILITIES and (
+                section.kind is not SectionKind.ACTION
+                or not economy_model_action_allowed(request, section.text, section.evidence_ids)
+            ):
+                reason = "economy_unapproved_advice"
             if reason is not None:
                 findings.append(f"{tag}:{reason}")
                 continue

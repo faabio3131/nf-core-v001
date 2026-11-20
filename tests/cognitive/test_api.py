@@ -284,3 +284,23 @@ def test_command_metrics_route_is_always_mounted_but_advisory_is_opt_in() -> Non
     metrics_mounted, advisory_mounted = mounted_paths(full)
     assert metrics_mounted
     assert advisory_mounted
+
+
+def test_economy_contract_api_schema_and_authority():
+    web = client(Executor())
+    schema = web.get("/v1/portal/cognitive/economy/schema")
+    assert schema.status_code == 200
+    assert schema.json()["properties"]["schema_version"]["const"] == "nfcore.cognitive.economy/v1"
+    for capability in ("opportunity_radar", "credit_recovery", "tax_simulation"):
+        body = {"capability": "cognitive." + capability, "unit_id": "unit-a",
+                "subject_id": "not-yet-calculated"}
+        result = post(web, body)
+        assert result.status_code == 200
+        assert result.json()["economy"]["status"] == "insufficient_basis"
+        assert result.json()["economy"]["candidates"] == []
+        assert post(web, {**body, "estimated_cents": 100}).status_code == 400
+        assert post(web, {**body, "legal_citations": []}).status_code == 400
+        operator = client(Executor(), PortalRole.OPERATOR)
+        assert post(operator, body).status_code == 403
+        assert post(web, {**body, "unit_id": "unit-b"}).status_code == 403
+        assert post(web, {**body, "subject_id": None}).status_code == 400

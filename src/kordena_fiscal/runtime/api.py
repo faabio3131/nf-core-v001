@@ -8,6 +8,7 @@ from collections.abc import AsyncIterator, Callable, Mapping
 from contextlib import asynccontextmanager
 from dataclasses import asdict
 from datetime import UTC, datetime, timedelta
+from functools import partial
 from typing import cast
 from uuid import uuid4
 
@@ -20,6 +21,7 @@ from kordena_fiscal.application.commercial_acquisition import CommercialAcquisit
 from kordena_fiscal.application.service import FiscalApplicationService
 from kordena_fiscal.cognitive.composition import build_cognitive_router
 from kordena_fiscal.cognitive.durable_usage import DurableTokenQuotaStore
+from kordena_fiscal.cognitive.economy_reader import read_economy_evidence
 from kordena_fiscal.compliance.nfse_preaudit import (
     extrema_abrasf_service_preaudit,
     nfse_preaudit,
@@ -1191,6 +1193,13 @@ def create_runtime_app(
                 os.environ,
                 audit_uow_factory=runtime.database,
                 runtime_environment=resolved.environment.value,
+                economy_reader=(
+                    partial(
+                        read_economy_evidence, partial(runtime.database.economy, read_only=True)
+                    )
+                    if runtime.database is not None
+                    and os.environ.get("NFCORE_ECONOMY_ENABLED") == "true" else None
+                ),
                 quota_store=(
                     DurableTokenQuotaStore(runtime.database.connection)
                     if runtime.database is not None else None

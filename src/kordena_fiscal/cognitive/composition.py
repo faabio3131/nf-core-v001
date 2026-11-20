@@ -21,6 +21,7 @@ from .adapters.openai_compatible import build_model_from_environ
 from .api import create_cognitive_router
 from .command_api import create_command_metrics_router
 from .durable_usage import DurableTokenQuotaStore
+from .economy_reader import EconomyReader
 from .governance import DEFAULT_PILOT_DAILY_LIMIT, InMemoryUsageLedger, pilot_entitlement
 from .knowledge.official import OfficialTablesError, cached_official_catalog
 from .portal_evidence import PortalSurfaceEvidenceProvider, SurfaceReader
@@ -50,6 +51,7 @@ def build_cognitive_routers(
     runtime_environment: str | None = None,
     quota_store: DurableTokenQuotaStore | None = None,
     model_key_readers: Mapping[str, Callable[[], str | None]] | None = None,
+    economy_reader: EconomyReader | None = None,
 ) -> list[APIRouter]:
     """Portal advisory route (opt-in) plus the Command read-only metrics route (always mounted).
 
@@ -121,7 +123,7 @@ def build_cognitive_routers(
         create_cognitive_router(
             identity,
             service,
-            PortalSurfaceEvidenceProvider(portal_executor),
+            PortalSurfaceEvidenceProvider(portal_executor, economy_reader=economy_reader),
             ai_enabled=model is not None,
         ),
         create_command_metrics_router(aggregates, environ, ai_enabled=model is not None),
@@ -137,6 +139,7 @@ def build_cognitive_router(
     runtime_environment: str | None = None,
     quota_store: DurableTokenQuotaStore | None = None,
     model_key_readers: Mapping[str, Callable[[], str | None]] | None = None,
+    economy_reader: EconomyReader | None = None,
 ) -> APIRouter | None:
     """One router mounting the Portal advisory route and the Command metrics route."""
     routers = build_cognitive_routers(
@@ -145,6 +148,7 @@ def build_cognitive_router(
         runtime_environment=runtime_environment,
         quota_store=quota_store,
         model_key_readers=model_key_readers,
+        economy_reader=economy_reader,
     )
     if not routers:
         return None

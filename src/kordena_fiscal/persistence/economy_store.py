@@ -79,12 +79,15 @@ class EconomyStore:
     @contextmanager
     def transaction(
         conn: Connection[Any], scope: ExecutionScope, *, runtime_role: str | None = None,
+        read_only: bool = False,
     ) -> Iterator[EconomyStore]:
         if not scope.host_namespace:
             raise FiscalValidationError("economy requires bound fiscal host scope")
         if conn.info.transaction_status.name != "IDLE":
             raise FiscalValidationError("economy transaction requires idle connection")
         with conn.transaction():
+            if read_only:
+                conn.execute("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY")
             if runtime_role is not None:
                 EconomyStore._text(runtime_role, "runtime role")
                 conn.execute(sql.SQL("SET LOCAL ROLE {}").format(sql.Identifier(runtime_role)))
@@ -266,6 +269,31 @@ class EconomyStore:
             (record_id, version, opportunity_id, opportunity_version,
              archive_reference, digest),
         )
+
+    def record(
+        self, table: str, record_id: str, version: int | None = None,
+    ) -> dict[str, Any] | None:
+        """Exact immutable version, or newest version of a named record."""
+        self._require_active()
+        if table not in TABLES or table == "fm_economy_credit_entries":
+            raise FiscalValidationError("invalid versioned economy table")
+        self._identity(record_id, version if version is not None else 1)
+        query = sql.SQL(
+            "SELECT to_jsonb(r) FROM {} AS r WHERE host_namespace=%s AND tenant_id=%s "
+            "AND unit_id=%s AND environment=%s AND record_id=%s "
+            "AND (%s::int IS NULL OR version=%s::int) ORDER BY version DESC LIMIT 1"
+        ).format(sql.Identifier(table))
+        row = self._conn.execute(
+            query, (*self._scope.identity_material, record_id, version, version),
+        ).fetchone()
+        if row is None:
+            return None
+        record = dict(row[0])
+        if "content" in record:
+            content = record["content"]
+            if not isinstance(content, dict) or _digest(content)[1] != record["digest"]:
+                raise FiscalValidationError("economy record integrity mismatch")
+        return record
 
     def records(self, table: str, *, limit: int = 100) -> tuple[dict[str, Any], ...]:
         """Read-only bounded scope projection; public API must enforce its own RBAC."""

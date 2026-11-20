@@ -1055,7 +1055,7 @@ class PostgresFiscalDatabase:
             ))
 
     @contextmanager
-    def economy(self, scope: ExecutionScope) -> Iterator[EconomyStore]:
+    def economy(self, scope: ExecutionScope, *, read_only: bool = False) -> Iterator[EconomyStore]:
         """Use the existing canonical database, never an independent fiscal database."""
         if os.environ.get("NFCORE_ECONOMY_ENABLED") != "true":
             raise PersistenceStateError("Central de Economia Fiscal is disabled")
@@ -1063,7 +1063,9 @@ class PostgresFiscalDatabase:
         if not role:
             raise PersistenceStateError("restricted economy runtime role is required")
         with self._pool.connection() as raw:
-            with EconomyStore.transaction(raw, scope, runtime_role=role) as store:
+            with EconomyStore.transaction(
+                raw, scope, runtime_role=role, read_only=read_only,
+            ) as store:
                 yield store
 
     def applied_migrations(self) -> tuple[int, ...]:
