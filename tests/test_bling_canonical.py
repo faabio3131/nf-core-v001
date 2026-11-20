@@ -1973,3 +1973,72 @@ def test_rtc_cst400_and_unsupported_group_classifications_are_refused(mapping):
         ))
     with pytest.raises(FiscalValidationError, match="approved and aligned"):
         calc("510", "510001", taxed)
+
+
+
+@pytest.mark.parametrize(
+    ("cst", "reduction", "deson_rate", "deferral", "expected_due", "expected_deson"),
+    [
+        ("20", "20", "18", None, "0.14", "0.04"),
+        ("40", None, "18", None, "0.00", "0.18"),
+        ("41", None, "18", None, "0.00", "0.18"),
+        ("51", None, None, "50", "0.09", "0.00"),
+    ],
+)
+def test_reviewed_icms_benefit_signed_full_xml(
+    mapping, signing_material, cst, reduction, deson_rate,
+    deferral, expected_due, expected_deson,
+):
+    from lxml import etree
+
+    from kordena_fiscal.domain import ElectronicInvoiceModel
+    from kordena_fiscal.issuance.nfe_builder import NfeSaleOptions, build_nfe_sale
+    from kordena_fiscal.signing.nfe_xmldsig import (
+        NfeSignatureProfile,
+        sign_nfe_envi_xml,
+        verify_official_nfe4_signature,
+    )
+    from kordena_fiscal.tax.nfe_calculation import ReviewedIcmsBenefit
+    from kordena_fiscal.xml import AccessKeyInput, build_access_key
+    from kordena_fiscal.xml.official_nfe_schema import OfficialNfeEnvelopeValidator
+
+    original = sale_document(mapping, normal=True)
+    line = original.items[0]
+    decision = line.tax_decision
+    rates = decision.outcome.nfe_rates
+    assert rates is not None
+    benefit = ReviewedIcmsBenefit(
+        "SP123456", "synthetic-reviewer", "synthetic-approval",
+        deson_mode="nominal_minus_due" if deson_rate is not None else None,
+        deson_rate=Decimal(deson_rate) if deson_rate is not None else None,
+        deson_reason=9 if deson_rate is not None else None,
+        deduct_deson=False if deson_rate is not None else None,
+        deferral_rate=Decimal(deferral) if deferral is not None else None,
+    )
+    new_rates = replace(
+        rates, icms_rate=Decimal("0" if cst in {"40", "41"} else "18"),
+        icms_reduction_rate=Decimal(reduction) if reduction else None,
+        icms_benefit=benefit,
+    )
+    document = replace(original, items=(replace(
+        line, tax_decision=replace(
+            decision, outcome=replace(decision.outcome, icms_code=cst, nfe_rates=new_rates),
+        ),
+    ),))
+    assert canonical_sha256(document) != canonical_sha256(original)
+    key = build_access_key(AccessKeyInput(
+        "35", NOW, document.issuer.cnpj, ElectronicInvoiceModel.NFE, 1, 1, 1, 12345678
+    ))
+    xml = build_nfe_sale(document, key, NfeSaleOptions("VENDA", 1, 9))
+    root = etree.fromstring(xml)
+    assert root.xpath("string(//*[local-name()='prod']/*[local-name()='cBenef'])") == benefit.code
+    assert root.xpath("string(//*[local-name()='ICMSTot']/*[local-name()='vICMS'])") == expected_due
+    assert root.xpath(
+        "string(//*[local-name()='ICMSTot']/*[local-name()='vICMSDeson'])"
+    ) == expected_deson
+    assert root.xpath("string(//*[local-name()='ICMSTot']/*[local-name()='vNF'])") == "1.00"
+    signed = sign_nfe_envi_xml(
+        xml, signing_material, profile=NfeSignatureProfile.NFE4_OFFICIAL_RSA_SHA1
+    )
+    OfficialNfeEnvelopeValidator()(signed)
+    verify_official_nfe4_signature(etree.fromstring(signed), signing_material)

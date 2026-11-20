@@ -251,9 +251,10 @@ def build_nfe_sale(
         ):
             raise FiscalValidationError("ICMS benefit differs from reviewed model or UF")
         if (
-            (product.hints.fiscal_benefit_code is not None and (
-                benefit is None or product.hints.fiscal_benefit_code != benefit.code
-            ))
+            (
+                product.hints.fiscal_benefit_code is not None
+                and (benefit is None or product.hints.fiscal_benefit_code != benefit.code)
+            )
             or product.hints.ibs_cbs_classification_code is not None
             or line.restaurant_decision is not None
         ):

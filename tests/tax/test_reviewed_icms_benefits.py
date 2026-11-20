@@ -1,5 +1,6 @@
 """Synthetic benefit contract tests; no real fiscal authorization."""
 from dataclasses import replace
+from datetime import UTC, datetime
 from decimal import Decimal
 
 import pytest
@@ -8,6 +9,7 @@ from lxml import etree
 from kordena_fiscal.documents.serialization import _tax_decision
 from kordena_fiscal.domain import FiscalValidationError, TaxRegimeCode
 from kordena_fiscal.issuance.nfe_builder import _taxes
+from kordena_fiscal.runtime.sale_facts import parse_sale_rule
 from kordena_fiscal.tax.models import TaxDecision, TaxRuleOutcome
 from kordena_fiscal.tax.nfe_calculation import (
     NfeRateParameters,
@@ -91,3 +93,61 @@ def test_cst51_rejects_absent_evidence():
         calculate_nfe_line(
             changed, net_amount=Decimal("100.00"), regime=TaxRegimeCode.NORMAL,
         )
+
+
+
+def policy() -> dict:
+    return {
+        "rule_id": "synthetic-benefit", "version": 1, "priority": 10,
+        "source_normative": "synthetic-test-only",
+        "effective_from": "2026-01-01T00:00:00+00:00",
+        "effective_to": "2027-01-01T00:00:00+00:00",
+        "selector": {
+            "state_code": "SP", "destination_state_code": "SP",
+            "tax_regime": 3, "recipient_profile": "consumer_final",
+            "ncm_prefix": "21069090",
+        },
+        "outcome": {
+            "cfop": "5102", "icms_code": "20", "pis_cst": "07", "cofins_cst": "07",
+            "nfe_rates": {
+                "icms_rate": "18", "pis_rate": "0", "cofins_rate": "0",
+                "pis_base": "net", "cofins_base": "net", "icms_reduction_rate": "20",
+                "icms_benefit": {
+                    "code": "SP123456", "reviewed_by": "synthetic-reviewer",
+                    "approval_reference": "synthetic-approval",
+                    "deson_mode": "nominal_minus_due", "deson_rate": "18",
+                    "deson_reason": 9, "deduct_deson": False,
+                },
+            },
+        },
+    }
+
+
+def test_policy_parser_and_expiration():
+    rule = parse_sale_rule(policy())
+    assert rule.outcome.nfe_rates is not None
+    benefit = rule.outcome.nfe_rates.icms_benefit
+    assert benefit is not None and benefit.code == "SP123456"
+    assert rule.is_effective_at(datetime(2026, 12, 31, 23, 59, tzinfo=UTC))
+    assert not rule.is_effective_at(datetime(2027, 1, 1, tzinfo=UTC))
+
+
+@pytest.mark.parametrize("field", ["destination_state_code", "ncm_prefix", "effective_to"])
+def test_policy_rejects_missing_scope_or_expiry(field):
+    raw = policy()
+    if field == "effective_to":
+        raw.pop(field)
+    elif field == "ncm_prefix":
+        raw["selector"][field] = "21"
+    else:
+        raw["selector"].pop(field)
+    with pytest.raises(FiscalValidationError, match="exact reviewed NF-e scope"):
+        parse_sale_rule(raw)
+
+
+@pytest.mark.parametrize("field", ["reviewed_by", "approval_reference", "deduct_deson"])
+def test_policy_rejects_missing_review_or_desoneration_fact(field):
+    raw = policy()
+    raw["outcome"]["nfe_rates"]["icms_benefit"].pop(field)
+    with pytest.raises(FiscalValidationError):
+        parse_sale_rule(raw)

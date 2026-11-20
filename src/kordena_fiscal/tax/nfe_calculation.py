@@ -580,6 +580,6 @@ def calculate_nfe_line(
         contribution_taxable_quantity=contribution_quantity,
         icms_deson_amount=deson,
         icms_deson_deduction=deduction,
-        icms_operation_amount=icms_operation,
+        icms_operation_amount=icms_operation if code == "51" else Decimal("0.00"),
         icms_deferred_amount=deferred,
     )
