@@ -16,6 +16,7 @@ from kordena_fiscal.tax.simples_nacional import (
     calculate_simples,
 )
 
+
 # Independently recorded nominal and deduction reference from LC 123 annexes.
 @pytest.mark.parametrize("activity,annex,revenue,expected", [
     (Activity.COMMERCE, Annex.ANNEX_I, 180000, "0.04"),
