@@ -30,6 +30,7 @@ from .ports import AuditSinkPort
 from .quota_model import QuotaGovernedAdvisoryClient
 from .registry import default_baselines
 from .service import CognitiveAdviceService
+from .simples_diagnostic_api import DiagnosticRunner
 from .usage_aggregates import CognitiveUsageAggregates
 
 ENABLE_FLAG = "NFCORE_COGNITIVE_ENABLED"
@@ -53,6 +54,7 @@ def build_cognitive_routers(
     quota_store: DurableTokenQuotaStore | None = None,
     model_key_readers: Mapping[str, Callable[[], str | None]] | None = None,
     economy_reader: EconomyReader | None = None,
+    diagnostic_runner: DiagnosticRunner | None = None,
 ) -> list[APIRouter]:
     """Portal advisory route (opt-in) plus the Command read-only metrics route (always mounted).
 
@@ -127,6 +129,7 @@ def build_cognitive_routers(
             PortalSurfaceEvidenceProvider(portal_executor, economy_reader=economy_reader),
             ai_enabled=model is not None,
             normative_radar=build_normative_reader(portal_executor, environ),
+            diagnostic_runner=diagnostic_runner,
         ),
         create_command_metrics_router(aggregates, environ, ai_enabled=model is not None),
     ]
@@ -142,6 +145,7 @@ def build_cognitive_router(
     quota_store: DurableTokenQuotaStore | None = None,
     model_key_readers: Mapping[str, Callable[[], str | None]] | None = None,
     economy_reader: EconomyReader | None = None,
+    diagnostic_runner: DiagnosticRunner | None = None,
 ) -> APIRouter | None:
     """One router mounting the Portal advisory route and the Command metrics route."""
     routers = build_cognitive_routers(
@@ -151,6 +155,7 @@ def build_cognitive_router(
         quota_store=quota_store,
         model_key_readers=model_key_readers,
         economy_reader=economy_reader,
+        diagnostic_runner=diagnostic_runner,
     )
     if not routers:
         return None

@@ -22,6 +22,7 @@ from kordena_fiscal.application.service import FiscalApplicationService
 from kordena_fiscal.cognitive.composition import build_cognitive_router
 from kordena_fiscal.cognitive.durable_usage import DurableTokenQuotaStore
 from kordena_fiscal.cognitive.economy_reader import read_economy_evidence
+from kordena_fiscal.cognitive.simples_diagnostic_api import build_diagnostic_runner
 from kordena_fiscal.compliance.nfse_preaudit import (
     extrema_abrasf_service_preaudit,
     nfse_preaudit,
@@ -1198,6 +1199,13 @@ def create_runtime_app(
                         read_economy_evidence, partial(runtime.database.economy, read_only=True)
                     )
                     if runtime.database is not None
+                    and os.environ.get("NFCORE_ECONOMY_ENABLED") == "true" else None
+                ),
+                diagnostic_runner=(
+                    build_diagnostic_runner(
+                        portal_executor, runtime.database.economy, runtime.database,
+                    )
+                    if runtime.database is not None and portal_executor is not None
                     and os.environ.get("NFCORE_ECONOMY_ENABLED") == "true" else None
                 ),
                 quota_store=(

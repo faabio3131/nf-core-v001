@@ -6,9 +6,17 @@ import pytest
 
 from kordena_fiscal.domain import FiscalValidationError
 from kordena_fiscal.tax.simples_diagnostic import PayrollScenario, diagnose_simples
-from kordena_fiscal.tax.simples_nacional import Activity, MonthFacts
+from kordena_fiscal.tax.simples_nacional import Activity, MonthFacts, SimplesFacts
 
-from .test_simples_nacional import established
+
+def established(activity=Activity.COMMERCE, rolling=18_000_000, payroll=0):
+    months = tuple(
+        MonthFacts(date(2025, m, 1), rolling // 12 + (rolling % 12 if m == 12 else 0),
+                   0, payroll // 12 + (payroll % 12 if m == 12 else 0), "fixture")
+        for m in range(1, 13)
+    ) + (MonthFacts(date(2026, 1, 1), 100_000, 0, 0, "fixture"),)
+    return SimplesFacts(date(2026, 1, 1), date(2024, 1, 1), "SP", activity, months,
+                        "company", "activity", "optant")
 
 
 def _diagnose(facts, scenario=None):
