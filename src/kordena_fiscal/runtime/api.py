@@ -1208,6 +1208,22 @@ def create_runtime_app(
                     if runtime.database is not None and portal_executor is not None
                     and os.environ.get("NFCORE_ECONOMY_ENABLED") == "true" else None
                 ),
+                segregation_runner=(
+                    build_diagnostic_runner(
+                        portal_executor, partial(runtime.database.economy, read_only=True),
+                        runtime.database, segregation=True,
+                    )
+                    if runtime.database is not None and portal_executor is not None
+                    and os.environ.get("NFCORE_ECONOMY_ENABLED") == "true" else None
+                ),
+                assessment_runner=(
+                    build_diagnostic_runner(
+                        portal_executor, partial(runtime.database.economy, read_only=True),
+                        runtime.database, segregation=True, assessment=True,
+                    )
+                    if runtime.database is not None and portal_executor is not None
+                    and os.environ.get("NFCORE_ECONOMY_ENABLED") == "true" else None
+                ),
                 quota_store=(
                     DurableTokenQuotaStore(runtime.database.connection)
                     if runtime.database is not None else None

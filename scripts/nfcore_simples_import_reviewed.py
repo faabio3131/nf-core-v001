@@ -1,4 +1,4 @@
-"""Import a reviewed T05 bundle into an authorized, existing sandbox database.
+"""Import a reviewed T05 or T06 bundle into an authorized, existing sandbox database.
 
 Run inside the trusted operational environment, never from the public portal.
 No migration, production promotion, fiscal issuance or legal review is performed.
@@ -12,6 +12,11 @@ from datetime import date
 from pathlib import Path
 
 from kordena_fiscal.application.simples_diagnostic_service import import_reviewed_inputs
+from kordena_fiscal.application.simples_segregation_service import (
+    SCHEMA,
+    TRANSITION_SCHEMA,
+    import_reviewed_segregation,
+)
 from kordena_fiscal.cognitive.simples_diagnostic_api import build_issuer_verifier
 from kordena_fiscal.domain import Cnpj, ExecutionScope, FiscalEnvironment
 from kordena_fiscal.persistence.postgres import PostgresFiscalDatabase
@@ -28,6 +33,20 @@ def main() -> None:
     if args.bundle.stat().st_size > 1_048_576:
         parser.error("bundle too large")
     bundle = json.loads(args.bundle.read_text(encoding="utf-8"))
+    if not isinstance(bundle, dict) or set(bundle) != {
+        "snapshot_id", "snapshot_version", "competence", "issuer_cnpj",
+        "content", "rule_id", "rule_version", "rule_content",
+    } or not isinstance(bundle["content"], dict):
+        parser.error("invalid reviewed bundle shape")
+    from kordena_fiscal.application.simples_diagnostic_service import SNAPSHOT_SCHEMA
+
+    schema = bundle["content"].get("schema_version")
+    if schema not in {SCHEMA, TRANSITION_SCHEMA, SNAPSHOT_SCHEMA}:
+        parser.error("unknown reviewed bundle schema")
+    importer = (
+        import_reviewed_segregation if schema in {SCHEMA, TRANSITION_SCHEMA}
+        else import_reviewed_inputs
+    )
     scope = ExecutionScope(
         tenant_id=args.tenant, unit_id=args.unit, environment=FiscalEnvironment.HOMOLOGATION,
         correlation_id="simples-reviewed-import", host_namespace="fm-nfcore",
@@ -39,7 +58,7 @@ def main() -> None:
         if unit is None or scope.environment not in unit.enabled_environments:
             parser.error("canonical unit/environment not configured")
         with database.economy(scope) as store:
-            result = import_reviewed_inputs(
+            result = importer(
                 store, snapshot_id=bundle["snapshot_id"],
                 snapshot_version=bundle["snapshot_version"],
                 competence=date.fromisoformat(bundle["competence"]),
@@ -48,8 +67,15 @@ def main() -> None:
                 rule_content=bundle["rule_content"],
                 verify_issuer=build_issuer_verifier(database, scope),
             )
-        print(json.dumps({"snapshot_id": result["snapshot_id"],
-                          "evaluation_ids": result["evaluation_ids"]}, sort_keys=True))
+        receipt = {"snapshot_id": result["snapshot_id"]}
+        if schema in {SCHEMA, TRANSITION_SCHEMA}:
+            receipt.update({
+                "snapshot_digest": result["snapshot_digest"], "rule_digest": result["rule_digest"],
+                "classification_digest": result["digest"], "status": result["status"],
+            })
+        else:
+            receipt["evaluation_ids"] = result["evaluation_ids"]
+        print(json.dumps(receipt, sort_keys=True))
     finally:
         database.close()
 
