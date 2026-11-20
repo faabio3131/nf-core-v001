@@ -149,9 +149,40 @@ def test_nfse_comparison_calls_pinned_calculator_with_projected_rates() -> None:
     # Recorded response has a different base/rate, so must diverge.
     assert output["status"] == "review_required"
     assert output["operations"][0]["status"] == "divergent"
+    assert plan[0].expected["vCBSSN"] == Decimal("9.30")
+    assert plan[0].monthly_reference["vCBSSN"] == Decimal("9.26")
     assert output["official_pgdas_certification"] is False
     assert execute_nfse_comparisons(plan, None, None)["status"] == "review_required"
     with pytest.raises(FiscalValidationError, match="document"):
         plan_nfse_comparisons(
             company(), (item,), UNIFIED, [{**raw, "document_reference": "foreign"}],
         )
+
+
+def test_reviewed_nfse_comparison_matches_and_rejects_wrong_database() -> None:
+    import json
+    from decimal import Decimal
+
+    from kordena_fiscal.application.simples_rtc_bridge import (
+        NfseComparisonPlan,
+        execute_nfse_comparisons,
+    )
+    from kordena_fiscal.tax.rfb_simples_calculator import RfbSimplesCalculatorClient
+
+    expected = {"vBC": Decimal("1000"), "vCBSSN": Decimal("9.30"), "vIBSSN": Decimal("0.10")}
+    plan = NfseComparisonPlan("x", "simples", {"itens": [{"numero": 1}]}, expected)
+
+    def client(database="V0073"):
+        def transport(method, url, body, timeout):
+            response = (
+                {"versaoApp": "1.0.2", "versaoDb": database} if method == "GET" else
+                {"objetos": [{"nObj": 1, "estadoItem": "CALCULADO",
+                              "tribCalc": {key: str(val) for key, val in expected.items()}}]}
+            )
+            return json.dumps(response).encode(), {}
+
+        return RfbSimplesCalculatorClient(base_url="http://rtc-simples:8082/api",
+                                          transport=transport)
+
+    assert execute_nfse_comparisons((plan,), client(), None)["status"] == "match"
+    assert execute_nfse_comparisons((plan,), client("V9999"), None)["status"] == "review_required"

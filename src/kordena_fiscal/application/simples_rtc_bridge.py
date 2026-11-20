@@ -118,6 +118,7 @@ class NfseComparisonPlan:
     calculator: str
     request: dict[str, object]
     expected: dict[str, Decimal]
+    monthly_reference: dict[str, Decimal] | None = None
 
 
 def _money(cents: int) -> Decimal:
@@ -227,12 +228,19 @@ def plan_nfse_comparisons(
             )
             applied = plain if without_iss else rates
             expected = {"vBC": _money(line.cents)}
+            monthly_reference: dict[str, Decimal] = {}
             for tax, key in (("cbs", "vCBSSN"), ("ibs", "vIBSSN")):
                 if tax == "ibs" and outside:
                     continue
-                value = applied[tax] * line.cents if treatments[tax] == "ordinary" else Fraction(0)
-                expected[key] = _money(_round_cents(value))
-            plans.append(NfseComparisonPlan(line_id, "simples", request, expected))
+                rate = applied[tax] if treatments[tax] == "ordinary" else Fraction(0)
+                monthly_reference[key] = _money(_round_cents(rate * line.cents))
+                # Pinned Java SimplesNacionalCalculoService rounds NFS-e rates
+                # to 2 percentage-point decimals before calculating the item.
+                layout_rate = Fraction(_round_cents(rate * 10_000), 10_000)
+                expected[key] = _money(_round_cents(layout_rate * line.cents))
+            plans.append(NfseComparisonPlan(
+                line_id, "simples", request, expected, monthly_reference,
+            ))
         if mode is SimplesIbsCbsMode.REGULAR_SEPARATE or outside:
             regular = raw["regular_reference"]
             _ref(regular["evidence_reference"])
@@ -265,7 +273,15 @@ def execute_nfse_comparisons(
 ) -> dict[str, object]:
     outcomes: list[dict[str, Any]] = []
     for plan in plans:
-        row: dict[str, Any] = {"line_id": plan.line_id, "calculator": plan.calculator}
+        row: dict[str, Any] = {
+            "line_id": plan.line_id, "calculator": plan.calculator,
+            "comparison_basis": ("nfse_layout" if plan.calculator == "simples"
+                                 else "reviewed_regular_document"),
+            "monthly_reference_not_das": (
+                {k: str(v) for k, v in plan.monthly_reference.items()}
+                if plan.monthly_reference is not None else None
+            ),
+        }
         try:
             if plan.calculator == "simples":
                 if simples is None:

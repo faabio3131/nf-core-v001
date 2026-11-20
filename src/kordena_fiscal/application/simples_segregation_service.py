@@ -7,6 +7,7 @@ from typing import Any
 from zoneinfo import ZoneInfo
 
 from kordena_fiscal.application.simples_rtc_bridge import (
+    NfseComparisonPlan,
     execute_nfse_comparisons,
     plan_nfse_comparisons,
     project_rtc_rates,
@@ -358,7 +359,7 @@ def _evaluate(
                 (local.get("status") == "outside_das") != (int(profile.tax_regime) == 2)
             ):
                 raise FiscalValidationError("reviewed sublimite conflicts with canonical CRT")
-        plans = ()
+        plans: tuple[NfseComparisonPlan, ...] = ()
         if "rtc_nfse_operations" in content:
             if not transition or mode is None:
                 raise FiscalValidationError("RTC NFS-e comparison requires reviewed 2027 mode")

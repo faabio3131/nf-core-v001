@@ -539,3 +539,12 @@ def test_opening_april_option_covers_second_semester() -> None:
     ) is SimplesIbsCbsMode.REGULAR_SEPARATE
     with pytest.raises(FiscalValidationError, match="simultaneous"):
         replace(opening, registered_on=date(2027, 4, 9))
+
+
+def test_unified_resolver_rejects_active_regular_receipt() -> None:
+    profile = _simples_profile()
+    with pytest.raises(FiscalValidationError, match="conflicts"):
+        resolve_simples_ibs_cbs_mode(
+            profile, (_simples_election(profile),), datetime(2027, 1, 5, 12, tzinfo=UTC),
+            regular_option_receipt_2027_h1=_simples_receipt(profile),
+        )

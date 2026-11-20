@@ -513,6 +513,10 @@ def resolve_simples_ibs_cbs_mode(
     prior_opening = (opening_receipt if opening_receipt is not None
                      and opening_receipt.registered_on < date(2027, 7, 1) else None)
     if mode is SimplesIbsCbsMode.SIMPLES_UNIFIED:
+        active = (prior_option if local_date < date(2027, 7, 1)
+                  else regular_option_receipt_2027_h2)
+        if active is not None and active.cancelled_at is None:
+            raise FiscalValidationError("active regular option conflicts with unified mode")
         if opening_receipt is not None and (
             local_date < date(2027, 7, 1)
             or opening_receipt.registered_on >= date(2027, 4, 1)
@@ -530,6 +534,8 @@ def resolve_simples_ibs_cbs_mode(
                         != active_prior.protocol_reference):
                     raise FiscalValidationError("reviewed renunciation required")
                 _assert_option_receipt(profile, renunciation_receipt, instant)
+                if renunciation_receipt.submitted_at < active_prior.submitted_at:
+                    raise FiscalValidationError("renunciation precedes the prior option")
     if mode is SimplesIbsCbsMode.REGULAR_SEPARATE:
         if (renunciation_receipt is not None and renunciation_receipt.cancelled_at is None
                 and local_date >= date(2027, 7, 1)):
