@@ -383,6 +383,38 @@ class SqliteControlPlaneStore:
             ),
         )
 
+    def supersede_profile(
+        self, previous: FiscalProfile, successor: FiscalProfile,
+    ) -> FiscalProfile:
+        """Close the open-ended current version at the successor's start, then add it.
+
+        History is never rewritten: only the NULL effective_to of the immediately
+        preceding version is set, exactly once, to successor.effective_from.
+        """
+        if not isinstance(previous, FiscalProfile) or not isinstance(successor, FiscalProfile):
+            raise FiscalValidationError("profiles must be FiscalProfile")
+        if (
+            successor.profile_id != previous.profile_id
+            or successor.version != previous.version + 1
+            or successor.scope.identity_partition_key != previous.scope.identity_partition_key
+            or successor.effective_to is not None
+            or successor.effective_from <= previous.effective_from
+        ):
+            raise FiscalValidationError("successor must be the next open version in the scope")
+        stored = self.get_profile(previous.profile_id, previous.version)
+        if stored is None or stored.effective_to is not None:
+            raise PersistenceConflictError("previous fiscal profile is not the open version")
+        cursor = self._connection.execute(
+            """
+            UPDATE fm_control_plane_fiscal_profiles SET effective_to = ?
+            WHERE profile_id = ? AND version = ? AND effective_to IS NULL
+            """,
+            (iso(successor.effective_from), previous.profile_id, previous.version),
+        )
+        if cursor.rowcount != 1:
+            raise PersistenceConflictError("previous fiscal profile changed concurrently")
+        return self.add_profile(successor)
+
     def get_profile(self, profile_id: str, version: int) -> FiscalProfile | None:
         normalized = profile_id.strip()
         if not normalized:

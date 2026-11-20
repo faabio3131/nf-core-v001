@@ -1952,6 +1952,9 @@ async function api(path, options = {}) {
       UNKNOWN_PORTAL_SURFACE: "Tela não reconhecida. Recarregue a página.",
       PORTAL_SECRET_BOUNDARY_VIOLATION: "A resposta foi bloqueada por proteção de dados sensíveis. Nenhum segredo foi exibido. Avise o suporte.",
       FISCAL_PROFILE_REQUIRED: "Cadastre o perfil fiscal do emitente antes de declarar o regime federal.",
+      FISCAL_PROFILE_CONFLICT: "O perfil fiscal mudou desde que a tela foi aberta. Recarregue a página e tente de novo.",
+      INVALID_FISCAL_PROFILE: "Dados do perfil fiscal inválidos. Confira os campos e o CRT escolhido.",
+      FISCAL_PROFILE_FORBIDDEN: "Só o dono ou um administrador pode alterar o perfil fiscal desta unidade.",
       FEDERAL_REGIME_INVALID: "Regime, data de início ou evidência inválidos. O regime precisa combinar com o CRT do perfil e a data deve ser posterior à declaração atual.",
       FEDERAL_REGIME_CONFLICT: "Esta tentativa já foi usada com dados diferentes. Recarregue a página e tente de novo.",
       EGRESS_FORBIDDEN: "Apenas a administração da plataforma pode alterar destinos externos.",
@@ -3485,8 +3488,72 @@ function appendRtcIssuerSummary(article, rows) {
       && ["1", "2", "3", "4"].includes(String(issuer.crt))) {
     appendFederalRegimeDeclaration(section, String(issuer.crt));
   }
+  if (configured && bootstrapState?.permissions.includes("configuration.write")
+      && ["owner", "admin"].includes(bootstrapState.role)
+      && Number.isInteger(Number(issuer.profile_version))) {
+    appendCrtChange(section, String(issuer.crt), Number(issuer.profile_version));
+  }
   section.append(calc);
   article.append(section);
+}
+
+/** New issuer profile version with another CRT, effective now; history is kept.
+ * @param {HTMLElement} section
+ * @param {string} currentCrt
+ * @param {number} version
+ */
+function appendCrtChange(section, currentCrt, version) {
+  const form = document.createElement("form");
+  form.className = "stacked-form";
+  form.setAttribute("aria-label", "Alterar CRT do emitente");
+  const heading = document.createElement("h3");
+  heading.textContent = "Alterar CRT do emitente";
+  const note = document.createElement("p");
+  note.textContent = "Cria a versão " + (version + 1) + " do perfil fiscal, valendo a partir de agora. A versão atual é encerrada e continua no histórico. Depois, declare o regime federal compatível com o novo CRT.";
+  const label = document.createElement("label");
+  label.textContent = "Novo CRT";
+  const crt = document.createElement("select");
+  crt.name = "new_crt"; crt.required = true;
+  const placeholder = document.createElement("option");
+  placeholder.value = ""; placeholder.textContent = "Selecione o novo CRT";
+  placeholder.disabled = true; placeholder.selected = true;
+  crt.append(placeholder);
+  for (const [code, text] of [["1", "Simples Nacional"], ["2", "Simples com sublimite"],
+    ["3", "Regime normal (Lucro Presumido ou Lucro Real)"], ["4", "MEI"]]) {
+    if (code === currentCrt) continue;
+    const option = document.createElement("option");
+    option.value = code; option.textContent = text; crt.append(option);
+  }
+  label.append(crt);
+  const confirmLabel = document.createElement("label");
+  const confirm = document.createElement("input");
+  confirm.type = "checkbox"; confirm.required = true;
+  confirmLabel.append(confirm, " Confirmo a mudança de CRT conforme orientação do contador.");
+  const submit = document.createElement("button");
+  submit.type = "submit"; submit.className = "primary";
+  submit.textContent = "Criar nova versão do perfil";
+  const statusLine = document.createElement("p");
+  statusLine.setAttribute("role", "status"); statusLine.className = "form-error";
+  form.append(heading, note, label, confirmLabel, submit, statusLine);
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    if (!form.reportValidity()) return;
+    submit.disabled = true;
+    statusLine.textContent = "Registrando a nova versão do perfil fiscal...";
+    try {
+      await api("/v1/portal/operations/changeFiscalProfileCrt", {
+        method: "POST",
+        headers: {"X-CSRF-Token": csrfToken(), "Idempotency-Key": crypto.randomUUID()},
+        body: JSON.stringify({unit_id: selectedFiscalUnit, environment: selectedFiscalEnvironment,
+          crt: Number(crt.value), expected_version: version}),
+      });
+      await renderSurface("tax-reform");
+    } catch (error) {
+      statusLine.textContent = error instanceof Error ? error.message : "Mudança de CRT recusada.";
+      submit.disabled = false;
+    }
+  });
+  section.append(form);
 }
 
 /** RTC-02: explicit, dated federal regime declaration (never inferred from CRT).

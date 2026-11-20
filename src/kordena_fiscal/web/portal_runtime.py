@@ -930,6 +930,8 @@ class DurableHumanPortalExecutor:
             return self._register_fiscal_profile(
                 authority=authority, payload=payload, idempotency_key=idempotency_key
             )
+        if operation_id == "changeFiscalProfileCrt":
+            return self._change_fiscal_profile_crt(authority=authority, payload=payload)
         if operation_id == "declareFederalRegime":
             return self._declare_federal_regime(
                 authority=authority, payload=payload, idempotency_key=idempotency_key
@@ -1404,6 +1406,88 @@ class DurableHumanPortalExecutor:
                 400, "INVALID_EXTREMA_PREPARATION", "Reviewed fiscal facts invalid",
             ) from exc
 
+    def _change_fiscal_profile_crt(
+        self,
+        *,
+        authority: AuthenticatedHuman,
+        payload: Mapping[str, Any],
+    ) -> Mapping[str, Any]:
+        """New version of the issuer profile with another CRT, effective now.
+
+        The previous version is closed at the same instant (history kept). The
+        browser supplies only the unit, environment, new CRT and the version it
+        saw (compare-and-set); every other issuer fact is copied server-side.
+        """
+        from dataclasses import replace
+
+        from kordena_fiscal.domain import TaxRegimeCode
+
+        fields = {"unit_id", "environment", "crt", "expected_version"}
+        try:
+            if set(payload) != fields:
+                raise ValueError("invalid CRT change fields")
+            if not isinstance(payload["unit_id"], str) or not isinstance(
+                payload["environment"], str
+            ):
+                raise ValueError("unit and environment must be text")
+            if type(payload["crt"]) is not int or type(payload["expected_version"]) is not int:
+                raise ValueError("CRT and version must be integers")
+            unit_id = payload["unit_id"].strip()
+            environment = FiscalEnvironment(payload["environment"])
+            authority.assert_permission(PortalPermission.CONFIGURATION_WRITE, unit_id=unit_id)
+            if authority.account.role.value not in {"owner", "admin"}:
+                raise HumanAuthorizationError("CRT change requires owner or admin")
+            new_crt = TaxRegimeCode(payload["crt"])
+            now = datetime.now(UTC)
+            with self._unit_of_work_factory() as uow:
+                current = uow.control_plane.resolve_profile(
+                    host_namespace="fm-nfcore", tenant_id=authority.tenant_id,
+                    unit_id=unit_id, environment=environment, instant=now,
+                )
+            if current is None:
+                raise _portal_error(
+                    409, "FISCAL_PROFILE_REQUIRED", "Cadastre o perfil fiscal do emitente",
+                )
+            if (
+                current.version == payload["expected_version"] + 1
+                and current.tax_regime is new_crt
+            ):
+                return {
+                    "status": "profile_superseded", "version": current.version,
+                    "crt": int(current.tax_regime), "replay": True,
+                }
+            if current.version != payload["expected_version"]:
+                raise _portal_error(
+                    409, "FISCAL_PROFILE_CONFLICT", "Recarregue o perfil fiscal",
+                )
+            if current.tax_regime is new_crt:
+                raise ValueError("CRT unchanged")
+            successor = replace(
+                current, version=current.version + 1, tax_regime=new_crt,
+                effective_from=now, effective_to=None,
+                scope=replace(current.scope, correlation_id="crt-change-" + uuid4().hex[:16]),
+            )
+            actor = AdminPrincipal(
+                actor_id=authority.account.account_id,
+                permissions=frozenset({ControlPlanePermission.PROFILE_WRITE}),
+                tenant_ids=frozenset({authority.tenant_id}),
+            )
+            DurableControlPlaneService(self._unit_of_work_factory).supersede_fiscal_profile(
+                actor=actor, previous=current, successor=successor,
+            )
+        except HumanAuthorizationError as exc:
+            raise _portal_error(403, "FISCAL_PROFILE_FORBIDDEN", "Profile scope denied") from exc
+        except ControlPlaneConflictError as exc:
+            raise _portal_error(
+                409, "FISCAL_PROFILE_CONFLICT", "Recarregue o perfil fiscal",
+            ) from exc
+        except (FiscalValidationError, ValueError, TypeError, KeyError) as exc:
+            raise _portal_error(400, "INVALID_FISCAL_PROFILE", "Invalid issuer profile") from exc
+        return {
+            "status": "profile_superseded", "version": successor.version,
+            "crt": int(successor.tax_regime), "replay": False,
+        }
+
     def _declare_federal_regime(
         self,
         *,
@@ -1456,7 +1540,8 @@ class DurableHumanPortalExecutor:
                 )
             result = declare_federal_regime(
                 self._unit_of_work_factory, scope=scope, crt=profile.tax_regime,
-                issuer_cnpj=profile.cnpj, federal_income_tax_regime=regime, effective_from=effective_from,
+                issuer_cnpj=profile.cnpj, federal_income_tax_regime=regime,
+                effective_from=effective_from,
                 source_reference=payload["source_reference"],
                 actor=authority.account.account_id,
                 idempotency_key=idempotency_key or "", occurred_at=now,

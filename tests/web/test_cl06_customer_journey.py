@@ -458,3 +458,86 @@ def test_owner_registers_initial_fiscal_profile_idempotently_via_canonical_porta
     ).json()["rows"][0]
     assert row["federal_regime_status"] == "declared"
     assert row["federal_income_tax_regime"] == "lucro_presumido"
+
+
+def test_owner_changes_crt_by_superseding_the_profile_and_keeps_history(
+    tmp_path: Path,
+) -> None:
+    """Simples -> Lucro Presumido: new profile version now, old version closed."""
+    from kordena_fiscal.domain import FiscalEnvironment
+
+    web, database = _onboarding_client(tmp_path)
+    csrf = web.cookies.get(CSRF_COOKIE)
+    assert csrf
+    assert web.post(
+        "/v1/portal/operations/onboardUnit",
+        headers={CSRF_HEADER: csrf, "Idempotency-Key": "crt-change-unit"},
+        json={"unit_id": "matriz", "display_name": "Matriz"},
+    ).status_code == 200
+    profile = {
+        "unit_id": "matriz", "environment": "homologation", "cnpj": "11222333000181",
+        "legal_name": "Synthetic CRT Change Ltda", "crt": 1, "primary_cnae": "6202300",
+        "state_registration": "", "state_registration_exempt": True,
+        "street": "Rua Teste", "number": "100", "district": "Centro",
+        "municipality_name": "Belo Horizonte", "state_code": "MG",
+        "municipality_ibge_code": "3106200", "postal_code": "30110000",
+    }
+    assert web.post(
+        "/v1/portal/operations/registerFiscalProfile", json=profile,
+        headers={CSRF_HEADER: csrf, "Idempotency-Key": "crt-change-profile"},
+    ).status_code == 200
+
+    endpoint = "/v1/portal/operations/changeFiscalProfileCrt"
+    change = {"unit_id": "matriz", "environment": "homologation", "crt": 3,
+              "expected_version": 1}
+    assert web.post(endpoint, json=change,
+                    headers={"Idempotency-Key": "crt-no-csrf"}).status_code == 403
+    assert web.post(endpoint, json={**change, "legal_name": "spoof"},
+                    headers={CSRF_HEADER: csrf, "Idempotency-Key": "crt-spoof"}
+                    ).status_code == 400
+    assert web.post(endpoint, json={**change, "crt": 1},
+                    headers={CSRF_HEADER: csrf, "Idempotency-Key": "crt-same"}
+                    ).status_code == 400
+    stale = web.post(endpoint, json={**change, "expected_version": 7},
+                     headers={CSRF_HEADER: csrf, "Idempotency-Key": "crt-stale"})
+    assert stale.status_code == 409
+    assert stale.json()["detail"]["code"] == "FISCAL_PROFILE_CONFLICT"
+
+    first = web.post(endpoint, json=change,
+                     headers={CSRF_HEADER: csrf, "Idempotency-Key": "crt-1"})
+    assert first.status_code == 200, first.text
+    assert first.json() == {"status": "profile_superseded", "version": 2, "crt": 3,
+                            "replay": False}
+    retry = web.post(endpoint, json=change,
+                     headers={CSRF_HEADER: csrf, "Idempotency-Key": "crt-1-retry"})
+    assert retry.status_code == 200
+    assert retry.json()["replay"] is True
+
+    now = datetime.now(UTC)
+    with database.unit_of_work() as uow:
+        current = uow.control_plane.resolve_profile(
+            host_namespace="fm-nfcore", tenant_id=TENANT_ID, unit_id="matriz",
+            environment=FiscalEnvironment.HOMOLOGATION, instant=now,
+        )
+        assert current is not None
+        old = uow.control_plane.get_profile(current.profile_id, 1)
+        audit = uow.control_plane.list_audit(TENANT_ID)
+    assert int(current.tax_regime) == 3 and current.version == 2
+    assert current.cnpj == old.cnpj and current.address == old.address
+    assert old is not None and int(old.tax_regime) == 1
+    assert old.effective_to == current.effective_from
+    assert sum(e.action.value == "fiscal_profile.superseded" for e in audit) == 1
+
+    row = web.get(
+        "/v1/portal/surfaces/tax-reform?unit_id=matriz&environment=homologation"
+    ).json()["rows"][0]
+    assert str(row["crt"]) == "3"
+    declared = web.post(
+        "/v1/portal/operations/declareFederalRegime",
+        json={"unit_id": "matriz", "environment": "homologation",
+              "federal_income_tax_regime": "lucro_presumido",
+              "effective_from": now.astimezone().date().isoformat(),
+              "source_reference": "Alteracao de regime - ensaio"},
+        headers={CSRF_HEADER: csrf, "Idempotency-Key": "crt-change-regime"},
+    )
+    assert declared.status_code == 200, declared.text
