@@ -11,7 +11,7 @@ A folha T23–T33, a Trilha 2 H01–H06 e a reformulação Enterprise não integ
 | T05 | Diagnóstico e otimizador Fator R | ENTREGUE INTERNAMENTE — CI integral SUCCESS (44735022830, bd3e8d01); integração pendente |
 | T06 | Classificador de receitas segregáveis | CERTIFICADO INTERNAMENTE no escopo implementado — CI integral SUCCESS (44747030794, 3c59ffb8); integração/revisão pendentes |
 | T07 | Apuração/PGDAS segregada | EM CERTIFICAÇÃO PARCIAL — apuração consultiva 2026; limites e caixa pendentes |
-| T08 | Catálogo federal | Bloqueado |
+| T08 | Catálogo federal | EM CONSTRUÇÃO — 4 programas indexados; certificação e revisão normativa pendentes |
 | T09 | Catálogo estadual 27 UFs | Bloqueado |
 | T10 | Benefícios municipais e radar unificado | Bloqueado |
 | T11 | Simulação Presumido/Real e IVA | Bloqueado |
@@ -177,3 +177,20 @@ Ajuste normativo de fronteira: CGSN 186 consolidada pela 194 art. 3 II, início 
 ### T07 — revisão independente Gemini e tratamento das ressalvas (20/11/2026)
 
 Parecer externo fornecido pelo proprietário sobre HEAD `e67bca721e5232ed4d3a1c55c0e277326e344df1`: aprovado com ressalvas pontuais. CI integral anterior 44786283485 SUCCESS (6.082 PASS, 0 FAIL, 2 SKIP). Tratamento: corrigir alinhamento dos argumentos nas duas composições cognitivas; exigir V0073 também no ramo RTC Regular embora o cliente já valide o pin configurado; validar PGDAS no mesmo percurso de importação, preservando retorno T06 e validação pré-persistência; centralizar a seção RTC/T07 neste documento, mantendo referências nos demais. Regressões de pin e importação PostgreSQL adicionadas. O novo HEAD exige CI integral e verificação das ressalvas; não herda certificação do anterior. Comparação RTC ativa e paridade PGDAS oficial não comprovadas; sem merge/deploy, T08 permanece bloqueada até fechamento formal e integração da cadeia.
+
+
+## T08 — Catálogo Federal, execução técnica em 20/11/2026
+
+CURRENT: PRs #586–#589 integradas na candidata work/nfcore-closeout-20261119, HEAD 74abb29c. CI 44820360411 e 44820435993 SUCCESS (6.084 PASS, dois SKIP externos). Main 549ab3c, production a5989e5 inalteradas. T08 em feat/nfcore-economy-t08-federal-catalog-20261120, sem deploy.
+
+CURRENT → TARGET: a T01 já dispõe de snapshots e benefícios imutáveis com RLS, a T02 fornece contratos cognitivos consultivos, a T03 detecta alteração em portais sem determinar direito fiscal, e o cadastro fiscal/regime federal tem autoridade própria. A T08 acrescenta catálogo de atos federais e filtro conservador de competência, regime, CNAE, NCM, operação e comprovação revisada, sem nova persistência, sem motor de cálculo paralelo e sem concessão automática de benefício.
+
+Pacote federal inicial:
+- Lei do Bem, Lei 11.196/2005 capítulo III: exige Lucro Real, PD&I, dispêndios, regularidade e revisão. Fonte https://www.gov.br/mcti/pt-br/acompanhe-o-mcti/lei-do-bem/paginas/legislacao
+- REIDI, Lei 11.488/2007: exige projeto aprovado, habilitação e vínculo de aquisição. Fonte https://www.gov.br/pt-br/servicos/habilitar-empresa-no-regime-especial-de-incentivos-para-o-desenvolvimento-da-infraestrutura-reidi
+- IBS/CBS rural, LC 214/2025 arts. 164 e 168, e reciclagem, art. 170: filtros para 2027 em diante; sem inferir valor ou apropriação de crédito. Fonte https://www2.camara.leg.br/legin/fed/leicom/2025/leicomplementar-214-16-janeiro-2025-796905-normaatualizada-pl.html
+- DIRBI: a aplicabilidade deve ser verificada separadamente na lista vigente, não inferida do nome do programa. Fonte https://www.gov.br/receitafederal/pt-br/acesso-a-informacao/perguntas-frequentes/beneficios-fiscais/beneficios-fiscais
+
+Reutilização canônica: tax/federal_benefits.py apenas triagem; application/federal_benefits_service.py usa fm_economy_snapshots/fm_economy_benefits do T01, digests, controle de versão e RLS. O avaliador de emissor usa perfil e declaração de regime federal existentes. POST /v1/portal/cognitive/economy/federal-benefit exige sessão, CSRF, AUDIT_READ e referências escopadas; navegador não envia regras, CNAE, NCM ou valores. Importador é operacional, somente em ambiente não produtivo. Resultados são potential, insufficient_basis ou not_applicable; nenhum significa direito tributário aprovado. Valores aprovados, realizados e estimados continuam nulos; emissão e pedidos são proibidos.
+
+Aceite: testes fiscais/HTTP/isolamento PostgreSQL real, imutabilidade e replay, governança, regressão T01–T07, Ruff, Mypy, frontend, E2E, Docker, CI cumulativa e revisão jurídico-fiscal independente. Cobertura dos programas é explícita, NÃO é o cadastro exaustivo de todos os benefícios federais: faltam expansão e revisão dos atos e condições de programas não inventariados. Não marcar T08 ENTREGUE sem critérios e provas no HEAD real. T09 bloqueada até certificação.

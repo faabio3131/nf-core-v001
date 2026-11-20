@@ -21,6 +21,7 @@ from .adapters.openai_compatible import build_model_from_environ
 from .api import create_cognitive_router
 from .command_api import create_command_metrics_router
 from .durable_usage import DurableTokenQuotaStore
+from .federal_benefits_api import FederalBenefitRunner
 from .economy_reader import EconomyReader
 from .governance import DEFAULT_PILOT_DAILY_LIMIT, InMemoryUsageLedger, pilot_entitlement
 from .knowledge.official import OfficialTablesError, cached_official_catalog
@@ -57,6 +58,7 @@ def build_cognitive_routers(
     diagnostic_runner: DiagnosticRunner | None = None,
     segregation_runner: DiagnosticRunner | None = None,
     assessment_runner: DiagnosticRunner | None = None,
+    federal_benefit_runner: FederalBenefitRunner | None = None,
 ) -> list[APIRouter]:
     """Portal advisory route (opt-in) plus the Command read-only metrics route (always mounted).
 
@@ -134,6 +136,7 @@ def build_cognitive_routers(
             diagnostic_runner=diagnostic_runner,
             segregation_runner=segregation_runner,
             assessment_runner=assessment_runner,
+            federal_benefit_runner=federal_benefit_runner,
         ),
         create_command_metrics_router(aggregates, environ, ai_enabled=model is not None),
     ]
@@ -152,6 +155,7 @@ def build_cognitive_router(
     diagnostic_runner: DiagnosticRunner | None = None,
     segregation_runner: DiagnosticRunner | None = None,
     assessment_runner: DiagnosticRunner | None = None,
+    federal_benefit_runner: FederalBenefitRunner | None = None,
 ) -> APIRouter | None:
     """One router mounting the Portal advisory route and the Command metrics route."""
     routers = build_cognitive_routers(
@@ -164,6 +168,7 @@ def build_cognitive_router(
         diagnostic_runner=diagnostic_runner,
         segregation_runner=segregation_runner,
         assessment_runner=assessment_runner,
+        federal_benefit_runner=federal_benefit_runner,
     )
     if not routers:
         return None
