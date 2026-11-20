@@ -23,6 +23,7 @@ from kordena_fiscal.tax.regimes import (
     SimplesIbsCbsElection,
     SimplesIbsCbsMode,
     SimplesRegularOptionReceipt2027H1,
+    SimplesRegularOptionReceipt2027H2,
     resolve_federal_regime_for_profile,
     resolve_federal_regime_timeline,
     resolve_simples_ibs_cbs_mode,
@@ -453,3 +454,41 @@ def test_simples_unified_choice_requires_no_regular_option_receipt() -> None:
     assert resolve_simples_ibs_cbs_mode(
         profile, (_simples_election(profile),), datetime(2027, 7, 1, 12, tzinfo=UTC)
     ) is SimplesIbsCbsMode.SIMPLES_UNIFIED
+
+
+def test_regular_2027_h2_new_option_and_confirmed_continuation() -> None:
+    profile = _simples_profile()
+    instant = datetime(2027, 7, 1, 12, tzinfo=UTC)
+    election = _simples_election(profile, mode=SimplesIbsCbsMode.REGULAR_SEPARATE)
+    prior = _simples_receipt(profile)
+    common = dict(
+        scope=profile.scope, profile_id=profile.profile_id, profile_version=profile.version,
+        crt=profile.tax_regime, protocol_reference="synthetic-h2",
+        confirmed_at=datetime(2027, 6, 1, 12, tzinfo=UTC),
+    )
+    fresh = SimplesRegularOptionReceipt2027H2(
+        **common, submitted_at=datetime(2027, 3, 10, 12, tzinfo=UTC),
+    )
+    continued = SimplesRegularOptionReceipt2027H2(
+        **common, prior_protocol_reference=prior.protocol_reference,
+    )
+    for receipt in (fresh, continued):
+        assert resolve_simples_ibs_cbs_mode(
+            profile, (election,), instant, regular_option_receipt_2027_h1=prior,
+            regular_option_receipt_2027_h2=receipt,
+        ) is SimplesIbsCbsMode.REGULAR_SEPARATE
+    with pytest.raises(FiscalValidationError, match="prior reviewed"):
+        resolve_simples_ibs_cbs_mode(
+            profile, (election,), instant, regular_option_receipt_2027_h2=continued,
+        )
+    with pytest.raises(FiscalValidationError, match="filing window"):
+        SimplesRegularOptionReceipt2027H2(
+            **common, submitted_at=datetime(2027, 4, 1, 12, tzinfo=UTC),
+        )
+    with pytest.raises(FiscalValidationError, match="cancelled"):
+        resolve_simples_ibs_cbs_mode(
+            profile, (election,), instant,
+            regular_option_receipt_2027_h2=replace(
+                fresh, cancelled_at=datetime(2027, 5, 15, 12, tzinfo=UTC),
+            ),
+        )
