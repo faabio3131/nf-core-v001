@@ -20,6 +20,9 @@ from kordena_fiscal.tax.simples_segregation import (
 )
 
 SCHEMA = "nfcore.simples-segregation-facts/2026-v1"
+TAX_CODE = "SIMPLES_SEGREGATION"
+JURISDICTION = "BR"
+NORMATIVE_REFERENCE = "CGSN140/2018 art.25"
 
 
 def evaluate_segregation(
@@ -49,7 +52,7 @@ def _evaluate(
             or not content["review_reference"].strip()
             or policy["review_status"] != "reviewed"
             or policy["engine_version"] != VERSION
-            or rule["tax_code"] != "SIMPLES_SEGREGATION"
+            or rule["tax_code"] != TAX_CODE
             or date.fromisoformat(rule["valid_from"]) > competence
             or rule["valid_until"] is not None and date.fromisoformat(rule["valid_until"]) < end
         ):
@@ -119,9 +122,9 @@ def import_reviewed_segregation(
         "content": content, "digest": _digest(content)[1],
     }
     rule = {
-        "record_id": rule_id, "version": rule_version, "tax_code": "SIMPLES_SEGREGATION",
+        "record_id": rule_id, "version": rule_version, "tax_code": TAX_CODE,
         "valid_from": "2026-01-01", "valid_until": "2027-01-01",
-        "jurisdiction": "BR", "normative_reference": "CGSN140/2018 art.25",
+        "jurisdiction": JURISDICTION, "normative_reference": NORMATIVE_REFERENCE,
         "content": rule_content, "digest": _digest(rule_content)[1],
     }
     result = _evaluate(snapshot, rule, verify_issuer=verify_issuer)
@@ -137,8 +140,8 @@ def import_reviewed_segregation(
         )
     if old_rule is None:
         store.append_benefit(
-            record_id=rule_id, version=rule_version, tax_code=rule["tax_code"],
-            jurisdiction=rule["jurisdiction"], normative_reference=rule["normative_reference"],
+            record_id=rule_id, version=rule_version, tax_code=TAX_CODE,
+            jurisdiction=JURISDICTION, normative_reference=NORMATIVE_REFERENCE,
             valid_from=date(2026, 1, 1), valid_until=date(2027, 1, 1), content=rule_content,
         )
     return result
