@@ -57,6 +57,32 @@ _UF = re.compile(r"[A-Z]{2}\Z")
 
 
 @dataclass(frozen=True, slots=True)
+class RegimeRegularNominalRates:
+    """Explicit reviewed nominal rates in percentage points, never assumed."""
+
+    cbs: Decimal
+    ibs_estadual: Decimal
+    ibs_municipal: Decimal
+    evidence_reference: str
+
+    def as_payload(self) -> dict[str, str]:
+        if not isinstance(self.evidence_reference, str) or not self.evidence_reference.strip():
+            raise RfbCalculatorError("Reviewed nominal rate evidence required")
+        values = {
+            "cbs": self.cbs, "ibsEstadual": self.ibs_estadual,
+            "ibsMunicipal": self.ibs_municipal,
+        }
+        result: dict[str, str] = {}
+        for field, value in values.items():
+            if (not isinstance(value, Decimal) or not value.is_finite()
+                    or not Decimal("0") <= value <= Decimal("100")
+                    or value != value.quantize(Decimal("0.0001"))):
+                raise RfbCalculatorError("Nominal rate must be 0..100 with at most 4 decimals")
+            result[field] = format(value.quantize(Decimal("0.0001")), "f")
+        return result
+
+
+@dataclass(frozen=True, slots=True)
 class RegimeRegularItem:
     numero: int
     cst: str
@@ -66,6 +92,7 @@ class RegimeRegularItem:
     nbs: str | None = None
     quantidade: Decimal | None = None
     unidade: str | None = None
+    nominal_rates: RegimeRegularNominalRates | None = None
 
     def as_payload(self) -> dict[str, object]:
         if type(self.numero) is not int or not 1 <= self.numero <= 990:
@@ -92,6 +119,8 @@ class RegimeRegularItem:
             payload["quantidade"] = str(self.quantidade)
         if self.unidade is not None:
             payload["unidade"] = self.unidade
+        if self.nominal_rates is not None:
+            payload["aliquotasNominais"] = self.nominal_rates.as_payload()
         return payload
 
 
@@ -105,14 +134,16 @@ def build_request(
                         occurred_at_iso or ""):
         raise RfbCalculatorError("dhFatoGerador must be ISO 8601 with offset")
     if occurred_at_iso[:4] >= "2027":
-        # Nominal rates become mandatory in 2027; NFCore does not send them yet.
-        raise RfbCalculatorError("Regime regular shadow from 2027 needs nominal rates")
+        if any(item.nominal_rates is None for item in items):
+            raise RfbCalculatorError("Regime regular shadow from 2027 needs nominal rates")
+    elif any(item.nominal_rates is not None for item in items):
+        raise RfbCalculatorError("Nominal rates forbidden before 2027")
     if not (_DIGITS.fullmatch(municipality_ibge or "") and len(municipality_ibge) == 7):
         raise RfbCalculatorError("Municipality IBGE code must have 7 digits")
     if not _UF.fullmatch(state_code or ""):
         raise RfbCalculatorError("UF must be two upper-case letters")
-    if document_type not in (55, 65):
-        raise RfbCalculatorError("Regime regular shadow covers NF-e (55) and NFC-e (65)")
+    if document_type not in (55, 65, 91):
+        raise RfbCalculatorError("Regime regular shadow covers NF-e, NFC-e and NFS-e")
     if not items or len({item.numero for item in items}) != len(items):
         raise RfbCalculatorError("Items must be present and uniquely numbered")
     return {

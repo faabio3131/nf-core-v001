@@ -8,6 +8,7 @@ from collections.abc import AsyncIterator, Callable, Mapping
 from contextlib import asynccontextmanager
 from dataclasses import asdict
 from datetime import UTC, datetime, timedelta
+from functools import partial
 from typing import cast
 from uuid import uuid4
 
@@ -20,6 +21,8 @@ from kordena_fiscal.application.commercial_acquisition import CommercialAcquisit
 from kordena_fiscal.application.service import FiscalApplicationService
 from kordena_fiscal.cognitive.composition import build_cognitive_router
 from kordena_fiscal.cognitive.durable_usage import DurableTokenQuotaStore
+from kordena_fiscal.cognitive.economy_reader import read_economy_evidence
+from kordena_fiscal.cognitive.simples_diagnostic_api import build_diagnostic_runner
 from kordena_fiscal.compliance.nfse_preaudit import (
     extrema_abrasf_service_preaudit,
     nfse_preaudit,
@@ -168,6 +171,15 @@ class RuntimeApi:
                         database.require_current_schema(require_bling=True)
                     else:
                         database.require_current_schema()
+                elif os.environ.get("NFCORE_ECONOMY_ENABLED") == "true":
+                    runtime_role = os.environ.get("NFCORE_ECONOMY_RUNTIME_ROLE", "").strip()
+                    if not runtime_role:
+                        raise RuntimeError("restricted economy runtime role is required")
+                    database.initialize(
+                        enable_bling=os.environ.get("NFCORE_BLING_INSTALLATIONS_ENABLED") == "true",
+                        enable_mfa=os.environ.get("NFCORE_HUMAN_MFA") == "enabled",
+                        enable_economy=True, economy_runtime_role=runtime_role,
+                    )
                 else:
                     database.initialize(
                         enable_bling=os.environ.get("NFCORE_BLING_INSTALLATIONS_ENABLED") == "true"
@@ -1141,6 +1153,7 @@ def create_runtime_app(
             security=bridge_security,
             executor=bridge_executor,
             human_identity=human_identity,
+            human_mfa=None if composition is None else composition.human_mfa,
             human_login_completed=commercial_activation_completed,
             password_recovery=password_recovery,
             password_reset_delivery=password_reset_delivery,
@@ -1181,6 +1194,36 @@ def create_runtime_app(
                 os.environ,
                 audit_uow_factory=runtime.database,
                 runtime_environment=resolved.environment.value,
+                economy_reader=(
+                    partial(
+                        read_economy_evidence, partial(runtime.database.economy, read_only=True)
+                    )
+                    if runtime.database is not None
+                    and os.environ.get("NFCORE_ECONOMY_ENABLED") == "true" else None
+                ),
+                diagnostic_runner=(
+                    build_diagnostic_runner(
+                        portal_executor, runtime.database.economy, runtime.database,
+                    )
+                    if runtime.database is not None and portal_executor is not None
+                    and os.environ.get("NFCORE_ECONOMY_ENABLED") == "true" else None
+                ),
+                segregation_runner=(
+                    build_diagnostic_runner(
+                        portal_executor, partial(runtime.database.economy, read_only=True),
+                        runtime.database, segregation=True,
+                    )
+                    if runtime.database is not None and portal_executor is not None
+                    and os.environ.get("NFCORE_ECONOMY_ENABLED") == "true" else None
+                ),
+                assessment_runner=(
+                    build_diagnostic_runner(
+                        portal_executor, partial(runtime.database.economy, read_only=True),
+                        runtime.database, segregation=True, assessment=True,
+                    )
+                    if runtime.database is not None and portal_executor is not None
+                    and os.environ.get("NFCORE_ECONOMY_ENABLED") == "true" else None
+                ),
                 quota_store=(
                     DurableTokenQuotaStore(runtime.database.connection)
                     if runtime.database is not None else None

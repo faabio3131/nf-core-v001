@@ -1,0 +1,13 @@
+# Explicit opt-in with the existing host timer. Apply only during authorized deploy.
+services:
+  nfcore-api:
+    environment:
+      NFCORE_NORMATIVE_RADAR_ENABLED: "true"
+      NFCORE_NORMATIVE_RADAR_STATE: /var/lib/nfcore/normative-watch/state.json
+    volumes:
+      - type: bind
+        source: /var/lib/nfcore/normative-watch
+        target: /var/lib/nfcore/normative-watch
+        read_only: true
+        bind:
+          create_host_path: false

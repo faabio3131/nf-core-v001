@@ -7,12 +7,16 @@ on:
       - main
       - production
       - "integration/nfcore-*"
+      - "feat/nfcore-economy-t*"
+      - "feat/nfcore-human-mfa-totp-20261120"
+      - "work/nfcore-closeout-20261119"
   push:
     branches:
       - main
       - production
       - "feat/nfcore-web-*"
       - "fix/nfcore-*"
+      - "work/nfcore-closeout-20261119"
 
 permissions:
   contents: read

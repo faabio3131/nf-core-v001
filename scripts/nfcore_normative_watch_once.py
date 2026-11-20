@@ -24,14 +24,21 @@ def main() -> int:
     ):
         parser.error("official-source polling requires explicit network flag and opt-in")
     try:
-        events = poll_normative_sources(state_path=options.state_file)
+        events = poll_normative_sources(
+            state_path=options.state_file,
+            economy=os.environ.get("NFCORE_NORMATIVE_RADAR_ENABLED") == "true",
+        )
     except NormativeWatchError:
         print(json.dumps({"status": "NO_GO", "reason": "normative observation unavailable"}))
         return 2
     print(
         json.dumps(
             {
-                "status": "REVIEW_REQUIRED",
+                "status": (
+                    "PARTIAL_OR_UNAVAILABLE"
+                    if any(event["status"] == "SOURCE_UNAVAILABLE" for event in events)
+                    else "REVIEW_REQUIRED"
+                ),
                 "changes": [event for event in events if event["status"] != "UNCHANGED"],
                 "sources_checked": len(events),
                 "normative_approved": False,
@@ -39,7 +46,7 @@ def main() -> int:
             ensure_ascii=False,
         )
     )
-    return 0
+    return 2 if any(event["status"] == "SOURCE_UNAVAILABLE" for event in events) else 0
 
 
 if __name__ == "__main__":

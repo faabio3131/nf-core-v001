@@ -129,8 +129,18 @@ def test_mobile_premium_density_contract() -> None:
 
     assert "scroll-snap-type: x proximity" in css
     assert "mask-image: linear-gradient" in css
-    assert "grid-template-columns: minmax(0, 1fr) auto" in css
-    assert "min-height: 38px" in css
+    # MFA adds a third interactive action. Preserve the full authority label
+    # and accessible touch targets; E2E retains the 125px geometry limit.
+    mobile = css.split("@media (max-width: 760px) {", 1)[1]
+    actions = mobile.split("\n  .top-actions {", 1)[1].split("}", 1)[0]
+    authority = mobile.split("\n  .top-actions .environment-control {", 1)[1].split("}", 1)[0]
+    buttons = mobile.split("\n  .top-actions button {", 1)[1].split("}", 1)[0]
+    assert "display: grid" in actions
+    assert "grid-template-columns: repeat(3, minmax(0, 1fr))" in actions
+    assert "grid-column: 1 / -1" in authority
+    assert "white-space: normal" in authority
+    assert "overflow-wrap: anywhere" in authority
+    assert "min-height: 44px" in buttons
     assert "width: min(100%, 220px)" in css
     assert "font-size: 30px" in css
     assert ".mission-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }" in css

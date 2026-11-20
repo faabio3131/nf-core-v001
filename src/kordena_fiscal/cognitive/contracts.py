@@ -28,6 +28,9 @@ class Capability(StrEnum):
     SUGGEST_CLASSIFICATION = "cognitive.suggest_classification"
     EXPLAIN_RECONCILIATION = "cognitive.explain_reconciliation"
     ANSWER_ACCOUNTANT_QUESTION = "cognitive.answer_accountant_question"
+    OPPORTUNITY_RADAR = "cognitive.opportunity_radar"
+    CREDIT_RECOVERY = "cognitive.credit_recovery"
+    TAX_SIMULATION = "cognitive.tax_simulation"
 
 
 class EvidenceKind(StrEnum):
@@ -38,6 +41,8 @@ class EvidenceKind(StrEnum):
     CLASSIFICATION_CATALOG = "classification_catalog"
     RECONCILIATION_ISSUE = "reconciliation_issue"
     KNOWLEDGE_BASE = "knowledge_base"
+    ECONOMY_EVALUATION = "economy_evaluation"
+    ECONOMY_LEGAL = "economy_legal"
 
 
 class SectionKind(StrEnum):

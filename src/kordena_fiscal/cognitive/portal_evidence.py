@@ -16,7 +16,7 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from typing import Any, Protocol
 
-from kordena_fiscal.domain import FiscalEnvironment
+from kordena_fiscal.domain import ExecutionScope, FiscalEnvironment
 from kordena_fiscal.security.human_identity import AuthenticatedHuman
 
 from .contracts import (
@@ -25,6 +25,8 @@ from .contracts import (
     Evidence,
     EvidenceKind,
 )
+from .economy_contract import CAPABILITIES
+from .economy_reader import EconomyReader
 
 _MAX_ROWS = 25
 
@@ -47,8 +49,11 @@ def _s(value: object) -> str:
 
 
 class PortalSurfaceEvidenceProvider:
-    def __init__(self, reader: SurfaceReader) -> None:
+    def __init__(
+        self, reader: SurfaceReader, *, economy_reader: EconomyReader | None = None,
+    ) -> None:
         self._reader = reader
+        self._economy_reader = economy_reader
 
     def collect(
         self,
@@ -69,6 +74,26 @@ class PortalSurfaceEvidenceProvider:
                 environment=environment,
                 limit=_MAX_ROWS,
                 offset=0,
+            )
+
+        if capability in CAPABILITIES:
+            if self._economy_reader is None or subject_id is None:
+                return ()
+            # Resolve actual establishment and environment from the canonical
+            # portal before creating a database scope, even for unrestricted owners.
+            authorized = any(
+                row.get("unit_id") == unit_id
+                and row.get("tenant_id", tenant) == tenant
+                and environment.value in (row.get("enabled_environments") or ())
+                for row in rows("units")
+            )
+            if not authorized:
+                return ()
+            return self._economy_reader(
+                ExecutionScope(
+                    tenant_id=tenant, unit_id=unit_id, environment=environment,
+                    correlation_id="economy-advice", host_namespace="fm-nfcore",
+                ), capability, subject_id,
             )
 
         def matches(row: Mapping[str, Any]) -> bool:
