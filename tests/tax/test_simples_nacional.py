@@ -7,54 +7,54 @@ import pytest
 
 from kordena_fiscal.domain import FiscalValidationError
 from kordena_fiscal.tax.simples_nacional import (
+    UF_CODES,
     Activity,
     Annex,
     LimitStatus,
     MonthFacts,
     SimplesFacts,
-    UF_CODES,
     calculate_simples,
 )
 
 # Independently recorded nominal and deduction reference from LC 123 annexes.
 @pytest.mark.parametrize("activity,annex,revenue,expected", [
-    (Activity.COMMERCE, Annex.I, 180000, "0.04"),
-    (Activity.COMMERCE, Annex.I, 360000, "0.0565"),
-    (Activity.COMMERCE, Annex.I, 720000, "0.07575"),
-    (Activity.COMMERCE, Annex.I, 1800000, "0.0945"),
-    (Activity.COMMERCE, Annex.I, 3600000, "0.11875"),
-    (Activity.COMMERCE, Annex.I, 4800000, "0.11125"),
-    (Activity.INDUSTRY, Annex.II, 180000, "0.045"),
-    (Activity.INDUSTRY, Annex.II, 360000, "0.0615"),
-    (Activity.INDUSTRY, Annex.II, 720000, "0.08075"),
-    (Activity.INDUSTRY, Annex.II, 1800000, "0.0995"),
-    (Activity.INDUSTRY, Annex.II, 3600000, "0.12325"),
-    (Activity.INDUSTRY, Annex.II, 4800000, "0.15"),
-    (Activity.SERVICE_III, Annex.III, 180000, "0.06"),
-    (Activity.SERVICE_III, Annex.III, 360000, "0.086"),
-    (Activity.SERVICE_III, Annex.III, 720000, "0.1105"),
-    (Activity.SERVICE_III, Annex.III, 1800000, "0.1402"),
-    (Activity.SERVICE_III, Annex.III, 3600000, "0.1751"),
-    (Activity.SERVICE_III, Annex.III, 4800000, "0.195"),
-    (Activity.SERVICE_IV, Annex.IV, 180000, "0.045"),
-    (Activity.SERVICE_IV, Annex.IV, 360000, "0.0675"),
-    (Activity.SERVICE_IV, Annex.IV, 720000, "0.08475"),
-    (Activity.SERVICE_IV, Annex.IV, 1800000, "0.1179"),
-    (Activity.SERVICE_IV, Annex.IV, 3600000, "0.16895"),
-    (Activity.SERVICE_IV, Annex.IV, 4800000, "0.1575"),
-    (Activity.SERVICE_FACTOR_R, Annex.V, 180000, "0.155"),
-    (Activity.SERVICE_FACTOR_R, Annex.V, 360000, "0.1675"),
-    (Activity.SERVICE_FACTOR_R, Annex.V, 720000, "0.18125"),
-    (Activity.SERVICE_FACTOR_R, Annex.V, 1800000, "0.1955"),
-    (Activity.SERVICE_FACTOR_R, Annex.V, 3600000, "0.21275"),
-    (Activity.SERVICE_FACTOR_R, Annex.V, 4800000, "0.1925"),
+    (Activity.COMMERCE, Annex.ANNEX_I, 180000, "0.04"),
+    (Activity.COMMERCE, Annex.ANNEX_I, 360000, "0.0565"),
+    (Activity.COMMERCE, Annex.ANNEX_I, 720000, "0.07575"),
+    (Activity.COMMERCE, Annex.ANNEX_I, 1800000, "0.0945"),
+    (Activity.COMMERCE, Annex.ANNEX_I, 3600000, "0.11875"),
+    (Activity.COMMERCE, Annex.ANNEX_I, 4800000, "0.11125"),
+    (Activity.INDUSTRY, Annex.ANNEX_II, 180000, "0.045"),
+    (Activity.INDUSTRY, Annex.ANNEX_II, 360000, "0.0615"),
+    (Activity.INDUSTRY, Annex.ANNEX_II, 720000, "0.08075"),
+    (Activity.INDUSTRY, Annex.ANNEX_II, 1800000, "0.0995"),
+    (Activity.INDUSTRY, Annex.ANNEX_II, 3600000, "0.12325"),
+    (Activity.INDUSTRY, Annex.ANNEX_II, 4800000, "0.15"),
+    (Activity.SERVICE_III, Annex.ANNEX_III, 180000, "0.06"),
+    (Activity.SERVICE_III, Annex.ANNEX_III, 360000, "0.086"),
+    (Activity.SERVICE_III, Annex.ANNEX_III, 720000, "0.1105"),
+    (Activity.SERVICE_III, Annex.ANNEX_III, 1800000, "0.1402"),
+    (Activity.SERVICE_III, Annex.ANNEX_III, 3600000, "0.1751"),
+    (Activity.SERVICE_III, Annex.ANNEX_III, 4800000, "0.195"),
+    (Activity.SERVICE_IV, Annex.ANNEX_IV, 180000, "0.045"),
+    (Activity.SERVICE_IV, Annex.ANNEX_IV, 360000, "0.0675"),
+    (Activity.SERVICE_IV, Annex.ANNEX_IV, 720000, "0.08475"),
+    (Activity.SERVICE_IV, Annex.ANNEX_IV, 1800000, "0.1179"),
+    (Activity.SERVICE_IV, Annex.ANNEX_IV, 3600000, "0.16895"),
+    (Activity.SERVICE_IV, Annex.ANNEX_IV, 4800000, "0.1575"),
+    (Activity.SERVICE_FACTOR_R, Annex.ANNEX_V, 180000, "0.155"),
+    (Activity.SERVICE_FACTOR_R, Annex.ANNEX_V, 360000, "0.1675"),
+    (Activity.SERVICE_FACTOR_R, Annex.ANNEX_V, 720000, "0.18125"),
+    (Activity.SERVICE_FACTOR_R, Annex.ANNEX_V, 1800000, "0.1955"),
+    (Activity.SERVICE_FACTOR_R, Annex.ANNEX_V, 3600000, "0.21275"),
+    (Activity.SERVICE_FACTOR_R, Annex.ANNEX_V, 4800000, "0.1925"),
 ])
 def test_five_annexes_all_bands(activity, annex, revenue, expected):
     facts = established(activity, revenue * 100)
     result = calculate_simples(facts, ordinary_domestic_base_cents=100_000)
     assert result.annex is annex
     assert result.domestic.effective_rate == Decimal(expected)
-    assert result.cpp_outside_das == (annex is Annex.IV)
+    assert result.cpp_outside_das == (annex is Annex.ANNEX_IV)
 
 
 def established(activity=Activity.COMMERCE, rolling=18_000_000, payroll=0):
@@ -70,7 +70,7 @@ def established(activity=Activity.COMMERCE, rolling=18_000_000, payroll=0):
 
 
 @pytest.mark.parametrize("payroll,annex", [
-    (5_039_999, Annex.V), (5_040_000, Annex.III), (5_040_001, Annex.III),
+    (5_039_999, Annex.ANNEX_V), (5_040_000, Annex.ANNEX_III), (5_040_001, Annex.ANNEX_III),
 ])
 def test_factor_r_exact_cent_boundary(payroll, annex):
     result = calculate_simples(
@@ -123,8 +123,10 @@ def test_first_month_annualized_and_prorated_limits():
 def test_startup_sublimit_strict_20_percent(revenue, status):
     result = calculate_simples(startup(revenue), ordinary_domestic_base_cents=revenue)
     assert result.sublimit_status is status
-    if status is not LimitStatus.WITHIN:
+    if status is LimitStatus.RETROACTIVE:
         assert result.ordinary_domestic_estimate_cents is None
+    else:
+        assert result.ordinary_domestic_estimate_cents is not None
 
 
 def test_startup_month_two_annualizes_previous_month_not_current():
@@ -145,7 +147,7 @@ def test_separate_export_rate_and_combined_factor():
     )
     assert result.domestic.rbt12_cents == result.export.rbt12_cents == 18_000_000
     assert result.factor_r == Decimal("0.14")
-    assert result.annex is Annex.V
+    assert result.annex is Annex.ANNEX_V
 
 
 def test_previous_year_sublimit_outside_local_tax():
@@ -224,7 +226,7 @@ def test_current_year_sublimit_effect(before, month, status):
 @pytest.mark.parametrize("activity,expected", [
     (Activity.SERVICE_III, Decimal("0.05")),
     (Activity.SERVICE_IV, Decimal("0.05")),
-    (Activity.SERVICE_FACTOR_R, Decimal("0.05")),
+    (Activity.SERVICE_FACTOR_R, Decimal("0.04999625")),
 ])
 def test_iss_cap_and_federal_redistribution(activity, expected):
     result = calculate_simples(
@@ -241,7 +243,7 @@ def test_opening_factor_exact_current_month():
         startup(100_000, 28_000, Activity.SERVICE_FACTOR_R),
         ordinary_domestic_base_cents=100_000,
     )
-    assert result.annex is Annex.III
+    assert result.annex is Annex.ANNEX_III
     assert result.factor_r == Decimal("0.28")
 
 
@@ -251,9 +253,9 @@ def test_first_month_without_movement_is_not_fabricated_factor():
 
 
 @pytest.mark.parametrize("activity,annex", [
-    (Activity.COMMERCE, Annex.I), (Activity.INDUSTRY, Annex.II),
-    (Activity.SERVICE_III, Annex.III), (Activity.SERVICE_IV, Annex.IV),
-    (Activity.SERVICE_FACTOR_R, Annex.V),
+    (Activity.COMMERCE, Annex.ANNEX_I), (Activity.INDUSTRY, Annex.ANNEX_II),
+    (Activity.SERVICE_III, Annex.ANNEX_III), (Activity.SERVICE_IV, Annex.ANNEX_IV),
+    (Activity.SERVICE_FACTOR_R, Annex.ANNEX_V),
 ])
 @pytest.mark.parametrize("ceiling", [18_000_000, 36_000_000, 72_000_000, 180_000_000, 360_000_000])
 def test_one_cent_transitions(activity, annex, ceiling):
@@ -261,3 +263,57 @@ def test_one_cent_transitions(activity, annex, ceiling):
     b = calculate_simples(established(activity, ceiling + 1), ordinary_domestic_base_cents=100)
     assert a.annex is b.annex is annex
     assert b.domestic.bracket == a.domestic.bracket + 1
+
+
+def test_art24_sublimit_crossing_proportional_ordinary_base():
+    # RBT12=1.8M in February: previous 2025 Feb-Dec zero, Jan 2026 1.8M.
+    # Current revenue 2M, with 0.2M above 3.6M; 90% at ordinary rate,
+    # 10% at the fifth-band ICMS cap; federal part remains unchanged.
+    facts = established(rolling=0)
+    january = replace(facts.months[-1], domestic_cents=180_000_000)
+    february = MonthFacts(date(2026, 2, 1), 200_000_000, 0, 0, "fixture")
+    result = calculate_simples(
+        replace(facts, competence=february.competence,
+                months=(*facts.months[:-1], january, february)),
+        ordinary_domestic_base_cents=200_000_000,
+    )
+    assert result.domestic_sublimit_excess_fraction == Decimal("0.1")
+    assert result.domestic_limit_excess_fraction == 0
+    assert result.sublimit_status is LimitStatus.NEXT_YEAR
+    assert result.ordinary_domestic_local_rate == Decimal("0.032469875")
+    assert result.ordinary_domestic_federal_rate == Decimal("0.0628425")
+    assert result.ordinary_domestic_estimate_cents == 19_062_475
+
+
+def test_art24_federal_excess_and_next_month_effect():
+    facts = established(rolling=0)
+    january = replace(facts.months[-1], domestic_cents=450_000_000)
+    february = MonthFacts(date(2026, 2, 1), 60_000_000, 0, 0, "fixture")
+    result = calculate_simples(
+        replace(facts, competence=february.competence,
+                months=(*facts.months[:-1], january, february)),
+        ordinary_domestic_base_cents=60_000_000,
+    )
+    assert result.sublimit_status is LimitStatus.OUTSIDE
+    assert result.limit_status is LimitStatus.NEXT_YEAR
+    assert result.domestic_limit_excess_fraction == Decimal("0.5")
+    assert result.ordinary_domestic_federal_rate == Decimal("0.108625")
+    assert result.ordinary_domestic_local_rate == Decimal(0)
+    assert result.ordinary_domestic_estimate_cents == 6_517_500
+
+
+def test_rolling_above_limit_does_not_itself_exclude_simples():
+    # Prior year under the legal ceiling; rolling 12 exceeds it because of
+    # current-year revenue. No retroactive or prior-year exclusion.
+    facts = established(rolling=450_000_000)
+    january = replace(facts.months[-1], domestic_cents=100_000_000)
+    february = MonthFacts(date(2026, 2, 1), 100, 0, 0, "fixture")
+    result = calculate_simples(
+        replace(facts, competence=february.competence,
+                months=(*facts.months[:-1], january, february)),
+        ordinary_domestic_base_cents=100,
+    )
+    assert result.domestic.rbt12_cents > 480_000_000
+    assert result.domestic.bracket == 6
+    assert result.limit_status is LimitStatus.WITHIN
+    assert result.ordinary_domestic_estimate_cents is not None
