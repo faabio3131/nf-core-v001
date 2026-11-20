@@ -1,0 +1,36 @@
+name: Export exact NFCore A1 candidate for independent review
+on:
+  push:
+    branches: [work/export-iron-a1-review-20261119]
+permissions:
+  contents: read
+jobs:
+  archive:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: e12d18b9795b9e231f44b52012a31e37be2cc73e
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Verify exact revision and scan tracked source
+        run: |
+          set -eu
+          test "$(git rev-parse HEAD)" = "e12d18b9795b9e231f44b52012a31e37be2cc73e"
+          python3 scripts/ci/check_repository_secrets.py
+      - name: Archive exact tracked source and review delta
+        run: |
+          set -eu
+          mkdir -p /tmp/nfcore-review
+          git archive --format=zip --prefix=nf-core-v001-e12d18b9/ -o /tmp/nfcore-review/NFCore-e12d18b9.zip e12d18b9795b9e231f44b52012a31e37be2cc73e
+          git diff --no-ext-diff 49546e06fd0ccf2970723d9e8950a43d003c1c70...e12d18b9795b9e231f44b52012a31e37be2cc73e > /tmp/nfcore-review/NFCore-PR562-diff.txt
+          printf 'Repository: faabio3131/nf-core-v001\nPR: 562\nCandidate: e12d18b9795b9e231f44b52012a31e37be2cc73e\nBase: 49546e06fd0ccf2970723d9e8950a43d003c1c70\nTracked source only. No runtime configuration or database export.\n' > /tmp/nfcore-review/REVIEW-SHA.txt
+          cd /tmp/nfcore-review
+          sha256sum NFCore-e12d18b9.zip NFCore-PR562-diff.txt > SHA256SUMS.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: NFCore-PR562-independent-review-e12d18b9
+          path: /tmp/nfcore-review/
+          if-no-files-found: error
+          retention-days: 7
