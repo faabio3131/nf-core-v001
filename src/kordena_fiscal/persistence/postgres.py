@@ -81,6 +81,7 @@ from .customer_configuration_schema import (
     CUSTOMER_CONFIGURATION_VERSION,
 )
 from .economy_schema import (
+    ECONOMY_INDEXES,
     ECONOMY_NAME,
     ECONOMY_SCHEMA,
     ECONOMY_VERSION,
@@ -1181,6 +1182,13 @@ class PostgresFiscalDatabase:
                         "WHERE schemaname='public' AND tablename=ANY(?::text[])",
                         (list(TABLES),),
                     ).fetchall()
+                    indexes = connection.execute(
+                        "SELECT c.relname FROM pg_class AS c JOIN pg_index AS i "
+                        "ON c.oid=i.indexrelid JOIN pg_namespace AS n ON n.oid=c.relnamespace "
+                        "WHERE n.nspname='public' AND i.indisvalid AND i.indisready "
+                        "AND c.relname=ANY(?::text[])",
+                        (list(ECONOMY_INDEXES),),
+                    ).fetchall()
                 expected_policies = {
                     (table, name, command) for table in TABLES
                     for name, command in (("economy_select", "SELECT"),
@@ -1188,6 +1196,7 @@ class PostgresFiscalDatabase:
                 }
                 if (
                     {str(row[0]) for row in economy_rows if row[1] and row[2]} != set(TABLES)
+                    or {str(row[0]) for row in indexes} != set(ECONOMY_INDEXES)
                     or {(str(row[0]), str(row[1]), str(row[2])) for row in policies}
                     != expected_policies
                     or any(

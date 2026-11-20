@@ -183,3 +183,7 @@ def test_rls_predicate_pin_rejects_tenant_bypass():
     assert not is_scope_predicate("true")
     assert not is_scope_predicate(SCOPE_PREDICATE.replace(" AND ", " OR ", 1))
     assert not is_scope_predicate(SCOPE_PREDICATE.replace("nfcore.economy_unit_id", "other"))
+    assert not is_scope_predicate(SCOPE_PREDICATE.replace(
+        "nfcore.economy_unit_id", "nfcore.economy_unit_id "
+    ))
+    assert not is_scope_predicate(42)

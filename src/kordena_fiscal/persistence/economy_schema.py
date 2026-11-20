@@ -24,6 +24,13 @@ TABLES = (
     "fm_economy_credit_entries",
     "fm_economy_dossiers",
 )
+ECONOMY_INDEXES = (
+    "fm_economy_snapshots_period_idx",
+    "fm_economy_benefits_jurisdiction_idx",
+    "fm_economy_credit_period_idx",
+    "fm_economy_opportunities_snapshot_idx",
+    "fm_economy_dossiers_opportunity_idx",
+)
 SCOPE_PREDICATE = " AND ".join(
     f"{column} = current_setting('nfcore.economy_{column}', true)"
     for column in SCOPE_COLUMNS.split(", ")
@@ -131,12 +138,18 @@ ECONOMY_RLS = tuple(
 ECONOMY_SCHEMA = ECONOMY_TABLES + ECONOMY_RLS
 
 
-def is_scope_predicate(expression: str | None) -> bool:
+def is_scope_predicate(expression: object) -> bool:
     """Recognize only the exact predicate emitted by this pinned migration."""
-    if expression is None:
+    if not isinstance(expression, str):
         return False
 
     def normalized(value: str) -> str:
-        return re.sub(r"\s+|[()]|::text", "", value)
+        # Preserve the setting names inside SQL string literals, including
+        # whitespace. Ignore only PostgreSQL's grouping and implicit text casts.
+        parts = re.split(r"('(?:''|[^'])*')", value)
+        return "".join(
+            part if index % 2 else re.sub(r"\s+|[()]|::text\b", "", part)
+            for index, part in enumerate(parts)
+        )
 
     return normalized(expression) == normalized(SCOPE_PREDICATE)

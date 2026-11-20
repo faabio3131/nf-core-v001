@@ -250,6 +250,7 @@ def test_policy_manifest_includes_and_checks_delegation_v23(monkeypatch) -> None
     assert guard.validate_policy() == tuple(range(1, 26))
     assert guard.IRON_A1_DELEGATION_VERSION in checked
     assert guard.HUMAN_MFA_VERSION in checked
+    assert guard.ECONOMY_VERSION in checked
 
 
 def test_economy_optional_migration_boundaries(monkeypatch) -> None:

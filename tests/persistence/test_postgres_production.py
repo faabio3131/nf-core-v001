@@ -31,6 +31,7 @@ from kordena_fiscal.domain import (
 )
 from kordena_fiscal.lifecycle import IdempotencyKey
 from kordena_fiscal.numbering import FiscalSequenceKey, FiscalSequencePolicy
+from kordena_fiscal.persistence.economy_schema import ECONOMY_VERSION
 from kordena_fiscal.persistence.iron_a1_delegation import (
     IronA1DelegationStore,
     IronA1ScopeBusy,
@@ -470,3 +471,37 @@ def test_postgres_federal_regime_concurrent_commands_preserve_unique_timeline(
     ] == [1]
     with database.unit_of_work() as uow:
         assert uow.commercial.configuration_version(scope, "federal_regime", "issuer") == 1
+
+
+def test_economy_v25_readiness_detects_policy_and_index_drift(
+    database: PostgresFiscalDatabase, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delenv("NFCORE_HUMAN_MFA", raising=False)
+    monkeypatch.delenv("NFCORE_ECONOMY_ENABLED", raising=False)
+    assert database.initialize(enable_economy=True) == (ECONOMY_VERSION,)
+    with pytest.raises(PersistenceStateError, match="certified migration"):
+        database.require_current_schema()
+    monkeypatch.setenv("NFCORE_ECONOMY_ENABLED", "true")
+    expected = (*range(1, 20), 22, 23, ECONOMY_VERSION)
+    assert database.require_current_schema() == expected
+    # The database fixture is a disposable CI PostgreSQL instance only.
+    with database.connection() as connection:
+        connection.execute(
+            "ALTER POLICY economy_select ON fm_economy_snapshots USING (true)"
+        )
+        connection.commit()
+    with pytest.raises(PersistenceStateError, match="scope isolation"):
+        database.require_current_schema()
+    from kordena_fiscal.persistence.economy_schema import SCOPE_PREDICATE
+
+    with database.connection() as connection:
+        connection.execute(
+            f"ALTER POLICY economy_select ON fm_economy_snapshots USING ({SCOPE_PREDICATE})"
+        )
+        connection.commit()
+    assert database.require_current_schema() == expected
+    with database.connection() as connection:
+        connection.execute("DROP INDEX fm_economy_snapshots_period_idx")
+        connection.commit()
+    with pytest.raises(PersistenceStateError, match="scope isolation"):
+        database.require_current_schema()
