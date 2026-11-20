@@ -13,6 +13,7 @@ from enum import StrEnum
 from zoneinfo import ZoneInfo
 
 from kordena_fiscal.domain import (
+    Cnpj,
     ExecutionScope,
     FiscalProfile,
     FiscalValidationError,
@@ -41,10 +42,13 @@ class FederalRegimeDeclaration:
     source_reference: str
     version: int = 1
     effective_to: datetime | None = None
+    issuer_cnpj: Cnpj | None = None
 
     def __post_init__(self) -> None:
         if not isinstance(self.scope, ExecutionScope):
             raise FiscalValidationError("scope must be ExecutionScope")
+        if self.issuer_cnpj is not None and not isinstance(self.issuer_cnpj, Cnpj):
+            raise FiscalValidationError("issuer_cnpj must be Cnpj")
         if not isinstance(self.crt, TaxRegimeCode):
             raise FiscalValidationError("crt must be TaxRegimeCode")
         if not isinstance(self.federal_income_tax_regime, FederalIncomeTaxRegime):
@@ -114,6 +118,8 @@ def resolve_federal_regime_for_profile(
     declaration.assert_effective_in_scope(profile.scope, instant)
     if not profile.is_effective_at(instant):
         raise FiscalValidationError("issuer fiscal profile is not effective")
+    if declaration.issuer_cnpj is not None and declaration.issuer_cnpj != profile.cnpj:
+        raise FiscalValidationError("federal regime CNPJ does not match issuer profile")
     if profile.tax_regime != declaration.crt:
         raise FiscalValidationError("federal regime CRT does not match issuer profile")
     return declaration.federal_income_tax_regime
