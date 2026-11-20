@@ -183,4 +183,6 @@ def test_all_registered_federal_programs_require_advisory_human_review(code):
     assert result["eligibility_certified"] is False
     assert result["estimated_cents"] is None
     assert result["issuance_authorized"] is False
-    assert PROGRAMS[code].official_url.startswith("https://www.")
+    assert PROGRAMS[code].official_url.startswith((
+        "https://www.gov.br/", "https://www2.camara.leg.br/",
+    ))
