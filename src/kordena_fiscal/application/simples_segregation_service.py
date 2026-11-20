@@ -101,6 +101,9 @@ def _evaluate(
             "rule_version": rule["version"], "rule_digest": rule["digest"],
             "advisory_only": True,
         }
+    except FiscalValidationError:
+        # Preserve domain failures before handling malformed input (ValueError).
+        raise
     except (KeyError, TypeError, ValueError, OverflowError) as exc:
         raise FiscalValidationError("invalid reviewed segregation evidence") from exc
 
