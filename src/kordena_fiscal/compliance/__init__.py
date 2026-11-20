@@ -39,8 +39,13 @@ from .rtc import (
     RegulatoryBaselineError,
     RtcEmissionPolicyResolver,
     RtcEmissionPolicyRule,
+    RtcNfseSupplyCategory,
     RtcPolicyResolutionError,
     TechnicalValidationMode,
+)
+from .rtc_legal_schedule_2026 import (
+    ACT_7_2026_SOURCE,
+    rtc_nfse_act7_2026_policy,
 )
 
 __all__ = [
@@ -75,7 +80,10 @@ __all__ = [
     "RegulatoryWatcherService",
     "RtcEmissionPolicyResolver",
     "RtcEmissionPolicyRule",
+    "RtcNfseSupplyCategory",
     "RtcPolicyResolutionError",
+    "ACT_7_2026_SOURCE",
+    "rtc_nfse_act7_2026_policy",
     "SystemRegulatoryWatcherClock",
     "TechnicalValidationMode",
 ]

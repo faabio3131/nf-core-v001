@@ -24,7 +24,11 @@ from kordena_fiscal.domain import (
     HostScope,
 )
 from kordena_fiscal.operations import InutilizationRequest
-from kordena_fiscal.persistence.ports import FiscalUnitOfWorkFactory
+from kordena_fiscal.persistence.ports import (
+    FiscalUnitOfWorkFactory,
+    PersistenceConflictError,
+    PersistenceStateError,
+)
 from kordena_fiscal.security.human_identity import AuthenticatedHuman
 from kordena_fiscal.security.s2s import (
     AuthorizedFiscalRequest,
@@ -63,19 +67,60 @@ _CAPABILITY_BY_OPERATION: dict[str, FiscalCapability] = {
     "queryArchiveReference": FiscalCapability.ARCHIVE_READ,
     "cancelFiscalDocument": FiscalCapability.CANCEL,
     "cancelExtremaNfse": FiscalCapability.CANCEL,
+    "cancelCajamarNfse": FiscalCapability.CANCEL,
+    "cancelOsascoNfse": FiscalCapability.CANCEL,
+    "cancelBarueriNfse": FiscalCapability.CANCEL,
+    "cancelJundiaiNfse": FiscalCapability.CANCEL,
+    "cancelGuarulhosNfse": FiscalCapability.CANCEL,
+    "substituteJundiaiNfse": FiscalCapability.CANCEL,
+    "substituteGuarulhosNfse": FiscalCapability.CANCEL,
+    "cancelSantanaNfse": FiscalCapability.CANCEL,
+    "cancelNationalNfse": FiscalCapability.CANCEL,
+    "substituteSantanaNfse": FiscalCapability.CANCEL,
+    "reconcileNationalNfseCancellation": FiscalCapability.RECONCILE,
+    "reconcileSantanaNfseCancellation": FiscalCapability.RECONCILE,
+    "reconcileSantanaNfseSubstitution": FiscalCapability.RECONCILE,
+    "reconcileJundiaiNfseCancellation": FiscalCapability.RECONCILE,
+    "reconcileGuarulhosNfseCancellation": FiscalCapability.RECONCILE,
+    "substituteBarueriNfse": FiscalCapability.CANCEL,
+    "reconcileBarueriNfseCancellation": FiscalCapability.RECONCILE,
+    "substituteOsascoNfse": FiscalCapability.CANCEL,
     "substituteExtremaNfse": FiscalCapability.CANCEL,
+    "reviewCajamarSubstitution": FiscalCapability.CANCEL,
     "queryCapabilities": FiscalCapability.CAPABILITIES_READ,
     "inutilizeFiscalRange": FiscalCapability.INUTILIZE,
     "issueFiscalDocument": FiscalCapability.ISSUE,
     "queryFiscalDocument": FiscalCapability.QUERY,
     "reconcileFiscalOperation": FiscalCapability.RECONCILE,
+    "prepareIronA1Delegation": FiscalCapability.CERTIFICATE_DELEGATE,
+    "readIronA1Status": FiscalCapability.CERTIFICATE_STATUS_READ,
+    "withdrawIronA1": FiscalCapability.CERTIFICATE_WITHDRAW,
 }
 
 _BRIDGE_STATUS_BY_OPERATION: dict[str, int] = {
     "queryArchiveReference": 200,
     "cancelFiscalDocument": 202,
     "cancelExtremaNfse": 202,
+    "cancelCajamarNfse": 202,
+    "cancelOsascoNfse": 202,
+    "cancelBarueriNfse": 202,
+    "cancelJundiaiNfse": 202,
+    "cancelGuarulhosNfse": 202,
+    "substituteJundiaiNfse": 202,
+    "substituteGuarulhosNfse": 202,
+    "cancelSantanaNfse": 202,
+    "cancelNationalNfse": 202,
+    "substituteSantanaNfse": 202,
+    "reconcileNationalNfseCancellation": 200,
+    "reconcileSantanaNfseCancellation": 200,
+    "reconcileSantanaNfseSubstitution": 200,
+    "reconcileJundiaiNfseCancellation": 200,
+    "reconcileGuarulhosNfseCancellation": 200,
+    "substituteBarueriNfse": 202,
+    "reconcileBarueriNfseCancellation": 200,
+    "substituteOsascoNfse": 202,
     "substituteExtremaNfse": 202,
+    "reviewCajamarSubstitution": 200,
     "queryCapabilities": 200,
     "inutilizeFiscalRange": 202,
     "issueFiscalDocument": 202,
@@ -186,7 +231,16 @@ class CanonicalBridgeSecurityBoundary:
     ) -> AuthorizedBridgeContext:
         # Substitution is a high-impact human-approved two-document workflow.
         # Workload CANCEL scope alone must never confer ISSUE authority.
-        if operation_id == "substituteExtremaNfse":
+        if operation_id in {
+            "substituteExtremaNfse", "cancelCajamarNfse",
+            "reviewCajamarSubstitution", "cancelOsascoNfse",
+            "substituteOsascoNfse",
+            "cancelBarueriNfse", "substituteBarueriNfse",
+            "cancelJundiaiNfse", "substituteJundiaiNfse",
+            "cancelGuarulhosNfse", "substituteGuarulhosNfse",
+            "cancelSantanaNfse", "substituteSantanaNfse",
+            "cancelNationalNfse",
+        }:
             raise HttpContractError(
                 403, "HUMAN_SUBSTITUTION_REQUIRED",
                 "NFS-e replacement requires authorized human fiscal review",
@@ -472,6 +526,16 @@ class CanonicalPortalOperationExecutor:
                 detail={
                     "code": "FISCAL_RUNTIME_NOT_READY",
                     "message": "Canonical fiscal execution dependency is not configured",
+                },
+            ) from exc
+        except (PersistenceStateError, PersistenceConflictError) as exc:
+            if operation_id != "reviewCajamarSubstitution":
+                raise
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail={
+                    "code": "CAJAMAR_SUBSTITUTION_SOURCE_NOT_READY",
+                    "message": "Original or candidate lacks verified municipal fiscal evidence",
                 },
             ) from exc
         except FiscalValidationError as exc:

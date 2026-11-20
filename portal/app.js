@@ -220,6 +220,588 @@ function appendFiscalFilters(article, viewId) {
   article.append(notice);
 }
 
+/** Prepare a sale through the same canonical fiscal runtime used by transmission. */
+/** @param {HTMLElement} article */
+function appendNativeSalePreparation(article) {
+  if (!bootstrapState?.permissions.includes("document.issue")
+    || selectedFiscalEnvironment !== "homologation") return;
+  const form = document.createElement("form");
+  form.id = "native-sale-preparation"; form.className = "panel-form";
+  const heading = document.createElement("h3"); heading.textContent = "Preparar NF-e / NFC-e";
+  const info = document.createElement("p");
+  info.textContent = "Venda manual em homologação. Produtos e regras vêm da configuração fiscal da unidade. Preparar reserva a numeração e assina o documento; a transmissão é uma ação separada.";
+  const result = document.createElement("p"); result.setAttribute("role", "status");
+  form.append(heading, info);
+  /** @param {HTMLElement} parent @param {string} name @param {string} label @param {string} value */
+  const input = (parent, name, label, value = "") => {
+    const wrapper = document.createElement("label"); wrapper.textContent = label;
+    const field = document.createElement("input"); field.name = name; field.value = value;
+    field.required = true; wrapper.append(field); parent.append(wrapper); return field;
+  };
+  /** @param {HTMLElement} parent @param {string} name @param {string} label @param {Array<[string,string]>} values */
+  const select = (parent, name, label, values) => {
+    const wrapper = document.createElement("label"); wrapper.textContent = label;
+    const field = document.createElement("select"); field.name = name;
+    for (const [value, text] of values) {
+      const option = document.createElement("option"); option.value = value; option.textContent = text;
+      field.append(option);
+    }
+    wrapper.append(field); parent.append(wrapper); return field;
+  };
+  const model = select(form, "document_kind", "Documento", [["nfe", "NF-e 55 — SP/MG"], ["nfce", "NFC-e 65 — SP/MG"]]);
+  const reference = input(form, "source_id", "Referência única desta venda");
+  const issued = input(form, "issued_at", "Data e hora da venda com fuso", new Date().toISOString());
+  const review = document.createElement("button"); review.type = "button"; review.textContent = "Carregar configuração fiscal";
+  form.append(review);
+  const recipient = document.createElement("fieldset");
+  const legend = document.createElement("legend"); legend.textContent = "Destinatário"; recipient.append(legend);
+  const anonymousLabel = document.createElement("label");
+  const anonymous = document.createElement("input"); anonymous.type = "checkbox"; anonymous.name = "anonymous";
+  anonymousLabel.append(anonymous, " Consumidor não identificado (somente NFC-e presencial)"); form.append(anonymousLabel);
+  /** @type {Record<string, HTMLInputElement>} */
+  const recipientInputs = {};
+  for (const [name, label] of [
+    ["document", "CPF/CNPJ"], ["name", "Nome / razão social"], ["street", "Logradouro"],
+    ["number", "Número"], ["district", "Bairro"], ["municipality_name", "Cidade"],
+    ["municipality_ibge_code", "Código IBGE"], ["state", "UF"], ["postal_code", "CEP"],
+    ["state_registration", "Inscrição estadual, se contribuinte"],
+  ]) recipientInputs[name] = input(recipient, "recipient_" + name, label);
+  recipientInputs.state_registration.required = false;
+  const ie = select(recipient, "ie_indicator", "Situação da inscrição estadual", [["9", "Não contribuinte"], ["1", "Contribuinte"], ["2", "Isento"]]);
+  const consumer = select(recipient, "final_consumer", "Finalidade", [["true", "Consumidor final"], ["false", "Revenda / outra finalidade"]]);
+  form.append(recipient);
+  const syncRecipient = () => {
+    anonymous.disabled = model.value !== "nfce";
+    if (anonymous.disabled) anonymous.checked = false;
+    recipient.disabled = anonymous.checked; recipient.hidden = anonymous.checked;
+  };
+  anonymous.addEventListener("change", syncRecipient); syncRecipient();
+  const items = document.createElement("fieldset");
+  const itemsLegend = document.createElement("legend"); itemsLegend.textContent = "Itens da venda"; items.append(itemsLegend);
+  const addItem = document.createElement("button"); addItem.type = "button"; addItem.textContent = "Adicionar item"; addItem.disabled = true;
+  form.append(items, addItem);
+  const payments = document.createElement("fieldset");
+  const paymentsLegend = document.createElement("legend"); paymentsLegend.textContent = "Pagamentos"; payments.append(paymentsLegend);
+  const addPayment = document.createElement("button"); addPayment.type = "button"; addPayment.textContent = "Adicionar pagamento";
+  form.append(payments, addPayment);
+  const change = input(form, "change_amount", "Troco em dinheiro (R$)", "0.00");
+  const submit = document.createElement("button"); submit.type = "submit"; submit.textContent = "Preparar documento"; submit.disabled = true;
+  form.append(submit, result); article.append(form);
+  /** @type {null | {digest:string, unit:string, model:string, products:Array<{product_id:string, description:string, unit:string}>}} */
+  let configuration = null;
+  /** @type {Array<{element:HTMLFieldSetElement, product:HTMLSelectElement, fields:Record<string,HTMLInputElement>}>} */
+  let rows = [];
+  /** @type {Array<{element:HTMLFieldSetElement, method:HTMLSelectElement, fields:Record<string,HTMLInputElement>}>} */
+  const paymentRows = [];
+  /** @type {null | {fingerprint:string,key:string}} */
+  let attempt = null;
+  const appendItem = () => {
+    if (!configuration) return;
+    const row = document.createElement("fieldset");
+    const product = select(row, "product_id", "Produto fiscal", configuration.products.map(p => [p.product_id, p.description + " — " + p.unit]));
+    /** @type {Record<string,HTMLInputElement>} */
+    const fields = {};
+    for (const [name, label, value] of [
+      ["quantity", "Quantidade", "1"], ["unit_price", "Valor unitário", ""],
+      ["discount", "Desconto do item", "0.00"], ["freight", "Frete do item", "0.00"], ["other", "Outras despesas", "0.00"],
+      ["taxable_quantity", "Quantidade tributável (se unidade diferente)", ""], ["taxable_unit_price", "Preço por unidade tributável", ""],
+    ]) { fields[name] = input(row, name, label, value); if (name.startsWith("taxable_")) fields[name].required = false; }
+    const remove = document.createElement("button"); remove.type = "button"; remove.textContent = "Remover item";
+    const entry = {element:row, product, fields}; rows.push(entry);
+    remove.addEventListener("click", () => { row.remove(); rows = rows.filter(r => r !== entry); });
+    row.append(remove); items.append(row);
+  };
+  addItem.addEventListener("click", appendItem);
+  addPayment.addEventListener("click", () => {
+    const row = document.createElement("fieldset");
+    const method = select(row, "method", "Meio de pagamento", [["pix", "Pix"], ["cash", "Dinheiro"], ["boleto", "Boleto"], ["credit_card", "Cartão de crédito"], ["debit_card", "Cartão de débito"], ["voucher", "Vale alimentação"]]);
+    /** @type {Record<string,HTMLInputElement>} */
+    const fields = {};
+    for (const [name, label] of [["amount", "Valor pago"], ["acquirer_cnpj", "CNPJ da adquirente (cartão integrado)"], ["brand", "Código da bandeira"], ["authorization", "Autorização do cartão"]]) {
+      fields[name] = input(row, name, label); fields[name].required = name === "amount";
+    }
+    const entry = {element:row, method, fields}; paymentRows.push(entry);
+    const remove = document.createElement("button"); remove.type = "button"; remove.textContent = "Remover pagamento";
+    remove.addEventListener("click", () => { row.remove(); paymentRows.splice(paymentRows.indexOf(entry), 1); });
+    row.append(remove); payments.append(row);
+  });
+  addPayment.click();
+  model.addEventListener("change", () => {
+    configuration = null; submit.disabled = true; addItem.disabled = true; syncRecipient();
+    result.textContent = "Carregue a configuração fiscal do documento selecionado.";
+  });
+  review.addEventListener("click", async () => {
+    if (!selectedFiscalUnit) { result.textContent = "Selecione uma unidade."; return; }
+    const unit = selectedFiscalUnit, kind = model.value;
+    review.disabled = true; submit.disabled = true; result.textContent = "Consultando configuração fiscal...";
+    try {
+      const data = await api("/v1/portal/operations/reviewNativeSale", {
+        method:"POST", headers:{"X-CSRF-Token":csrfToken()},
+        body:JSON.stringify({unit_id:unit, environment:"homologation", document_kind:kind}),
+      });
+      if (selectedFiscalUnit !== unit || model.value !== kind) return;
+      configuration = {digest:String(data.policy_sha256), unit, model:kind, products:data.products};
+      rows.forEach(r => r.element.remove()); rows = []; appendItem();
+      addItem.disabled = false; submit.disabled = false;
+      result.textContent = "Configuração carregada. Confira destinatário, itens e pagamentos antes de preparar.";
+    } catch (error) {
+      configuration = null; addItem.disabled = true;
+      result.textContent = (error instanceof Error ? error.message : "Configuração indisponível") + " Revise perfis, regras e provedor na unidade.";
+    } finally { review.disabled = false; }
+  });
+  form.addEventListener("submit", async event => {
+    event.preventDefault();
+    if (!configuration || configuration.unit !== selectedFiscalUnit || configuration.model !== model.value || !rows.length || !paymentRows.length) {
+      result.textContent = "Carregue a configuração da unidade e inclua itens e pagamentos."; return;
+    }
+    const payload = {
+      unit_id:configuration.unit, environment:"homologation", document_kind:model.value,
+      source_id:reference.value.trim(), issued_at:issued.value.trim(), policy_sha256:configuration.digest,
+      recipient:anonymous.checked ? null : {
+        ...Object.fromEntries(Object.entries(recipientInputs).filter(([k,v]) => k !== "state_registration" || v.value.trim()).map(([k,v]) => [k,v.value.trim()])),
+        ie_indicator:Number(ie.value), final_consumer:consumer.value === "true",
+      },
+      items:rows.map(row => ({product_id:row.product.value, ...Object.fromEntries(Object.entries(row.fields).filter(([k,v]) => !k.startsWith("taxable_") || v.value.trim()).map(([k,v]) => [k,v.value.trim()]))})),
+      payments:paymentRows.map(row => ({method:row.method.value, ...Object.fromEntries(Object.entries(row.fields).filter(([k,v]) => k === "amount" || v.value.trim()).map(([k,v]) => [k,v.value.trim()]))})),
+      change_amount:change.value.trim(),
+    };
+    const fingerprint = JSON.stringify(payload);
+    if (attempt && attempt.fingerprint !== fingerprint) { result.textContent = "Consulte a tentativa anterior antes de alterar esta venda."; return; }
+    attempt ||= {fingerprint,key:crypto.randomUUID()};
+    submit.disabled = true;
+    try {
+      const prepared = await api("/v1/portal/operations/prepareNativeSale", {
+        method:"POST", headers:{"X-CSRF-Token":csrfToken(),"Idempotency-Key":attempt.key}, body:fingerprint,
+      });
+      operationDocument.value = String(prepared.document_id);
+      result.textContent = "Documento preparado: " + String(prepared.document_id) + ". Use a operação Emitir para transmitir ou consulte o documento. Preparação não é autorização fiscal.";
+      attempt = null;
+    } catch (error) {
+      if (error instanceof Error && "status" in error && [400, 403, 422].includes(Number(error.status))) {
+        attempt = null;
+      }
+      result.textContent = (error instanceof Error ? error.message : "Preparação falhou") + " Preserve a referência da venda ao tentar novamente.";
+    } finally { submit.disabled = false; }
+  });
+}
+
+/** @param {HTMLElement} article */
+function appendNativeNfsePreparation(article) {
+  if (!bootstrapState?.permissions.includes("configuration.write")
+    || !bootstrapState.permissions.includes("document.issue")
+    || !["owner", "admin"].includes(bootstrapState.role)
+    || selectedFiscalEnvironment !== "homologation") return;
+
+  const form = document.createElement("form");
+  form.id = "native-nfse-preparation";
+  form.className = "panel-form";
+  const heading = document.createElement("h3");
+  heading.textContent = "Preparar NFS-e pelo NFCore — canal fiscal configurado";
+  const info = document.createElement("p");
+  info.className = "empty-state";
+  info.textContent = "Emissor próprio, sem ERP. Somente homologação. O provedor municipal ou nacional é definido no servidor pelo vínculo fiscal da unidade. Informe NBS 2.0 revisado quando exigido pelo município (Santana de Parnaíba). Preparar não transmite a nota.";
+  form.append(heading, info);
+  const identityLabel = document.createElement("label");
+  identityLabel.textContent = "Identificação fiscal do tomador";
+  const identityMode = document.createElement("select");
+  identityMode.name = "taker_identity_mode"; identityMode.required = true;
+  for (const [mode, description] of [
+    ["br", "Brasil — CPF/CNPJ"],
+    ["nif", "Exterior — NIF"],
+    ["no-nif", "Exterior — motivo oficial cNaoNIF"],
+  ]) {
+    const option = document.createElement("option");
+    option.value = mode; option.textContent = description;
+    identityMode.append(option);
+  }
+  identityLabel.append(identityMode); form.append(identityLabel);
+  /** @type {Record<string, HTMLInputElement>} */
+  /** @type {Record<string, HTMLInputElement>} */
+  const inputs = {};
+  const domesticOnly = new Set([
+    "taker_document", "taker_city", "taker_state",
+    "taker_municipality_ibge", "taker_postal_code",
+  ]);
+  /** @type {Array<[string, string, string, string]>} */
+  const fields = [
+    ["source_id", "Referência imutável da ordem de serviço", "text", ""],
+    ["competence_date", "Competência do serviço", "date", ""],
+    ["service_state_code", "UF da prestação", "text", "[A-Za-z]{2}"],
+    ["service_municipality_ibge", "IBGE do local da prestação", "text", "[0-9]{7}"],
+    ["national_taxation_code", "cTribNac oficial (6 dígitos)", "text", "[0-9]{6}"],
+    ["municipal_taxation_detail", "Desdobramento municipal — cTribMun (3 dígitos)", "text", "[0-9]{3}"],
+    ["nbs_code", "NBS 2.0 revisado (9 dígitos)", "text", "[0-9]{9}"],
+    ["municipal_service_code", "Código municipal de serviço", "text", ""],
+    ["description", "Descrição do serviço prestado", "text", ""],
+    ["gross_amount", "Valor bruto (R$ 0.00)", "text", "[0-9]+\\.[0-9]{2}"],
+    ["deduction_amount", "Deduções (R$ 0.00)", "text", "[0-9]+\\.[0-9]{2}"],
+    ["iss_amount", "ISS apurado e revisado (R$ 0.00)", "text", "[0-9]+\\.[0-9]{2}"],
+    ["taker_document", "CPF ou CNPJ do tomador", "text", "[0-9]{11}|[0-9]{14}"],
+    ["taker_name", "Nome ou razão social do tomador", "text", ""],
+    ["taker_street", "Logradouro do tomador", "text", ""],
+    ["taker_number", "Número do endereço do tomador", "text", ""],
+    ["taker_neighborhood", "Bairro do tomador", "text", ""],
+    ["taker_city", "Município do tomador", "text", ""],
+    ["taker_state", "UF do tomador", "text", "[A-Z]{2}"],
+    ["taker_municipality_ibge", "Código IBGE do município do tomador", "text", "[0-9]{7}"],
+    ["taker_postal_code", "CEP do tomador sem pontuação", "text", "[0-9]{8}"],
+    ["source_normative", "Referência da regra fiscal aprovada", "text", ""],
+    ["rule_version", "Versão da regra fiscal", "number", ""],
+  ];
+  for (const [name, labelText, type, pattern] of fields) {
+    const label = document.createElement("label");
+    label.textContent = labelText;
+    const input = document.createElement("input");
+    input.type = type; input.name = name; input.required = !["nbs_code", "municipal_taxation_detail"].includes(name); input.autocomplete = "off";
+    input.id = "native-nfse-" + name.replaceAll("_", "-");
+    if (type === "number") { input.min = "1"; input.max = "99999"; input.step = "1"; }
+    if (type === "text" && pattern) input.pattern = pattern;
+    input.maxLength = name === "description" ? 1000 : name === "source_normative" ? 512 : 160;
+    label.append(input); form.append(label); inputs[name] = input;
+  }
+  /** @type {Record<string, HTMLInputElement>} */
+  const foreignInputs = {};
+  /** @type {Record<string, HTMLLabelElement>} */
+  const foreignLabels = {};
+  for (const [name, labelText, pattern] of [
+    ["taker_country_code", "País do tomador (ISO, duas letras)", "[A-Z]{2}"],
+    ["taker_foreign_postal_code", "Código postal estrangeiro", ""],
+    ["taker_foreign_city", "Cidade no exterior", ""],
+    ["taker_foreign_region", "Estado, província ou região", ""],
+    ["taker_nif", "Identificador fiscal estrangeiro (NIF)", ""],
+    ["taker_no_nif_reason", "Motivo oficial cNaoNIF (0, 1 ou 2)", "[012]"],
+  ]) {
+    const label = document.createElement("label");
+    label.textContent = labelText;
+    const input = document.createElement("input");
+    input.type = "text"; input.name = name; input.autocomplete = "off";
+    input.id = "native-nfse-" + name.replaceAll("_", "-");
+    if (pattern) input.pattern = pattern;
+    input.maxLength = name === "taker_nif" ? 40 : 60;
+    foreignInputs[name] = input; foreignLabels[name] = label;
+    label.append(input); form.append(label);
+  }
+  function syncTakerIdentity() {
+    const foreign = identityMode.value !== "br";
+    for (const name of domesticOnly) {
+      const input = inputs[name];
+      input.required = !foreign;
+      if (input.parentElement) input.parentElement.hidden = foreign;
+    }
+    for (const [name, input] of Object.entries(foreignInputs)) {
+      const active = foreign && (
+        (name !== "taker_nif" && name !== "taker_no_nif_reason")
+        || (name === "taker_nif" && identityMode.value === "nif")
+        || (name === "taker_no_nif_reason" && identityMode.value === "no-nif")
+      );
+      input.required = active;
+      foreignLabels[name].hidden = !active;
+    }
+  }
+  identityMode.addEventListener("change", syncTakerIdentity);
+  syncTakerIdentity();
+  const withholding = document.createElement("label");
+  const select = document.createElement("select");
+  select.name = "iss_withheld"; select.required = true;
+  for (const [value, titleText] of [["", "Selecione após revisão"], ["false", "ISS não retido"], ["true", "ISS retido"]]) {
+    const option = document.createElement("option"); option.value = value;
+    option.textContent = titleText; select.append(option);
+  }
+  withholding.append("Retenção do ISS", select);
+  const reviewedLabel = document.createElement("label");
+  const reviewed = document.createElement("input");
+  reviewed.type = "checkbox"; reviewed.required = true;
+  reviewedLabel.append(reviewed, document.createTextNode(
+    " Confirmo a revisão dos dados fiscais, competência, tomador, código de serviço e ISS. A aplicação não presume enquadramento tributário."
+  ));
+  const substitution = document.createElement("fieldset");
+  substitution.id = "national-nfse-substitution";
+  const toggleSubstitution = document.createElement("input");
+  toggleSubstitution.type = "checkbox";
+  toggleSubstitution.id = "national-nfse-substitution-toggle";
+  const toggleLabel = document.createElement("label");
+  toggleLabel.append(toggleSubstitution, document.createTextNode(
+    " Preparar DPS de substituição nacional (nova emissão vinculada à nota original)"
+  ));
+  const originalLabel = document.createElement("label");
+  originalLabel.textContent = "ID da NFS-e original autorizada";
+  const originalInput = document.createElement("input");
+  originalInput.name = "substitution_original_id"; originalInput.type = "text";
+  originalInput.autocomplete = "off"; originalInput.maxLength = 128;
+  originalLabel.append(originalInput);
+  const reasonLabel = document.createElement("label");
+  reasonLabel.textContent = "Código oficial de substituição";
+  const reasonInput = document.createElement("select");
+  reasonInput.name = "substitution_reason_code";
+  for (const code of ["01", "02", "03", "04", "05", "99"]) {
+    const option = document.createElement("option");
+    option.value = code; option.textContent = code;
+    reasonInput.append(option);
+  }
+  reasonLabel.append(reasonInput);
+  const explanationLabel = document.createElement("label");
+  explanationLabel.textContent = "Justificativa fiscal da substituição (15–255 caracteres)";
+  const explanationInput = document.createElement("textarea");
+  explanationInput.name = "substitution_reason_description";
+  explanationInput.minLength = 15; explanationInput.maxLength = 255;
+  explanationLabel.append(explanationInput);
+  const approvalLabel = document.createElement("label");
+  const substitutionApproval = document.createElement("input");
+  substitutionApproval.type = "checkbox";
+  approvalLabel.append(substitutionApproval, document.createTextNode(
+    " Aprovo expressamente a vinculação à nota original, a revisão do motivo e a nova DPS."
+  ));
+  const substitutionHint = document.createElement("p");
+  substitutionHint.className = "empty-state";
+  substitutionHint.textContent = "A substituição nacional é uma nova DPS com a chave original. O NFCore verifica autorização, mesmo emissor, vínculo CANCEL e idempotência. Não reenvie em caso de retorno incerto.";
+  substitution.append(
+    toggleLabel, originalLabel, reasonLabel, explanationLabel,
+    approvalLabel, substitutionHint,
+  );
+  const canSubstitute = bootstrapState.permissions.includes("document.cancel");
+  substitution.hidden = !canSubstitute;
+  const syncSubstitution = () => {
+    const active = canSubstitute && toggleSubstitution.checked;
+    originalInput.required = active;
+    reasonInput.required = active;
+    explanationInput.required = active;
+    substitutionApproval.required = active;
+    originalInput.disabled = !active;
+    reasonInput.disabled = !active;
+    explanationInput.disabled = !active;
+    substitutionApproval.disabled = !active;
+    originalLabel.hidden = !active;
+    reasonLabel.hidden = !active;
+    explanationLabel.hidden = !active;
+    approvalLabel.hidden = !active;
+    substitutionHint.hidden = !active;
+  };
+  toggleSubstitution.addEventListener("change", syncSubstitution);
+  syncSubstitution();
+  const submit = document.createElement("button");
+  submit.type = "submit"; submit.className = "primary"; submit.textContent = "Preparar NFS-e revisada em homologação";
+  const result = document.createElement("p"); result.id = "native-nfse-result";
+  result.setAttribute("role", "status"); result.setAttribute("aria-live", "polite");
+  form.append(withholding, reviewedLabel, substitution, submit, result); article.append(form);
+  /** @type {{fingerprint:string,key:string}|null} */
+  let attempt = null;
+  form.addEventListener("submit", async event => {
+    event.preventDefault();
+    if (!form.reportValidity()) return;
+    if (!selectedFiscalUnit || selectedFiscalEnvironment !== "homologation") {
+      result.textContent = "Selecione unidade fiscal autorizada em homologação."; return;
+    }
+    const payload = {
+      ...Object.fromEntries(Object.entries(inputs)
+        .filter(([key, input]) => (identityMode.value === "br" || !domesticOnly.has(key))
+          && (!["nbs_code", "municipal_taxation_detail"].includes(key) || Boolean(input.value.trim())))
+        .map(([key, input]) => [key, input.value.trim()])),
+      ...(identityMode.value === "br" ? {} : Object.fromEntries(
+        Object.entries(foreignInputs).filter(([key]) =>
+          (key !== "taker_nif" && key !== "taker_no_nif_reason")
+          || (key === "taker_nif" && identityMode.value === "nif")
+          || (key === "taker_no_nif_reason" && identityMode.value === "no-nif")
+        ).map(([key, input]) => [key, input.value.trim()])
+      )),
+      unit_id: selectedFiscalUnit, environment: "homologation",
+      rule_version: Number(inputs.rule_version.value),
+      iss_withheld: select.value === "true",
+      fiscal_review_approved: reviewed.checked,
+      ...(canSubstitute && toggleSubstitution.checked ? {
+        substitution_original_id: originalInput.value.trim(),
+        substitution_reason_code: reasonInput.value,
+        substitution_reason_description: explanationInput.value.trim(),
+        substitution_human_approval: substitutionApproval.checked,
+      } : {}),
+    };
+    if (!Number.isSafeInteger(payload.rule_version)) {
+      result.textContent = "Informe a versão fiscal inteira."; return;
+    }
+    const fingerprint = JSON.stringify(payload);
+    if (attempt && attempt.fingerprint !== fingerprint) {
+      result.textContent = "Os dados mudaram após tentativa incerta. Consulte o pedido original."; return;
+    }
+    attempt ||= {fingerprint, key: crypto.randomUUID()};
+    submit.disabled = true; result.textContent = "Preparando documento no motor fiscal próprio...";
+    try {
+      const prepared = await api("/v1/portal/operations/prepareNativeNfse", {
+        method: "POST",
+        headers: {"X-CSRF-Token": csrfToken(), "Idempotency-Key": attempt.key},
+        body: JSON.stringify(payload),
+      });
+      operationDocument.value = String(prepared.document_id);
+      result.textContent = "NFS-e preparada: " + String(prepared.document_id)
+        + " (" + String(prepared.numbering_authority || "numeração fiscal durável") + ")."
+        + " Referência preenchida na emissão. Documento não transmitido nem autorizado.";
+      if (prepared.dps_numbering === "reserved_durable"
+        && Number.isSafeInteger(prepared.dps_series)
+        && Number.isSafeInteger(prepared.dps_number)) {
+        result.textContent += " DPS série " + prepared.dps_series
+          + ", número " + prepared.dps_number + " já reservados de forma durável.";
+      }
+      if (prepared.fiscal_policy_state === "review_required_before_sefin") {
+        result.textContent += " BLOQUEIO FISCAL: falta política tributária nacional aprovada e instalada."
+          + " Esta DPS não recebe uma política retroativa: revise e instale a política"
+          + " e prepare NOVO documento com nova referência antes de transmitir."
+          + " Não reutilize a numeração nem retransmita esta preparação bloqueada.";
+      } else if (prepared.fiscal_policy_state === "reviewed_policy_pinned_at_preparation") {
+        result.textContent += " Política revisada vinculada; vigência e integridade"
+          + " serão novamente verificadas antes do envio oficial.";
+      }
+      attempt = null;
+    } catch (error) {
+      result.textContent = (error instanceof Error ? error.message : "Preparação falhou")
+        + " Não gere outra ordem enquanto houver resultado incerto.";
+    } finally { submit.disabled = false; }
+  });
+}
+
+/** National 101101 events use the same authenticated fiscal Portal and provider. */
+/** @param {HTMLElement} article */
+function appendNationalNfseCancellation(article) {
+  const ops = bootstrapState?.projection.configured_fiscal_operations;
+  if (!bootstrapState?.permissions.includes("document.cancel")
+    || !Array.isArray(ops) || !ops.includes("cancelNationalNfse")
+    || selectedFiscalEnvironment !== "homologation") return;
+  const form = document.createElement("form");
+  form.id = "national-nfse-cancellation";
+  form.className = "panel-form";
+  const heading = document.createElement("h3");
+  heading.textContent = "Cancelar NFS-e Nacional — evento oficial 101101";
+  const hint = document.createElement("p");
+  hint.className = "empty-state";
+  hint.textContent = "A nota original deve estar autorizada e possuir XML fiscal assinado. A ação registra autorização humana, reivindica o cancelamento em banco e envia apenas um evento assinado. Resposta incerta exige consulta oficial, nunca novo POST.";
+  const referenceLabel = document.createElement("label");
+  referenceLabel.textContent = "ID do documento autorizado no NFCore";
+  const reference = document.createElement("input");
+  reference.type = "text"; reference.required = true;
+  reference.maxLength = 128; reference.autocomplete = "off";
+  referenceLabel.append(reference);
+  const codeLabel = document.createElement("label");
+  codeLabel.textContent = "Motivo fiscal oficial";
+  const code = document.createElement("select");
+  for (const [value, label] of [
+    ["1", "1 — Erro na emissão"],
+    ["2", "2 — Serviço não prestado"],
+    ["9", "9 — Outros"],
+  ]) {
+    const option = document.createElement("option");
+    option.value = value; option.textContent = label; code.append(option);
+  }
+  codeLabel.append(code);
+  const descriptionLabel = document.createElement("label");
+  descriptionLabel.textContent = "Justificativa (15–255 caracteres)";
+  const description = document.createElement("textarea");
+  description.minLength = 15; description.maxLength = 255;
+  description.required = true; descriptionLabel.append(description);
+  const approveLabel = document.createElement("label");
+  const approve = document.createElement("input");
+  approve.type = "checkbox"; approve.required = true;
+  approveLabel.append(approve, document.createTextNode(
+    " Confirmo a decisão humana de cancelar a NFS-e original no ambiente autorizado."
+  ));
+  const button = document.createElement("button");
+  button.type = "submit"; button.className = "primary";
+  button.textContent = "Registrar e transmitir cancelamento 101101";
+  const result = document.createElement("p");
+  result.id = "national-nfse-cancellation-result";
+  result.setAttribute("role", "status");
+  result.setAttribute("aria-live", "polite");
+  form.append(
+    heading, hint, referenceLabel, codeLabel,
+    descriptionLabel, approveLabel, button, result,
+  );
+  article.append(form);
+  let submitted = false;
+  form.addEventListener("submit", async event => {
+    event.preventDefault();
+    if (submitted || !form.reportValidity()) return;
+    if (!selectedFiscalUnit || selectedFiscalEnvironment !== "homologation") {
+      result.textContent = "Selecione uma unidade fiscal autorizada."; return;
+    }
+    const payload = {
+      unit_id: selectedFiscalUnit, environment: "homologation",
+      document_id: reference.value.trim(), human_approval: approve.checked,
+      reason_code: code.value, reason_description: description.value.trim(),
+    };
+    submitted = true;
+    button.disabled = true;
+    result.textContent = "Registrando decisão e verificando evento oficial assinado...";
+    try {
+      const response = await api("/v1/portal/operations/cancelNationalNfse", {
+        method: "POST",
+        headers: {
+          "X-CSRF-Token": csrfToken(), "Idempotency-Key": crypto.randomUUID(),
+        },
+        body: JSON.stringify(payload),
+      });
+      result.textContent = response.official_fiscal_confirmation
+        ? "Cancelamento confirmado pelo evento oficial assinado. Evidência arquivada."
+        : "Cancelamento ainda não confirmado. Consulte antes de qualquer nova ação.";
+    } catch (error) {
+      result.textContent = (error instanceof Error ? error.message : "Evento não confirmado")
+        + " Não reenvie. Reabra o documento e reconcilie o status oficial.";
+    }
+  });
+}
+
+/** Consult an uncertain national 101101 without any new provider POST. */
+/** @param {HTMLElement} article */
+function appendNationalNfseCancellationRecovery(article) {
+  const ops = bootstrapState?.projection.configured_fiscal_operations;
+  if (!bootstrapState?.permissions.includes("reconciliation.execute")
+    || !Array.isArray(ops) || !ops.includes("reconcileNationalNfseCancellation")
+    || selectedFiscalEnvironment !== "homologation") return;
+  const form = document.createElement("form");
+  form.id = "national-nfse-cancellation-recovery";
+  form.className = "panel-form";
+  const heading = document.createElement("h3");
+  heading.textContent = "Conciliar cancelamento nacional 101101";
+  const info = document.createElement("p");
+  info.className = "empty-state";
+  info.textContent = "Para um cancelamento de resultado incerto, execute somente a consulta oficial do evento existente. A operação não retransmite a solicitação nem altera uma nota sem prova fiscal assinada.";
+  const documentLabel = document.createElement("label");
+  documentLabel.textContent = "ID da NFS-e original no NFCore";
+  const documentInput = document.createElement("input");
+  documentInput.type = "text"; documentInput.required = true;
+  documentInput.maxLength = 128; documentInput.autocomplete = "off";
+  documentLabel.append(documentInput);
+  const button = document.createElement("button");
+  button.type = "submit"; button.className = "primary";
+  button.textContent = "Consultar evento nacional existente (somente leitura)";
+  const status = document.createElement("p");
+  status.id = "national-nfse-cancellation-recovery-result";
+  status.setAttribute("role", "status");
+  status.setAttribute("aria-live", "polite");
+  form.append(heading, info, documentLabel, button, status);
+  article.append(form);
+  form.addEventListener("submit", async event => {
+    event.preventDefault();
+    if (!form.reportValidity() || !selectedFiscalUnit) return;
+    button.disabled = true;
+    status.textContent = "Consultando a confirmação oficial do evento...";
+    try {
+      const result = await api("/v1/portal/operations/reconcileNationalNfseCancellation", {
+        method: "POST",
+        headers: {
+          "X-CSRF-Token": csrfToken(),
+          "Idempotency-Key": crypto.randomUUID(),
+        },
+        body: JSON.stringify({
+          unit_id: selectedFiscalUnit, environment: "homologation",
+          document_id: documentInput.value.trim(),
+        }),
+      });
+      status.textContent = result.official_fiscal_confirmation
+        ? "Evento 101101 confirmado e arquivado. Cancelamento concluído."
+        : "Sem confirmação oficial. Mantenha o pedido original e não reenvie o cancelamento.";
+    } catch (error) {
+      status.textContent = (error instanceof Error ? error.message : "Consulta indisponível")
+        + " Nenhum reenvio fiscal será realizado.";
+    } finally { button.disabled = false; }
+  });
+}
+
 /** @param {HTMLElement} article */
 function appendExtremaNfsePreparation(article) {
   if (!bootstrapState?.permissions.includes("configuration.write")
@@ -433,6 +1015,640 @@ function appendExtremaCancellation(article) {
       status.textContent = (error instanceof Error ? error.message : "Cancelamento não confirmado")
         + " Resultado incerto: não envie outra solicitação sem conciliar com o WebISS.";
     } finally { send.disabled = false; }
+  });
+}
+
+/** Reviewed municipal operation surfaces use the same session/CSRF/UoW as the API.
+ * Never infer provider readiness or submit a second mutation after an uncertain result.
+ */
+/**
+ * @typedef {Object} ReviewedMunicipalWebSpec
+ * @property {string} title
+ * @property {"mutation"|"recovery"} kind
+ * @property {Array<[string, string]>} fields
+ * @property {string[]} [codes]
+ * @property {string} [reason]
+ * @property {string} [reasonLabel]
+ * @property {number} [min]
+ * @property {number} [max]
+ */
+/** @type {Readonly<Record<string, ReviewedMunicipalWebSpec>>} */
+const reviewedMunicipalWebActions = Object.freeze({
+  cancelOsascoNfse: {
+    title: "Cancelar NFS-e — Osasco RTC", kind: "mutation",
+    fields: [["document_id", "ID da NFS-e original autorizada"]],
+    reason: "cancellation_reason", reasonLabel: "Justificativa de cancelamento (1–500 caracteres)",
+    min: 1, max: 500,
+  },
+  substituteOsascoNfse: {
+    title: "Substituição — Osasco RTC (cancelamento tipo S)", kind: "mutation",
+    fields: [["original_id", "ID da NFS-e original autorizada"],
+      ["replacement_id", "ID do RPS substituto já preparado"]],
+    reason: "cancellation_reason", reasonLabel: "Justificativa fiscal revisada (1–500 caracteres)",
+    min: 1, max: 500,
+  },
+  cancelSantanaNfse: {
+    title: "Cancelar NFS-e — Santana de Parnaíba Simpliss", kind: "mutation",
+    fields: [["document_id", "ID da NFS-e original autorizada"]],
+    codes: ["1", "2", "9"], reason: "reason_description",
+    reasonLabel: "Descrição fiscal revisada (15–255 caracteres)", min: 15, max: 255,
+  },
+  substituteSantanaNfse: {
+    title: "Substituir NFS-e — Santana de Parnaíba Simpliss", kind: "mutation",
+    fields: [["original_id", "ID da NFS-e original autorizada"],
+      ["replacement_id", "ID da nova DPS previamente preparada"]],
+    codes: ["01", "02", "03", "04", "05", "99"], reason: "reason_description",
+    reasonLabel: "Justificativa fiscal revisada (15–255 caracteres)", min: 15, max: 255,
+  },
+  reconcileSantanaNfseCancellation: {
+    title: "Conciliar cancelamento — Santana Simpliss", kind: "recovery",
+    fields: [["document_id", "ID da nota original"]],
+  },
+  reconcileSantanaNfseSubstitution: {
+    title: "Conciliar substituição — Santana Simpliss", kind: "recovery",
+    fields: [["original_id", "ID da nota original"],
+      ["replacement_id", "ID da nova DPS"]],
+  },
+  reconcileJundiaiNfseCancellation: {
+    title: "Conciliar cancelamento — Jundiaí GissOnline", kind: "recovery",
+    fields: [["document_id", "ID da nota original"]],
+  },
+  reconcileGuarulhosNfseCancellation: {
+    title: "Conciliar cancelamento — Guarulhos GissOnline", kind: "recovery",
+    fields: [["document_id", "ID da nota original"]],
+  },
+});
+
+/** @param {HTMLElement} article @param {keyof typeof reviewedMunicipalWebActions} operation */
+function appendReviewedMunicipalWebAction(article, operation) {
+  const spec = reviewedMunicipalWebActions[operation];
+  if (!spec) return;
+  const configured = bootstrapState?.projection.configured_fiscal_operations;
+  if (!Array.isArray(configured) || !configured.includes(operation)) return;
+  const recovery = spec.kind === "recovery";
+  const permissions = bootstrapState?.permissions || [];
+  if (recovery && !permissions.includes("reconciliation.execute")) return;
+  if (!recovery && !permissions.includes("document.cancel")) return;
+  if (!recovery && operation.startsWith("substitute")
+    && !permissions.includes("document.issue")) return;
+
+  const form = document.createElement("form");
+  form.id = "reviewed-municipal-" + operation;
+  form.className = "panel-form";
+  const title = document.createElement("h3"); title.textContent = spec.title;
+  const help = document.createElement("p");
+  help.textContent = recovery
+    ? "Consulta oficial somente leitura. Um estado pendente não confirma o evento nem autoriza repetir a transmissão."
+    : "Conferir a nota original e o vínculo fiscal antes de autorizar. Se o retorno for incerto, NÃO retransmita: use a reconciliação ou consulte o histórico. Preparar e transmitir são etapas diferentes.";
+  form.append(title, help);
+  /** @type {Record<string, HTMLInputElement>} */
+  const inputs = {};
+  for (const [key, caption] of spec.fields) {
+    const label = document.createElement("label"); label.textContent = caption;
+    const input = document.createElement("input");
+    input.type = "text"; input.required = true; input.maxLength = 128;
+    input.autocomplete = "off"; input.name = key; label.append(input);
+    inputs[key] = input; form.append(label);
+  }
+  /** @type {HTMLSelectElement | null} */
+  let reasonCode = null;
+  if (spec.codes) {
+    const label = document.createElement("label");
+    label.textContent = "Código oficial do motivo (confira o contrato municipal)";
+    reasonCode = document.createElement("select"); reasonCode.required = true;
+    for (const code of ["", ...spec.codes]) {
+      const item = document.createElement("option");
+      item.value = code;
+      item.textContent = code ? "Código " + code : "Selecione o código revisado";
+      reasonCode.append(item);
+    }
+    label.append(reasonCode); form.append(label);
+  }
+  /** @type {HTMLTextAreaElement | null} */
+  let reason = null;
+  if (spec.reason) {
+    const label = document.createElement("label");
+    label.textContent = spec.reasonLabel || "Justificativa fiscal revisada";
+    reason = document.createElement("textarea");
+    reason.required = true; reason.minLength = spec.min || 1; reason.maxLength = spec.max || 500;
+    reason.rows = 3; label.append(reason); form.append(label);
+  }
+  /** @type {HTMLInputElement | null} */
+  let approved = null;
+  if (!recovery) {
+    const label = document.createElement("label");
+    approved = document.createElement("input");
+    approved.type = "checkbox"; approved.required = true;
+    label.append(approved, document.createTextNode(
+      " Validei emitente, competência, documentos, motivo e autorizo esta operação fiscal."
+    ));
+    form.append(label);
+  }
+  const submit = document.createElement("button");
+  submit.className = "primary"; submit.type = "submit";
+  submit.textContent = recovery ? "Consultar confirmação municipal" : "Autorizar operação fiscal";
+  const status = document.createElement("p");
+  status.setAttribute("role", "status"); status.setAttribute("aria-live", "polite");
+  form.append(submit, status); article.append(form);
+
+  let attempted = false;
+  form.addEventListener("submit", async event => {
+    event.preventDefault();
+    if (!form.reportValidity() || (!recovery && attempted)) return;
+    if (!selectedFiscalUnit || selectedFiscalEnvironment !== "homologation") {
+      status.textContent = "Selecione uma unidade fiscal autorizada de homologação.";
+      return;
+    }
+    /** @type {Record<string, string | boolean>} */
+    const payload = {
+      unit_id: selectedFiscalUnit, environment: selectedFiscalEnvironment,
+    };
+    for (const [key, input] of Object.entries(inputs)) payload[key] = input.value.trim();
+    if (reasonCode) payload.reason_code = reasonCode.value;
+    if (reason && spec.reason) payload[spec.reason] = reason.value.trim();
+    if (!recovery) payload.human_approval = approved?.checked === true;
+    if (payload.original_id && payload.replacement_id
+      && payload.original_id === payload.replacement_id) {
+      status.textContent = "Nota original e documento substituto devem ser diferentes.";
+      return;
+    }
+    const key = crypto.randomUUID();
+    if (!recovery) attempted = true;
+    submit.disabled = true;
+    status.textContent = recovery
+      ? "Consultando o retorno oficial sem retransmitir o evento..."
+      : "Enviando uma única solicitação autorizada. Resultado incerto exige conciliação.";
+    try {
+      const reply = await api("/v1/portal/operations/" + operation, {
+        method: "POST",
+        headers: {"X-CSRF-Token": csrfToken(), "Idempotency-Key": key},
+        body: JSON.stringify(payload),
+      });
+      status.textContent = reply.official_fiscal_confirmation === true
+        ? "Confirmação fiscal oficial registrada. Consulte XML e histórico do documento."
+        : "Operação pendente ou não confirmada. Consulte a reconciliação; não retransmita.";
+      if (reply.recovery_required === true) {
+        status.textContent += " Recuperação oficial necessária.";
+      }
+    } catch (error) {
+      status.textContent = (error instanceof Error ? error.message : "Resultado incerto")
+        + (recovery ? " Consulta indisponível." :
+          " Pode ter sido recebido. NÃO retransmita; concilie primeiro.");
+    } finally {
+      if (recovery) submit.disabled = false;
+    }
+  });
+}
+
+/** Governed Cajamar cancellation on the SAME authenticated fiscal Portal.
+ * @param {HTMLElement} article
+ */
+function appendCajamarCancellation(article) {
+  const operations = bootstrapState?.projection.configured_fiscal_operations;
+  if (!bootstrapState?.permissions.includes("document.cancel")
+    || !Array.isArray(operations) || !operations.includes("cancelCajamarNfse")) return;
+  const form = document.createElement("form");
+  form.id = "cajamar-cancellation-form";
+  form.className = "panel-form";
+  const heading = document.createElement("h3");
+  heading.textContent = "Cancelar NFS-e de Cajamar (homologação)";
+  const notice = document.createElement("p");
+  notice.textContent = "O cancelamento direto é admitido até dia 10 do mês seguinte à competência. Fora do prazo, siga o processo administrativo municipal; o NFCore não substituirá a decisão do Fisco. Resposta incerta não autoriza retransmissão.";
+  const refLabel = document.createElement("label");
+  refLabel.textContent = "Referência da NFS-e original";
+  const ref = document.createElement("input");
+  ref.required = true; ref.maxLength = 128; ref.autocomplete = "off";
+  refLabel.append(ref);
+  const motiveLabel = document.createElement("label");
+  motiveLabel.textContent = "Motivo fiscal permitido (Decreto nº 7.311/2024)";
+  const motive = document.createElement("select");
+  motive.required = true;
+  for (const [code, title] of [
+    ["", "Selecione o motivo legal"],
+    ["service_not_provided", "Serviço não prestado"],
+    ["duplicate_invoice", "NFS-e emitida em duplicidade"],
+    ["incorrect_taker", "Erro de identificação do tomador"],
+    ["incorrect_amount", "Erro no valor da NFS-e"],
+  ]) {
+    const opt = document.createElement("option");
+    opt.value = code; opt.textContent = title; motive.append(opt);
+  }
+  motiveLabel.append(motive);
+  const approvedLabel = document.createElement("label");
+  const approved = document.createElement("input");
+  approved.type = "checkbox"; approved.required = true;
+  approvedLabel.append(approved, document.createTextNode(
+    " Verifiquei o emitente, a nota original, sua situação e autorizo esta operação fiscal.",
+  ));
+  const submit = document.createElement("button");
+  submit.type = "submit"; submit.className = "primary";
+  submit.textContent = "Solicitar cancelamento GeisWeb";
+  const result = document.createElement("p");
+  result.setAttribute("role", "status"); result.setAttribute("aria-live", "polite");
+  form.append(heading, notice, refLabel, motiveLabel, approvedLabel, submit, result);
+  article.append(form);
+  /** @type {{fingerprint:string,key:string}|null} */
+  let attempt = null;
+  form.addEventListener("submit", async event => {
+    event.preventDefault();
+    if (!form.reportValidity()) return;
+    if (!selectedFiscalUnit || selectedFiscalEnvironment !== "homologation") {
+      result.textContent = "Selecione unidade autorizada de homologação."; return;
+    }
+    const payload = {
+      unit_id: selectedFiscalUnit, environment: selectedFiscalEnvironment,
+      document_id: ref.value.trim(), cancellation_reason: motive.value,
+      human_approval: approved.checked,
+    };
+    const fingerprint = JSON.stringify(payload);
+    if (attempt && attempt.fingerprint !== fingerprint) {
+      result.textContent = "Pedido fiscal pendente com conteúdo diferente. Consulte o original."; return;
+    }
+    attempt ||= {fingerprint, key: crypto.randomUUID()};
+    submit.disabled = true;
+    result.textContent = "Conferindo prova original e transmitindo um único cancelamento...";
+    try {
+      const reply = await api("/v1/portal/operations/cancelCajamarNfse", {
+        method: "POST",
+        headers: {"X-CSRF-Token": csrfToken(), "Idempotency-Key": attempt.key},
+        body: JSON.stringify(payload),
+      });
+      result.textContent = reply.official_fiscal_confirmation
+        ? "Cancelamento Cajamar confirmado. Evento arquivado no documento original."
+        : "A prefeitura rejeitou o pedido. Consulte o evento fiscal antes de outra ação.";
+      attempt = null;
+    } catch (error) {
+      result.textContent = (error instanceof Error ? error.message : "Cancelamento não confirmado")
+        + " Não retransmita: consulte o histórico e reconcilie o estado do pedido.";
+    } finally { submit.disabled = false; }
+  });
+}
+
+/** Human-reviewed Jundiaí GissOnline v2.04 events on the existing fiscal Portal.
+ * @param {HTMLElement} article
+ * @param {"cancelJundiaiNfse"|"substituteJundiaiNfse"|"cancelGuarulhosNfse"|"substituteGuarulhosNfse"} operation
+ */
+function appendJundiaiFiscalEvent(article, operation) {
+  const available = bootstrapState?.projection.configured_fiscal_operations;
+  const substitution = operation.startsWith("substitute");
+  const guarulhos = operation.includes("Guarulhos");
+  const city = guarulhos ? "Guarulhos" : "Jundiaí";
+  const formPrefix = guarulhos ? "guarulhos" : "jundiai";
+  if (!bootstrapState?.permissions.includes("document.cancel")
+    || (substitution && !bootstrapState?.permissions.includes("document.issue"))
+    || !Array.isArray(available) || !available.includes(operation)) return;
+  const form = document.createElement("form");
+  form.id = formPrefix + (substitution ? "-substitute-form" : "-cancel-form");
+  form.className = "panel-form";
+  const heading = document.createElement("h3");
+  heading.textContent = substitution
+    ? "Revisar substituição — " + city + " GissOnline 2.04"
+    : "Cancelar NFS-e — " + city + " GissOnline 2.04";
+  const notice = document.createElement("p");
+  notice.textContent = substitution
+    ? "Confira a NFS-e autorizada e um RPS substituto previamente preparado. A primeira etapa cancela a nota original; a emissão do substituto é separada, após confirmação oficial. O vínculo não representa substituição municipal atômica."
+    : "A nota original deve estar autorizada. A confirmação municipal é verificada por XML oficial; se o retorno for incerto, não retransmita o cancelamento.";
+  /** @param {string} text */
+  function reference(text) {
+    const label = document.createElement("label");
+    label.textContent = text;
+    const input = document.createElement("input");
+    input.type = "text";
+    input.required = true;
+    input.maxLength = 128;
+    input.autocomplete = "off";
+    label.append(input); form.append(label);
+    return input;
+  }
+  const original = reference("ID da nota fiscal original autorizada");
+  const replacement = substitution ? reference("ID do RPS substituto preparado") : null;
+  const codeLabel = document.createElement("label");
+  codeLabel.textContent = "Código oficial de cancelamento GissOnline";
+  const code = document.createElement("select");
+  code.required = true;
+  for (const [value, label] of [
+    ["", "Escolha o código fiscal revisado"],
+    ["1", "Código de cancelamento 1"],
+    ["2", "Código de cancelamento 2"],
+    ["4", "Código de cancelamento 4"],
+  ]) {
+    const option = document.createElement("option");
+    option.value = value; option.textContent = label; code.append(option);
+  }
+  codeLabel.append(code);
+  const approvalLabel = document.createElement("label");
+  const approval = document.createElement("input");
+  approval.type = "checkbox"; approval.required = true;
+  approvalLabel.append(approval, document.createTextNode(
+    " Conferi o emitente, o documento original, o código e autorizo esta operação fiscal."
+  ));
+  const submit = document.createElement("button");
+  submit.type = "submit"; submit.className = "primary";
+  submit.textContent = substitution ? "Solicitar revisão de substituição" : "Cancelar nota original";
+  const output = document.createElement("p");
+  output.setAttribute("role", "status"); output.setAttribute("aria-live", "polite");
+  form.append(heading, notice, codeLabel, approvalLabel, submit, output);
+  article.append(form);
+  /** @type {{fingerprint:string,key:string}|null} */
+  let attempt = null;
+  form.addEventListener("submit", async event => {
+    event.preventDefault();
+    if (!form.reportValidity()) return;
+    if (!selectedFiscalUnit || selectedFiscalEnvironment !== "homologation") {
+      output.textContent = "Selecione uma unidade fiscal autorizada em homologação."; return;
+    }
+    const payload = {
+      unit_id: selectedFiscalUnit, environment: selectedFiscalEnvironment,
+      ...(substitution
+        ? {original_id: original.value.trim(), replacement_id: replacement?.value.trim() || ""}
+        : {document_id: original.value.trim()}),
+      reason_code: code.value, human_approval: approval.checked,
+    };
+    const fingerprint = JSON.stringify(payload);
+    if (attempt && attempt.fingerprint !== fingerprint) {
+      output.textContent = "Já existe um evento pendente. Não altere nem retransmita a solicitação.";
+      return;
+    }
+    attempt ||= {fingerprint, key: crypto.randomUUID()};
+    submit.disabled = true;
+    output.textContent = "Registrando intenção fiscal durável e consultando confirmação municipal...";
+    try {
+      const reply = await api("/v1/portal/operations/" + operation, {
+        method: "POST",
+        headers: {"X-CSRF-Token": csrfToken(), "Idempotency-Key": attempt.key},
+        body: JSON.stringify(payload),
+      });
+      output.textContent = reply.official_fiscal_confirmation
+        ? "Cancelamento oficialmente confirmado. Consulte o XML arquivado."
+        : "Cancelamento não confirmado. Consulte o histórico antes de qualquer nova operação.";
+    } catch (error) {
+      output.textContent = (error instanceof Error ? error.message : "Resultado incerto")
+        + " O evento pode ter sido recebido; não o retransmita sem conciliação.";
+    }
+  });
+}
+
+/** Barueri PMB004 v4.4 municipal events, over the existing authenticated Portal.
+ * The operator enters the original durable IDs and legally reviewed reason.
+ * The server validates the taxpayer, original authorization, scope and source.
+ * @param {HTMLElement} article
+ * @param {"cancelBarueriNfse"|"substituteBarueriNfse"} operation
+ */
+function appendBarueriFiscalEvent(article, operation) {
+  const available = bootstrapState?.projection.configured_fiscal_operations;
+  if (!bootstrapState?.permissions.includes("document.cancel")
+    || (operation === "substituteBarueriNfse"
+        && !bootstrapState?.permissions.includes("document.issue"))
+    || !Array.isArray(available) || !available.includes(operation)) return;
+  const substitute = operation === "substituteBarueriNfse";
+  const form = document.createElement("form");
+  form.id = substitute ? "barueri-substitution-form" : "barueri-cancellation-form";
+  form.className = "panel-form";
+  const heading = document.createElement("h3");
+  heading.textContent = substitute
+    ? "Substituir NFS-e de Barueri — PMB004 v4.4"
+    : "Cancelar NFS-e de Barueri — PMB004 v4.4";
+  const notice = document.createElement("p");
+  notice.textContent = substitute
+    ? "A nota original deve estar autorizada. Prepare um RPS substituto revisado antes desta operação. O evento municipal é assíncrono: o recebimento do lote não comprova substituição. Consulte a reconciliação, nunca reenvie um resultado incerto."
+    : "A nota original precisa estar autorizada. O cancelamento municipal é assíncrono e exige uma justificativa fiscal revisada. Resultado incerto deve ser consultado, não retransmitido.";
+
+  /** @param {string} title @param {number} max */
+  function reference(title, max) {
+    const label = document.createElement("label");
+    label.textContent = title;
+    const input = document.createElement("input");
+    input.type = "text"; input.required = true; input.maxLength = max;
+    input.autocomplete = "off";
+    label.append(input); form.append(label);
+    return input;
+  }
+  const original = reference("ID da NFS-e original autorizada", 128);
+  const replacement = substitute
+    ? reference("ID do RPS substituto previamente preparado", 128) : null;
+  const reasonLabel = document.createElement("label");
+  reasonLabel.textContent = substitute
+    ? "Código de justificativa da substituição (layout oficial v4.4)"
+    : "Código legal de cancelamento";
+  const reason = document.createElement("select");
+  reason.required = true;
+  const codes = substitute
+    ? [
+        ["", "Selecione o código legal revisado"],
+        ["1", "Código 1"], ["2", "Código 2"], ["3", "Código 3"],
+        ["4", "Código 4"], ["5", "Código 5"], ["9", "Código 9"],
+      ]
+    : [
+        ["", "Selecione o código legal revisado"],
+        ["01", "Motivo 01"], ["02", "Motivo 02"],
+      ];
+  for (const [code, text] of codes) {
+    const item = document.createElement("option");
+    item.value = code; item.textContent = text; reason.append(item);
+  }
+  reasonLabel.append(reason);
+  const explanationLabel = document.createElement("label");
+  explanationLabel.textContent = "Justificativa fiscal escrita";
+  const explanation = document.createElement("textarea");
+  explanation.required = true; explanation.maxLength = 180; explanation.rows = 3;
+  explanationLabel.append(explanation);
+  const approvalLabel = document.createElement("label");
+  const approved = document.createElement("input");
+  approved.type = "checkbox"; approved.required = true;
+  approvalLabel.append(approved, document.createTextNode(
+    " Conferi o emitente, competência, documentos, motivo legal e autorizo esta operação fiscal."
+  ));
+  const submit = document.createElement("button");
+  submit.type = "submit"; submit.className = "primary";
+  submit.textContent = substitute
+    ? "Solicitar substituição PMB004" : "Solicitar cancelamento PMB004";
+  const result = document.createElement("p");
+  result.setAttribute("role", "status");
+  result.setAttribute("aria-live", "polite");
+  form.append(heading, notice, reasonLabel, explanationLabel, approvalLabel, submit, result);
+  article.append(form);
+
+  /** @type {{fingerprint:string,key:string}|null} */
+  let attempt = null;
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    if (!form.reportValidity()) return;
+    if (!selectedFiscalUnit || selectedFiscalEnvironment !== "homologation") {
+      result.textContent = "Selecione uma unidade fiscal autorizada de homologação.";
+      return;
+    }
+    const payload = substitute
+      ? {
+          unit_id: selectedFiscalUnit, environment: selectedFiscalEnvironment,
+          original_id: original.value.trim(),
+          replacement_id: replacement?.value.trim() || "",
+          substitution_justification_code: reason.value,
+          cancellation_reason: explanation.value.trim(),
+          human_approval: approved.checked,
+        }
+      : {
+          unit_id: selectedFiscalUnit, environment: selectedFiscalEnvironment,
+          document_id: original.value.trim(), reason_code: reason.value,
+          cancellation_reason: explanation.value.trim(),
+          human_approval: approved.checked,
+        };
+    const fingerprint = JSON.stringify(payload);
+    if (attempt && attempt.fingerprint !== fingerprint) {
+      result.textContent = "Não altere uma solicitação já enviada ou de resultado incerto. Concilie a nota original.";
+      return;
+    }
+    attempt ||= {fingerprint, key: crypto.randomUUID()};
+    submit.disabled = true;
+    result.textContent = "Registrando o evento fiscal durável e transmitindo uma única remessa...";
+    try {
+      const reply = await api("/v1/portal/operations/" + operation, {
+        method: "POST",
+        headers: {"X-CSRF-Token": csrfToken(), "Idempotency-Key": attempt.key},
+        body: JSON.stringify(payload),
+      });
+      result.textContent = reply.official_fiscal_confirmation
+        ? "Evento oficialmente confirmado e arquivado."
+        : "Remessa registrada, confirmação fiscal ainda pendente. Vá à reconciliação de Barueri. Não envie um segundo evento.";
+    } catch (error) {
+      result.textContent = (error instanceof Error ? error.message : "Resultado fiscal incerto")
+        + " A remessa pode ter sido aceita: não retransmita. Consulte a reconciliação de Barueri.";
+    }
+    // Never automatically re-enable a destructive event button after
+    // a network error, timeout, or asynchronous acceptance.
+  });
+}
+
+/** Read-only official status/list/download reconciliation for Barueri events.
+ * @param {HTMLElement} article
+ */
+function appendBarueriEventReconciliation(article) {
+  const available = bootstrapState?.projection.configured_fiscal_operations;
+  if (!bootstrapState?.permissions.includes("reconciliation.execute")
+    || !Array.isArray(available)
+    || !available.includes("reconcileBarueriNfseCancellation")) return;
+  const form = document.createElement("form");
+  form.id = "barueri-event-reconciliation-form"; form.className = "panel-form";
+  const title = document.createElement("h3");
+  title.textContent = "Conciliar cancelamento ou substituição — Barueri";
+  const help = document.createElement("p");
+  help.textContent = "Consulta somente leitura do evento municipal já transmitido. A nota é alterada apenas quando o arquivo oficial comprovar o resultado, inclusive a nota substituta.";
+  const label = document.createElement("label");
+  label.textContent = "ID da NFS-e original";
+  const original = document.createElement("input");
+  original.required = true; original.maxLength = 128; original.autocomplete = "off";
+  label.append(original);
+  const submit = document.createElement("button");
+  submit.type = "submit"; submit.className = "primary";
+  submit.textContent = "Consultar retorno oficial de Barueri";
+  const status = document.createElement("p");
+  status.setAttribute("role", "status"); status.setAttribute("aria-live", "polite");
+  form.append(title, help, label, submit, status); article.append(form);
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    if (!form.reportValidity()) return;
+    if (!selectedFiscalUnit || selectedFiscalEnvironment !== "homologation") {
+      status.textContent = "Selecione uma unidade fiscal autorizada de homologação.";
+      return;
+    }
+    const payload = {
+      unit_id: selectedFiscalUnit, environment: selectedFiscalEnvironment,
+      document_id: original.value.trim(),
+    };
+    // A new key permits another READ-ONLY status refresh when a previous
+    // consultation returned pending. It never submits another municipal event.
+    const queryKey = crypto.randomUUID();
+    submit.disabled = true;
+    status.textContent = "Consultando status, retorno e comprovante fiscal vinculado ao RPS...";
+    try {
+      const outcome = await api("/v1/portal/operations/reconcileBarueriNfseCancellation", {
+        method: "POST",
+        headers: {"X-CSRF-Token": csrfToken(), "Idempotency-Key": queryKey},
+        body: JSON.stringify(payload),
+      });
+      status.textContent = outcome.official_fiscal_confirmation
+        ? "Evento fiscal confirmado: " + String(outcome.status)
+          + ". Consulte o XML e o histórico dos documentos."
+        : "Evento pendente: " + String(outcome.status)
+          + ". A Prefeitura ainda não confirmou o resultado.";
+    } catch (error) {
+      status.textContent = error instanceof Error
+        ? error.message : "Consulta oficial indisponível. O estado fiscal foi preservado.";
+    } finally { submit.disabled = false; }
+  });
+}
+
+/** Portal-side review for Cajamar 7.311/2024, never a fake SOAP substitution.
+ * @param {HTMLElement} article
+ */
+function appendCajamarSubstitutionReview(article) {
+  const operations = bootstrapState?.projection.configured_fiscal_operations;
+  if (!bootstrapState?.permissions.includes("document.issue")
+    || !bootstrapState?.permissions.includes("document.cancel")
+    || !Array.isArray(operations)
+    || !operations.includes("reviewCajamarSubstitution")) return;
+
+  const form = document.createElement("form");
+  form.id = "cajamar-substitution-review-form";
+  form.className = "panel-form";
+  const title = document.createElement("h3");
+  title.textContent = "Analisar substituição de NFS-e — Cajamar";
+  const help = document.createElement("p");
+  help.textContent = "A substituição é realizada no sistema eletrônico da Prefeitura, não pelo SOAP GeisWeb. A competência, o tomador e o valor do serviço não podem mudar; o prazo regular é dia 10 do mês seguinte à competência.";
+  const originalLabel = document.createElement("label");
+  originalLabel.textContent = "ID da NFS-e original autorizada";
+  const original = document.createElement("input");
+  original.required = true; original.maxLength = 128; original.autocomplete = "off";
+  originalLabel.append(original);
+  const replacementLabel = document.createElement("label");
+  replacementLabel.textContent = "ID do documento substituto preparado (não transmitido)";
+  const replacement = document.createElement("input");
+  replacement.required = true; replacement.maxLength = 128; replacement.autocomplete = "off";
+  replacementLabel.append(replacement);
+  const reviewLabel = document.createElement("label");
+  const review = document.createElement("input");
+  review.type = "checkbox"; review.required = true;
+  reviewLabel.append(review, document.createTextNode(
+    " Confirmei a identidade, o vínculo entre os documentos e a análise fiscal humana.",
+  ));
+  const submit = document.createElement("button");
+  submit.type = "submit"; submit.className = "primary";
+  submit.textContent = "Validar substituição municipal";
+  const result = document.createElement("p");
+  result.setAttribute("role", "status"); result.setAttribute("aria-live", "polite");
+  const official = document.createElement("a");
+  official.className = "ghost";
+  official.textContent = "Serviços fiscais oficiais de Cajamar";
+  official.href = "https://cajamar.sp.gov.br/fazenda/servicos-online/";
+  official.target = "_blank"; official.rel = "noopener noreferrer";
+  form.append(title, help, originalLabel, replacementLabel, reviewLabel, submit, result, official);
+  article.append(form);
+
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    if (!form.reportValidity()) return;
+    if (!selectedFiscalUnit || selectedFiscalEnvironment !== "homologation") {
+      result.textContent = "Selecione uma unidade fiscal autorizada em homologação.";
+      return;
+    }
+    submit.disabled = true;
+    result.textContent = "Conferindo os dois documentos, as restrições e o prazo municipal...";
+    try {
+      const response = await api("/v1/portal/operations/reviewCajamarSubstitution", {
+        method: "POST",
+        headers: {"X-CSRF-Token": csrfToken()},
+        body: JSON.stringify({
+          unit_id: selectedFiscalUnit, environment: selectedFiscalEnvironment,
+          original_id: original.value.trim(), replacement_id: replacement.value.trim(),
+          human_approval: review.checked,
+        }),
+      });
+      result.textContent = response.status === "MUNICIPAL_PORTAL_SUBSTITUTION_REQUIRED"
+        ? `Pré-análise interna aprovada até ${response.deadline}. Execute no portal oficial e registre a comprovação da prefeitura; nenhuma substituição fiscal foi transmitida.`
+        : "Resultado municipal não confirmado. Revise o procedimento.";
+    } catch (error) {
+      result.textContent = error instanceof Error
+        ? error.message : "Pré-análise indisponível; a NFS-e original não foi alterada.";
+    } finally { submit.disabled = false; }
   });
 }
 
@@ -680,6 +1896,9 @@ async function api(path, options = {}) {
       PORTAL_RUNTIME_NOT_READY: "Esta capacidade ainda não está disponível no runtime. Tente novamente após a configuração governada.",
       BROWSER_AUTHORITY_REJECTED: "Organização e permissões são definidas pela sessão. Remova campos de autoridade do pedido.",
       INVALID_PREPARED_DOCUMENT: "Referência inválida ou documento ainda não preparado neste escopo. Confira e corrija o campo.",
+      NATIVE_SALE_INVALID_FACTS_OR_CONFIGURATION: "Confira destinatário, valores, pagamentos e configuração fiscal da venda. Nenhum documento foi preparado por esta tentativa.",
+      NATIVE_SALE_CONTENT_CONFLICT: "Esta referência ou tentativa já possui dados diferentes, ou a configuração mudou. Consulte o documento antes de continuar.",
+      NATIVE_SALE_UNIT_FORBIDDEN: "Você não tem permissão para preparar vendas nesta unidade.",
       MISSING_IDEMPOTENCY_KEY: "O pedido precisa de um identificador de tentativa para ser processado com segurança.",
       INVALID_EXTREMA_PREPARATION: "Dados fiscais de Extrema inconsistentes. Verifique o cadastro, valores, competência e classificação RTC.",
       EXTREMA_FISCAL_REVIEW_REQUIRED: "Preparação reservada ao responsável autorizado pela revisão fiscal. Solicite aprovação administrativa.",
@@ -887,11 +2106,11 @@ function fiscalRowElement(row) {
       artifact.rel = "noopener noreferrer";
     }
     wrapper.append(artifact);
-    if (kind === "authorized_xml") {
+    if (kind === "authorized_xml" && row.auxiliary_pdf_available === true) {
       const danfe = document.createElement("a");
       danfe.className = "ghost";
-      danfe.textContent = "Visualizar DANFE/PDF";
-      danfe.href = `/v1/portal/documents/${encodeURIComponent(reference)}/artifacts/danfe?${new URLSearchParams({
+      danfe.textContent = "Visualizar documento auxiliar (DANFE/DANFCe/DANFSe)";
+      danfe.href = `/v1/portal/documents/${encodeURIComponent(reference)}/artifacts/auxiliary_pdf?${new URLSearchParams({
         unit_id: unit, environment,
       })}`;
       danfe.target = "_blank";
@@ -2252,9 +3471,34 @@ async function renderSurface(viewId) {
     if (viewId === "users") appendUserAdministration(article, rows);
     if (viewId === "errors" || viewId === "reconciliation") appendCognitiveAdvisor(article, viewId);
     if (["inutilizations", "documents", "issuances", "reconciliation"].includes(viewId)) await appendFiscalRecovery(article);
+    if (viewId === "issuances") appendNativeSalePreparation(article);
+    if (viewId === "issuances") appendNativeNfsePreparation(article);
+    if (viewId === "issuances") appendNationalNfseCancellation(article);
+    if (viewId === "issuances") appendNationalNfseCancellationRecovery(article);
     if (viewId === "issuances") appendExtremaNfsePreparation(article);
     if (viewId === "issuances") appendExtremaCancellation(article);
+    if (viewId === "issuances") appendCajamarCancellation(article);
+    if (viewId === "issuances") appendJundiaiFiscalEvent(article, "cancelJundiaiNfse");
+    if (viewId === "issuances") appendJundiaiFiscalEvent(article, "substituteJundiaiNfse");
+    if (viewId === "issuances") appendJundiaiFiscalEvent(article, "cancelGuarulhosNfse");
+    if (viewId === "issuances") appendJundiaiFiscalEvent(article, "substituteGuarulhosNfse");
+    if (viewId === "issuances") appendBarueriFiscalEvent(article, "cancelBarueriNfse");
+    if (viewId === "issuances") appendBarueriFiscalEvent(article, "substituteBarueriNfse");
+    if (viewId === "issuances" || viewId === "reconciliation") appendBarueriEventReconciliation(article);
+    if (viewId === "issuances") {
+      appendReviewedMunicipalWebAction(article, "cancelOsascoNfse");
+      appendReviewedMunicipalWebAction(article, "substituteOsascoNfse");
+      appendReviewedMunicipalWebAction(article, "cancelSantanaNfse");
+      appendReviewedMunicipalWebAction(article, "substituteSantanaNfse");
+    }
+    if (viewId === "issuances" || viewId === "reconciliation") {
+      appendReviewedMunicipalWebAction(article, "reconcileSantanaNfseCancellation");
+      appendReviewedMunicipalWebAction(article, "reconcileSantanaNfseSubstitution");
+      appendReviewedMunicipalWebAction(article, "reconcileJundiaiNfseCancellation");
+      appendReviewedMunicipalWebAction(article, "reconcileGuarulhosNfseCancellation");
+    }
     if (viewId === "issuances") appendExtremaSubstitution(article);
+    if (viewId === "issuances") appendCajamarSubstitutionReview(article);
     if (viewId === "inutilizations") appendInutilizationForm(article);
     if (["documents", "issuances", "reconciliation"].includes(viewId)) appendFiscalActions(article);
     if (scopedViews.has(viewId) && viewId !== "capabilities") {
@@ -3006,6 +4250,13 @@ operationForm.addEventListener("submit", async (event) => {
     if (mutation) {
       status.textContent = "Resposta registrada. O recibo do pedido não confirma autorização fiscal. Confira o estado do documento em Emissões.";
       if (typeof result.reference_id === "string") status.textContent += ` Referência: ${result.reference_id}.`;
+      const evidence = result.operation_result;
+      if (evidence && typeof evidence === "object") {
+        if (typeof evidence.status === "string") status.textContent += ` Estado fiscal: ${evidence.status}.`;
+        if (typeof evidence.rejection_reason === "string") status.textContent += ` Código de rejeição: ${evidence.rejection_reason}.`;
+        if (typeof evidence.rejection_message === "string") status.textContent += ` Motivo: ${evidence.rejection_message}.`;
+        if (evidence.recovery_required === true) status.textContent += " Resultado incerto: reconcilie antes de retransmitir.";
+      }
     } else {
       status.textContent = `Resultado da consulta: ${typeof result.status === "string" ? result.status : "não informado"}.`;
       if (typeof result.access_key === "string") status.textContent += ` Chave: ${result.access_key}.`;

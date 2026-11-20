@@ -23,6 +23,11 @@ from kordena_fiscal.domain import (
 )
 from kordena_fiscal.lifecycle import IdempotencyKey
 from kordena_fiscal.numbering import FiscalSequenceKey, FiscalSequencePolicy
+from kordena_fiscal.persistence.iron_a1_delegation import (
+    IronA1DelegationStore,
+    IronA1ScopeBusy,
+    iron_a1_scope_key,
+)
 from kordena_fiscal.persistence.ports import PersistenceStateError
 from kordena_fiscal.persistence.postgres import (
     PostgresFiscalDatabase,
@@ -56,7 +61,7 @@ def database() -> Iterator[PostgresFiscalDatabase]:
         connection.execute("DROP SCHEMA public CASCADE")
         connection.execute("CREATE SCHEMA public")
     database = PostgresFiscalDatabase(dsn, min_pool_size=1, max_pool_size=12)
-    assert database.initialize() == tuple(range(1, 20))
+    assert database.initialize() == (*range(1, 20), 22, 23)
     try:
         yield database
     finally:
@@ -90,7 +95,7 @@ def test_postgres_migrations_are_real_reproducible_and_fail_closed(
     database: PostgresFiscalDatabase,
 ) -> None:
     assert database.initialize() == ()
-    assert database.applied_migrations() == tuple(range(1, 20))
+    assert database.applied_migrations() == (*range(1, 20), 22, 23)
     assert database.dsn_redacted == "postgresql://<redacted>"
 
     with pytest.raises(PersistenceStateError, match="backend must be postgres"):
@@ -110,6 +115,7 @@ def test_postgres_uow_commit_rollback_and_core_state_parity(
         scope,
         model=ElectronicInvoiceModel.NFCE,
         series=1,
+        issuer_cnpj="12345678000195",
     )
     source = SourceReference("sale", "sale-postgres")
 
@@ -202,6 +208,7 @@ def test_postgres_sequence_allocation_is_safe_under_concurrency(
         _scope(),
         model=ElectronicInvoiceModel.NFCE,
         series=9,
+        issuer_cnpj="12345678000195",
     )
 
     def reserve() -> int:
@@ -315,3 +322,108 @@ def test_postgres_human_accounts_sessions_and_reset_survive_repository_restart(
         ).fetchone()
     assert session_row is not None and session_row[0] != issued.session_token
     assert reset_row is not None and reset_row[0] != reset.reset_token
+
+
+def test_iron_a1_delegation_postgres_migration_durable_single_use_and_tenant_scope(
+    database: PostgresFiscalDatabase,
+) -> None:
+    """Certified migration 23: real PostgreSQL atomic token redemption under concurrency."""
+    store = IronA1DelegationStore(database.connection)
+    now = datetime.now(UTC)
+    token, expires_at = store.issue(
+        host_namespace="fm.iron",
+        tenant_id="gym-tenant-a",
+        unit_id="unit-a",
+        environment="homologation",
+        issuer_cnpj="11222333000181",
+        allowed_origin="https://app.ironfitcore.com.br",
+        issued_by="owner-123",
+        now=now,
+    )
+    assert expires_at - now == timedelta(minutes=5)
+    with database.connection() as connection:
+        row = connection.execute(
+            "SELECT token_sha256, fiscal_tenant_id, fiscal_unit_id, consumed_at "
+            "FROM fm_iron_a1_delegations"
+        ).fetchone()
+        assert row is not None
+        assert row[0] != token and len(row[0]) == 64
+        assert row[1:3] == ("gym-tenant-a", "unit-a")
+        assert row[3] is None
+
+    assert store.consume(
+        token=token, origin="https://other.example", now=now,
+    ) is None
+    # Separate PostgreSQL transactions, racing on one digest, must consume once.
+    with ThreadPoolExecutor(max_workers=6) as executor:
+        results = list(executor.map(
+            lambda _: store.consume(
+                token=token, origin="https://app.ironfitcore.com.br", now=now,
+            ),
+            range(6),
+        ))
+    assert sum(result is not None for result in results) == 1
+    winner = next(result for result in results if result is not None)
+    assert winner == {
+        "host_namespace": "fm.iron",
+        "tenant_id": "gym-tenant-a",
+        "unit_id": "unit-a",
+        "environment": "homologation",
+        "issuer_cnpj": "11222333000181",
+    }
+    assert store.consume(
+        token=token, origin="https://app.ironfitcore.com.br", now=now,
+    ) is None
+
+    # Expiry is checked against a persisted deadline, not an in-memory token.
+    expired_token, _ = store.issue(
+        host_namespace="fm.iron",
+        tenant_id="gym-tenant-b",
+        unit_id="unit-b",
+        environment="homologation",
+        issuer_cnpj="11222333000181",
+        allowed_origin="https://app.ironfitcore.com.br",
+        issued_by="owner-456",
+        now=now,
+    )
+    assert store.consume(
+        token=expired_token,
+        origin="https://app.ironfitcore.com.br",
+        now=now + timedelta(minutes=6),
+    ) is None
+    with database.connection() as connection:
+        assert connection.execute(
+            "SELECT consumed_at FROM fm_iron_a1_delegations "
+            "WHERE fiscal_tenant_id = ?",
+            ("gym-tenant-b",),
+        ).fetchone()[0] is None
+
+
+def test_postgres_iron_a1_withdrawal_serializes_and_fences_old_grants(
+    database: PostgresFiscalDatabase,
+) -> None:
+    store = IronA1DelegationStore(database.connection)
+    scope = dict(host_namespace="fm.iron", tenant_id="tenant-a", unit_id="unit-a",
+                 environment="homologation", issuer_cnpj="11222333000181")
+    key = iron_a1_scope_key(**{
+        "host": scope["host_namespace"], "tenant": scope["tenant_id"], "unit": scope["unit_id"],
+        "environment": scope["environment"], "cnpj": scope["issuer_cnpj"],
+    })
+    origin = "https://app.ironfitcore.com.br"
+    request_id = "a92bbdf1-b8d9-4c73-89bc-ed4b1a6d8976"
+
+    def competing_lock() -> None:
+        with pytest.raises(IronA1ScopeBusy), store.locked(key):
+            pytest.fail("second database session acquired the same scope")
+
+    with store.locked(key) as held:
+        token, _ = held.issue(**scope, allowed_origin=origin, issued_by="owner-a")
+        with ThreadPoolExecutor(max_workers=1) as executor:
+            executor.submit(competing_lock).result(timeout=10)
+        assert held.reserve_withdrawal(**scope, actor_id="owner-a", request_id=request_id)
+        assert held.consume(token=token, origin=origin) is None
+
+    with store.locked(key) as held:
+        replacement, _ = held.issue(**scope, allowed_origin=origin, issued_by="owner-a")
+        assert not held.reserve_withdrawal(**scope, actor_id="owner-a", request_id=request_id)
+        assert held.consume(token=replacement, origin=origin) is not None

@@ -14,6 +14,7 @@ from datetime import UTC, datetime
 from typing import Any, Protocol
 
 from fastapi import HTTPException, status
+from lxml import etree
 
 from kordena_fiscal.application.commercial_portal import (
     CommercialPortalReader,
@@ -24,6 +25,11 @@ from kordena_fiscal.archive import (
     FiscalArchiveKind,
     FiscalArchiveVerifier,
 )
+from kordena_fiscal.archive.danfce_pdf import (
+    render_authorized_nfce_danfce,
+    validate_authorized_nfce_danfce,
+)
+from kordena_fiscal.archive.danfse_pdf import render_authorized_national_danfse
 from kordena_fiscal.compliance import CapabilityReadinessService, JurisdictionCapabilityError
 from kordena_fiscal.compliance.capability_api import CapabilityReadinessError
 from kordena_fiscal.contingency import FiscalOutboxStatus
@@ -98,6 +104,57 @@ def _portal_error(status_code: int, code: str, message: str) -> HTTPException:
     )
 
 
+def _printable_authorized_xml(entry: Any) -> bool:
+    """Only advertise a PDF action for an archived XML that our renderer supports.
+
+    GeisWeb's ConsultaLoteRpsResposta is not a National DANFSe and the
+    provider does not publish printable notes in homologation. The backend
+    artifact endpoint independently repeats its own security/proof checks.
+    """
+    if (
+        entry.kind is not FiscalArchiveKind.AUTHORIZED_XML
+        or entry.media_type not in {"application/xml", "text/xml"}
+        or len(entry.content) > 2_097_152
+    ):
+        return False
+    try:
+        from lxml import etree
+
+        FiscalArchiveVerifier().verify_entry(entry)
+        root = etree.fromstring(
+            entry.content,
+            parser=etree.XMLParser(
+                resolve_entities=False, load_dtd=False,
+                no_network=True, huge_tree=False,
+            ),
+        )
+        if getattr(root.getroottree().docinfo, "doctype", ""):
+            return False
+        if root.tag == "{http://www.sped.fazenda.gov.br/nfse}NFSe":
+            return True
+        if root.tag == "{http://www.portalfiscal.inf.br/nfe}nfeProc":
+            # The only currently wired local PDF renderer accepts DANFE
+            # model 55. NFC-e model 65 uses a separate printable contract;
+            # advertising this action for 65 creates a broken Portal journey.
+            ns = "{http://www.portalfiscal.inf.br/nfe}"
+            invoices = root.findall(f"{ns}NFe/{ns}infNFe")
+            if len(invoices) != 1:
+                return False
+            model = invoices[0].findtext(f"{ns}ide/{ns}mod")
+            if model == "55":
+                return True
+            if model == "65":
+                try:
+                    validate_authorized_nfce_danfce(entry.content)
+                    return True
+                except FiscalValidationError:
+                    return False
+            return False
+        return False
+    except (ArchiveIntegrityError, etree.XMLSyntaxError, ValueError, TypeError):
+        return False
+
+
 class DurableHumanPortalExecutor:
     """Read canonical durable state and execute safe self-service configuration."""
 
@@ -134,12 +191,24 @@ class DurableHumanPortalExecutor:
         user_administration: HumanAdministrationService | None = None,
         commercial_reader: CommercialPortalReader | None = None,
         danfe_renderer: Callable[[bytes], bytes] | None = None,
+        danfse_renderer: Callable[[bytes], bytes] | None = None,
+        danfce_renderer: Callable[[bytes], bytes] | None = None,
     ) -> None:
         self._unit_of_work_factory = unit_of_work_factory
         self._operation_executor = operation_executor
         self._user_administration = user_administration
         self._commercial_reader = commercial_reader
         self._danfe_renderer = danfe_renderer
+        self._danfce_renderer = (
+            danfce_renderer if danfce_renderer is not None
+            else render_authorized_nfce_danfce
+        )
+        # Use the same already-approved national PDF implementation as #454.
+        # Only a scoped, verified authorized National XML may produce DANFSe.
+        self._danfse_renderer = (
+            danfse_renderer if danfse_renderer is not None
+            else render_authorized_national_danfse
+        )
         self._capabilities = (
             GovernedCapabilityReadinessService(
                 unit_of_work_factory=unit_of_work_factory,
@@ -565,6 +634,7 @@ class DurableHumanPortalExecutor:
                             "archived_at": entry.archived_at.isoformat(),
                             "content_sha256": entry.content_sha256,
                             "media_type": entry.media_type,
+                            "auxiliary_pdf_available": _printable_authorized_xml(entry),
                         }
                     )
             if surface_id in {"issuances", "errors"}:
@@ -700,6 +770,22 @@ class DurableHumanPortalExecutor:
         if not idempotency_key or not idempotency_key.strip():
             raise _portal_error(400, "MISSING_IDEMPOTENCY_KEY", "Idempotency key is required")
         scope = recovery.scope(authority, payload)
+        if operation_id in {
+            "cancelCajamarNfse", "cancelOsascoNfse", "substituteOsascoNfse",
+            "cancelBarueriNfse", "substituteBarueriNfse",
+            "cancelJundiaiNfse", "substituteJundiaiNfse",
+            "cancelGuarulhosNfse", "substituteGuarulhosNfse",
+            "cancelSantanaNfse", "substituteSantanaNfse",
+            "cancelNationalNfse",
+        }:
+            # Replay an already-scoped T07 claim without asking the gateway
+            # to preflight a note that was successfully cancelled earlier.
+            # The exact account, key, payload and session epoch are checked.
+            replay = recovery.existing_exact_request(
+                authority, operation_id, payload, idempotency_key,
+            )
+            if replay is not None:
+                return replay
         preflight = getattr(self._operation_executor, "validate_prepared", None)
         if callable(preflight):
             preflight(
@@ -743,7 +829,8 @@ class DurableHumanPortalExecutor:
             idempotency_key=str(row["original_key"]),
         )
         updated = recovery.finish(
-            authority, scope, row, result.get("entry_id", result.get("document_id"))
+            authority, scope, row, result.get("entry_id", result.get("document_id")),
+            operation_result=result,
         )
         if not legacy_result:
             return recovery.project(updated, replay=False)
@@ -776,6 +863,23 @@ class DurableHumanPortalExecutor:
                 payload=payload,
                 idempotency_key=idempotency_key,
             )
+        if operation_id in {"reviewNativeSale", "prepareNativeSale"}:
+            from .native_sale_preparation import native_sale_operation
+
+            return native_sale_operation(
+                factory=self._unit_of_work_factory, authority=authority,
+                payload=payload, idempotency_key=idempotency_key,
+                review_only=operation_id == "reviewNativeSale",
+            )
+        if operation_id == "prepareNativeNfse":
+            from .native_nfse_preparation import prepare_native_nfse
+
+            return prepare_native_nfse(
+                factory=self._unit_of_work_factory,
+                authority=authority,
+                payload=payload,
+                idempotency_key=idempotency_key,
+            )
         if operation_id == "prepareExtremaNfse":
             return self._prepare_extrema_nfse(
                 authority=authority, payload=payload, idempotency_key=idempotency_key,
@@ -797,7 +901,12 @@ class DurableHumanPortalExecutor:
                 payload=payload,
                 idempotency_key=idempotency_key,
             )
-        if operation_id == "substituteExtremaNfse":
+        if operation_id in {
+            "substituteExtremaNfse", "reviewCajamarSubstitution",
+            "substituteOsascoNfse", "substituteBarueriNfse",
+            "substituteJundiaiNfse", "substituteSantanaNfse",
+            "substituteGuarulhosNfse",
+        }:
             try:
                 unit = payload.get("unit_id")
                 if not isinstance(unit, str) or not unit.strip():
@@ -812,19 +921,37 @@ class DurableHumanPortalExecutor:
         from .fiscal_intent_recovery import PERMISSIONS
 
         if operation_id in PERMISSIONS:
-            receipt = self.prepare_fiscal_intent(
-                authority=authority,
-                operation_id=operation_id,
-                payload=payload,
-                idempotency_key=idempotency_key,
-            )
-            return self.resume_fiscal_intent(
-                authority=authority,
-                intent_id=str(receipt["intent_id"]),
-                payload=payload,
-                idempotency_key=idempotency_key,
-                legacy_result=True,
-            )
+            try:
+                receipt = self.prepare_fiscal_intent(
+                    authority=authority,
+                    operation_id=operation_id,
+                    payload=payload,
+                    idempotency_key=idempotency_key,
+                )
+                return self.resume_fiscal_intent(
+                    authority=authority,
+                    intent_id=str(receipt["intent_id"]),
+                    payload=payload,
+                    idempotency_key=idempotency_key,
+                    legacy_result=True,
+                )
+            except (PersistenceConflictError, PersistenceStateError) as exc:
+                # A second Cajamar cancellation must return a scoped HTTP 409
+                # instead of leaking a storage exception or issuing another POST.
+                # All other existing fiscal operations retain their contracts.
+                if operation_id not in {
+                    "cancelCajamarNfse", "cancelOsascoNfse", "substituteOsascoNfse",
+                    "cancelBarueriNfse", "substituteBarueriNfse",
+                    "cancelJundiaiNfse", "substituteJundiaiNfse",
+                    "cancelGuarulhosNfse", "substituteGuarulhosNfse",
+                    "cancelSantanaNfse", "substituteSantanaNfse",
+            "cancelNationalNfse",
+                }:
+                    raise
+                raise _portal_error(
+                    409, "MUNICIPAL_CANCELLATION_STATE_CONFLICT",
+                    "Original cancellation is completed, pending or under investigation",
+                ) from exc
         if self._operation_executor is None:
             raise _runtime_unavailable("Fiscal portal operation executor is not configured")
         return self._operation_executor.execute(
@@ -856,7 +983,11 @@ class DurableHumanPortalExecutor:
             raise _portal_error(
                 403, "FISCAL_ARTIFACT_FORBIDDEN", "Document access denied"
             ) from exc
-        if kind not in {FiscalArchiveKind.AUTHORIZED_XML, FiscalArchiveKind.DANFE}:
+        if kind not in {
+            FiscalArchiveKind.AUTHORIZED_XML,
+            FiscalArchiveKind.DANFE,
+            FiscalArchiveKind.AUXILIARY_PDF,
+        }:
             raise _portal_error(
                 400, "FISCAL_ARTIFACT_KIND_INVALID", "Unsupported fiscal file"
             )
@@ -874,7 +1005,10 @@ class DurableHumanPortalExecutor:
         with self._unit_of_work_factory() as uow:
             entries = uow.archive.list_for_document(scope, document_reference)
         matches = [entry for entry in entries if entry.kind is kind]
-        if not matches and kind is FiscalArchiveKind.DANFE and self._danfe_renderer:
+        if not matches and (
+            kind is FiscalArchiveKind.AUXILIARY_PDF
+            or (kind is FiscalArchiveKind.DANFE and self._danfe_renderer is not None)
+        ):
             # Generate the printable PDF ONLY from an already archived, genuine
             # authorized XML. No synthetic fiscal authorization or XML is created.
             authorized = [
@@ -888,11 +1022,52 @@ class DurableHumanPortalExecutor:
                     )
                 try:
                     FiscalArchiveVerifier().verify_entry(original)
-                    pdf = self._danfe_renderer(original.content)
+                    if len(original.content) > 2 * 1024 * 1024:
+                        raise FiscalValidationError("Authorized XML too large")
+                    # Both legacy DANFE and unified auxiliary PDFs must use a
+                    # document-specific renderer, never infer NF-e from a PDF URL.
+                    root = etree.fromstring(
+                        original.content,
+                        parser=etree.XMLParser(
+                            resolve_entities=False, load_dtd=False,
+                            no_network=True, huge_tree=False,
+                        ),
+                    )
+                    if getattr(root.getroottree().docinfo, "doctype", ""):
+                        raise FiscalValidationError("Forbidden XML DOCTYPE")
+                    renderer = self._danfe_renderer
+                    if root.tag == "{http://www.sped.fazenda.gov.br/nfse}NFSe":
+                        if kind is not FiscalArchiveKind.AUXILIARY_PDF:
+                            raise FiscalValidationError("DANFE cannot represent national NFS-e")
+                        renderer = self._danfse_renderer
+                    elif root.tag == "{http://www.portalfiscal.inf.br/nfe}nfeProc":
+                        ns = "{http://www.portalfiscal.inf.br/nfe}"
+                        invoices = root.findall(f"{ns}NFe/{ns}infNFe")
+                        if len(invoices) != 1:
+                            raise FiscalValidationError("Ambiguous NFe/NFC-e model")
+                        model = invoices[0].findtext(f"{ns}ide/{ns}mod")
+                        if model == "65":
+                            if kind is not FiscalArchiveKind.AUXILIARY_PDF:
+                                raise FiscalValidationError("DANFE 55 cannot represent NFC-e 65")
+                            renderer = self._danfce_renderer
+                        elif model != "55":
+                            raise FiscalValidationError("Unsupported NFe/NFC-e model")
+                    else:
+                        raise FiscalValidationError("Unsupported authorized XML kind")
+                    if renderer is None:
+                        raise FiscalValidationError("Auxiliary PDF generator unavailable")
+                    pdf = renderer(original.content)
+                    if not pdf.startswith(b"%PDF-") or len(pdf) > 8 * 1024 * 1024:
+                        raise FiscalValidationError("Invalid auxiliary PDF")
                 except (ArchiveIntegrityError, FiscalValidationError) as exc:
                     raise _portal_error(
-                        409, "FISCAL_DANFE_RENDER_FAILED",
-                        "Não foi possível gerar DANFE do XML autorizado",
+                        409, "FISCAL_PDF_RENDER_FAILED",
+                        "Não foi possível gerar o PDF do XML autorizado",
+                    ) from exc
+                except etree.XMLSyntaxError as exc:
+                    raise _portal_error(
+                        409, "FISCAL_PDF_RENDER_FAILED",
+                        "XML autorizado inválido para impressão",
                     ) from exc
                 return pdf, "application/pdf"
         if len(matches) != 1:
@@ -918,6 +1093,7 @@ class DurableHumanPortalExecutor:
                 {"application/xml", "text/xml"}
             ),
             FiscalArchiveKind.DANFE: frozenset({"application/pdf"}),
+            FiscalArchiveKind.AUXILIARY_PDF: frozenset({"application/pdf"}),
         }
         if entry.media_type not in allowed_media[kind]:
             raise _portal_error(

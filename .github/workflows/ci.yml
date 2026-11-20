@@ -6,10 +6,13 @@ on:
     branches:
       - main
       - production
+      - "integration/nfcore-*"
   push:
     branches:
       - main
+      - production
       - "feat/nfcore-web-*"
+      - "fix/nfcore-*"
 
 permissions:
   contents: read
@@ -55,7 +58,7 @@ jobs:
         run: python scripts/ci/check_repository_secrets.py
 
       - name: Install Python
-        run: python -m pip install -e ".[dev]"
+        run: python -m pip install -e ".[dev,telemetry]"
 
       - name: Validate canonical execution plan
         run: python3 scripts/check_nfcore_plan.py
@@ -70,7 +73,7 @@ jobs:
         run: mypy
 
       - name: Pytest
-        run: pytest
+        run: pytest -ra
 
       - name: Python dependency audit
         run: |
@@ -354,3 +357,9 @@ jobs:
               response = client.get('/health/ready')
               assert response.status_code == 200, response.text
           PY
+
+      - name: Rehearse exact v21 to v23 transition and pre-cutover recovery
+        run: |
+          git fetch --no-tags --depth=1 origin ea4bdd3bcb9b61e6522081a14e5cc9ad1ced9599
+          bash -n scripts/ci/rehearse_v21_v23_cutover.sh
+          bash scripts/ci/rehearse_v21_v23_cutover.sh

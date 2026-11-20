@@ -11,16 +11,28 @@ import gzip
 import json
 import ssl
 from collections.abc import Callable
+from datetime import UTC, datetime
 from urllib.error import HTTPError, URLError
 from urllib.request import HTTPSHandler, Request, build_opener
 
 from lxml import etree
 
-from kordena_fiscal.domain import FiscalValidationError
+from kordena_fiscal.domain import FiscalEnvironment, FiscalValidationError
 from kordena_fiscal.gateway.fiscal_tls import RejectFiscalRedirects, build_fiscal_tls_context
+from kordena_fiscal.gateway.nfse_national_receipt import (
+    NationalReceiptIdentity,
+    NfseReceiptVerificationError,
+    require_national_receipt_signer_pins,
+    validate_official_nfse_receipt,
+)
+from kordena_fiscal.issuance.nfe_nfse import NfseRejectionDetail
 from kordena_fiscal.signing.nfse_xmldsig import sign_nfse_dps_xml
 from kordena_fiscal.vault import EphemeralCertificateMaterial
 from kordena_fiscal.xml.nfse_nacional_schema import national_dps_validator
+from kordena_fiscal.xml.nfse_national_profiles import (
+    PRODUCTION_PROFILE,
+    select_national_dps_profile,
+)
 
 SEFIN_HOMOLOGATION_NFSE_URL = (
     "https://sefin.producaorestrita.nfse.gov.br/API/SefinNacional/nfse"
@@ -69,6 +81,7 @@ def parse_signed_dps_info(signed_dps_xml: bytes) -> etree._Element:
 def build_nfse_dps_request(
     signed_dps_xml: bytes, *, issuer_cnpj: str | None = None,
     issuer_municipality_ibge: str | None = None,
+    schema_profile: str = PRODUCTION_PROFILE,
 ) -> bytes:
     """Build the public Emissor Nacional API JSON envelope from signed DPS XML."""
     info = parse_signed_dps_info(signed_dps_xml)
@@ -81,20 +94,52 @@ def build_nfse_dps_request(
         if info.findtext(f"{{{_NFSE}}}prest/{{{_NFSE}}}CNPJ") != issuer_cnpj:
             raise OfficialNfseTransportError("DPS issuer disagrees with the scoped A1")
         version = info.getroottree().getroot().get("versao", "")
-        national_dps_validator(version).validate_document(signed_dps_xml)
+        national_dps_validator(version, profile=schema_profile).validate_document(signed_dps_xml)
     return json.dumps(
         {"dpsXmlGZipB64": base64.b64encode(gzip.compress(signed_dps_xml, mtime=0)).decode("ascii")},
         separators=(",", ":"),
     ).encode("ascii")
 
 
-def parse_nfse_homologation_response(raw: bytes) -> dict[str, str]:
+def parse_national_nfse_rejections(payload: object) -> tuple[NfseRejectionDetail, ...]:
+    """Normalize all SEFIN error entries without truncation or secret echo.
+
+    Preserves raw provider descriptions in the private fiscal result; callers
+    must never return that text directly through HTTP or log it. The caller
+    stores details under the scoped fiscal archive's retention policy.
+    """
+    if not isinstance(payload, dict):
+        raise OfficialNfseTransportError("Resposta NFS-e Nacional inválida")
+    errors = payload.get("erros")
+    if errors is None:
+        return ()
+    if not isinstance(errors, list) or not 1 <= len(errors) <= 32:
+        raise OfficialNfseTransportError("Lista de rejeições SEFIN inválida")
+    details: list[NfseRejectionDetail] = []
+    for entry in errors:
+        if not isinstance(entry, dict):
+            raise OfficialNfseTransportError("Rejeição SEFIN inválida")
+        code = entry.get("Codigo", entry.get("codigo"))
+        message = entry.get("Descricao", entry.get("descricao"))
+        if (not isinstance(code, (str, int)) or isinstance(code, bool)
+                or not isinstance(message, str)):
+            raise OfficialNfseTransportError("Rejeição SEFIN sem código e motivo")
+        details.append(NfseRejectionDetail(
+            code=str(code), origin="SEFIN_NACIONAL", raw_message=message,
+        ))
+    return tuple(details)
+
+
+def parse_nfse_homologation_response(
+    raw: bytes, *, expected: NationalReceiptIdentity | None = None,
+    schema_profile: str | None = None,
+) -> dict[str, str]:
     """Expose only references and canonical XML; never reflect provider internals."""
     if not raw or len(raw) > _MAX_RESPONSE_BYTES:
         raise OfficialNfseTransportError("Resposta da NFS-e Nacional ausente ou excede limite")
     try:
         payload = json.loads(raw)
-    except (ValueError, UnicodeDecodeError):
+    except (ValueError, UnicodeDecodeError, RecursionError):
         raise OfficialNfseTransportError("Resposta inválida da NFS-e Nacional") from None
     if not isinstance(payload, dict):
         raise OfficialNfseTransportError("Resposta inválida da NFS-e Nacional")
@@ -102,38 +147,17 @@ def parse_nfse_homologation_response(raw: bytes) -> dict[str, str]:
     encoded = payload.get("nfseXmlGZipB64")
     if isinstance(access_key, str) and access_key and isinstance(encoded, str) and encoded:
         try:
-            zipped = base64.b64decode(encoded, validate=True)
-            if len(zipped) > _MAX_RESPONSE_BYTES:
-                raise ValueError
-            # Bound the uncompressed payload to prevent compression bombs.
-            with gzip.GzipFile(fileobj=__import__("io").BytesIO(zipped)) as stream:
-                document = stream.read(_MAX_RESPONSE_BYTES + 1)
-            if len(document) > _MAX_RESPONSE_BYTES:
-                raise ValueError
-            root = etree.fromstring(
-                document, parser=etree.XMLParser(resolve_entities=False, no_network=True)
+            # A direct POST acknowledgement and a later GET recovery share
+            # exactly one verification contract before AUTHORIZED is returned.
+            document = validate_official_nfse_receipt(
+                raw, access_key, expected=expected, schema_profile=schema_profile,
             )
-            ns = "http://www.sped.fazenda.gov.br/nfse"
-            if (
-                root.tag != f"{{{ns}}}NFSe"
-                or bool(getattr(root.getroottree().docinfo, "doctype", ""))
-                or not access_key.isascii()
-                or not access_key.isdecimal()
-                or len(access_key) != 50
-            ):
-                raise ValueError("Non-NFSe document or invalid national access key")
-            # A random valid-looking NFSe root is not fiscal proof. Bind the
-            # official 50-digit response key to infNFSe/Id ("NFS" + key).
-            # Source: NFS-e national DANFSe NT 008/2026, sec. 2.1.1,
-            # and official NFS-e XSD identifier contract.
-            infos = root.findall(f"{{{ns}}}infNFSe")
-            if len(infos) != 1 or infos[0].get("Id") != "NFS" + access_key:
-                raise ValueError("NFS-e XML does not belong to response access key")
-        except (ValueError, OSError, etree.XMLSyntaxError):
+            rendered = document.decode("utf-8")
+        except (NfseReceiptVerificationError, UnicodeDecodeError):
             raise OfficialNfseTransportError(
                 "XML retornado pela NFS-e Nacional é inválido"
             ) from None
-        return {"status": "authorized", "chaveAcesso": access_key, "xml": document.decode("utf-8")}
+        return {"status": "authorized", "chaveAcesso": access_key, "xml": rendered}
     raise OfficialNfseTransportError(
         "NFS-e Nacional não autorizou a DPS; consulte as rejeições no retorno oficial"
     )
@@ -156,6 +180,7 @@ class NfseNationalHomologationTransport:
         self._certificate = certificate
         self._timeout = timeout_seconds
         self._exchange = exchange or self._https_exchange
+        self._requires_receipt_trust = exchange is None
 
     @staticmethod
     def _https_exchange(body: bytes, context: ssl.SSLContext, timeout: float) -> bytes:
@@ -179,9 +204,26 @@ class NfseNationalHomologationTransport:
 
     def submit_signed_dps(self, signed_dps_xml: bytes) -> dict[str, str]:
         """Send only homologation DPS, without changing business authorization."""
-        body = build_nfse_dps_request(signed_dps_xml)
+        info = parse_signed_dps_info(signed_dps_xml)
+        version = info.getroottree().getroot().get("versao", "")
+        profile = select_national_dps_profile(
+            environment=FiscalEnvironment.HOMOLOGATION, schema_version=version,
+            effective_on=datetime.now(UTC).date(),
+        )
+        # This public HTTP boundary must validate even without optional issuer
+        # correlation. The envelope helper alone is not permission to transmit.
+        national_dps_validator(version, profile=profile).validate_document(signed_dps_xml)
+        expected = NationalReceiptIdentity.from_dps_info(info)
+        body = build_nfse_dps_request(signed_dps_xml, schema_profile=profile)
+        if self._requires_receipt_trust:
+            require_national_receipt_signer_pins()
+            from kordena_fiscal.gateway.nfse_receipt_pki import (
+                require_national_receipt_pki_ready,
+            )
+            require_national_receipt_pki_ready()
         return parse_nfse_homologation_response(
-            self._exchange(body, build_fiscal_tls_context(self._certificate), self._timeout)
+            self._exchange(body, build_fiscal_tls_context(self._certificate), self._timeout),
+            expected=expected, schema_profile=profile,
         )
 
     def sign_and_submit_dps(self, unsigned_dps_xml: bytes) -> dict[str, str]:

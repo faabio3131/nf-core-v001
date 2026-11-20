@@ -248,3 +248,59 @@ test("A1 file validator accepts exported .pfx/.p12 instead of requiring a backsl
   assert.equal(acceptsA1File("certificado.pfx", 0), false);
   assert.equal(acceptsA1File("certificado.p12", 2 * 1024 * 1024 + 1), false);
 });
+
+
+test("Barueri PMB004 events are accessible through the same governed Portal", () => {
+  assert.match(script, /function appendBarueriFiscalEvent\(article, operation\)/);
+  assert.match(script, /function appendBarueriEventReconciliation\(article\)/);
+  for (const operation of [
+    "cancelBarueriNfse", "substituteBarueriNfse",
+    "reconcileBarueriNfseCancellation",
+  ]) {
+    assert.ok(script.includes(operation));
+  }
+  assert.match(script, /substitution_justification_code: reason\.value/);
+  assert.match(script, /human_approval: approved\.checked/);
+  assert.match(script, /Idempotency-Key": attempt\.key/);
+  assert.match(script, /No reenvie|Não retransmita|não reenvie/);
+  assert.match(script, /reconciliation\.execute/);
+  assert.match(script, /viewId === "issuances"\) appendBarueriFiscalEvent/);
+  assert.match(script, /appendBarueriEventReconciliation\(article\)/);
+  assert.doesNotMatch(script, /tenant_id:\s*selectedFiscalUnit/);
+});
+
+
+test("municipal SP5 event surfaces are discoverable in the authenticated portal", () => {
+  const operations = [
+    "cancelOsascoNfse", "substituteOsascoNfse",
+    "cancelSantanaNfse", "substituteSantanaNfse",
+    "reconcileSantanaNfseCancellation",
+    "reconcileSantanaNfseSubstitution",
+    "reconcileJundiaiNfseCancellation",
+  ];
+  for (const operation of operations) {
+    assert.ok(script.includes('appendReviewedMunicipalWebAction(article, "' + operation + '")'));
+    assert.ok(script.includes(operation + ": {"));
+  }
+  assert.match(script, /!configured\.includes\(operation\)/);
+  assert.match(script, /permissions\.includes\("document\.cancel"\)/);
+  assert.match(script, /permissions\.includes\("document\.issue"\)/);
+  assert.match(script, /permissions\.includes\("reconciliation\.execute"\)/);
+  assert.match(script, /selectedFiscalEnvironment !== "homologation"/);
+  assert.match(script, /headers: \{"X-CSRF-Token": csrfToken\(\), "Idempotency-Key": key\}/);
+  assert.match(script, /if \(!recovery\) attempted = true/);
+  assert.match(script, /if \(recovery\) submit\.disabled = false/);
+});
+
+test("municipal SP5 form payload fields match reviewed runtime contracts", () => {
+  assert.match(script, /reason: "cancellation_reason"/);
+  assert.match(script, /reason: "reason_description"/);
+  assert.match(script, /codes: \["1", "2", "9"\]/);
+  assert.match(script, /codes: \["01", "02", "03", "04", "05", "99"\]/);
+  assert.match(script, /"document_id", "ID da NFS-e original autorizada"/);
+  assert.match(script, /"original_id", "ID da NFS-e original autorizada"/);
+  assert.match(script, /"replacement_id", "ID da nova DPS previamente preparada"/);
+  assert.match(script, /if \(!recovery\) payload\.human_approval/);
+  assert.match(script, /"\/v1\/portal\/operations\/" \+ operation/);
+  assert.match(script, /NÃO retransmita/);
+});

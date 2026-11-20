@@ -63,6 +63,7 @@ from kordena_fiscal.issuance.webiss_extrema_builder import (
     encode_extrema_intent,
 )
 from kordena_fiscal.lifecycle import FiscalDocumentState
+from kordena_fiscal.lifecycle.idempotency import IdempotencyConflictError
 from kordena_fiscal.persistence.ports import PersistenceConflictError, PersistenceStateError
 from kordena_fiscal.persistence.sqlite import SqliteFiscalDatabase
 from kordena_fiscal.vault import EphemeralCertificateMaterial
@@ -257,7 +258,7 @@ def test_canonical_durable_issue_replay_query_without_resend(tmp_path):
     assert restarted.load_extrema_rps_intent(
         request.document.scope, request.document.document_id,
     ) == intent
-    with pytest.raises(Exception, match="cannot change"):
+    with pytest.raises(IdempotencyConflictError, match="different content"):
         restarted.prepare_nfse_authorization(
             request.document, occurred_at=NOW, retention=RETENTION,
         )

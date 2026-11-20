@@ -1,0 +1,129 @@
+{
+  "municipality_ibge": "3518800",
+  "verified_date": "2026-11-16",
+  "source_url": "https://guarulhos.giss.com.br/giss-ajuda/manuais/Schemas_XSD-Servicos_Prestados.rar",
+  "source_archive_sha256": "c14a542de5fa2ce1a6a2b43da6e4eb0bebab12e6ebc850fe24dbdc8f6bb04356",
+  "classification": "BYTE_IDENTICAL_SCHEMA_RESOURCES_NOT_EXTERNAL_HOMOLOGATION",
+  "files": [
+    {
+      "name": "cabecalho-v2_04.xsd",
+      "shared_path": "contracts/official/jundiai/giss_v2_04/xsd/Schemas_XSD-Servicos_Prestados/cabecalho-v2_04.xsd",
+      "sha256": "9ab3f7174d9526f2bfbb2a10c1098adaeb0c34db033a52dc5044e920e45d5b53"
+    },
+    {
+      "name": "cancelar-nfse-envio-v2_04.xsd",
+      "shared_path": "contracts/official/jundiai/giss_v2_04/xsd/Schemas_XSD-Servicos_Prestados/cancelar-nfse-envio-v2_04.xsd",
+      "sha256": "531fa12918d84526d17fefe71eff1a5a5d2f95f632cac38fc6106fe88588f7db"
+    },
+    {
+      "name": "cancelar-nfse-reposta-v2_04.xsd",
+      "shared_path": "contracts/official/jundiai/giss_v2_04/xsd/Schemas_XSD-Servicos_Prestados/cancelar-nfse-reposta-v2_04.xsd",
+      "sha256": "938f1fd5df50b632f2222dd29acdf000278bfdab66f0d1ac99a20755adcca0c6"
+    },
+    {
+      "name": "consultar-lote-rps-envio-v2_04.xsd",
+      "shared_path": "contracts/official/jundiai/giss_v2_04/xsd/Schemas_XSD-Servicos_Prestados/consultar-lote-rps-envio-v2_04.xsd",
+      "sha256": "1e9bddc486ee85da3918d2ee0e23e353430a5d2e79c2858c1e0947f395b21c79"
+    },
+    {
+      "name": "consultar-lote-rps-resposta-v2_04.xsd",
+      "shared_path": "contracts/official/jundiai/giss_v2_04/xsd/Schemas_XSD-Servicos_Prestados/consultar-lote-rps-resposta-v2_04.xsd",
+      "sha256": "540ed973f8d1c21cfd05fd8c8512a7547f56a5f4a5ca23c1acd309404833671a"
+    },
+    {
+      "name": "consultar-nfse-faixa-envio-v2_04.xsd",
+      "shared_path": "contracts/official/jundiai/giss_v2_04/xsd/Schemas_XSD-Servicos_Prestados/consultar-nfse-faixa-envio-v2_04.xsd",
+      "sha256": "0db5ead65d03e587f21cb76c2509257a19aa087ecea7da897832204b0aef872b"
+    },
+    {
+      "name": "consultar-nfse-faixa-resposta-v2_04.xsd",
+      "shared_path": "contracts/official/jundiai/giss_v2_04/xsd/Schemas_XSD-Servicos_Prestados/consultar-nfse-faixa-resposta-v2_04.xsd",
+      "sha256": "f361ca1b5fb7e9e123385c021193f211c03128c620c33c0f0cc32f6c0e391fc5"
+    },
+    {
+      "name": "consultar-nfse-rps-envio-v2_04.xsd",
+      "shared_path": "contracts/official/jundiai/giss_v2_04/xsd/Schemas_XSD-Servicos_Prestados/consultar-nfse-rps-envio-v2_04.xsd",
+      "sha256": "2c6cb159357a7ea9d1200b804bd430fecf9f149c074c56cf1c640e7e1a3e618b"
+    },
+    {
+      "name": "consultar-nfse-rps-resposta-v2_04.xsd",
+      "shared_path": "contracts/official/jundiai/giss_v2_04/xsd/Schemas_XSD-Servicos_Prestados/consultar-nfse-rps-resposta-v2_04.xsd",
+      "sha256": "f7de2165b15dd26fb8632cdb739e88ebe40aa9c308720f0762b439527c1f7295"
+    },
+    {
+      "name": "consultar-nfse-servico-prestado-envio-v2_04.xsd",
+      "shared_path": "contracts/official/jundiai/giss_v2_04/xsd/Schemas_XSD-Servicos_Prestados/consultar-nfse-servico-prestado-envio-v2_04.xsd",
+      "sha256": "018ee6b23a5bb61939efc4f7a2f8639d6055c5f161e69e7234fc9b6970ea14e8"
+    },
+    {
+      "name": "consultar-nfse-servico-prestado-resposta-v2_04.xsd",
+      "shared_path": "contracts/official/jundiai/giss_v2_04/xsd/Schemas_XSD-Servicos_Prestados/consultar-nfse-servico-prestado-resposta-v2_04.xsd",
+      "sha256": "9e859628710dc509519b62620e834f438a03bf7fec9633bcdcf055fbce7cd9c4"
+    },
+    {
+      "name": "consultar-nfse-servico-tomado-envio-v2_04.xsd",
+      "shared_path": "contracts/official/jundiai/giss_v2_04/xsd/Schemas_XSD-Servicos_Prestados/consultar-nfse-servico-tomado-envio-v2_04.xsd",
+      "sha256": "147851d9ac26cd628c25f155df13b7174594dffd4571e884a4c90b8a012f3800"
+    },
+    {
+      "name": "consultar-nfse-servico-tomado-resposta-v2_04.xsd",
+      "shared_path": "contracts/official/jundiai/giss_v2_04/xsd/Schemas_XSD-Servicos_Prestados/consultar-nfse-servico-tomado-resposta-v2_04.xsd",
+      "sha256": "b8891863510e558f757d27f06e4bfd4b792eb87b097ce47ea9d4035b4a263fd2"
+    },
+    {
+      "name": "enviar-lote-rps-envio-v2_04.xsd",
+      "shared_path": "contracts/official/jundiai/giss_v2_04/xsd/Schemas_XSD-Servicos_Prestados/enviar-lote-rps-envio-v2_04.xsd",
+      "sha256": "7205c3d7e0052291505e18c769dfd933e2906da87ed7bd21316051c4f6ddfcf5"
+    },
+    {
+      "name": "enviar-lote-rps-resposta-v2_04.xsd",
+      "shared_path": "contracts/official/jundiai/giss_v2_04/xsd/Schemas_XSD-Servicos_Prestados/enviar-lote-rps-resposta-v2_04.xsd",
+      "sha256": "97688e46b9608ffd184e1940f14496861e904aa8bcb493918dab483fe465e8c0"
+    },
+    {
+      "name": "enviar-lote-rps-sincrono-envio-v2_04.xsd",
+      "shared_path": "contracts/official/jundiai/giss_v2_04/xsd/Schemas_XSD-Servicos_Prestados/enviar-lote-rps-sincrono-envio-v2_04.xsd",
+      "sha256": "22765efe869d0d45d1a2b4129974c03bfd2e7132f5f842e11fc81a74f73955ad"
+    },
+    {
+      "name": "enviar-lote-rps-sincrono-resposta-v2_04.xsd",
+      "shared_path": "contracts/official/jundiai/giss_v2_04/xsd/Schemas_XSD-Servicos_Prestados/enviar-lote-rps-sincrono-resposta-v2_04.xsd",
+      "sha256": "e021d910a924186a0a7e169d6c36f26041fbc9d6669b8e8b929070cd837111a8"
+    },
+    {
+      "name": "gerar-nfse-envio-v2_04.xsd",
+      "shared_path": "contracts/official/jundiai/giss_v2_04/xsd/Schemas_XSD-Servicos_Prestados/gerar-nfse-envio-v2_04.xsd",
+      "sha256": "eb7592a127fc1c2f1db87515c90242fd20a9188053256cc7038886b87834b12b"
+    },
+    {
+      "name": "gerar-nfse-resposta-v2_04.xsd",
+      "shared_path": "contracts/official/jundiai/giss_v2_04/xsd/Schemas_XSD-Servicos_Prestados/gerar-nfse-resposta-v2_04.xsd",
+      "sha256": "4fa96e311b8e1239c7e211e1d49235080070e9b38ebe466f67a28354e808ca91"
+    },
+    {
+      "name": "nfse_v2-04.xsd",
+      "shared_path": "contracts/official/jundiai/giss_v2_04/xsd/Schemas_XSD-Servicos_Prestados/nfse_v2-04.xsd",
+      "sha256": "e9b485f52799a767394c18b9dadb669ddd2e45ce2a42ab827da6d09c0ff4873d"
+    },
+    {
+      "name": "substituir-nfse-envio-v2_04.xsd",
+      "shared_path": "contracts/official/jundiai/giss_v2_04/xsd/Schemas_XSD-Servicos_Prestados/substituir-nfse-envio-v2_04.xsd",
+      "sha256": "516df4a73d70c5b4193472f5f31de38a8769aa915f1f69f1557f31cc39607ae6"
+    },
+    {
+      "name": "substituir-nfse-resposta-v2_04.xsd",
+      "shared_path": "contracts/official/jundiai/giss_v2_04/xsd/Schemas_XSD-Servicos_Prestados/substituir-nfse-resposta-v2_04.xsd",
+      "sha256": "bdce5d85ae9b64dcbd5ebaea59ed93b54788f713736f69b02e7bba202fa132f0"
+    },
+    {
+      "name": "tipos-v2_04.xsd",
+      "shared_path": "contracts/official/jundiai/giss_v2_04/xsd/Schemas_XSD-Servicos_Prestados/tipos-v2_04.xsd",
+      "sha256": "09878c9257e243139b1136ed16f49a08eb2187bc0f2eaba0fd5532f74b644b17"
+    },
+    {
+      "name": "xmldsig-core-schema20020212.xsd",
+      "shared_path": "contracts/official/jundiai/giss_v2_04/xsd/Schemas_XSD-Servicos_Prestados/xmldsig-core-schema20020212.xsd",
+      "sha256": "95e4cdab281a964f966f04493b95924864caa412c47664a4760c5dce50f885c6"
+    }
+  ]
+}

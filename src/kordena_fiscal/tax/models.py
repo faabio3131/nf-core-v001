@@ -72,6 +72,7 @@ class TaxRuleContext:
     operation_type: TaxOperationType
     recipient_profile: RecipientTaxProfile
     product: FiscalProductProfile
+    destination_state_code: str | None = None
 
     def __post_init__(self) -> None:
         if not isinstance(self.scope, ExecutionScope):
@@ -80,6 +81,9 @@ class TaxRuleContext:
             raise FiscalValidationError("instant must be timezone-aware")
         if not isinstance(self.jurisdiction, BrazilianJurisdiction):
             raise FiscalValidationError("jurisdiction must be a BrazilianJurisdiction")
+        if self.destination_state_code is not None:
+            destination = BrazilianJurisdiction(self.destination_state_code).state_code
+            object.__setattr__(self, "destination_state_code", destination)
         if not isinstance(self.tax_regime, TaxRegimeCode):
             raise FiscalValidationError("tax_regime must be a TaxRegimeCode")
         if not isinstance(self.document_kind, FiscalDocumentKind):
@@ -107,10 +111,14 @@ class TaxRuleSelector:
     operation_type: TaxOperationType | None = None
     recipient_profile: RecipientTaxProfile | None = None
     ncm_prefix: str | None = None
+    destination_state_code: str | None = None
 
     def __post_init__(self) -> None:
         state_code = self.state_code
         municipality_code = self.municipality_ibge_code
+        if self.destination_state_code is not None:
+            destination = BrazilianJurisdiction(self.destination_state_code).state_code
+            object.__setattr__(self, "destination_state_code", destination)
         if state_code is not None:
             state_code = BrazilianJurisdiction(state_code).state_code
             object.__setattr__(self, "state_code", state_code)
@@ -158,6 +166,7 @@ class TaxRuleSelector:
             self.operation_type,
             self.recipient_profile,
             self.ncm_prefix,
+            self.destination_state_code,
         )
         constrained = sum(value is not None for value in values)
         ncm_depth = len(self.ncm_prefix) if self.ncm_prefix is not None else 0
@@ -165,6 +174,11 @@ class TaxRuleSelector:
 
     def matches(self, context: TaxRuleContext) -> bool:
         if self.state_code is not None and self.state_code != context.jurisdiction.state_code:
+            return False
+        if (
+            self.destination_state_code is not None
+            and self.destination_state_code != context.destination_state_code
+        ):
             return False
         if (
             self.municipality_ibge_code is not None
