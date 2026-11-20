@@ -3,7 +3,7 @@ from datetime import date
 import pytest
 
 from kordena_fiscal.domain import FiscalValidationError
-from kordena_fiscal.tax.simples_cash import reconcile_cash
+from kordena_fiscal.tax.simples_cash import reconcile_cash, verify_cash_continuity
 
 
 def register(event="none", prior_taxed=200, received=300):
@@ -52,3 +52,21 @@ def test_control_mismatch_refused():
     data["control_totals"]["closing"] = 1
     with pytest.raises(FiscalValidationError, match="reconcile"):
         reconcile_cash(date(2026, 11, 1), data)
+
+
+def test_monthly_continuity_rejects_missing_or_rewritten_installment():
+    previous = register()
+    current = register(prior_taxed=500, received=100)
+    row = current["installments"][0]
+    row["prior_received_cents"] = 500
+    current["control_totals"].update(
+        opening=500, closing=400, taxable=100, previously_taxed_received=0,
+    )
+    verify_cash_continuity(date(2026, 11, 1), current, previous)
+    current["installments"] = []
+    with pytest.raises(FiscalValidationError, match="missing"):
+        verify_cash_continuity(date(2026, 11, 1), current, previous)
+    current["installments"] = [row]
+    row["principal_cents"] = 2000
+    with pytest.raises(FiscalValidationError, match="changed"):
+        verify_cash_continuity(date(2026, 11, 1), current, previous)

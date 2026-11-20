@@ -8,7 +8,7 @@ from typing import Any
 from kordena_fiscal.cognitive.economy_contract import LegalCitation
 from kordena_fiscal.domain import Cnpj, FiscalValidationError
 from kordena_fiscal.persistence.economy_store import EconomyStore, _digest
-from kordena_fiscal.tax.simples_cash import reconcile_cash
+from kordena_fiscal.tax.simples_cash import reconcile_cash, verify_cash_continuity
 from kordena_fiscal.tax.simples_comparison import compare_assessment
 from kordena_fiscal.tax.simples_nacional import Activity, MonthFacts, SimplesFacts
 from kordena_fiscal.tax.simples_segregation import (
@@ -28,6 +28,41 @@ JURISDICTION = "BR"
 NORMATIVE_REFERENCE = "CGSN140/2018 art.25"
 
 
+
+def _verify_cash_history(
+    store: EconomyStore, snapshot: dict[str, Any],
+) -> None:
+    content = snapshot["content"]
+    if content.get("basis") != "cash":
+        return
+    competence = date.fromisoformat(snapshot["competence"])
+    register = content["cash_register"]
+    if competence.month == 1 or competence == date.fromisoformat(content["opened_month"]):
+        reference = register.get("opening_reference")
+        if not isinstance(reference, str) or not reference.strip():
+            raise FiscalValidationError("reviewed cash opening reference required")
+        if competence == date.fromisoformat(content["opened_month"]) and any(
+            date.fromisoformat(row["issued_on"]) < competence
+            for row in register["installments"]
+        ):
+            raise FiscalValidationError("opening business cannot have historical installments")
+        return
+    ref = register.get("previous_snapshot")
+    if not isinstance(ref, dict) or set(ref) != {"record_id", "version", "digest"}:
+        raise FiscalValidationError("previous scoped cash snapshot required")
+    previous = store.record("fm_economy_snapshots", ref["record_id"], ref["version"])
+    month = date(competence.year, competence.month - 1, 1)
+    if (previous is None or previous["digest"] != ref["digest"]
+            or previous["issuer_cnpj"] != snapshot["issuer_cnpj"]
+            or previous["competence"] != month.isoformat()
+            or previous["content"].get("basis") != "cash"
+            or previous["content"].get("review_status") != "reviewed"):
+        raise FiscalValidationError("previous scoped cash snapshot mismatch")
+    if previous["content"]["cash_register"]["closing_event"] != "none":
+        raise FiscalValidationError("cash register already closed")
+    verify_cash_continuity(competence, register, previous["content"]["cash_register"])
+
+
 def evaluate_segregation(
     store: EconomyStore, *, snapshot_id: str, snapshot_version: int,
     rule_id: str, rule_version: int, verify_issuer: Callable[[str, SimplesFacts], None],
@@ -37,6 +72,7 @@ def evaluate_segregation(
     rule = store.record("fm_economy_benefits", rule_id, rule_version)
     if snapshot is None or rule is None:
         raise FiscalValidationError("scoped segregation evidence unavailable")
+    _verify_cash_history(store, snapshot)
     return _evaluate(snapshot, rule, verify_issuer=verify_issuer, assessment=assessment)
 
 
@@ -169,6 +205,7 @@ def import_reviewed_segregation(
         "content": rule_content, "digest": _digest(rule_content)[1],
     }
     result = _evaluate(snapshot, rule, verify_issuer=verify_issuer)
+    _verify_cash_history(store, snapshot)
     old_snapshot = store.record("fm_economy_snapshots", snapshot_id, snapshot_version)
     old_rule = store.record("fm_economy_benefits", rule_id, rule_version)
     for old, proposed in ((old_snapshot, snapshot), (old_rule, rule)):

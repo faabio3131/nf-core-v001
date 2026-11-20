@@ -90,3 +90,35 @@ def reconcile_cash(
         if register["control_totals"][key] != value:
             raise FiscalValidationError("cash control totals do not reconcile")
     return tuple(result), totals
+
+
+def verify_cash_continuity(
+    competence: date, register: dict[str, Any], previous: dict[str, Any],
+) -> None:
+    """Require the exact preceding reviewed register, with no lost receivable."""
+    month = date(competence.year - (competence.month == 1),
+                 (competence.month - 2) % 12 + 1, 1)
+    if month.year != 2026:
+        raise FiscalValidationError("historical opening requires reviewed baseline")
+    prior_lines, _ = reconcile_cash(month, previous)
+    taxed = {line.line_id: line.cents for line in prior_lines}
+    before = {row["installment_id"]: row for row in previous["installments"]}
+    after = {row["installment_id"]: row for row in register["installments"]}
+    for key, row in before.items():
+        received = row["prior_received_cents"] + row["received_cents"]
+        recognized = row["prior_taxed_cents"] + taxed[key]
+        if key not in after:
+            if received != row["principal_cents"] or recognized != row["principal_cents"]:
+                raise FiscalValidationError("historical receivable missing")
+            continue
+        current = after[key]
+        immutable = ("issued_on", "due_on", "principal_cents", "activity", "market",
+                     "federal", "local", "evidence_reference", "treatment_reference")
+        if any(current[k] != row[k] for k in immutable):
+            raise FiscalValidationError("historical installment changed")
+        if (current["prior_received_cents"] != received
+                or current["prior_taxed_cents"] != recognized):
+            raise FiscalValidationError("historical installment balances do not reconcile")
+    for key, row in after.items():
+        if key not in before and date.fromisoformat(row["issued_on"]) < competence:
+            raise FiscalValidationError("historical installment lacks predecessor")
