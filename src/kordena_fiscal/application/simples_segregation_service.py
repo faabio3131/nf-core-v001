@@ -9,6 +9,7 @@ from kordena_fiscal.cognitive.economy_contract import LegalCitation
 from kordena_fiscal.domain import Cnpj, FiscalValidationError
 from kordena_fiscal.persistence.economy_store import EconomyStore, _digest
 from kordena_fiscal.tax.simples_cash import reconcile_cash
+from kordena_fiscal.tax.simples_comparison import compare_assessment
 from kordena_fiscal.tax.simples_nacional import Activity, MonthFacts, SimplesFacts
 from kordena_fiscal.tax.simples_segregation import (
     SOURCE,
@@ -103,6 +104,17 @@ def _evaluate(
             cash_lines, reconciliation = reconcile_cash(competence, content["cash_register"])
             if reconciliation["accrued"] != content["domestic_cents"] + content["export_cents"]:
                 raise FiscalValidationError("cash accrual total does not reconcile")
+            accrued_groups: dict[tuple[str, ...], int] = {}
+            for row in content["cash_register"]["installments"]:
+                if date.fromisoformat(row["issued_on"]) >= competence:
+                    key = tuple(row[k] for k in ("activity", "market", "federal", "local"))
+                    accrued_groups[key] = accrued_groups.get(key, 0) + row["principal_cents"]
+            classified_groups: dict[tuple[str, ...], int] = {}
+            for line in lines:
+                key = (line.activity.value, line.market.value, line.federal.value, line.local.value)
+                classified_groups[key] = classified_groups.get(key, 0) + line.cents
+            if result["status"] != "classified" or accrued_groups != classified_groups:
+                raise FiscalValidationError("cash and accrual classifications do not reconcile")
             domestic = sum(line.cents for line in cash_lines if line.market is Market.DOMESTIC)
             exported = sum(line.cents for line in cash_lines if line.market is Market.EXPORT)
             if assessment:
@@ -115,6 +127,12 @@ def _evaluate(
                 facts, lines, domestic_cents=content["domestic_cents"],
                 export_cents=content["export_cents"],
             )
+        if assessment and "pgdas_reference" in content and "segregation_digest" in result:
+            result = {**result, "pgdas_comparison": compare_assessment(
+                result, content["pgdas_reference"],
+                segregation_digest=str(result["segregation_digest"]),
+                competence=competence.isoformat(),
+            )}
         return {
             **result, "snapshot_id": snapshot["record_id"], "snapshot_version": snapshot["version"],
             "snapshot_digest": snapshot["digest"], "rule_id": rule["record_id"],
