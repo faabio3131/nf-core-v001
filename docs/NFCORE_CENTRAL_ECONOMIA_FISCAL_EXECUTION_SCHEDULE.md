@@ -9,8 +9,8 @@ A folha T23–T33, a Trilha 2 H01–H06 e a reformulação Enterprise não integ
 | T03 | Sentinela Normativa e anistias/REFIS | ENTREGUE — DoD interno aprovado em 20/11/2026; 525 PASS, 0 SKIP/FAIL; 6 casos focais (44720120616, 6a0cf5be) |
 | T04 | Motor Simples e Fator R | ENTREGUE — DoD interno aprovado em 20/11/2026; 114 casos focais PASS, 831 PASS na regressão, 0 FAIL, 1 SKIP externo RTC (44722887552, 8dc7c482) |
 | T05 | Diagnóstico e otimizador Fator R | ENTREGUE INTERNAMENTE — CI integral SUCCESS (44735022830, bd3e8d01); integração pendente |
-| T06 | Classificador de receitas segregáveis | EM CERTIFICAÇÃO — classificador, importador e API candidatos |
-| T07 | Apuração/PGDAS segregada | Bloqueado |
+| T06 | Classificador de receitas segregáveis | CERTIFICADO INTERNAMENTE no escopo implementado — CI integral SUCCESS (44747030794, 3c59ffb8); integração/revisão pendentes |
+| T07 | Apuração/PGDAS segregada | LIBERADO — auditoria e design |
 | T08 | Catálogo federal | Bloqueado |
 | T09 | Catálogo estadual 27 UFs | Bloqueado |
 | T10 | Benefícios municipais e radar unificado | Bloqueado |
@@ -94,3 +94,10 @@ Importador operacional scripts/nfcore_simples_import_reviewed.py para ambiente n
 ## T06 — implementação e importação candidata (20/11/2026)
 CURRENT T05 certificado; TARGET classificação determinística de receitas por atividade, mercado, tratamento federal e local, no mesmo PostgreSQL e API. Regra revisada 2026, art.25 CGSN140/2018; não é apuração final T07. Receitas ordinárias, monofásicas revisadas, ICMS substituto/substituído/antecipação final, exportação e retenção ISS. Totais unitários reconciliados em centavos com limites da história empresarial; desconhecidos e conflitos bloqueiam todos os buckets. Classificações jurídicas são entradas de revisão humana, não inferidas de código fiscal. Regime caixa, benefícios específicos e catálogo automático não certificados.
 Operação: mesmo scripts/nfcore_simples_import_reviewed.py, bundle com schema nfcore.simples-segregation-facts/2026-v1, references de snapshot/regra e evidências revisadas. Restrito a ambiente não produtivo e unidade homologação; transação T01, sem DDL. Replay idêntico e conflito de conteúdo recusado; resultado bloqueado preservado para revisão e sem valor fiscal. API POST /v1/portal/cognitive/economy/simples-segregation recebe somente IDs/versionamento, sessão, AUDIT_READ e CSRF; leitura read-only, mesma autoridade de emissor T05. Testes candidatos de domínio, HTTP e PostgreSQL incluem quatro eixos, replay, conflito e zero crédito. CI integral obrigatória; T07 bloqueada. Nenhum deploy, merge ou homologação real.
+
+
+## Certificação T06 — 20/11/2026
+- HEAD de código `3c59ffb80bc8413161c10ec61071a45b92fead04`, PR #588 OPEN/DRAFT, base T05 `2b9c163a`, main `549ab3c0` inalterada.
+- CI integral https://github.com/faabio3131/nf-core-v001/actions/runs/44747030794 SUCCESS: 5984 Python PASS, 2 SKIP, 8 warnings, 30 frontend PASS, 81 E2E PASS, zero falhas. Skips: variante runtime exige PostgreSQL; V0073 database not mounted. Governança 44747034288 e completude 44747034201 SUCCESS. Ruff, Mypy, PostgreSQL real, migrations, segurança, Docker, SBOM, backup/restore/readiness e transição v21-v23 PASS no runner.
+- Classificador 2026, importação operacional revisada não produtiva, reconciliação exata, isolamento, replay, conflito imutável, API somente leitura, sem crédito/declaração. Correções Ruff, Mypy e propagação da exceção específica fiscal aprovadas; nenhum teste flexibilizado.
+- Certificação limitada a fatos de competência revisados e tratamentos suportados; não comprova catalogação automática de NCM/CFOP/CST, regime caixa, benefícios especiais, homologação externa ou operação produtiva. T07 deve falhar fechado para casos não cobertos, sem inferir redução fiscal. UI T21 e E2E específico T22 continuam futuros. Revisão independente e integração das PRs pendentes; sem merge/deploy. T07 liberada para construção na mesma linha descendente; T08 bloqueada.
