@@ -73,6 +73,7 @@ def test_real_postgres_economy_schema_scope_and_immutability(monkeypatch):
                 )
             _certify_t02_read_only(database)
             _certify_t05(database)
+            _certify_t06(database)
             admin.execute(sql.SQL("SET search_path TO {}").format(sql.Identifier(schema_name)))
             # Explicitly add DML permissions only in this sandbox to prove
             # that the RLS policies, not solely GRANTs, deny mutation.
@@ -338,3 +339,100 @@ def _certify_t05(database):
             _scope(tenant="economy-t05", environment=FiscalEnvironment.PRODUCTION),
         ):
             assert read_economy_evidence(reader, foreign, capability, record_id) == ()
+
+
+def _certify_t06(database):
+    from copy import deepcopy
+
+    from kordena_fiscal.application.simples_segregation_service import (
+        SCHEMA,
+        evaluate_segregation,
+        import_reviewed_segregation,
+    )
+    from kordena_fiscal.tax.simples_segregation import SOURCE, VERSION
+
+    scope = _scope(tenant="economy-t06")
+    competence = date(2026, 1, 1)
+    content = {
+        "schema_version": SCHEMA, "review_status": "reviewed",
+        "review_reference": "synthetic-fixture-review", "opened_month": "2026-01-01",
+        "uf": "SP", "activity": "commerce", "basis": "accrual",
+        "company_history_reference": "fixture", "activity_reference": "fixture",
+        "optant_reference": "fixture", "domestic_cents": 300, "export_cents": 100,
+        "months": [{"competence": "2026-01-01", "domestic_cents": 300,
+                    "export_cents": 100, "payroll_cents": 0, "evidence_reference": "fixture"}],
+        "lines": [
+            {"line_id": key, "cents": 100, "activity": activity, "market": market,
+             "federal": federal, "local": local,
+             "evidence_reference": "fixture-doc-" + key, "treatment_reference": "fixture-review"}
+            for key, activity, market, federal, local in (
+                ("a", "commerce", "domestic", "monophase_downstream", "icms_substituted"),
+                ("b", "commerce", "domestic", "ordinary", "icms_substitute"),
+                ("c", "service_iii", "domestic", "ordinary", "iss_withheld"),
+                ("d", "commerce", "export", "ordinary", "ordinary"),
+            )
+        ],
+    }
+    policy = {
+        "engine_version": VERSION, "review_status": "reviewed",
+        "review_reference": "synthetic-fixture-review",
+        "legal_citations": [{
+            "act": "Synthetic fixture", "provision": "art.25 test", "source_url": SOURCE,
+            "source_sha256": "c" * 64, "published_on": "2025-01-01",
+            "valid_from": "2026-01-01", "valid_until": "2027-01-01",
+            "review_reference": "synthetic-fixture-review",
+        }],
+    }
+
+    def verify(issuer, facts):
+        assert issuer == "12345678000195"
+        assert facts.uf == "SP"
+        assert facts.competence == competence
+
+    refs = dict(snapshot_id="t06-snapshot", snapshot_version=1, rule_id="t06-rule",
+                rule_version=1, verify_issuer=verify)
+    kwargs = dict(**refs, competence=competence, issuer=Cnpj("12345678000195"),
+                  content=content, rule_content=policy)
+    with database.economy(scope) as store:
+        result = import_reviewed_segregation(store, **kwargs)
+        assert result == import_reviewed_segregation(store, **kwargs)
+        assert result["status"] == "classified"
+        assert len(result["buckets"]) == 4
+        assert sum(b["cents"] for b in result["buckets"]) == 400
+        assert len(store.records("fm_economy_snapshots")) == 1
+        assert len(store.records("fm_economy_benefits")) == 1
+        assert not store.records("fm_economy_opportunities")
+        assert not store.records("fm_economy_credit_entries")
+        changed = deepcopy(content)
+        changed["lines"][0]["treatment_reference"] = "new-reference"
+        with pytest.raises(FiscalValidationError, match="immutable"):
+            import_reviewed_segregation(store, **{**kwargs, "content": changed})
+        invalid = deepcopy(content)
+        invalid["domestic_cents"] = 299
+        with pytest.raises(FiscalValidationError, match="reconcile"):
+            import_reviewed_segregation(
+                store, **{**kwargs, "snapshot_id": "invalid", "content": invalid},
+            )
+        assert store.snapshot("invalid", 1) is None
+        assert store.record("fm_economy_benefits", "t06-rule", 1) is not None
+    with database.economy(scope, read_only=True) as store:
+        assert evaluate_segregation(store, **refs) == result
+    for foreign in (
+        _scope(tenant="foreign"), _scope(tenant="economy-t06", unit="foreign"),
+        _scope(tenant="economy-t06", host="foreign"),
+        _scope(tenant="economy-t06", environment=FiscalEnvironment.PRODUCTION),
+    ):
+        with database.economy(foreign, read_only=True) as store:
+            with pytest.raises(FiscalValidationError, match="unavailable"):
+                evaluate_segregation(store, **refs)
+    blocked = deepcopy(content)
+    blocked["lines"][0]["federal"] = "unknown"
+    with database.economy(scope) as store:
+        outcome = import_reviewed_segregation(
+            store, **{**kwargs, "snapshot_version": 2, "content": blocked},
+        )
+        assert outcome["status"] == "blocked"
+        assert outcome["buckets"] == []
+    with database.economy(scope, read_only=True) as store:
+        assert evaluate_segregation(store, **refs) == result
+        assert evaluate_segregation(store, **{**refs, "snapshot_version": 2}) == outcome

@@ -6,8 +6,8 @@ from datetime import date
 from typing import Any
 
 from kordena_fiscal.cognitive.economy_contract import LegalCitation
-from kordena_fiscal.domain import FiscalValidationError
-from kordena_fiscal.persistence.economy_store import EconomyStore
+from kordena_fiscal.domain import Cnpj, FiscalValidationError
+from kordena_fiscal.persistence.economy_store import EconomyStore, _digest
 from kordena_fiscal.tax.simples_nacional import Activity, MonthFacts, SimplesFacts
 from kordena_fiscal.tax.simples_segregation import (
     SOURCE,
@@ -30,6 +30,13 @@ def evaluate_segregation(
     rule = store.record("fm_economy_benefits", rule_id, rule_version)
     if snapshot is None or rule is None:
         raise FiscalValidationError("scoped segregation evidence unavailable")
+    return _evaluate(snapshot, rule, verify_issuer=verify_issuer)
+
+
+def _evaluate(
+    snapshot: dict[str, Any], rule: dict[str, Any], *,
+    verify_issuer: Callable[[str, SimplesFacts], None],
+) -> dict[str, Any]:
     try:
         content = snapshot["content"]
         policy = rule["content"]
@@ -86,10 +93,52 @@ def evaluate_segregation(
             export_cents=content["export_cents"],
         )
         return {
-            **result, "snapshot_id": snapshot_id, "snapshot_version": snapshot_version,
-            "snapshot_digest": snapshot["digest"], "rule_id": rule_id,
-            "rule_version": rule_version, "rule_digest": rule["digest"],
+            **result, "snapshot_id": snapshot["record_id"], "snapshot_version": snapshot["version"],
+            "snapshot_digest": snapshot["digest"], "rule_id": rule["record_id"],
+            "rule_version": rule["version"], "rule_digest": rule["digest"],
             "advisory_only": True,
         }
     except (KeyError, TypeError, ValueError, OverflowError) as exc:
         raise FiscalValidationError("invalid reviewed segregation evidence") from exc
+
+
+def import_reviewed_segregation(
+    store: EconomyStore, *, snapshot_id: str, snapshot_version: int,
+    competence: date, issuer: Cnpj, content: dict[str, Any],
+    rule_id: str, rule_version: int, rule_content: dict[str, Any],
+    verify_issuer: Callable[[str, SimplesFacts], None],
+) -> dict[str, Any]:
+    """Import atomically through T01; identical versions replay, conflicts fail.
+
+    Trusted operational caller only. Review references are supplied by the
+    responsible reviewer, not inferred by the classifier.
+    """
+    snapshot = {
+        "record_id": snapshot_id, "version": snapshot_version,
+        "competence": competence.isoformat(), "issuer_cnpj": issuer.value,
+        "content": content, "digest": _digest(content)[1],
+    }
+    rule = {
+        "record_id": rule_id, "version": rule_version, "tax_code": "SIMPLES_SEGREGATION",
+        "valid_from": "2026-01-01", "valid_until": "2027-01-01",
+        "jurisdiction": "BR", "normative_reference": "CGSN140/2018 art.25",
+        "content": rule_content, "digest": _digest(rule_content)[1],
+    }
+    result = _evaluate(snapshot, rule, verify_issuer=verify_issuer)
+    old_snapshot = store.record("fm_economy_snapshots", snapshot_id, snapshot_version)
+    old_rule = store.record("fm_economy_benefits", rule_id, rule_version)
+    for old, proposed in ((old_snapshot, snapshot), (old_rule, rule)):
+        if old is not None and any(old.get(k) != v for k, v in proposed.items()):
+            raise FiscalValidationError("immutable segregation input conflict; use new version")
+    if old_snapshot is None:
+        store.append_snapshot(
+            record_id=snapshot_id, version=snapshot_version, competence=competence,
+            issuer=issuer, content=content,
+        )
+    if old_rule is None:
+        store.append_benefit(
+            record_id=rule_id, version=rule_version, tax_code=rule["tax_code"],
+            jurisdiction=rule["jurisdiction"], normative_reference=rule["normative_reference"],
+            valid_from=date(2026, 1, 1), valid_until=date(2027, 1, 1), content=rule_content,
+        )
+    return result
