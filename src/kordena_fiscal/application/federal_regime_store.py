@@ -66,7 +66,7 @@ def _decode_declarations(
     for receipt in receipts:
         try:
             rows.append((
-                datetime.fromisoformat(str(receipt["effective_from"])),
+                _aware(datetime.fromisoformat(str(receipt["effective_from"])), "stored effective_from"),
                 int(str(receipt["version"])),
                 TaxRegimeCode(int(str(receipt["crt"]))),
                 FederalIncomeTaxRegime(str(receipt["federal_income_tax_regime"])),
@@ -77,7 +77,6 @@ def _decode_declarations(
     rows.sort(key=lambda row: (row[0], row[1]))
     declarations: list[FederalRegimeDeclaration] = []
     for effective_from, version, crt, regime, source in rows:
-        _aware(effective_from, "stored effective_from")
         if version != len(declarations) + 1:
             raise FiscalValidationError("Stored federal regime versions are not sequential")
         if declarations:
