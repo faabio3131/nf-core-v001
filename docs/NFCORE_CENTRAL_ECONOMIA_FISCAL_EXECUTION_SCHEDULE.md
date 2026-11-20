@@ -7,8 +7,8 @@ A folha T23–T33, a Trilha 2 H01–H06 e a reformulação Enterprise não integ
 | T01 | Modelagem de dados, oportunidades, benefícios, ledger, dossiês, RLS | DoD interno aprovado — 44 PASS, 0 SKIP/FAIL (44678481529, 570170f3) |
 | T02 | Contrato Core Cognitivo | ENTREGUE — DoD interno aprovado em 20/11/2026; 308 PASS, 0 SKIP/FAIL; 24 casos focais (44718504072, d53a2c62) |
 | T03 | Sentinela Normativa e anistias/REFIS | ENTREGUE — DoD interno aprovado em 20/11/2026; 525 PASS, 0 SKIP/FAIL; 6 casos focais (44720120616, 6a0cf5be) |
-| T04 | Motor Simples e Fator R | EM EXECUÇÃO — motor determinístico candidato, certificação pendente |
-| T05 | Diagnóstico e otimizador Fator R | Bloqueado |
+| T04 | Motor Simples e Fator R | ENTREGUE — DoD interno aprovado em 20/11/2026; 114 casos focais PASS, 831 PASS na regressão, 0 FAIL, 1 SKIP externo RTC (44722887552, 8dc7c482) |
+| T05 | Diagnóstico e otimizador Fator R | LIBERADO para engenharia interna — não iniciado |
 | T06 | Classificador de receitas segregáveis | Bloqueado |
 | T07 | Apuração/PGDAS segregada | Bloqueado |
 | T08 | Catálogo federal | Bloqueado |
@@ -68,3 +68,8 @@ Regressão integral herdada da T02 (CI 44718511040): gate de dependências do mo
 
 ## T04 — motor Simples Nacional
 CURRENT: regime federal canônico e adaptador RFB RTC, sem motor PGDAS-base. TARGET: cálculo independente de IA no tax package, tabelas LC123 I–V, história consolidada da empresa, RBT12 separado por mercado, Fator R combinado, limites/sublimites e estado temporal, memória determinística e centavos. Fontes: https://legis.senado.gov.br/norma/572878/publicacao/34621013, https://normas.receita.fazenda.gov.br/sijut2consulta/link.action?idAto=92278, Portaria CGSN 54/2025 (todos os 27 UFs em 2026). Regra 2026 explicitamente versionada; 2027 exige nova regra devido à Resolução CGSN 190/2026. T04 entrega base de alíquota e diagnóstico; segregação especial e apuração PGDAS final são T06/T07. Excesso art.24 recebe repartição proporcional da base doméstica ordinária, com alíquotas federais e locais nos tetos legais, sem simular DAS definitivo. Exclusão/retroatividade bloqueiam valores inseguros. T05 deverá consumir o motor por snapshot autorizado; sem emissão, aprovação ou deploy. Testes ainda não executados.
+
+### Certificação T04 — 20/11/2026
+- HEAD de código certificado: `8dc7c4825dc517ac539326d01990bd3d7112e647`; PR #587 (draft), CI https://github.com/faabio3131/nf-core-v001/actions/runs/44722887552: SUCCESS; 114 casos focais PASS (DoD exige 20+), regressão 831 PASS, 0 FAIL, 1 SKIP externo (`tests/tax/test_rtc_group_indicators.py`: banco V0073 não montado), 1 warning. Nenhum skip T04. Ruff, Mypy (448 arquivos), política de migrations e regressão PostgreSQL real aprovados.
+- Motor determinístico versionado para competência de 2026: 30 faixas dos Anexos I–V, RBT12 por mercado, Fator R com receita combinada, início de atividade, sublimite ICMS/ISS nas 27 UFs, limites proporcionais, efeitos temporais do excesso, cálculo Art.24 em base doméstica ordinária e arredondamento exato de centavos. Referência oficial de cálculo: Perguntas e Respostas do Simples Nacional, questão 5.3. Regra 2027 não aplicada por analogia; requer nova versão da legislação e testes. Sem inferência de elegibilidade pelo CNAE, sem apuração PGDAS final e sem lançamento fiscal. T05 irá conectar diagnóstico e oportunidades ao snapshot e cadastro canônicos; T06/T07 tratarão segregações e apuração. 
+- Última CI integral da fundação https://github.com/faabio3131/nf-core-v001/actions/runs/44720129576: 5810 PASS Python, 2 SKIP; E2E 80 PASS e 1 FAIL preexistente no cabeçalho compacto mobile (167,125px vs máximo 125px). Não promover candidata até correção e CI integral verde. Nenhuma mudança em main/production, nenhum merge/deploy. T05 liberada pelo DoD específico, não iniciada; Bloco 1 ainda aberto.
