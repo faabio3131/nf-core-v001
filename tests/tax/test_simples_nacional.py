@@ -7,54 +7,54 @@ import pytest
 
 from kordena_fiscal.domain import FiscalValidationError
 from kordena_fiscal.tax.simples_nacional import (
+    UF_CODES,
     Activity,
     Annex,
     LimitStatus,
     MonthFacts,
     SimplesFacts,
-    UF_CODES,
     calculate_simples,
 )
 
 # Independently recorded nominal and deduction reference from LC 123 annexes.
 @pytest.mark.parametrize("activity,annex,revenue,expected", [
-    (Activity.COMMERCE, Annex.I, 180000, "0.04"),
-    (Activity.COMMERCE, Annex.I, 360000, "0.0565"),
-    (Activity.COMMERCE, Annex.I, 720000, "0.07575"),
-    (Activity.COMMERCE, Annex.I, 1800000, "0.0945"),
-    (Activity.COMMERCE, Annex.I, 3600000, "0.11875"),
-    (Activity.COMMERCE, Annex.I, 4800000, "0.11125"),
-    (Activity.INDUSTRY, Annex.II, 180000, "0.045"),
-    (Activity.INDUSTRY, Annex.II, 360000, "0.0615"),
-    (Activity.INDUSTRY, Annex.II, 720000, "0.08075"),
-    (Activity.INDUSTRY, Annex.II, 1800000, "0.0995"),
-    (Activity.INDUSTRY, Annex.II, 3600000, "0.12325"),
-    (Activity.INDUSTRY, Annex.II, 4800000, "0.15"),
-    (Activity.SERVICE_III, Annex.III, 180000, "0.06"),
-    (Activity.SERVICE_III, Annex.III, 360000, "0.086"),
-    (Activity.SERVICE_III, Annex.III, 720000, "0.1105"),
-    (Activity.SERVICE_III, Annex.III, 1800000, "0.1402"),
-    (Activity.SERVICE_III, Annex.III, 3600000, "0.1751"),
-    (Activity.SERVICE_III, Annex.III, 4800000, "0.195"),
-    (Activity.SERVICE_IV, Annex.IV, 180000, "0.045"),
-    (Activity.SERVICE_IV, Annex.IV, 360000, "0.0675"),
-    (Activity.SERVICE_IV, Annex.IV, 720000, "0.08475"),
-    (Activity.SERVICE_IV, Annex.IV, 1800000, "0.1179"),
-    (Activity.SERVICE_IV, Annex.IV, 3600000, "0.16895"),
-    (Activity.SERVICE_IV, Annex.IV, 4800000, "0.1575"),
-    (Activity.SERVICE_FACTOR_R, Annex.V, 180000, "0.155"),
-    (Activity.SERVICE_FACTOR_R, Annex.V, 360000, "0.1675"),
-    (Activity.SERVICE_FACTOR_R, Annex.V, 720000, "0.18125"),
-    (Activity.SERVICE_FACTOR_R, Annex.V, 1800000, "0.1955"),
-    (Activity.SERVICE_FACTOR_R, Annex.V, 3600000, "0.21275"),
-    (Activity.SERVICE_FACTOR_R, Annex.V, 4800000, "0.1925"),
+    (Activity.COMMERCE, Annex.ANNEX_I, 180000, "0.04"),
+    (Activity.COMMERCE, Annex.ANNEX_I, 360000, "0.0565"),
+    (Activity.COMMERCE, Annex.ANNEX_I, 720000, "0.07575"),
+    (Activity.COMMERCE, Annex.ANNEX_I, 1800000, "0.0945"),
+    (Activity.COMMERCE, Annex.ANNEX_I, 3600000, "0.11875"),
+    (Activity.COMMERCE, Annex.ANNEX_I, 4800000, "0.11125"),
+    (Activity.INDUSTRY, Annex.ANNEX_II, 180000, "0.045"),
+    (Activity.INDUSTRY, Annex.ANNEX_II, 360000, "0.0615"),
+    (Activity.INDUSTRY, Annex.ANNEX_II, 720000, "0.08075"),
+    (Activity.INDUSTRY, Annex.ANNEX_II, 1800000, "0.0995"),
+    (Activity.INDUSTRY, Annex.ANNEX_II, 3600000, "0.12325"),
+    (Activity.INDUSTRY, Annex.ANNEX_II, 4800000, "0.15"),
+    (Activity.SERVICE_III, Annex.ANNEX_III, 180000, "0.06"),
+    (Activity.SERVICE_III, Annex.ANNEX_III, 360000, "0.086"),
+    (Activity.SERVICE_III, Annex.ANNEX_III, 720000, "0.1105"),
+    (Activity.SERVICE_III, Annex.ANNEX_III, 1800000, "0.1402"),
+    (Activity.SERVICE_III, Annex.ANNEX_III, 3600000, "0.1751"),
+    (Activity.SERVICE_III, Annex.ANNEX_III, 4800000, "0.195"),
+    (Activity.SERVICE_IV, Annex.ANNEX_IV, 180000, "0.045"),
+    (Activity.SERVICE_IV, Annex.ANNEX_IV, 360000, "0.0675"),
+    (Activity.SERVICE_IV, Annex.ANNEX_IV, 720000, "0.08475"),
+    (Activity.SERVICE_IV, Annex.ANNEX_IV, 1800000, "0.1179"),
+    (Activity.SERVICE_IV, Annex.ANNEX_IV, 3600000, "0.16895"),
+    (Activity.SERVICE_IV, Annex.ANNEX_IV, 4800000, "0.1575"),
+    (Activity.SERVICE_FACTOR_R, Annex.ANNEX_V, 180000, "0.155"),
+    (Activity.SERVICE_FACTOR_R, Annex.ANNEX_V, 360000, "0.1675"),
+    (Activity.SERVICE_FACTOR_R, Annex.ANNEX_V, 720000, "0.18125"),
+    (Activity.SERVICE_FACTOR_R, Annex.ANNEX_V, 1800000, "0.1955"),
+    (Activity.SERVICE_FACTOR_R, Annex.ANNEX_V, 3600000, "0.21275"),
+    (Activity.SERVICE_FACTOR_R, Annex.ANNEX_V, 4800000, "0.1925"),
 ])
 def test_five_annexes_all_bands(activity, annex, revenue, expected):
     facts = established(activity, revenue * 100)
     result = calculate_simples(facts, ordinary_domestic_base_cents=100_000)
     assert result.annex is annex
     assert result.domestic.effective_rate == Decimal(expected)
-    assert result.cpp_outside_das == (annex is Annex.IV)
+    assert result.cpp_outside_das == (annex is Annex.ANNEX_IV)
 
 
 def established(activity=Activity.COMMERCE, rolling=18_000_000, payroll=0):
@@ -70,7 +70,7 @@ def established(activity=Activity.COMMERCE, rolling=18_000_000, payroll=0):
 
 
 @pytest.mark.parametrize("payroll,annex", [
-    (5_039_999, Annex.V), (5_040_000, Annex.III), (5_040_001, Annex.III),
+    (5_039_999, Annex.ANNEX_V), (5_040_000, Annex.ANNEX_III), (5_040_001, Annex.ANNEX_III),
 ])
 def test_factor_r_exact_cent_boundary(payroll, annex):
     result = calculate_simples(
@@ -147,7 +147,7 @@ def test_separate_export_rate_and_combined_factor():
     )
     assert result.domestic.rbt12_cents == result.export.rbt12_cents == 18_000_000
     assert result.factor_r == Decimal("0.14")
-    assert result.annex is Annex.V
+    assert result.annex is Annex.ANNEX_V
 
 
 def test_previous_year_sublimit_outside_local_tax():
@@ -243,7 +243,7 @@ def test_opening_factor_exact_current_month():
         startup(100_000, 28_000, Activity.SERVICE_FACTOR_R),
         ordinary_domestic_base_cents=100_000,
     )
-    assert result.annex is Annex.III
+    assert result.annex is Annex.ANNEX_III
     assert result.factor_r == Decimal("0.28")
 
 
@@ -253,9 +253,9 @@ def test_first_month_without_movement_is_not_fabricated_factor():
 
 
 @pytest.mark.parametrize("activity,annex", [
-    (Activity.COMMERCE, Annex.I), (Activity.INDUSTRY, Annex.II),
-    (Activity.SERVICE_III, Annex.III), (Activity.SERVICE_IV, Annex.IV),
-    (Activity.SERVICE_FACTOR_R, Annex.V),
+    (Activity.COMMERCE, Annex.ANNEX_I), (Activity.INDUSTRY, Annex.ANNEX_II),
+    (Activity.SERVICE_III, Annex.ANNEX_III), (Activity.SERVICE_IV, Annex.ANNEX_IV),
+    (Activity.SERVICE_FACTOR_R, Annex.ANNEX_V),
 ])
 @pytest.mark.parametrize("ceiling", [18_000_000, 36_000_000, 72_000_000, 180_000_000, 360_000_000])
 def test_one_cent_transitions(activity, annex, ceiling):

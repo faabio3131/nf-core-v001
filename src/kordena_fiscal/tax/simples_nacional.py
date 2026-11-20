@@ -35,11 +35,11 @@ _MAX_CENTS = 10**15
 
 
 class Annex(StrEnum):
-    I = "I"
-    II = "II"
-    III = "III"
-    IV = "IV"
-    V = "V"
+    ANNEX_I = "I"
+    ANNEX_II = "II"
+    ANNEX_III = "III"
+    ANNEX_IV = "IV"
+    ANNEX_V = "V"
 
 
 class Activity(StrEnum):
@@ -60,24 +60,24 @@ class LimitStatus(StrEnum):
 
 # Percentages as basis points, deduction in integer cents.
 _ROWS = MappingProxyType({
-    Annex.I: ((400, 0), (730, 594000), (950, 1386000), (1070, 2250000),
+    Annex.ANNEX_I: ((400, 0), (730, 594000), (950, 1386000), (1070, 2250000),
               (1430, 8730000), (1900, 37800000)),
-    Annex.II: ((450, 0), (780, 594000), (1000, 1386000), (1120, 2250000),
+    Annex.ANNEX_II: ((450, 0), (780, 594000), (1000, 1386000), (1120, 2250000),
                (1470, 8550000), (3000, 72000000)),
-    Annex.III: ((600, 0), (1120, 936000), (1350, 1764000), (1600, 3564000),
+    Annex.ANNEX_III: ((600, 0), (1120, 936000), (1350, 1764000), (1600, 3564000),
                 (2100, 12564000), (3300, 64800000)),
-    Annex.IV: ((450, 0), (900, 810000), (1020, 1242000), (1400, 3978000),
+    Annex.ANNEX_IV: ((450, 0), (900, 810000), (1020, 1242000), (1400, 3978000),
                (2200, 18378000), (3300, 82800000)),
-    Annex.V: ((1550, 0), (1800, 450000), (1950, 990000), (2050, 1710000),
+    Annex.ANNEX_V: ((1550, 0), (1800, 450000), (1950, 990000), (2050, 1710000),
               (2300, 6210000), (3050, 54000000)),
 })
 # ICMS/ISS part of each annex's effective rate (basis points).
 _LOCAL = MappingProxyType({
-    Annex.I: (3400, 3400, 3350, 3350, 3350, 0),
-    Annex.II: (3200, 3200, 3200, 3200, 3200, 0),
-    Annex.III: (3350, 3200, 3250, 3250, 3350, 0),
-    Annex.IV: (4450, 4000, 4000, 4000, 4000, 0),
-    Annex.V: (1400, 1700, 1900, 2100, 2350, 0),
+    Annex.ANNEX_I: (3400, 3400, 3350, 3350, 3350, 0),
+    Annex.ANNEX_II: (3200, 3200, 3200, 3200, 3200, 0),
+    Annex.ANNEX_III: (3350, 3200, 3250, 3250, 3350, 0),
+    Annex.ANNEX_IV: (4450, 4000, 4000, 4000, 4000, 0),
+    Annex.ANNEX_V: (1400, 1700, 1900, 2100, 2350, 0),
 })
 RULE_DIGEST = hashlib.sha256(json.dumps({
     "version": RULE_VERSION, "rows": dict(_ROWS), "local": dict(_LOCAL),
@@ -213,10 +213,10 @@ def _annex(activity: Activity, factor: Fraction | None) -> Annex:
     if activity is Activity.SERVICE_FACTOR_R:
         if factor is None:
             raise FiscalValidationError("opening month without payroll/revenue: factor undefined")
-        return Annex.III if factor >= Fraction(28, 100) else Annex.V
+        return Annex.ANNEX_III if factor >= Fraction(28, 100) else Annex.ANNEX_V
     return {
-        Activity.COMMERCE: Annex.I, Activity.INDUSTRY: Annex.II,
-        Activity.SERVICE_III: Annex.III, Activity.SERVICE_IV: Annex.IV,
+        Activity.COMMERCE: Annex.ANNEX_I, Activity.INDUSTRY: Annex.ANNEX_II,
+        Activity.SERVICE_III: Annex.ANNEX_III, Activity.SERVICE_IV: Annex.ANNEX_IV,
     }[activity]
 
 
@@ -254,7 +254,7 @@ def _rate(annex: Annex, rbt: Fraction, bracket: int) -> Fraction:
 
 def _local_rate(annex: Annex, total_rate: Fraction, bracket: int) -> Fraction:
     local = total_rate * Fraction(_LOCAL[annex][bracket], 10000)
-    if annex in {Annex.III, Annex.IV, Annex.V}:
+    if annex in {Annex.ANNEX_III, Annex.ANNEX_IV, Annex.ANNEX_V}:
         return min(local, Fraction(5, 100))
     return local
 
@@ -375,5 +375,5 @@ def calculate_simples(facts: SimplesFacts, *, ordinary_domestic_base_cents: int)
         _decimal(assessed_federal) if amount_rate is not None else None,
         _decimal(assessed_local) if amount_rate is not None else None,
         _decimal(amount_rate) if amount_rate is not None else None, amount,
-        annex is Annex.IV, tuple(reasons), fingerprint,
+        annex is Annex.ANNEX_IV, tuple(reasons), fingerprint,
     )
