@@ -7,6 +7,7 @@ on:
       - main
       - production
       - "integration/nfcore-*"
+      - "feat/nfcore-economy-t*"
   push:
     branches:
       - main

@@ -133,3 +133,7 @@ Auditoria do HEAD 03273718b7d654ed374d2ca1d888d2ad183db719: a opção anual irre
 
 ### T07 — guarda de importação e continuidade (20/11/2026)
 O importador existente valida a referência comparativa antes da persistência imutável (PGDAS divergente permanece evidência consultiva, referência incompatível ou apuração bloqueada não entra como comparação válida). Histórico caixa malformado falha com erro de domínio, sem KeyError exposto; o predecessor deve pertencer ao schema canônico. Regressão PostgreSQL cobre referência sintética válida/incompatível, ausência de registro inválido e histórico malformado. Não altera schema, RLS, RBAC, emissão ou autoridade de aprovação. Testes aguardam execução; sem certificação oficial.
+
+
+### T07 — acionamento da CI integral da trilha Economia Fiscal
+Detectado que CI integral automática só inclui PRs para main, production e integration/nfcore-*. A base da #589 é feat/nfcore-economy-t06-20261120. Ampliação exclusivamente aditiva do filtro pull_request para feat/nfcore-economy-t*, sem mudar jobs, permissões, comandos, asserts, regras de segurança ou política de promoção. Aprovado somente após execução comprovada no HEAD; não substitui revisão independente nem encerra lacunas fiscais.
