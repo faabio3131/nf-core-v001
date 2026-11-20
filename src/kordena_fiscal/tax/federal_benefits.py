@@ -45,15 +45,17 @@ PROGRAMS: dict[str, FederalProgram] = {
     ),
     "REIDI": FederalProgram(
         "REIDI", "PIS_COFINS", "Lei 11.488/2007",
-        "https://www.gov.br/pt-br/servicos/habilitar-empresa-no-regime-especial-de-incentivos-para-o-desenvolvimento-da-infraestrutura-reidi",
+        "https://www.gov.br/pt-br/servicos/habilitar-empresa-no-regime-especial-de-"
+        "incentivos-para-o-desenvolvimento-da-infraestrutura-reidi",
         "infrastructure_project",
         ("approved_infrastructure_project", "reidi_habilitation",
          "reviewed_acquisition_link"),
-        date(2007, 1, 1),
+        date(2007, 6, 15),
     ),
     "IBS_CBS_RURAL": FederalProgram(
         "IBS_CBS_RURAL", "IBS_CBS", "LC 214/2025, arts. 164 e 168",
-        "https://www2.camara.leg.br/legin/fed/leicom/2025/leicomplementar-214-16-janeiro-2025-796905-normaatualizada-pl.html",
+        "https://www2.camara.leg.br/legin/fed/leicom/2025/"
+        "leicomplementar-214-16-janeiro-2025-796905-normaatualizada-pl.html",
         "rural_purchase",
         ("supplier_non_contributor_status", "regular_ibs_cbs_status",
          "reviewed_purchase", "current_rate_source"),
@@ -61,7 +63,8 @@ PROGRAMS: dict[str, FederalProgram] = {
     ),
     "IBS_CBS_RECICLAGEM": FederalProgram(
         "IBS_CBS_RECICLAGEM", "IBS_CBS", "LC 214/2025, art. 170",
-        "https://www2.camara.leg.br/legin/fed/leicom/2025/leicomplementar-214-16-janeiro-2025-796905-normaatualizada-pl.html",
+        "https://www2.camara.leg.br/legin/fed/leicom/2025/"
+        "leicomplementar-214-16-janeiro-2025-796905-normaatualizada-pl.html",
         "recycling_purchase",
         ("eligible_material_classification", "eligible_supplier_status",
          "regular_ibs_cbs_status", "reviewed_purchase", "current_rate_source"),
@@ -152,15 +155,21 @@ def decode_policy(payload: object) -> tuple[
         payload.get("review_reference")
     ):
         raise FiscalValidationError("reviewed federal benefit policy required")
-    program = PROGRAMS.get(payload.get("program_code"))
+    code = payload.get("program_code")
+    if not isinstance(code, str):
+        raise FiscalValidationError("invalid federal benefit program code")
+    program = PROGRAMS.get(code)
     if program is None:
         raise FiscalValidationError("unknown federal benefit program")
     allowed = payload.get("allowed_regimes")
-    if not isinstance(allowed, list) or not allowed or len(set(allowed)) != len(allowed):
+    if not isinstance(allowed, list) or not allowed or not all(
+        isinstance(value, str) for value in allowed
+    ):
         raise FiscalValidationError("explicit federal regimes required")
-    if any(not isinstance(value, str) or value not in {
-        item.value for item in FederalIncomeTaxRegime
-    } for value in allowed):
+    if len(set(allowed)) != len(allowed) or any(
+        value not in {item.value for item in FederalIncomeTaxRegime}
+        for value in allowed
+    ):
         raise FiscalValidationError("invalid reviewed federal regime")
     # Never allow rule metadata to weaken program-specific legal conditions.
     if program.code == "LEI_DO_BEM" and allowed != ["lucro_real"]:
