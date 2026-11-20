@@ -137,16 +137,4 @@ Cada WP: auditar CURRENT e fonte oficial → mapear autoridade/camadas → conge
 
 ## Reconciliação RTC-RFB × Economia Fiscal T07 — 20/11/2026
 
-Decisão do proprietário: reaproveitar integralmente a integração existente, completar lacunas sem duplicar autoridade. CURRENT auditado na PR #589, HEAD 9e334f3988fe94452f10230e11da1039667d2c69, main 549ab3c005d7183ff6c7940236414412ea004b9d. PRs #576, #584 e #585 integradas em work/nfcore-closeout-20261119 e presentes na árvore T07. Não reimportar ou reconstruir seus componentes.
-
-| Entrega | Autoridade e destino | Estado |
-|---|---|---|
-| Simples RTC 1.0.2, Regular 1.7.2, banco V0073 | Adaptadores tax/rfb_* e deploy/rfb existentes | Integrados ao código, respostas registradas; operação Contabo não comprovada |
-| Sombra NF-e/NFC-e | tax/rtc_shadow.py e application/rtc_shadow_recorder.py | Integrada, opt-in, sem autoridade de emissão |
-| NFS-e /nao-assistido | build_nfse_request, SimplesEffectiveRates existentes | Adaptador testado por fixture real; falta composição com alíquotas PGDAS verificadas e jornada de emissão |
-| Apuração mensal 2026 | tax/simples_nacional.py, segregação T06/T07, store T01 | Candidata; falta certificar caixa, excessos, histórico e comparações |
-| Transição 2027 | RTC-04/05 e T07 compartilham regime temporal e evidências; reusar tax/regimes.py | Regra 2027 não pode ser deduzida das tabelas 2026; requer partilha vigente, evidência da opção e testes |
-| Comparação PGDAS | T07 compare_assessment | Não confundir com comparação RTC por documento; referência real externa necessária para paridade oficial |
-| Ativação Contabo e sentinela de releases | RTC/Release Manager | Gate operacional separado, não declarar ativado |
-
-Contrato-alvo: apuração mensal revisada -> alíquotas efetivas por anexo vinculadas a emissor, competência, escopo, versão e evidência -> SimplesEffectiveRates -> adaptador oficial já existente. Nenhuma promoção automática de estimativas T07 a alíquota declarada, nenhum cálculo do browser/IA, nenhuma segunda persistência ou serviço fiscal. A opção IBS/CBS deve vir da autoridade temporal existente em tax/regimes.py, não de seleção livre no payload. Preservar modo sombra, evidências, pins, V0073 e controles de emissão. Critérios de aceite: comparação por tributo, casos de caixa/competência e excesso, vigência, isolamento, replay, testes PostgreSQL, integração dos adaptadores e CI cumulativa; revisão independente antes de promoção. T08 bloqueada até fechamento do escopo T07. Não autoriza deploy, DDL, transmissão ou merge main/production.
+A reconciliação tem uma única autoridade documental: [cronograma central da Economia Fiscal — T07](NFCORE_CENTRAL_ECONOMIA_FISCAL_EXECUTION_SCHEDULE.md#reconciliação-rtc-rfb--economia-fiscal-t07--20112026). Consultar ali o estado e as evidências; este documento não replica o checkpoint.

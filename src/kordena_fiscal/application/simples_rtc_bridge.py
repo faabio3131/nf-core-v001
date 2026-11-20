@@ -297,6 +297,8 @@ def execute_nfse_comparisons(
                 if regular is None:
                     raise RfbCalculatorError("Regular calculator unavailable")
                 rr = regular.calculate(plan.request).require_all_computed()
+                if not rr.component_version.endswith(f";db={CALCULATOR_DATABASE_VERSION}"):
+                    raise RfbCalculatorError("Regular calculator database differs from pin")
                 differences = compare_regime_regular_shadow(
                     rr, {1: plan.expected}, fields=tuple(plan.expected),
                 )

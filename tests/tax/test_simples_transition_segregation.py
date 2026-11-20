@@ -186,3 +186,38 @@ def test_reviewed_nfse_comparison_matches_and_rejects_wrong_database() -> None:
 
     assert execute_nfse_comparisons((plan,), client(), None)["status"] == "match"
     assert execute_nfse_comparisons((plan,), client("V9999"), None)["status"] == "review_required"
+
+
+@pytest.mark.parametrize("database, expected_status", [
+    ("V0073", "match"), ("V0074", "unavailable_or_rejected"),
+])
+def test_regular_bridge_requires_t07_database_pin(monkeypatch, database, expected_status):
+    from decimal import Decimal
+
+    from kordena_fiscal.application.simples_rtc_bridge import (
+        NfseComparisonPlan,
+        execute_nfse_comparisons,
+    )
+    from kordena_fiscal.tax.rfb_regime_regular_calculator import (
+        RegimeRegularCalculation,
+        RegimeRegularItemResult,
+        RfbRegimeRegularCalculatorClient,
+    )
+
+    expected = {"vBC": Decimal("1000"), "vIBS": Decimal("1"), "vCBS": Decimal("9")}
+    plan = NfseComparisonPlan("x", "regular", {"itens": [{"numero": 1}]}, expected)
+    # This represents a client configured for a different release that has
+    # already accepted its own pin. T07 independently enforces V0073.
+    client = RfbRegimeRegularCalculatorClient(
+        base_url="http://rtc-regime-regular:8080/api", database_version=database,
+    )
+    result = RegimeRegularCalculation(
+        (RegimeRegularItemResult(numero=1, state="CALCULADO", error_codes=(), values=expected),),
+        f"app=1.7.2;db={database}",
+    )
+    monkeypatch.setattr(client, "calculate", lambda request: result)
+    output = execute_nfse_comparisons((plan,), None, client)
+    assert output["operations"][0]["status"] == expected_status
+    assert output["status"] == ("match" if database == "V0073" else "review_required")
+    assert output["issuance_authorized"] is False
+    assert output["official_pgdas_certification"] is False

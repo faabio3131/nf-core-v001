@@ -448,9 +448,20 @@ def _certify_t06(database):
                 **kwargs, "snapshot_id": "changed-history", "content": changed_history,
             })
         assert store.snapshot("changed-history", 1) is None
-        import_reviewed_segregation(store, **{
+        verify_calls = []
+
+        def count_verify(issuer, facts):
+            verify_calls.append(issuer)
+            return kwargs["verify_issuer"](issuer, facts)
+
+        imported = import_reviewed_segregation(store, **{
             **kwargs, "snapshot_id": "reviewed-pgdas", "content": reviewed,
+            "verify_issuer": count_verify,
         })
+        assert verify_calls == ["12345678000195"]
+        assert imported["status"] == "classified"
+        assert "pgdas_comparison" not in imported
+        assert imported["buckets"] == result["buckets"]
         # A malformed historical cash record must fail with the domain error,
         # not leak an unhandled KeyError or be treated as an estimate.
         malformed = deepcopy(content)

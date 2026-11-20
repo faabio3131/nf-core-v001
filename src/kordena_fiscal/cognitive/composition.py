@@ -133,7 +133,7 @@ def build_cognitive_routers(
             normative_radar=build_normative_reader(portal_executor, environ),
             diagnostic_runner=diagnostic_runner,
             segregation_runner=segregation_runner,
-        assessment_runner=assessment_runner,
+            assessment_runner=assessment_runner,
         ),
         create_command_metrics_router(aggregates, environ, ai_enabled=model is not None),
     ]
@@ -163,7 +163,7 @@ def build_cognitive_router(
         economy_reader=economy_reader,
         diagnostic_runner=diagnostic_runner,
         segregation_runner=segregation_runner,
-            assessment_runner=assessment_runner,
+        assessment_runner=assessment_runner,
     )
     if not routers:
         return None

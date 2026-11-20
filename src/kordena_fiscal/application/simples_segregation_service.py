@@ -264,7 +264,11 @@ def _evaluate(
     assessment: bool = False,
     rtc_simples: RfbSimplesCalculatorClient | None = None,
     rtc_regular: RfbRegimeRegularCalculatorClient | None = None,
+    validate_import_reference: bool = False,
 ) -> dict[str, Any]:
+    # Import still returns T06 classification, while validating PGDAS in the
+    # same pass over the reviewed inputs with no external calculator calls.
+    assessment = assessment or validate_import_reference
     try:
         content = snapshot["content"]
         policy = rule["content"]
@@ -335,6 +339,7 @@ def _evaluate(
             competence, lines, domestic_cents=content["domestic_cents"],
             export_cents=content["export_cents"],
         )
+        classification_result = result
         if cash:
             cash_lines, reconciliation, outstanding = reconcile_cash_detail(
                 competence, content["cash_register"],
@@ -360,6 +365,9 @@ def _evaluate(
                     cash_closing_event=content["cash_register"]["closing_event"],
                     local_outstanding=outstanding,
                 )
+            classification_result = {
+                **classification_result, "cash_reconciliation": reconciliation,
+            }
             result = {**result, "cash_reconciliation": reconciliation}
         elif assessment:
             result = assess_segregated(
@@ -408,6 +416,10 @@ def _evaluate(
             result = {**result, "rtc_nfse_comparison": execute_nfse_comparisons(
                 plans, rtc_simples, rtc_regular,
             )}
+        if validate_import_reference:
+            if result.get("pgdas_comparison", {}).get("status") not in {"match", "divergent"}:
+                raise FiscalValidationError("PGDAS comparison requires an estimated assessment")
+            result = classification_result
         return {
             **result, "snapshot_id": snapshot["record_id"], "snapshot_version": snapshot["version"],
             "snapshot_digest": snapshot["digest"], "rule_id": rule["record_id"],
@@ -447,20 +459,13 @@ def import_reviewed_segregation(
         "jurisdiction": JURISDICTION, "normative_reference": normative,
         "content": rule_content, "digest": _digest(rule_content)[1],
     }
+    # Validate optional PGDAS evidence before inserting immutable records,
+    # without revalidating the entire input snapshot a second time.
     result = _evaluate(
         snapshot, rule, verify_issuer=verify_issuer, scope_identity=store.scope_identity,
+        validate_import_reference="pgdas_reference" in content,
     )
     _verify_cash_history(store, snapshot)
-    # Validate optional comparison evidence before inserting immutable records.
-    if "pgdas_reference" in content:
-        assessment_result = _evaluate(
-            snapshot, rule, verify_issuer=verify_issuer, assessment=True,
-            scope_identity=store.scope_identity,
-        )
-        if assessment_result.get("pgdas_comparison", {}).get("status") not in {
-            "match", "divergent",
-        }:
-            raise FiscalValidationError("PGDAS comparison requires an estimated assessment")
     old_snapshot = store.record("fm_economy_snapshots", snapshot_id, snapshot_version)
     old_rule = store.record("fm_economy_benefits", rule_id, rule_version)
     for old, proposed in ((old_snapshot, snapshot), (old_rule, rule)):
