@@ -12,7 +12,10 @@ from fastapi import HTTPException
 from kordena_fiscal.application.federal_benefits_service import evaluate_federal_benefit
 from kordena_fiscal.application.federal_regime_store import load_federal_regime_declarations
 from kordena_fiscal.domain import (
-    ExecutionScope, FiscalEnvironment, FiscalProfile, FiscalValidationError,
+    ExecutionScope,
+    FiscalEnvironment,
+    FiscalProfile,
+    FiscalValidationError,
 )
 from kordena_fiscal.persistence.economy_store import EconomyStore
 from kordena_fiscal.security.human_identity import AuthenticatedHuman, PortalPermission

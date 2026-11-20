@@ -5,8 +5,13 @@ import pytest
 
 from kordena_fiscal.domain import FiscalValidationError
 from kordena_fiscal.tax.federal_benefits import (
-    FACTS_SCHEMA, PROGRAMS, RULE_SCHEMA, ReviewedFederalIssuer,
-    assess_federal_program, decode_facts, decode_policy,
+    FACTS_SCHEMA,
+    PROGRAMS,
+    RULE_SCHEMA,
+    ReviewedFederalIssuer,
+    assess_federal_program,
+    decode_facts,
+    decode_policy,
 )
 from kordena_fiscal.tax.regimes import FederalIncomeTaxRegime
 

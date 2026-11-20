@@ -627,7 +627,10 @@ def _certify_t08_federal(database):
         import_reviewed_federal_benefit,
     )
     from kordena_fiscal.tax.federal_benefits import (
-        FACTS_SCHEMA, PROGRAMS, RULE_SCHEMA, ReviewedFederalIssuer,
+        FACTS_SCHEMA,
+        PROGRAMS,
+        RULE_SCHEMA,
+        ReviewedFederalIssuer,
     )
     from kordena_fiscal.tax.regimes import FederalIncomeTaxRegime
 

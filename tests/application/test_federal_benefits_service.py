@@ -10,7 +10,10 @@ from kordena_fiscal.application.federal_benefits_service import (
 from kordena_fiscal.domain import Cnpj, FiscalValidationError
 from kordena_fiscal.persistence.economy_store import _digest
 from kordena_fiscal.tax.federal_benefits import (
-    FACTS_SCHEMA, PROGRAMS, RULE_SCHEMA, ReviewedFederalIssuer,
+    FACTS_SCHEMA,
+    PROGRAMS,
+    RULE_SCHEMA,
+    ReviewedFederalIssuer,
 )
 from kordena_fiscal.tax.regimes import FederalIncomeTaxRegime
 

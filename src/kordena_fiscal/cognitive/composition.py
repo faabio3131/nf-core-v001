@@ -21,8 +21,8 @@ from .adapters.openai_compatible import build_model_from_environ
 from .api import create_cognitive_router
 from .command_api import create_command_metrics_router
 from .durable_usage import DurableTokenQuotaStore
-from .federal_benefits_api import FederalBenefitRunner
 from .economy_reader import EconomyReader
+from .federal_benefits_api import FederalBenefitRunner
 from .governance import DEFAULT_PILOT_DAILY_LIMIT, InMemoryUsageLedger, pilot_entitlement
 from .knowledge.official import OfficialTablesError, cached_official_catalog
 from .normative_radar_api import build_normative_reader
