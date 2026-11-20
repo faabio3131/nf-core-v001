@@ -422,6 +422,45 @@ def _certify_t06(database):
         assert assessment["estimated_das_cents"] == 12
         assert assessment["advisory_only"] is True
         assert assessment == evaluate_segregation(store, **refs, assessment=True)
+    # Reference fixtures are synthetic, never evidence of official parity.
+    reviewed = deepcopy(content)
+    reviewed["pgdas_reference"] = {
+        "competence": competence.isoformat(), "review_status": "reviewed",
+        "review_reference": "fixture-review", "evidence_reference": "synthetic-pgdas",
+        "segregation_digest": assessment["segregation_digest"],
+        "assessment_digest": assessment["digest"],
+        "tax_cents": assessment["tax_cents"],
+        "total_cents": assessment["estimated_das_cents"],
+    }
+    with database.economy(scope) as store:
+        invalid_ref = deepcopy(reviewed)
+        invalid_ref["pgdas_reference"]["assessment_digest"] = "stale"
+        with pytest.raises(FiscalValidationError, match="scoped"):
+            import_reviewed_segregation(store, **{
+                **kwargs, "snapshot_id": "invalid-pgdas", "content": invalid_ref,
+            })
+        assert store.snapshot("invalid-pgdas", 1) is None
+        import_reviewed_segregation(store, **{
+            **kwargs, "snapshot_id": "reviewed-pgdas", "content": reviewed,
+        })
+        # A malformed historical cash record must fail with the domain error,
+        # not leak an unhandled KeyError or be treated as an estimate.
+        malformed = deepcopy(content)
+        malformed["basis"] = "cash"
+        store.append_snapshot(
+            record_id="invalid-cash-history", version=1, competence=competence,
+            issuer=Cnpj("12345678000195"), content=malformed,
+        )
+    with database.economy(scope, read_only=True) as store:
+        comparison = evaluate_segregation(store, **{
+            **refs, "snapshot_id": "reviewed-pgdas", "assessment": True,
+        })["pgdas_comparison"]
+        assert comparison["status"] == "match"
+        assert comparison["official_certification"] is False
+        with pytest.raises(FiscalValidationError, match="invalid reviewed cash history"):
+            evaluate_segregation(store, **{
+                **refs, "snapshot_id": "invalid-cash-history", "assessment": True,
+            })
     for foreign in (
         _scope(tenant="foreign"), _scope(tenant="economy-t06", unit="foreign"),
         _scope(tenant="economy-t06", host="foreign"),

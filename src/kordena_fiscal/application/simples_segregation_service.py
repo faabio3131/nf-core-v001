@@ -32,6 +32,17 @@ NORMATIVE_REFERENCE = "CGSN140/2018 art.25"
 def _verify_cash_history(
     store: EconomyStore, snapshot: dict[str, Any],
 ) -> None:
+    try:
+        _verify_cash_predecessor(store, snapshot)
+    except FiscalValidationError:
+        raise
+    except (KeyError, TypeError, ValueError, OverflowError) as exc:
+        raise FiscalValidationError("invalid reviewed cash history") from exc
+
+
+def _verify_cash_predecessor(
+    store: EconomyStore, snapshot: dict[str, Any],
+) -> None:
     content = snapshot["content"]
     if content.get("basis") != "cash":
         return
@@ -55,6 +66,7 @@ def _verify_cash_history(
     if (previous is None or previous["digest"] != ref["digest"]
             or previous["issuer_cnpj"] != snapshot["issuer_cnpj"]
             or previous["competence"] != month.isoformat()
+            or previous["content"].get("schema_version") != SCHEMA
             or previous["content"].get("basis") != "cash"
             or previous["content"].get("review_status") != "reviewed"):
         raise FiscalValidationError("previous scoped cash snapshot mismatch")
@@ -206,6 +218,15 @@ def import_reviewed_segregation(
     }
     result = _evaluate(snapshot, rule, verify_issuer=verify_issuer)
     _verify_cash_history(store, snapshot)
+    # Validate optional comparison evidence before inserting immutable records.
+    if "pgdas_reference" in content:
+        assessment_result = _evaluate(
+            snapshot, rule, verify_issuer=verify_issuer, assessment=True,
+        )
+        if assessment_result.get("pgdas_comparison", {}).get("status") not in {
+            "match", "divergent",
+        }:
+            raise FiscalValidationError("PGDAS comparison requires an estimated assessment")
     old_snapshot = store.record("fm_economy_snapshots", snapshot_id, snapshot_version)
     old_rule = store.record("fm_economy_benefits", rule_id, rule_version)
     for old, proposed in ((old_snapshot, snapshot), (old_rule, rule)):
