@@ -13,19 +13,29 @@ from enum import StrEnum
 from fractions import Fraction
 
 from kordena_fiscal.domain import FiscalValidationError
+from kordena_fiscal.tax.regimes import SimplesIbsCbsMode
 from kordena_fiscal.tax.simples_nacional import (
     PARTITION_DIGEST,
     PARTITION_VERSION,
     TAXES,
+    TRANSITION_PARTITION_DIGEST,
+    TRANSITION_RULE_VERSION,
+    TRANSITION_TAXES,
     Activity,
     LimitStatus,
     SimplesFacts,
+    _rate_window,
     _round_cents,
+    _verify_mode,
+    _window_revenue,
     assessment_partition,
     calculate_simples,
+    transition_effective_rate,
 )
 
 VERSION = "simples-segregation-2026/v1"
+TRANSITION_VERSION = "simples-segregation-2027/v1"
+TRANSITION_SPECIAL_TAXES = ("cbs", "ibs", "ipi", "icms", "iss")
 SOURCE = "https://normas.receita.fazenda.gov.br/sijut2consulta/link.action?idAto=92278"
 
 
@@ -69,6 +79,7 @@ class RevenueLine:
     local: LocalTreatment
     evidence_reference: str
     treatment_reference: str
+    transition_treatments: tuple[str, ...] | None = None
 
     def __post_init__(self) -> None:
         for value in (self.line_id, self.evidence_reference, self.treatment_reference):
@@ -81,6 +92,43 @@ class RevenueLine:
             raise FiscalValidationError("explicit reviewed classification required")
 
 
+def _transition_reason(line: RevenueLine) -> str:
+    values = line.transition_treatments
+    if not isinstance(values, tuple) or len(values) != len(TRANSITION_SPECIAL_TAXES):
+        return "explicit_2027_per_tax_treatment_required"
+    if line.federal is not FederalTreatment.ORDINARY or line.local is not LocalTreatment.ORDINARY:
+        return "legacy_treatment_cannot_supply_2027_classification"
+    treatments = dict(zip(TRANSITION_SPECIAL_TAXES, values, strict=True))
+    common = {"ordinary", "export", "immune", "non_incident"}
+    allowed = {
+        "cbs": common | {"monophase_downstream", "substituted", "final_advance"},
+        "ibs": common | {"monophase_downstream", "substituted", "final_advance"},
+        "ipi": common, "icms": common | {"substituted", "final_advance"},
+        "iss": common | {"withheld", "fixed_local"},
+    }
+    if any(not isinstance(value, str) or value not in allowed[tax]
+           for tax, value in treatments.items()):
+        return "unresolved_2027_tax_treatment"
+    if (line.market is Market.EXPORT) != ("export" in values):
+        return "export_incidence_requires_specific_tax_evidence"
+    goods = line.activity in {
+        Activity.COMMERCE, Activity.INDUSTRY, Activity.INDUSTRY_WITHOUT_IPI,
+    }
+    if goods and treatments["iss"] in {"withheld", "fixed_local"}:
+        return "incompatible_goods_treatment"
+    if line.activity is not Activity.INDUSTRY and treatments["ipi"] not in {
+        "non_incident", "export",
+    }:
+        return "ipi_activity_requires_review"
+    if line.activity is Activity.INDUSTRY and treatments["ipi"] not in {
+        "ordinary", "export", "immune",
+    }:
+        return "industry_without_ipi_requires_annex_i"
+    if not goods and treatments["icms"] in {"substituted", "final_advance"}:
+        return "incompatible_service_treatment"
+    return ""
+
+
 def classify_revenue(
     competence: date, lines: tuple[RevenueLine, ...], *,
     domestic_cents: int, export_cents: int,
@@ -90,8 +138,10 @@ def classify_revenue(
     The control totals are unit revenue for the selected accounting basis.
     Missing or conflicting treatment blocks the whole batch for T07.
     """
-    if type(competence) is not date or competence.day != 1 or competence.year != 2026:
-        raise FiscalValidationError("reviewed segregation rules require a 2026 competence")
+    if (type(competence) is not date or competence.day != 1
+            or competence.year not in {2026, 2027}):
+        raise FiscalValidationError("reviewed segregation rules require a 2026/2027 competence")
+    transition = competence.year == 2027
     _amount(domestic_cents)
     _amount(export_cents)
     if not isinstance(lines, tuple) or len(lines) > 10000:
@@ -100,7 +150,7 @@ def classify_revenue(
     totals = {market: 0 for market in Market}
     groups: dict[tuple[str, ...], int] = {}
     blocked: list[dict[str, str]] = []
-    audit: list[dict[str, str | int]] = []
+    audit: list[dict[str, object]] = []
     for line in lines:
         if not isinstance(line, RevenueLine) or line.line_id in seen:
             raise FiscalValidationError("duplicate or invalid revenue line")
@@ -108,7 +158,12 @@ def classify_revenue(
         totals[line.market] += line.cents
         goods = line.activity in {Activity.COMMERCE, Activity.INDUSTRY}
         reason = ""
-        if FederalTreatment.UNKNOWN is line.federal or LocalTreatment.UNKNOWN is line.local:
+        if transition:
+            reason = _transition_reason(line)
+        elif (line.transition_treatments is not None
+              or line.activity is Activity.INDUSTRY_WITHOUT_IPI):
+            reason = "transition_treatment_unavailable_in_2026"
+        elif FederalTreatment.UNKNOWN is line.federal or LocalTreatment.UNKNOWN is line.local:
             reason = "unresolved_treatment"
         elif not goods and (
             line.federal is FederalTreatment.MONOPHASE
@@ -127,21 +182,28 @@ def classify_revenue(
             "market": line.market.value, "federal": line.federal.value,
             "local": line.local.value, "evidence_reference": line.evidence_reference,
             "treatment_reference": line.treatment_reference,
+            **({"transition_treatments": list(line.transition_treatments or ())}
+               if transition else {}),
         })
         if reason:
             blocked.append({"line_id": line.line_id, "reason": reason})
             continue
-        key = (line.activity.value, line.market.value, line.federal.value, line.local.value)
+        key = (line.activity.value, line.market.value, line.federal.value, line.local.value,
+               *(line.transition_treatments or ()))
         groups[key] = groups.get(key, 0) + line.cents
     if totals[Market.DOMESTIC] != domestic_cents or totals[Market.EXPORT] != export_cents:
         raise FiscalValidationError("revenue control totals do not reconcile")
     buckets = [
-        {"activity": activity, "market": market, "federal": federal,
-         "local": local, "cents": cents}
-        for (activity, market, federal, local), cents in sorted(groups.items())
+        {"activity": key[0], "market": key[1], "federal": key[2],
+         "local": key[3], "cents": cents,
+         **({"transition_treatments": dict(zip(
+             TRANSITION_SPECIAL_TAXES, key[4:], strict=True,
+         ))} if transition else {})}
+        for key, cents in sorted(groups.items())
     ]
     payload: dict[str, object] = {
-        "version": VERSION, "competence": competence.isoformat(),
+        "version": TRANSITION_VERSION if transition else VERSION,
+        "competence": competence.isoformat(),
         "domestic_cents": domestic_cents, "export_cents": export_cents,
         "status": "blocked" if blocked else "classified",
         "buckets": [] if blocked else buckets,
@@ -159,12 +221,18 @@ def assess_segregated(
     domestic_cents: int, export_cents: int, cash: bool = False,
     cash_closing_event: str | None = None,
     local_outstanding: tuple[RevenueLine, ...] | None = None,
+    mode: SimplesIbsCbsMode | None = None,
 ) -> dict[str, object]:
     """Reviewed assessment, not declaration, payment or tax credit.
 
     Reclassify canonical inputs, never accept caller-produced buckets.
     Excess/retroactive periods require an additional reviewed allocation.
     """
+    transition = facts.competence.year == 2027
+    _verify_mode(facts.competence, mode)
+    if transition and cash:
+        raise FiscalValidationError("cash recognition unavailable from 2027")
+    taxes = TRANSITION_TAXES if transition else TAXES
     classified = classify_revenue(
         facts.competence, lines, domestic_cents=domestic_cents, export_cents=export_cents,
     )
@@ -192,8 +260,8 @@ def assess_segregated(
     direct_totals = {"icms": Fraction(0), "iss": Fraction(0)}
     direct_required = False
     local_outside = False
-    totals = {tax: Fraction(0) for tax in TAXES}
-    baseline = {tax: Fraction(0) for tax in TAXES}
+    totals = {tax: Fraction(0) for tax in taxes}
+    baseline = {tax: Fraction(0) for tax in taxes}
     if classified["status"] != "classified":
         reasons.append("classification_blocked")
     # Assess the same company history per documented activity. A single
@@ -202,8 +270,9 @@ def assess_segregated(
     activities = {line.activity for line in lines}
     activities.update(line.activity for line in (local_outstanding or ()))
     for activity in sorted(activities or {facts.activity}):
-        result = calculate_simples(replace(facts, activity=activity),
-                                   ordinary_domestic_base_cents=0)
+        result = calculate_simples(
+            replace(facts, activity=activity), ordinary_domestic_base_cents=0, mode=mode,
+        )
         rates[activity] = result
         if result.limit_status in {LimitStatus.OUTSIDE, LimitStatus.RETROACTIVE}:
             reasons.append("simples_excluded_or_retroactive")
@@ -231,35 +300,56 @@ def assess_segregated(
     ):
         reasons.append("cash_local_impediment_requires_separate_reconciliation")
     if not reasons:
-        groups: dict[tuple[Activity, Market, FederalTreatment, LocalTreatment], int] = {}
+        groups: dict[
+            tuple[Activity, Market, FederalTreatment, LocalTreatment, tuple[str, ...]], int
+        ] = {}
         for line in lines:
-            key = (line.activity, line.market, line.federal, line.local)
+            key = (line.activity, line.market, line.federal, line.local,
+                   line.transition_treatments or ())
             groups[key] = groups.get(key, 0) + line.cents
-        for (activity, market, federal, local), cents in sorted(groups.items()):
+        for (activity, market, federal, local, treatments), cents in sorted(groups.items()):
             result = rates[activity]
             ordinary, federal_excess, local_excess = assessment_partition(
                 facts, result.annex, export=market is Market.EXPORT,
-                outside_local=result.sublimit_status is LimitStatus.OUTSIDE,
+                outside_local=result.sublimit_status is LimitStatus.OUTSIDE, mode=mode,
             )
             excluded: set[str] = set()
-            if market is Market.EXPORT:
-                excluded.update(("pis", "cofins", "ipi", "icms", "iss"))
-            if federal is FederalTreatment.MONOPHASE:
-                excluded.update(("pis", "cofins"))
-            if local in {LocalTreatment.ICMS_SUBSTITUTED, LocalTreatment.ICMS_FINAL_ADVANCE}:
-                excluded.add("icms")
-            if local is LocalTreatment.ISS_WITHHELD:
-                excluded.add("iss")
+            applicable = ordinary
+            if transition:
+                excluded.update(
+                    tax for tax, treatment in zip(TRANSITION_SPECIAL_TAXES, treatments,
+                                                 strict=True) if treatment != "ordinary"
+                )
+                if "iss" in excluded or result.sublimit_status is LimitStatus.OUTSIDE:
+                    applicable = transition_effective_rate(
+                        facts.competence, result.annex,
+                        _window_revenue(_rate_window(facts), export=market is Market.EXPORT),
+                        outside_local=result.sublimit_status is LimitStatus.OUTSIDE,
+                        mode=mode, redistribute_iss=False,
+                    )
+            else:
+                if market is Market.EXPORT:
+                    excluded.update(("pis", "cofins", "ipi", "icms", "iss"))
+                if federal is FederalTreatment.MONOPHASE:
+                    excluded.update(("pis", "cofins"))
+                if local in {LocalTreatment.ICMS_SUBSTITUTED, LocalTreatment.ICMS_FINAL_ADVANCE}:
+                    excluded.add("icms")
+                if local is LocalTreatment.ISS_WITHHELD:
+                    excluded.add("iss")
             amounts = {tax: (Fraction(0) if tax in excluded else rate * cents)
-                       for tax, rate in ordinary.items()}
-            for tax in TAXES:
+                       for tax, rate in applicable.items()}
+            for tax in taxes:
                 totals[tax] += amounts[tax]
                 baseline[tax] += ordinary[tax] * cents
             rows.append({
                 "activity": activity.value, "annex": result.annex.value,
                 "market": market.value, "federal": federal.value, "local": local.value,
                 "cents": cents, "excluded": sorted(excluded),
-                "rate_fractions": {tax: str(rate) for tax, rate in ordinary.items()},
+                "rate_fractions": {tax: str(rate) for tax, rate in applicable.items()},
+                **({"transition_treatments": dict(zip(
+                    TRANSITION_SPECIAL_TAXES, treatments, strict=True,
+                )), "ordinary_rate_fractions": {tax: str(rate) for tax, rate in ordinary.items()}}
+                   if transition else {}),
                 "amount_fractions_cents": {tax: str(value) for tax, value in amounts.items()},
                 "base_calculation_digest": result.calculation_digest,
                 "cpp_outside_das": result.cpp_outside_das,
@@ -291,11 +381,18 @@ def assess_segregated(
                 "rate_fraction": str(ordinary[tax]), "amount_fraction_cents": str(amount),
                 "treatment_reference": balance.treatment_reference,
             })
-    by_tax = {tax: _round_cents(value) for tax, value in totals.items()}
-    ordinary_by_tax = {tax: _round_cents(value) for tax, value in baseline.items()}
+    def round_tax(value: Fraction) -> int:
+        rounded = _round_cents(value)
+        return max(1, rounded) if transition and value > 0 else rounded
+
+    by_tax = {tax: round_tax(value) for tax, value in totals.items()}
+    ordinary_by_tax = {tax: round_tax(value) for tax, value in baseline.items()}
     payload: dict[str, object] = {
         "status": "blocked" if reasons else "estimated",
-        "partition_version": PARTITION_VERSION, "partition_digest": PARTITION_DIGEST,
+        "partition_version": TRANSITION_RULE_VERSION if transition else PARTITION_VERSION,
+        "partition_digest": TRANSITION_PARTITION_DIGEST if transition else PARTITION_DIGEST,
+        **({"ibs_cbs_mode": mode, "gross_before_external_settlement": True}
+           if transition else {}),
         "segregation_digest": classified["digest"], "competence": facts.competence.isoformat(),
         "review_reasons": sorted(set(reasons)), "buckets": rows,
         "tax_cents": None if reasons else by_tax,
@@ -317,7 +414,10 @@ def assess_segregated(
             "legal_basis": "CGSN 140/2018 art. 20 IV" if cash else None,
             "included_in_das": False,
         },
-        "advisory_only": True, "rounding": "half_up_per_tax_after_aggregation",
+        "advisory_only": True, "rounding": (
+            "half_up_per_tax_after_aggregation_minimum_positive_cent" if transition
+            else "half_up_per_tax_after_aggregation"
+        ),
     }
     return {**payload, "digest": hashlib.sha256(json.dumps(
         payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False,

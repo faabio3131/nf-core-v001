@@ -47,6 +47,7 @@ class Annex(StrEnum):
 class Activity(StrEnum):
     COMMERCE = "commerce"
     INDUSTRY = "industry"
+    INDUSTRY_WITHOUT_IPI = "industry_without_ipi"
     SERVICE_III = "service_iii"
     SERVICE_IV = "service_iv"
     SERVICE_FACTOR_R = "service_factor_r"
@@ -185,6 +186,8 @@ class SimplesFacts:
             raise FiscalValidationError("only reviewed 2026/2027 rules are available")
         if self.uf not in UF_CODES or not isinstance(self.activity, Activity):
             raise FiscalValidationError("UF and documented activity classification are required")
+        if self.competence.year == 2026 and self.activity is Activity.INDUSTRY_WITHOUT_IPI:
+            raise FiscalValidationError("transition activity unavailable in 2026")
         for ref in (self.company_history_reference, self.activity_reference, self.optant_reference):
             if not isinstance(ref, str) or not ref.strip() or len(ref) > 256:
                 raise FiscalValidationError("documented company/regime/activity evidence required")
@@ -256,6 +259,7 @@ def _annex(activity: Activity, factor: Fraction | None) -> Annex:
         return Annex.ANNEX_III if factor >= FACTOR_R_THRESHOLD else Annex.ANNEX_V
     return {
         Activity.COMMERCE: Annex.ANNEX_I, Activity.INDUSTRY: Annex.ANNEX_II,
+        Activity.INDUSTRY_WITHOUT_IPI: Annex.ANNEX_I,
         Activity.SERVICE_III: Annex.ANNEX_III, Activity.SERVICE_IV: Annex.ANNEX_IV,
     }[activity]
 
@@ -707,8 +711,16 @@ def transition_effective_rate(
         excess = result["iss"] - Fraction(5, 100)
         result["iss"] = Fraction(5, 100)
         if redistribute_iss:
-            for tax, extra in _transition_iss_excess(annex, shares, excess).items():
-                result[tax] += extra
+            if idx < 5 and annex in _TRANSITION_ISS_CAP:
+                cap_shares = dict(zip(
+                    TRANSITION_TAXES, _TRANSITION_ISS_CAP[annex], strict=True,
+                ))
+                for tax, share in cap_shares.items():
+                    if tax != "iss":
+                        result[tax] = (effective - Fraction(5, 100)) * Fraction(share, 10000)
+            else:
+                for tax, extra in _transition_iss_excess(annex, shares, excess).items():
+                    result[tax] += extra
     if outside_local:
         for tax in ("icms", "iss", "ibs"):
             result[tax] = Fraction(0)

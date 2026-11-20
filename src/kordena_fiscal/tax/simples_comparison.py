@@ -2,7 +2,7 @@
 from typing import Any
 
 from kordena_fiscal.domain import FiscalValidationError
-from kordena_fiscal.tax.simples_nacional import TAXES
+from kordena_fiscal.tax.simples_nacional import TAXES, TRANSITION_TAXES
 from kordena_fiscal.tax.simples_segregation import _amount, _ref
 
 
@@ -23,8 +23,9 @@ def compare_assessment(
             or reference.get("assessment_digest") != assessment_digest
             or reference["review_status"] != "reviewed"):
         raise FiscalValidationError("PGDAS reference does not match scoped evidence")
+    taxes = TRANSITION_TAXES if competence.startswith("2027-") else TAXES
     expected = reference["tax_cents"]
-    if not isinstance(expected, dict) or set(expected) != set(TAXES):
+    if not isinstance(expected, dict) or set(expected) != set(taxes):
         raise FiscalValidationError("complete PGDAS tax reference required")
     for value in expected.values():
         _amount(value)
@@ -34,7 +35,7 @@ def compare_assessment(
     actual = result.get("tax_cents")
     if result.get("status") != "estimated" or not isinstance(actual, dict):
         return {"status": "blocked", "reference": reference["evidence_reference"]}
-    differences = {tax: actual[tax] - expected[tax] for tax in TAXES}
+    differences = {tax: actual[tax] - expected[tax] for tax in taxes}
     return {
         "status": "match" if not any(differences.values()) else "divergent",
         "assessment_digest": assessment_digest,

@@ -2,17 +2,31 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from datetime import date
+from datetime import date, datetime, time, timedelta
+from zoneinfo import ZoneInfo
 from typing import Any
 
 from kordena_fiscal.cognitive.economy_contract import LegalCitation
-from kordena_fiscal.domain import Cnpj, FiscalValidationError
+from kordena_fiscal.domain import Cnpj, FiscalProfile, FiscalValidationError, TaxRegimeCode
 from kordena_fiscal.persistence.economy_store import EconomyStore, _digest
 from kordena_fiscal.tax.simples_cash import reconcile_cash_detail, verify_cash_continuity
 from kordena_fiscal.tax.simples_comparison import compare_assessment
-from kordena_fiscal.tax.simples_nacional import Activity, MonthFacts, SimplesFacts
+from kordena_fiscal.tax.regimes import (
+    SimplesIbsCbsElection,
+    SimplesIbsCbsMode,
+    SimplesRegularOptionReceipt2027H1,
+    resolve_simples_ibs_cbs_mode,
+)
+from kordena_fiscal.tax.simples_nacional import (
+    TRANSITION_PARTITION_DIGEST,
+    Activity,
+    MonthFacts,
+    SimplesFacts,
+)
 from kordena_fiscal.tax.simples_segregation import (
     SOURCE,
+    TRANSITION_SPECIAL_TAXES,
+    TRANSITION_VERSION,
     VERSION,
     FederalTreatment,
     LocalTreatment,
@@ -23,6 +37,8 @@ from kordena_fiscal.tax.simples_segregation import (
 )
 
 SCHEMA = "nfcore.simples-segregation-facts/2026-v1"
+TRANSITION_SCHEMA = "nfcore.simples-segregation-facts/2027-v1"
+IssuerVerifier = Callable[[str, SimplesFacts], FiscalProfile | None]
 TAX_CODE = "SIMPLES_SEGREGATION"
 JURISDICTION = "BR"
 NORMATIVE_REFERENCE = "CGSN140/2018 art.25"
@@ -75,9 +91,78 @@ def _verify_cash_predecessor(
     verify_cash_continuity(competence, register, previous["content"]["cash_register"])
 
 
+def _reviewed_mode(
+    profile: FiscalProfile | None, snapshot: dict[str, Any], competence: date,
+    scope_identity: tuple[str, ...],
+) -> SimplesIbsCbsMode:
+    if not isinstance(profile, FiscalProfile) or (
+        tuple(profile.scope.identity_material) != scope_identity
+        or profile.cnpj.value != snapshot["issuer_cnpj"]
+    ):
+        raise FiscalValidationError("canonical profile required for 2027 IBS/CBS election")
+    evidence = snapshot["content"]["ibs_cbs_election"]
+
+    def bound(raw: dict[str, Any]) -> None:
+        if (raw["scope_identity"] != list(scope_identity)
+                or raw["issuer_cnpj"] != snapshot["issuer_cnpj"]
+                or (raw["profile_id"], raw["profile_version"]) != profile.snapshot_key
+                or type(raw["profile_version"]) is not int
+                or type(raw["crt"]) is not int
+                or raw["crt"] != int(profile.tax_regime)):
+            raise FiscalValidationError("reviewed IBS/CBS evidence scope/profile mismatch")
+
+    bound(evidence)
+    election = SimplesIbsCbsElection(
+        scope=profile.scope, profile_id=evidence["profile_id"],
+        profile_version=evidence["profile_version"], crt=TaxRegimeCode(evidence["crt"]),
+        mode=SimplesIbsCbsMode(evidence["mode"]),
+        effective_from=datetime.fromisoformat(evidence["effective_from"]),
+        effective_to=(datetime.fromisoformat(evidence["effective_to"])
+                      if evidence.get("effective_to") is not None else None),
+        source_reference=evidence["source_reference"], version=evidence["version"],
+    )
+    receipt = None
+    receipt_data = evidence.get("regular_option_receipt_2027_h1")
+    if receipt_data is not None:
+        bound(receipt_data)
+        receipt = SimplesRegularOptionReceipt2027H1(
+            scope=profile.scope, profile_id=receipt_data["profile_id"],
+            profile_version=receipt_data["profile_version"], crt=TaxRegimeCode(receipt_data["crt"]),
+            submitted_at=datetime.fromisoformat(receipt_data["submitted_at"]),
+            confirmed_at=datetime.fromisoformat(receipt_data["confirmed_at"]),
+            protocol_reference=receipt_data["protocol_reference"],
+            cancelled_at=(datetime.fromisoformat(receipt_data["cancelled_at"])
+                          if receipt_data.get("cancelled_at") is not None else None),
+        )
+    if election.mode is SimplesIbsCbsMode.SIMPLES_UNIFIED:
+        if receipt is not None and receipt.cancelled_at is None:
+            raise FiscalValidationError("unresolved regular option conflicts with unified mode")
+        if evidence.get("refund_restriction_clear") is not True:
+            raise FiscalValidationError("reviewed CGSN art. 40-E eligibility required")
+    start = datetime.combine(competence, time.min, tzinfo=ZoneInfo("America/Sao_Paulo"))
+    end = (start.replace(day=28) + timedelta(days=4)).replace(day=1)
+    modes = {
+        resolve_simples_ibs_cbs_mode(
+            profile, (election,), instant, regular_option_receipt_2027_h1=receipt,
+        ) for instant in (start, end - timedelta(microseconds=1))
+    }
+    if len(modes) != 1:
+        raise FiscalValidationError("IBS/CBS option does not cover the complete competence")
+    return modes.pop()
+
+
+def _transition_treatments(row: dict[str, Any]) -> tuple[str, ...]:
+    treatments = row["transition_treatments"]
+    if not isinstance(treatments, dict) or set(treatments) != set(TRANSITION_SPECIAL_TAXES):
+        raise FiscalValidationError("complete per-tax transition classification required")
+    if any(not isinstance(value, str) for value in treatments.values()):
+        raise FiscalValidationError("invalid transition classification")
+    return tuple(treatments[tax] for tax in TRANSITION_SPECIAL_TAXES)
+
+
 def evaluate_segregation(
     store: EconomyStore, *, snapshot_id: str, snapshot_version: int,
-    rule_id: str, rule_version: int, verify_issuer: Callable[[str, SimplesFacts], None],
+    rule_id: str, rule_version: int, verify_issuer: IssuerVerifier,
     assessment: bool = False,
 ) -> dict[str, Any]:
     snapshot = store.record("fm_economy_snapshots", snapshot_id, snapshot_version)
@@ -93,7 +178,7 @@ def evaluate_segregation(
 
 def _evaluate(
     snapshot: dict[str, Any], rule: dict[str, Any], *,
-    verify_issuer: Callable[[str, SimplesFacts], None], scope_identity: tuple[str, ...],
+    verify_issuer: IssuerVerifier, scope_identity: tuple[str, ...],
     assessment: bool = False,
 ) -> dict[str, Any]:
     try:
@@ -101,13 +186,17 @@ def _evaluate(
         policy = rule["content"]
         competence = date.fromisoformat(snapshot["competence"])
         end = date(competence.year + (competence.month == 12), competence.month % 12 + 1, 1)
+        transition = competence.year == 2027
+        if competence.year not in {2026, 2027}:
+            raise FiscalValidationError("unsupported segregation competence")
         if (
-            content["schema_version"] != SCHEMA
+            content["schema_version"] != (TRANSITION_SCHEMA if transition else SCHEMA)
             or content["review_status"] != "reviewed"
             or not isinstance(content["review_reference"], str)
             or not content["review_reference"].strip()
             or policy["review_status"] != "reviewed"
-            or policy["engine_version"] != VERSION
+            or policy["engine_version"] != (TRANSITION_VERSION if transition else VERSION)
+            or transition and policy.get("engine_partition_digest") != TRANSITION_PARTITION_DIGEST
             or rule["tax_code"] != TAX_CODE
             or date.fromisoformat(rule["valid_from"]) > competence
             or rule["valid_until"] is not None and date.fromisoformat(rule["valid_until"]) < end
@@ -131,7 +220,12 @@ def _evaluate(
             content["company_history_reference"], content["activity_reference"],
             content["optant_reference"],
         )
-        verify_issuer(snapshot["issuer_cnpj"], facts)
+        profile = verify_issuer(snapshot["issuer_cnpj"], facts)
+        mode = _reviewed_mode(profile, snapshot, competence, scope_identity) if transition else None
+        if transition and content["basis"] != "accrual":
+            raise FiscalValidationError("cash recognition unavailable from 2027")
+        if not transition and "ibs_cbs_election" in content:
+            raise FiscalValidationError("IBS/CBS election is not a 2026 assessment input")
         rows = content["lines"]
         if not isinstance(rows, list) or len(rows) > 10000:
             raise FiscalValidationError("bounded reviewed revenue lines required")
@@ -139,6 +233,7 @@ def _evaluate(
             row["line_id"], row["cents"], Activity(row["activity"]), Market(row["market"]),
             FederalTreatment(row["federal"]), LocalTreatment(row["local"]),
             row["evidence_reference"], row["treatment_reference"],
+            _transition_treatments(row) if transition or "transition_treatments" in row else None,
         ) for row in rows)
         cash = content["basis"] == "cash"
         if content["basis"] not in {"cash", "accrual"}:
@@ -181,8 +276,14 @@ def _evaluate(
         elif assessment:
             result = assess_segregated(
                 facts, lines, domestic_cents=content["domestic_cents"],
-                export_cents=content["export_cents"],
+                export_cents=content["export_cents"], mode=mode,
             )
+        if assessment and transition and isinstance(profile, FiscalProfile):
+            local = result.get("local_direct_collection")
+            if result.get("status") == "estimated" and isinstance(local, dict) and (
+                (local.get("status") == "outside_das") != (int(profile.tax_regime) == 2)
+            ):
+                raise FiscalValidationError("reviewed sublimite conflicts with canonical CRT")
         if assessment:
             # Bind even zero-activity/blocked assessments to the complete reviewed
             # inputs and canonical transaction scope, without a recursive digest.
@@ -220,7 +321,7 @@ def import_reviewed_segregation(
     store: EconomyStore, *, snapshot_id: str, snapshot_version: int,
     competence: date, issuer: Cnpj, content: dict[str, Any],
     rule_id: str, rule_version: int, rule_content: dict[str, Any],
-    verify_issuer: Callable[[str, SimplesFacts], None],
+    verify_issuer: IssuerVerifier,
 ) -> dict[str, Any]:
     """Import atomically through T01; identical versions replay, conflicts fail.
 
@@ -232,10 +333,14 @@ def import_reviewed_segregation(
         "competence": competence.isoformat(), "issuer_cnpj": issuer.value,
         "content": content, "digest": _digest(content)[1],
     }
+    transition = competence.year == 2027
+    valid_from = date(2027 if transition else 2026, 1, 1)
+    valid_until = date(valid_from.year + 1, 1, 1)
+    normative = "CGSN190/2026 art.21-26" if transition else NORMATIVE_REFERENCE
     rule = {
         "record_id": rule_id, "version": rule_version, "tax_code": TAX_CODE,
-        "valid_from": "2026-01-01", "valid_until": "2027-01-01",
-        "jurisdiction": JURISDICTION, "normative_reference": NORMATIVE_REFERENCE,
+        "valid_from": valid_from.isoformat(), "valid_until": valid_until.isoformat(),
+        "jurisdiction": JURISDICTION, "normative_reference": normative,
         "content": rule_content, "digest": _digest(rule_content)[1],
     }
     result = _evaluate(
@@ -265,7 +370,7 @@ def import_reviewed_segregation(
     if old_rule is None:
         store.append_benefit(
             record_id=rule_id, version=rule_version, tax_code=TAX_CODE,
-            jurisdiction=JURISDICTION, normative_reference=NORMATIVE_REFERENCE,
-            valid_from=date(2026, 1, 1), valid_until=date(2027, 1, 1), content=rule_content,
+            jurisdiction=JURISDICTION, normative_reference=normative,
+            valid_from=valid_from, valid_until=valid_until, content=rule_content,
         )
     return result
