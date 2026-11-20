@@ -61,7 +61,7 @@ class ReadOnlyDb:
 
 @pytest.fixture
 def setup(monkeypatch):
-    monkeypatch.setattr(guard, "validate_policy", lambda: tuple(range(1, 23)))
+    monkeypatch.setattr(guard, "validate_policy", lambda: tuple(range(1, 24)))
     monkeypatch.setenv("NFCORE_ENVIRONMENT", "production")
     monkeypatch.setenv("DATABASE_URL", "postgresql://synthetic.invalid/test")
     monkeypatch.delenv("RAILWAY_SERVICE_ID", raising=False)
@@ -79,7 +79,7 @@ def setup(monkeypatch):
 
 def test_production_exact_schema_permits_code_only_without_approval(setup, capsys):
     db = setup(
-        (*tuple(range(1, 20)), guard.NFSE_DPS_NUMBERING_VERSION),
+        (*range(1, 20), guard.NFSE_DPS_NUMBERING_VERSION, guard.IRON_A1_DELEGATION_VERSION),
         tuple(range(1, guard.CAKTO_SCHEMA_VERSION + 1)),
     )
     guard.assert_current_production()
@@ -96,10 +96,10 @@ def test_production_exact_schema_permits_code_only_without_approval(setup, capsy
         (tuple(range(1, 18)), (1, 2, 3), "fiscal"),
         ((1, 3), (1, 2, 3), "fiscal"),
         (tuple(range(1, 20)), (1, 2, 3), "fiscal"),
-        ((*tuple(range(1, 20)), 22), None, "Cakto"),
-        ((*tuple(range(1, 20)), 22), (1,), "Cakto"),
-        ((*tuple(range(1, 20)), 22), (2,), "Cakto"),
-        ((*tuple(range(1, 20)), 22), (1, 2, 3, 4), "Cakto"),
+        ((*tuple(range(1, 20)), 22, 23), None, "Cakto"),
+        ((*tuple(range(1, 20)), 22, 23), (1,), "Cakto"),
+        ((*tuple(range(1, 20)), 22, 23), (2,), "Cakto"),
+        ((*tuple(range(1, 20)), 22, 23), (1, 2, 3, 4), "Cakto"),
     ],
 )
 def test_production_schema_mismatch_blocks_without_write(setup, fiscal, cakto, reason):
@@ -112,9 +112,10 @@ def test_production_schema_mismatch_blocks_without_write(setup, fiscal, cakto, r
 
 @pytest.mark.parametrize(
     "fiscal",
-    [tuple(range(1, 20)), tuple(range(1, 22))],
+    [tuple(range(1, 20)), tuple(range(1, 22)),
+     (*range(1, 20), 22), tuple(range(1, 23)), (*range(1, 22), 23)],
 )
-def test_production_rejects_legacy_schemas_without_dps_v22(
+def test_production_rejects_legacy_schemas_without_v22_and_v23(
     setup, fiscal,
 ) -> None:
     db = setup(fiscal, tuple(range(1, guard.CAKTO_SCHEMA_VERSION + 1)))
@@ -128,7 +129,7 @@ def test_production_bling_opt_in_requires_full_schema_and_catalog(
     setup, monkeypatch,
 ) -> None:
     monkeypatch.setenv("NFCORE_BLING_INSTALLATIONS_ENABLED", "true")
-    valid = tuple(range(1, guard.NFSE_DPS_NUMBERING_VERSION + 1))
+    valid = tuple(range(1, guard.IRON_A1_DELEGATION_VERSION + 1))
     db = setup(valid, tuple(range(1, guard.CAKTO_SCHEMA_VERSION + 1)))
     guard.assert_current_production()
     assert db.schema_checks == [True]
@@ -139,7 +140,7 @@ def test_production_bling_opt_in_rejects_dps_without_bling_pair(
 ) -> None:
     monkeypatch.setenv("NFCORE_BLING_INSTALLATIONS_ENABLED", "true")
     db = setup(
-        (*tuple(range(1, 20)), guard.NFSE_DPS_NUMBERING_VERSION),
+        (*range(1, 20), guard.NFSE_DPS_NUMBERING_VERSION, guard.IRON_A1_DELEGATION_VERSION),
         tuple(range(1, guard.CAKTO_SCHEMA_VERSION + 1)),
     )
     with pytest.raises(RuntimeError, match="fiscal migrations"):
@@ -167,3 +168,10 @@ def test_assertion_rejects_service_startup_without_db(setup, monkeypatch):
     monkeypatch.setattr(guard, "PostgresFiscalDatabase", lambda _: pytest.fail("DB opened"))
     with pytest.raises(RuntimeError, match="outside service startup"):
         guard.assert_current_production()
+
+
+
+def test_existing_bling_catalog_verified_even_with_opt_in_disabled(setup) -> None:
+    db = setup(tuple(range(1, 24)), (1, 2, 3))
+    guard.assert_current_production()
+    assert db.schema_checks == [True]

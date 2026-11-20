@@ -66,10 +66,18 @@ test("BH reviewed cTribMun and NBS use the shared native preparation contract", 
     return route.fulfill({json: {
       document_id: "bh-prepared-1", status: "ready_to_transmit", transmitted: false,
       fiscal_authorization: "not_inferred_from_preparation",
+      fiscal_policy_state: "review_required_before_sefin",
+      dps_numbering: "reserved_durable", dps_series: 1, dps_number: 17,
     }});
   });
   await form.getByRole("button", {name: "Preparar NFS-e revisada em homologação"}).click();
   await expect(form.locator("#native-nfse-result")).toContainText("não transmitido nem autorizado");
+  await expect(form.locator("#native-nfse-result")).toContainText(
+    "BLOQUEIO FISCAL: falta política tributária nacional aprovada e instalada",
+  );
+  await expect(form.locator("#native-nfse-result")).toContainText(
+    "DPS série 1, número 17 já reservados de forma durável",
+  );
   expect(recorded).toHaveLength(1);
   expect(recorded[0]).toMatchObject({
     unit_id: "unit-bh", environment: "homologation",

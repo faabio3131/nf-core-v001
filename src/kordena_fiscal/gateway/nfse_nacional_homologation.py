@@ -6,6 +6,7 @@ preparation authority. Never builds a DPS from untrusted browser JSON.
 from __future__ import annotations
 
 import json
+import os
 import ssl
 from collections.abc import Callable
 from datetime import UTC, datetime
@@ -112,7 +113,22 @@ class NfseNacionalHomologationGateway:
         self._timeout = timeout_seconds
 
     def validate_pre_dispatch(self, request: NfseAuthorizationRequest) -> None:
+        """Validate real SEFIN trust/policy before HTTP intent or A1 access."""
+        if not isinstance(request, NfseAuthorizationRequest):
+            raise OfficialNfseTransportError("Solicitação NFS-e inválida")
         validate_sefin_dps_input(request.document)
+        if self._exchange is _LIVE_EXCHANGE:
+            require_national_receipt_signer_pins()
+            from kordena_fiscal.gateway.nfse_receipt_pki import (
+                require_national_receipt_pki_ready,
+            )
+            require_national_receipt_pki_ready()
+            from kordena_fiscal.runtime.native_nfse_policy import (
+                require_current_national_treatment_for_live_dispatch,
+            )
+            require_current_national_treatment_for_live_dispatch(
+                os.environ, request.document,
+            )
 
     def authorize(self, request: NfseAuthorizationRequest) -> NfseAuthorizationResult:
         if not isinstance(request, NfseAuthorizationRequest):
@@ -185,14 +201,15 @@ class NfseNacionalHomologationGateway:
         expected = NationalReceiptIdentity.from_request(request)
         if NationalReceiptIdentity.from_dps_info(parse_signed_dps_info(signed_dps)) != expected:
             raise OfficialNfseTransportError("Outgoing DPS differs from canonical request")
-        # Never send a real fiscal DPS without a configured receipt signer pin.
-        # Missing pins cannot be compensated by TLS, XMLDSig or a self-signed leaf.
+        # A policy might rotate after preflight while the A1 was resolved and
+        # the DPS signed. Recheck immediately before external HTTP (TOCTOU).
         if self._exchange is _LIVE_EXCHANGE:
-            require_national_receipt_signer_pins()
-            from kordena_fiscal.gateway.nfse_receipt_pki import (
-                require_national_receipt_pki_ready,
+            from kordena_fiscal.runtime.native_nfse_policy import (
+                require_current_national_treatment_for_live_dispatch,
             )
-            require_national_receipt_pki_ready()
+            require_current_national_treatment_for_live_dispatch(
+                os.environ, document,
+            )
         response = self._exchange(payload, build_fiscal_tls_context(material), self._timeout)
         if not isinstance(response, bytes) or len(response) > _MAX_RESPONSE:
             raise OfficialNfseTransportError("Resposta SEFIN inválida")

@@ -248,7 +248,7 @@ function appendNativeSalePreparation(article) {
     }
     wrapper.append(field); parent.append(wrapper); return field;
   };
-  const model = select(form, "document_kind", "Documento", [["nfe", "NF-e 55 — SP/MG"], ["nfce", "NFC-e 65 — MG"]]);
+  const model = select(form, "document_kind", "Documento", [["nfe", "NF-e 55 — SP/MG"], ["nfce", "NFC-e 65 — SP/MG"]]);
   const reference = input(form, "source_id", "Referência única desta venda");
   const issued = input(form, "issued_at", "Data e hora da venda com fuso", new Date().toISOString());
   const review = document.createElement("button"); review.type = "button"; review.textContent = "Carregar configuração fiscal";
@@ -633,6 +633,21 @@ function appendNativeNfsePreparation(article) {
       result.textContent = "NFS-e preparada: " + String(prepared.document_id)
         + " (" + String(prepared.numbering_authority || "numeração fiscal durável") + ")."
         + " Referência preenchida na emissão. Documento não transmitido nem autorizado.";
+      if (prepared.dps_numbering === "reserved_durable"
+        && Number.isSafeInteger(prepared.dps_series)
+        && Number.isSafeInteger(prepared.dps_number)) {
+        result.textContent += " DPS série " + prepared.dps_series
+          + ", número " + prepared.dps_number + " já reservados de forma durável.";
+      }
+      if (prepared.fiscal_policy_state === "review_required_before_sefin") {
+        result.textContent += " BLOQUEIO FISCAL: falta política tributária nacional aprovada e instalada."
+          + " Esta DPS não recebe uma política retroativa: revise e instale a política"
+          + " e prepare NOVO documento com nova referência antes de transmitir."
+          + " Não reutilize a numeração nem retransmita esta preparação bloqueada.";
+      } else if (prepared.fiscal_policy_state === "reviewed_policy_pinned_at_preparation") {
+        result.textContent += " Política revisada vinculada; vigência e integridade"
+          + " serão novamente verificadas antes do envio oficial.";
+      }
       attempt = null;
     } catch (error) {
       result.textContent = (error instanceof Error ? error.message : "Preparação falhou")

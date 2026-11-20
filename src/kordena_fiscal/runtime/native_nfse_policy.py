@@ -4,17 +4,20 @@ from __future__ import annotations
 import hashlib
 import json
 import re
-from collections.abc import Iterator, Mapping
-from contextlib import contextmanager
+from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
 from typing import Any
 
 from kordena_fiscal.domain import ExecutionScope, FiscalDocumentKind, FiscalValidationError
-from kordena_fiscal.issuance.nfe_nfse import NfseNationalTaxTreatment
+from kordena_fiscal.issuance.nfe_nfse import (
+    NfseCanonicalDocument,
+    NfseForeignAddress,
+    NfseNationalTaxTreatment,
+)
 
-from .native_sale_policy import sale_policy_key
+from .native_sale_policy import _serialized_policy_install, sale_policy_key
 from .sale_facts import _unique
 
 POLICY_ENV = "NFCORE_NFSE_FISCAL_POLICY_ROOT"
@@ -45,8 +48,10 @@ def _text(value: object, limit: int = 128) -> bool:
 
 
 def _treatment(data: Any, identity: str, digest: str) -> NfseNationalTaxTreatment:
-    if not isinstance(data, dict) or set(data) not in (
-        _TREATMENT, _TREATMENT | {"municipal_benefit_id"},
+    if (
+        not isinstance(data, dict)
+        or not _TREATMENT <= set(data)
+        or not set(data) <= _TREATMENT | {"municipal_benefit_id", "iss_rate"}
     ):
         raise ValueError("national treatment fields")
     converted = dict(data)
@@ -169,36 +174,58 @@ def resolve_national_treatment(
         raise FiscalValidationError("Scoped national NFS-e policy unavailable or invalid") from None
 
 
-@contextmanager
-def _serialized_policy_install(directory: Path, name: str) -> Iterator[None]:
-    """Serialize same-scope policy promotions across processes on the host.
+def require_current_national_treatment_for_live_dispatch(
+    environ: Mapping[str, str], document: NfseCanonicalDocument,
+) -> ReviewedNfsePolicy:
+    """Revalidate the exact installed tax decision before a real SEFIN POST.
 
-    Without a shared lock, a lower-version writer can overwrite a higher one
-    after both have checked the previous version. Readers still fail closed
-    while the signed JSON/SHA pair is replaced.
+    A prepared DPS may be historical. If the policy has been removed, rotated
+    or no longer selects its documented service and competence, the operation
+    must be reconciled or reviewed, never silently reclassified.
     """
-    import fcntl
-    import os
-    import stat
-
-    fd = os.open(
-        directory / (name + ".lock"),
-        os.O_CREAT | os.O_RDWR | os.O_NOFOLLOW | os.O_CLOEXEC,
-        0o600,
+    decision = document.national_tax_treatment
+    if decision is None or decision.policy_id is None or decision.policy_sha256 is None:
+        raise FiscalValidationError(
+            "Live National NFS-e requires a pinned, reviewed tax decision"
+        )
+    if len(document.services) != 1:
+        raise FiscalValidationError("Live National NFS-e requires one service per DPS")
+    service = document.services[0]
+    taker = document.service_taker
+    country = (
+        taker.address.country_code
+        if taker is not None and isinstance(taker.address, NfseForeignAddress)
+        else "BR"
     )
-    try:
-        metadata = os.fstat(fd)
-        if (
-            not stat.S_ISREG(metadata.st_mode)
-            or metadata.st_nlink != 1
-            or metadata.st_uid != os.geteuid()
-            or metadata.st_mode & 0o077
-        ):
-            raise FiscalValidationError("Unsafe scoped national policy install lock")
-        fcntl.flock(fd, fcntl.LOCK_EX)
-        yield
-    finally:
-        os.close(fd)
+    facts: dict[str, Any] = {
+        "issuer_profile_id": document.issuer.profile_id,
+        "issuer_profile_version": document.issuer.version,
+        "issuer_cnpj": document.issuer.cnpj.value,
+        "issuer_tax_regime": int(document.issuer.tax_regime),
+        "issuer_municipality_ibge": (
+            document.issuer.address.jurisdiction.municipality_ibge_code
+        ),
+        "service_state_code": document.service_jurisdiction.state_code,
+        "service_municipality_ibge": document.service_jurisdiction.municipality_ibge_code,
+        "national_taxation_code": service.national_taxation_code,
+        "municipal_service_code": service.municipal_service_code,
+        "taker_country": country,
+        "iss_withheld": service.iss_withheld,
+        "nbs_code": service.nbs_code,
+        "municipal_taxation_detail": service.municipal_taxation_detail,
+        "source_normative": service.source_normative,
+        "rule_version": service.rule_version,
+    }
+    current = resolve_national_treatment(
+        environ, document.scope, facts, document.competence_date,
+    )
+    if current is None or current.treatment != decision:
+        raise FiscalValidationError(
+            "Live National NFS-e decision differs from current pinned policy"
+        )
+    if document.requires_reviewed_iss_rate and current.treatment.iss_rate is None:
+        raise FiscalValidationError("Live National NFS-e requires exact reviewed ISS rate")
+    return current
 
 
 def install_reviewed_policy(source: Path, directory: Path) -> str:

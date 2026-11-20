@@ -3,7 +3,7 @@
 ## Escopo implementado
 
 Portal Emissões → Preparar NF-e/NFC-e → operação fiscal Emitir → consulta/arquivo
-existentes. NF-e 55 SP/MG e NFC-e 65 MG online, em homologação. Preparação não
+existentes. NF-e 55 SP/MG e NFC-e 65 SP/MG online, em homologação. Preparação não
 transmite nem simula autorização. Demais UFs, contingência e produção não são
 declaradas disponíveis por este incremento.
 
@@ -26,7 +26,7 @@ Campos JSON obrigatórios: `schema_version:1`, `policy_id`, `version`,
 `sale_options` segue `NfeSaleOptions`; `rules` segue `parse_sale_rule` em
 `runtime/sale_facts.py`. A fixture `tests/test_native_sale.py` demonstra o
 contrato com dados sintéticos, **não é uma política tributária para clientes**.
-Uma versão já utilizada não pode mudar de conteúdo: incremente `version`.
+Toda versão instalada permanece imutável: reinstalação byte a byte é idempotente; qualquer alteração exige `version` superior. O instalador usa o mesmo lock de promoção da política nacional, rejeita downgrade e par JSON/pin incompleto. A regra de venda interestadual exige `selector.destination_state_code` explícito, coerente com CFOP e UF de origem; a seleção usa o destinatário canônico, não dado fiscal adicional do browser. Regras locais legadas continuam válidas. Não deduz alíquotas/DIFAL nem declara destinos homologados.
 
 Instalar somente um arquivo já revisado, usando o próprio validador do runtime:
 

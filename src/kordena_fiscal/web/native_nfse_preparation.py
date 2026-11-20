@@ -523,10 +523,30 @@ def prepare_native_nfse(
             "environment": "homologation",
             "transmitted": False,
             "fiscal_authorization": "not_inferred_from_preparation",
-            "dps_numbering": (
-                "not_applicable_municipal_original_rps"
-                if municipal_sp else "pending_durable_authority"
+            "fiscal_policy_state": (
+                "reviewed_policy_pinned_at_preparation"
+                if provider == NACIONAL_HOMOLOGATION_PROVIDER_ID
+                and treatment is not None
+                and treatment.policy_id is not None
+                and treatment.policy_sha256 is not None
+                and (
+                    not result.request.document.requires_reviewed_iss_rate
+                    or treatment.iss_rate is not None
+                )
+                else "review_required_before_sefin"
+                if provider == NACIONAL_HOMOLOGATION_PROVIDER_ID
+                else "municipal_provider_contract"
             ),
+            "dps_numbering": (
+                "reserved_durable"
+                if result.request.document.dps_number is not None
+                else "not_applicable_municipal_original_rps"
+            ),
+            "dps_series": (
+                result.request.document.dps_series
+                if result.request.document.dps_number is not None else None
+            ),
+            "dps_number": result.request.document.dps_number,
             "numbering_authority": (
                 "municipal_rps_durable" if municipal_sp
                 else "national_dps_durable"

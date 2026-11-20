@@ -4,9 +4,10 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 from dataclasses import dataclass
 from datetime import date, datetime
-from decimal import Decimal
+from decimal import ROUND_HALF_UP, Decimal
 from typing import Protocol
 
 from kordena_fiscal.documents import CanonicalFiscalDocument
@@ -331,6 +332,7 @@ class NfseNationalTaxTreatment:
     municipal_benefit_id: str | None = None
     policy_id: str | None = None
     policy_sha256: str | None = None
+    iss_rate: str | None = None
 
     def __post_init__(self) -> None:
         if (self.policy_id is None) != (self.policy_sha256 is None):
@@ -358,6 +360,14 @@ class NfseNationalTaxTreatment:
             or self.iss_taxation_code != "1"
         ):
             raise FiscalValidationError("Reviewed municipal benefit ID is invalid")
+        if self.iss_rate is not None and (
+            not isinstance(self.iss_rate, str)
+            or not re.fullmatch(r"(?:0|[1-9][0-9]{0,2})\.[0-9]{2}", self.iss_rate)
+            or not Decimal("0.00") < Decimal(self.iss_rate) <= Decimal("100.00")
+            or self.iss_taxation_code != "1"
+            or self.special_regime_code == "2"
+        ):
+            raise FiscalValidationError("Reviewed ISS rate must be explicit and applicable")
         if self.simples_assessment_code not in {None, "1", "2", "3"}:
             raise FiscalValidationError("National Simples assessment requires code 1..3")
         if type(self.effective_from) is not date:
@@ -547,6 +557,18 @@ class NfseCanonicalDocument:
                 raise FiscalValidationError(
                     "Non-taxable ISS treatment cannot charge or withhold ISS"
                 )
+            if treatment.iss_rate is not None:
+                if not self.requires_reviewed_iss_rate:
+                    raise FiscalValidationError(
+                        "ISS rate conflicts with reviewed no-highlight regime"
+                    )
+                rate = Decimal(treatment.iss_rate)
+                for line in self.services:
+                    expected_iss = (line.taxable_amount.amount * rate / 100).quantize(
+                        Decimal("0.01"), rounding=ROUND_HALF_UP,
+                    )
+                    if line.iss_amount.amount != expected_iss:
+                        raise FiscalValidationError("ISS amount differs from reviewed rate")
         if (
             self.national_substitution is not None
             and (
@@ -571,6 +593,21 @@ class NfseCanonicalDocument:
             or not 1 <= self.dps_number <= 999_999_999_999_999
         ):
             raise FiscalValidationError("DPS serial number is invalid")
+
+    @property
+    def requires_reviewed_iss_rate(self) -> bool:
+        """Use the existing National ordinary-taxable/no-highlight boundary."""
+        treatment = self.national_tax_treatment
+        return (
+            treatment is not None
+            and treatment.iss_taxation_code == "1"
+            and self.issuer.tax_regime is not TaxRegimeCode.MEI
+            and treatment.special_regime_code != "2"
+            and not (
+                treatment.special_regime_code == "1"
+                and self.issuer.address.jurisdiction.municipality_ibge_code == "3106200"
+            )
+        )
 
     @property
     def totals(self) -> NfseDocumentTotals:
@@ -669,6 +706,8 @@ def build_nfse_request_fingerprint(document: NfseCanonicalDocument) -> str:
         if treatment.policy_id is not None:
             treatment_payload["policy_id"] = treatment.policy_id
             treatment_payload["policy_sha256"] = treatment.policy_sha256
+        if treatment.iss_rate is not None:
+            treatment_payload["iss_rate"] = treatment.iss_rate
         payload["national_tax_treatment"] = treatment_payload
     if document.service_taker is not None:
         taker = document.service_taker

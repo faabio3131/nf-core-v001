@@ -784,8 +784,11 @@ def test_owner_prepares_native_nfse_and_replay_keeps_immutable_document(tmp_path
     result = first.json()
     assert result["status"] == FiscalDocumentState.READY_TO_TRANSMIT.value
     assert result["fiscal_authorization"] == "not_inferred_from_preparation"
+    assert result["fiscal_policy_state"] == "review_required_before_sefin"
     assert result["transmitted"] is False
-    assert result["dps_numbering"] == "pending_durable_authority"
+    assert result["dps_numbering"] == "reserved_durable"
+    assert result["dps_series"] == 1
+    assert type(result["dps_number"]) is int and result["dps_number"] > 0
     replay = _post(web, _payload(), key="second-review")
     assert replay.status_code == 200, replay.text
     assert replay.json()["replay"] is True
@@ -794,6 +797,8 @@ def test_owner_prepares_native_nfse_and_replay_keeps_immutable_document(tmp_path
     prepared = FiscalApplicationService(db).load_prepared_nfse_authorization(
         scope, result["document_id"]
     )
+    assert prepared.document.dps_series == result["dps_series"]
+    assert prepared.document.dps_number == result["dps_number"]
     assert prepared.document.issuer.cnpj.value == "11222333000181"
     assert prepared.document.service_taker is not None
     assert prepared.document.service_taker.tax_id.value == "12345678000195"
@@ -4221,10 +4226,14 @@ def test_national_reviewed_treatment_http_archive_xml_and_policy_rotation(
     scope, data, path, pin, write = _install_national_decision(
         tmp_path, monkeypatch, payload, code=code, sublimit=sublimit,
     )
+    if code == "1":
+        data["rules"][0]["treatment"]["iss_rate"] = "3.00"
+        write()
     web = _client(db)
     response = _post(web, payload)
     assert response.status_code == 200, response.text
     result = response.json()
+    assert result["fiscal_policy_state"] == "reviewed_policy_pinned_at_preparation"
     request = FiscalApplicationService(db).load_prepared_nfse_authorization(
         scope, result["document_id"],
     )
@@ -4748,3 +4757,54 @@ def test_bh_no_deduction_must_not_be_blocked_by_document_guard(tmp_path) -> None
     }
     result = _post(_client(db), payload, "bh-no-deduction")
     assert result.status_code == 200, result.text
+
+
+
+def test_national_exact_reviewed_rate_rounding_and_replay(tmp_path, monkeypatch):
+    from kordena_fiscal.issuance.nfse_archive import decode_prepared_nfse, encode_prepared_nfse
+    from kordena_fiscal.runtime.native_nfse_policy import (
+        POLICY_ENV,
+        require_current_national_treatment_for_live_dispatch,
+    )
+
+    db = _database(tmp_path / "rate.sqlite")
+    payload = _payload() | {"gross_amount": "0.33", "iss_amount": "0.01"}
+    scope, data, _, _, write = _install_national_decision(
+        tmp_path, monkeypatch, payload, code="1",
+    )
+    data["rules"][0]["treatment"]["iss_rate"] = "3.00"
+    write()
+    web = _client(db)
+    invalid = _post(web, payload | {"iss_amount": "0.02"}, "bad-tax-amount")
+    assert invalid.status_code == 400, invalid.text
+    with db() as uow:
+        assert not uow.lifecycle.list_for_scope(scope)
+    result = _post(web, payload, "valid-reviewed-rate")
+    assert result.status_code == 200, result.text
+    assert result.json()["fiscal_policy_state"] == "reviewed_policy_pinned_at_preparation"
+    request = FiscalApplicationService(db).load_prepared_nfse_authorization(
+        scope, result.json()["document_id"],
+    )
+    assert request.document.national_tax_treatment.iss_rate == "3.00"
+    restored = decode_prepared_nfse(encode_prepared_nfse(request), scope=scope)
+    assert restored == request
+    require_current_national_treatment_for_live_dispatch(
+        {POLICY_ENV: str(tmp_path / "national-policies")}, restored.document,
+    )
+    signed = build_sefin_signed_dps(request, _synthetic_a1_for_native_issuer())
+    national_dps_validator("1.01", profile=NT009_RESTRICTED_PROFILE).validate_document(signed)
+    xml = etree.fromstring(signed)
+    ns = {"n": "http://www.sped.fazenda.gov.br/nfse"}
+    # 0.01 / 0.33 would incorrectly infer 3.03% instead of the reviewed 3%.
+    assert xml.xpath("string(//n:pAliq)", namespaces=ns) == "3.00"
+    replay = _post(web, payload, "valid-reviewed-rate")
+    assert replay.status_code == 200 and replay.json()["replay"] is True
+
+
+def test_national_legacy_rate_missing_requires_review_before_sefin(tmp_path, monkeypatch):
+    db = _database(tmp_path / "legacy-rate.sqlite")
+    payload = _payload()
+    _install_national_decision(tmp_path, monkeypatch, payload, code="1")
+    result = _post(_client(db), payload)
+    assert result.status_code == 200, result.text
+    assert result.json()["fiscal_policy_state"] == "review_required_before_sefin"

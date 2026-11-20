@@ -16,6 +16,7 @@ import binascii
 import gzip
 import io
 import json
+import os
 import ssl
 from collections.abc import Callable
 from dataclasses import dataclass, field
@@ -24,6 +25,8 @@ from urllib.error import HTTPError, URLError
 from urllib.request import HTTPSHandler, Request, build_opener
 from zoneinfo import ZoneInfo
 
+from cryptography import x509
+from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.hazmat.primitives.serialization import pkcs12
 from lxml import etree
@@ -58,10 +61,74 @@ _CANCEL_TYPE = "101101"
 _MAX_XML = 2_097_152
 _URL = SEFIN_HOMOLOGATION_NFSE_URL
 _NS_TAG = "{" + _NS + "}"
+_EVENT_SIGNER_ENV = "NFCORE_NFSE_EVENT_SIGNER_SHA256"
+
 
 
 class NationalNfseEventError(FiscalValidationError):
     """No secrets, full XML, certificates or upstream body in error messages."""
+
+
+
+def require_national_event_signer_pins() -> frozenset[str]:
+    """Operator-approved signer leaf fingerprints; not taxpayer A1 or TLS."""
+    value = os.environ.get(_EVENT_SIGNER_ENV)
+    if value is None or not value or len(value) > 519:
+        raise NationalNfseEventError("Official NFS-e event signer pins unavailable")
+    parts = value.split(",")
+    allowed = frozenset("0123456789abcdefABCDEF")
+    if (
+        not 1 <= len(parts) <= 8
+        or any(len(item) != 64 or not set(item) <= allowed for item in parts)
+        or len({item.lower() for item in parts}) != len(parts)
+    ):
+        raise NationalNfseEventError("Invalid official NFS-e event signer pins")
+    return frozenset(item.lower() for item in parts)
+
+
+def _require_live_event_trust() -> None:
+    """Fail before contacting SEFIN when ICP revocation evidence is missing."""
+    require_national_event_signer_pins()
+    from kordena_fiscal.gateway.nfse_receipt_pki import (
+        require_national_receipt_pki_ready,
+    )
+    require_national_receipt_pki_ready()
+
+
+def _enforce_national_event_signer(root: etree._Element) -> None:
+    """Bind only the outer official event signer to leaf pin and ICP/CRL."""
+    if _EVENT_SIGNER_ENV not in os.environ:
+        if any(name in os.environ for name in (
+            "NFCORE_NFSE_RECEIPT_CA_BUNDLE",
+            "NFCORE_NFSE_RECEIPT_CRL_BUNDLE",
+            "NFCORE_NFSE_RECEIPT_ROOT_SHA256",
+        )):
+            raise NationalNfseEventError("Official NFS-e event signer pins unavailable")
+        # Offline synthetic tests do not establish operational trust. Both
+        # default live POST and GET demand pins and PKI *before* HTTP.
+        return
+    pins = require_national_event_signer_pins()
+    node = root.find(
+        f"{{{_DS}}}Signature/{{{_DS}}}KeyInfo/{{{_DS}}}X509Data/"
+        f"{{{_DS}}}X509Certificate"
+    )
+    if node is None or not node.text:
+        raise NationalNfseEventError("Official event signer certificate missing")
+    try:
+        encoded = base64.b64decode("".join(node.text.split()), validate=True)
+        certificate = x509.load_der_x509_certificate(encoded)
+    except (ValueError, binascii.Error, TypeError):
+        raise NationalNfseEventError("Official event signer certificate invalid") from None
+    if certificate.fingerprint(hashes.SHA256()).hex() not in pins:
+        raise NationalNfseEventError("Untrusted official NFS-e event signer")
+    from kordena_fiscal.gateway.nfse_receipt_pki import (
+        NationalReceiptPkiError,
+        verify_national_receipt_pki,
+    )
+    try:
+        verify_national_receipt_pki(certificate)
+    except NationalReceiptPkiError:
+        raise NationalNfseEventError("Official event ICP chain or CRL untrusted") from None
 
 
 def _secure_parse(xml: bytes) -> etree._Element:
@@ -264,6 +331,12 @@ def _exchange_event_get(
     return bytes(body)
 
 
+# Stable references distinguish real SEFIN traffic from explicitly injected
+# synthetic transports, without inferring network trust from a test mock.
+_LIVE_EVENT_POST = _exchange
+_LIVE_EVENT_GET = _exchange_event_get
+
+
 class NationalNfseCancellationHomologationTransport:
     """A1 + human-approved signed XML + fiscal binding, no automatic retry."""
 
@@ -311,6 +384,8 @@ class NationalNfseCancellationHomologationTransport:
         )
         if provider != NACIONAL_HOMOLOGATION_PROVIDER_ID:
             raise NationalNfseEventError("National event query provider binding mismatch")
+        if self._exchange_get is _LIVE_EVENT_GET:
+            _require_live_event_trust()
         self._approve(intent)
         self._validate(intent.signed_event_xml)
         material = self._certificate(intent.scope, intent.issuer.value)
@@ -326,6 +401,8 @@ class NationalNfseCancellationHomologationTransport:
         if response is None:
             return None
         xml = _validated_response(response, intent)
+        if self._exchange_get is _LIVE_EVENT_GET:
+            validate_national_event_xml(xml, kind="response")
         self._validate_response(xml)
         return NationalNfseCancellationReceipt(
             invoice_reference=intent.invoice_reference,
@@ -345,6 +422,8 @@ class NationalNfseCancellationHomologationTransport:
         )
         if provider != NACIONAL_HOMOLOGATION_PROVIDER_ID:
             raise NationalNfseEventError("National cancellation provider binding mismatch")
+        if self._exchange is _LIVE_EVENT_POST:
+            _require_live_event_trust()
         self._approve(intent)
         # Must verify official XSD AND XMLDSig against issuer and signed bytes.
         self._validate(intent.signed_event_xml)
@@ -367,6 +446,8 @@ class NationalNfseCancellationHomologationTransport:
             self._timeout,
         )
         event_xml = _validated_response(reply, intent)
+        if self._exchange is _LIVE_EVENT_POST:
+            validate_national_event_xml(event_xml, kind="response")
         # A structurally correlated XML is not proof it was signed by SEFIN.
         # Require separately pinned official event schema and signature checks.
         self._validate_response(event_xml)
@@ -398,6 +479,7 @@ def validate_national_event_xml(xml: bytes, *, kind: str) -> None:
         allow_nested_event_signature=(kind == "response"),
     )
     if kind == "response":
+        _enforce_national_event_signer(root)
         nested = info.find(_NS_TAG + "pedRegEvento")
         if nested is None:
             raise NationalNfseEventError("Official event lacks signed original request")
