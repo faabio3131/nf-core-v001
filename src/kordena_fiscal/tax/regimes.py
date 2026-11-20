@@ -445,12 +445,12 @@ def resolve_simples_ibs_cbs_mode(
                 raise FiscalValidationError("regular IBS/CBS option period not verified")
             _assert_option_receipt(profile, receipt_h2, instant)
             if receipt_h2.submitted_at is None:
-                prior = regular_option_receipt_2027_h1
-                if not isinstance(prior, SimplesRegularOptionReceipt2027H1) or (
-                    prior.protocol_reference != receipt_h2.prior_protocol_reference
+                prior_receipt = regular_option_receipt_2027_h1
+                if not isinstance(prior_receipt, SimplesRegularOptionReceipt2027H1) or (
+                    prior_receipt.protocol_reference != receipt_h2.prior_protocol_reference
                 ):
                     raise FiscalValidationError("continuation requires prior reviewed option")
-                _assert_option_receipt(profile, prior, instant)
+                _assert_option_receipt(profile, prior_receipt, instant)
         else:
             raise FiscalValidationError("regular IBS/CBS option period not verified")
     return mode

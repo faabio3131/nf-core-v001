@@ -94,7 +94,7 @@ def build_issuer_verifier(
                 unit_id=scope.unit_id, environment=scope.environment, instant=start,
             )
         if (
-            profile is None or profile.cnpj.value != issuer
+            not isinstance(profile, FiscalProfile) or profile.cnpj.value != issuer
             or profile.address.jurisdiction.state_code != facts.uf
             or int(profile.tax_regime) not in (1, 2)
             or profile.effective_to is not None and profile.effective_to < end
