@@ -3467,7 +3467,12 @@ function appendRtcIssuerSummary(article, rows) {
     pending.textContent = `Regime federal declarado: ${regimeLabels[String(issuer.federal_income_tax_regime)] || "Não reconhecido"}, desde ${String(issuer.federal_regime_effective_from || "").slice(0, 10)} (versão ${issuer.federal_regime_version}).`;
   } else if (regimeStatus === "declaration_inconsistent_with_profile") {
     pending.className = "form-error";
-    pending.textContent = "O regime federal declarado não combina com o CRT do perfil fiscal vigente. Declare o regime correto a partir da data da mudança.";
+    pending.textContent = "A declaração do regime federal não corresponde ao perfil fiscal vigente (CNPJ, CRT ou vigência). Revise os dados com a contabilidade.";
+  } else if (regimeStatus === "declaration_invalid") {
+    pending.className = "form-error";
+    pending.textContent = "O histórico do regime federal está inválido. A declaração não pode ser usada até a revisão dos registros.";
+  } else if (regimeStatus === "declaration_scheduled") {
+    pending.textContent = `Regime federal programado para ${String(issuer.federal_regime_effective_from || "").slice(0, 10)}; ainda sem declaração vigente.`;
   } else {
     pending.textContent = "Regime federal (Lucro Real / Presumido / Simples): ainda não declarado. O CRT não define sozinho o regime de IRPJ/CSLL.";
   }
@@ -3475,7 +3480,11 @@ function appendRtcIssuerSummary(article, rows) {
   calc.className = "empty-state";
   calc.textContent = "IBS, CBS, IS e classificação CST/cClassTrib: cálculo e tabelas oficiais ainda não certificados para operação. O cadastro inicial exige permissão administrativa; nenhuma emissão ou cálculo fiscal é executado nesta tela.";
   section.append(pending);
-  if (configured) appendFederalRegimeDeclaration(section, String(issuer.crt));
+  if (configured && bootstrapState?.permissions.includes("configuration.write")
+      && regimeStatus !== "declaration_invalid"
+      && ["1", "2", "3", "4"].includes(String(issuer.crt))) {
+    appendFederalRegimeDeclaration(section, String(issuer.crt));
+  }
   section.append(calc);
   article.append(section);
 }
@@ -3493,6 +3502,12 @@ function appendFederalRegimeDeclaration(section, crt) {
   const regimeLabel = document.createElement("label");
   regimeLabel.textContent = "Regime federal";
   const regime = document.createElement("select");
+  regime.name = "federal_income_tax_regime";
+  regime.required = true;
+  const placeholder = document.createElement("option");
+  placeholder.value = ""; placeholder.textContent = "Selecione o regime federal";
+  placeholder.disabled = true; placeholder.selected = true;
+  regime.append(placeholder);
   const simples = ["1", "2", "4"].includes(crt);
   const choices = simples
     ? [["simples_nacional", "Simples Nacional"]]
@@ -3508,7 +3523,7 @@ function appendFederalRegimeDeclaration(section, crt) {
   start.type = "date"; start.required = true;
   startLabel.append(start);
   const sourceLabel = document.createElement("label");
-  sourceLabel.textContent = "Evidência (ex.: opção no DCTF/ECF, contrato social, parecer do contador)";
+  sourceLabel.textContent = "Referência da evidência do enquadramento (ex.: ECF, registro da opção, parecer do contador)";
   const source = document.createElement("input");
   source.required = true; source.maxLength = 1000; source.autocomplete = "off";
   sourceLabel.append(source);
