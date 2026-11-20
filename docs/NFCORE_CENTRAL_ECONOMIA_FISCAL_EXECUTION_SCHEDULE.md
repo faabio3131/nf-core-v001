@@ -8,8 +8,8 @@ A folha T23–T33, a Trilha 2 H01–H06 e a reformulação Enterprise não integ
 | T02 | Contrato Core Cognitivo | ENTREGUE — DoD interno aprovado em 20/11/2026; 308 PASS, 0 SKIP/FAIL; 24 casos focais (44718504072, d53a2c62) |
 | T03 | Sentinela Normativa e anistias/REFIS | ENTREGUE — DoD interno aprovado em 20/11/2026; 525 PASS, 0 SKIP/FAIL; 6 casos focais (44720120616, 6a0cf5be) |
 | T04 | Motor Simples e Fator R | ENTREGUE — DoD interno aprovado em 20/11/2026; 114 casos focais PASS, 831 PASS na regressão, 0 FAIL, 1 SKIP externo RTC (44722887552, 8dc7c482) |
-| T05 | Diagnóstico e otimizador Fator R | EM EXECUÇÃO — implementação determinística candidata; gates e integração pendentes |
-| T06 | Classificador de receitas segregáveis | Bloqueado |
+| T05 | Diagnóstico e otimizador Fator R | ENTREGUE INTERNAMENTE — CI integral SUCCESS (44735022830, bd3e8d01); integração pendente |
+| T06 | Classificador de receitas segregáveis | LIBERADO — início de auditoria e design |
 | T07 | Apuração/PGDAS segregada | Bloqueado |
 | T08 | Catálogo federal | Bloqueado |
 | T09 | Catálogo estadual 27 UFs | Bloqueado |
@@ -82,3 +82,10 @@ Aplicação decodifica snapshot revisado versionado (nfcore.simples-facts/2026-v
 
 ### Jornada de importação e integração T05
 Importador operacional scripts/nfcore_simples_import_reviewed.py para ambiente não produtivo, com bundle revisado externamente, tenant/unidade canônicos, sem DDL, sem dados privados em saída. O serviço valida antes da persistência, evita reescrita de versões e gera as avaliações no mesmo escopo. O leitor cognitivo distingue competência do snapshot e competência simulada e valida digest da memória de cálculo. Fixtures sintéticas cobrem importação, replay, projeção T02 e quatro eixos de isolamento no PostgreSQL; teste HTTP cobre autenticação, CSRF, RBAC e rejeição de dados fiscais enviados pelo navegador. Gates ainda pendentes; não há homologação nem produção autorizadas.
+
+
+## Certificação T05 e Bloco 1 — 20/11/2026
+- HEAD de código `bd3e8d0100470fadf505291c8e74fb85933d6037`, PR #587 OPEN/DRAFT, base MFA `bc95d946`, main `549ab3c0` inalterada.
+- CI integral https://github.com/faabio3131/nf-core-v001/actions/runs/44735022830 SUCCESS: 5944 Python PASS, 2 SKIP, 8 warnings; 30 frontend PASS, 81 E2E PASS; zero falhas. Skips: runtime production composition requires PostgreSQL (variante específica); V0073 database not mounted. Governança 44735026872, completude 44735026761, Contabo config/teste 44735026970 SUCCESS. Ruff/Mypy, migrations, segurança, containers, SBOM, backup/restore PostgreSQL e readiness aprovados no runner.
+- Escopo interno T05 concluído: diagnóstico e cenário determinístico de Fator R, importação revisada não produtiva, referências imutáveis, oportunidades/simulações com custo explícito, escopo canônico e projeção T02. Cabeçalho MFA reconciliado sem relaxar E2E.
+- Bloco 1: engenharia implementada e CI integral aprovada; integração/revisão independente ainda pendentes. Não equivale à homologação fiscal real, produção ou certificação comercial. Entrada revisada legítima, operação produtiva e UI T21/E2E T22 não demonstrados. Sem merge/deploy. T06 liberada; T07 permanece bloqueada.
