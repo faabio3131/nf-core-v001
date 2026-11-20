@@ -1,6 +1,8 @@
 """HTTP surface of the second factor: login challenge, enrollment, step-up."""
 from __future__ import annotations
 
+import base64
+import io
 from collections.abc import Callable
 from datetime import datetime
 from typing import Annotated, Any
@@ -36,11 +38,16 @@ def second_factor_due(
 
 
 def _qr_data_uri(uri: str) -> str | None:
+    """SVG QR code as a data URI (qrcode ships with the web extra); None if absent."""
     try:
-        import segno
+        import qrcode  # type: ignore[import-untyped]
+        import qrcode.image.svg  # type: ignore[import-untyped]
     except ImportError:  # optional: the setup key is always returned
         return None
-    return str(segno.make(uri, error="m").svg_data_uri(scale=4, border=2))
+    image = qrcode.make(uri, image_factory=qrcode.image.svg.SvgPathImage, box_size=8, border=2)
+    buffer = io.BytesIO()
+    image.save(buffer)
+    return "data:image/svg+xml;base64," + base64.b64encode(buffer.getvalue()).decode("ascii")
 
 
 def _enrollment_body(enrollment: MfaEnrollment) -> dict[str, Any]:
