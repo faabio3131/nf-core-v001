@@ -5,14 +5,15 @@ calculadora-rtc-simples-nacional, MIT) runs as an INTERNAL service; NFCore stays
 the only fiscal authority. This module never imports Java code and never calls a
 public Receita endpoint: it talks to a pinned local instance over HTTP.
 
-Contract read from the pinned source (commit below):
-POST /api/calculadora/observabilidade/simples-nacional always answers HTTP 200,
-even when items fail; each object carries ``estadoItem`` in {CALCULADO,
-NAO_CALCULADO, NAO_IMPLEMENTADO, INCONSISTENCIA_ENTRADA, FALHA_TECNICA}. A 200
-alone is therefore never accepted: every requested item must come back exactly
-once, and only CALCULADO items may feed a fiscal document. The component does
-not compute the Simples effective rate (PGDAS-D); pIBSSN/pCBSSN come from the
-caller's reviewed source or are the component's preloaded first-bracket rates.
+Contract read from the pinned source (release 1.0.2 of 18/11/2026) and exercised
+against a live instance with the V0073 database on 20/11/2026:
+POST /api/calculadora/observabilidade/simples-nacional answers HTTP 200 when items
+fail individually (422 when the operation itself is invalid). Each object carries
+``estadoItem`` (CALCULADO, NAO_CALCULADO, NAO_IMPLEMENTADO, INCONSISTENCIA_ENTRADA
+or FALHA_TECNICA). A 200 alone is never accepted: every requested item must come
+back exactly once, and only CALCULADO items may feed a fiscal document. The
+component does not compute the Simples effective rate (PGDAS-D); pIBSSN/pCBSSN
+come from the caller's reviewed source.
 """
 from __future__ import annotations
 
@@ -40,8 +41,8 @@ class RfbComponentPin:
 # Pinned exactly; changing it is a reviewed change (RTC-RFB-01/10).
 SIMPLES_CALCULATOR_PIN = RfbComponentPin(
     repository="https://github.com/ReceitaFederal/calculadora-rtc-simples-nacional",
-    commit="c5b0f01c8351c3f0d0795cc617b29d233e9f98df",
-    application_version="0.0.6",
+    commit="a926d5a76095ac0295a6612a9a54db7ffead2396",
+    application_version="1.0.2",
     license="MIT",
 )
 
@@ -50,11 +51,14 @@ VERSION_PATH = "/versao"
 _MAX_RESPONSE = 2 * 1024 * 1024
 _STATES = frozenset({
     "CALCULADO", "NAO_CALCULADO", "NAO_IMPLEMENTADO",
-    "INCONSISTENCIA_ENTRADA", "FALHA_TECNICA",
+    "INCONSISTENCIA_ENTRADA", "FALHA_TECNICA", "CALCULO_SIMULADO",
 })
 _CLASS_TRIB = re.compile(r"[0-9]{6}\Z")
 _ATIV_SN = re.compile(r"[0-9]{2}\Z")
 _INTERNAL_HOSTS = frozenset({"localhost", "127.0.0.1", "::1"})
+_DECIMAL_TEXT = re.compile(r"-?[0-9]{1,15}(\.[0-9]{1,8})?\Z")
+# Payload version required by the 1.x endpoint (OperacaoSimplesInput.versao).
+PAYLOAD_VERSION = "2.0.0"
 
 
 class RfbCalculatorError(FiscalValidationError):
@@ -118,8 +122,11 @@ class SimplesItem:
         }
         if self.c_ativ_sn is not None:
             payload["cAtivSN"] = self.c_ativ_sn
-        if self.valor_imposto_seletivo is not None:
-            payload["valorImpostoSeletivo"] = _money(self.valor_imposto_seletivo)
+        # 1.x requires vIS on every item (VSN-003); absent IS means zero.
+        payload["valorImpostoSeletivo"] = _money(
+            self.valor_imposto_seletivo if self.valor_imposto_seletivo is not None
+            else Decimal("0.00")
+        )
         for key, value in (("pIBSSN", self.p_ibs_sn), ("pCBSSN", self.p_cbs_sn)):
             rate = _rate(value)
             if rate is not None:
@@ -178,7 +185,8 @@ def build_request(
     if not items or len({item.numero for item in items}) != len(items):
         raise RfbCalculatorError("Items must be present and uniquely numbered")
     request: dict[str, object] = {
-        "id": operation_id, "data": date, "tpDoc": document_type, "CRT": crt,
+        "id": operation_id, "versao": PAYLOAD_VERSION, "data": date,
+        "tpDoc": document_type, "CRT": crt,
         "itens": [item.as_payload() for item in items],
     }
     if ibs_cbs_regime is not None:
@@ -198,6 +206,9 @@ def _decimal_map(raw: object) -> dict[str, Decimal]:
         if isinstance(value, bool) or value is None:
             continue
         if isinstance(value, Decimal | int):
+            values[key] = Decimal(value)
+        elif isinstance(value, str) and _DECIMAL_TEXT.fullmatch(value):
+            # 1.x replies serialize amounts as strings ("1000.00").
             values[key] = Decimal(value)
     return values
 
@@ -229,6 +240,10 @@ def parse_response(
             str(error["code"]) for error in errors
             if isinstance(error, dict) and isinstance(error.get("code"), str)
         )
+        reason = entry.get("motivoEstado")
+        if isinstance(reason, dict) and isinstance(reason.get("codigo"), str):
+            # e.g. CATIVSN_AUSENTE: NAO_CALCULADO is explained, not silent.
+            codes = (*codes, str(reason["codigo"]))
         values = _decimal_map(entry.get("tribCalc"))
         if state == "CALCULADO" and not values:
             raise RfbCalculatorError("CALCULADO item without calculated values")
@@ -306,14 +321,18 @@ class RfbSimplesCalculatorClient:
         # Both versions are evidence for the audit trail of every calculation.
         return f"app={app};db={database}"
 
-    def calculate(self, request: Mapping[str, object]) -> SimplesCalculation:
+    def calculate(
+        self, request: Mapping[str, object], *, path: str = CALCULATE_PATH,
+    ) -> SimplesCalculation:
+        if path not in {CALCULATE_PATH, UNASSISTED_PATH}:
+            raise RfbCalculatorError("Unknown calculator endpoint")
         version = self.verify_version()
         items = request.get("itens")
         if not isinstance(items, list):
             raise RfbCalculatorError("Request has no items")
         expected = [int(item["numero"]) for item in items if isinstance(item, dict)]
         raw, _ = self._transport(
-            "POST", self._base + CALCULATE_PATH,
+            "POST", self._base + path,
             json.dumps(request, separators=(",", ":")).encode("utf-8"), self._timeout,
         )
         return parse_response(raw, expected_items=expected, component_version=version)
@@ -351,3 +370,126 @@ def compare_shadow(
             if a is None or b is None or abs(a - b) > tolerance:
                 divergences.append(ShadowDivergence(item.numero, field, a, b))
     return tuple(divergences)
+
+
+# --- RTC-RFB-08: unassisted endpoint (all DF-e, including the NFS-e) -----------------
+# Contract of the pinned 1.0.2 source (OperacaoSimplesNaoAssistidaInput) exercised
+# live on 20/11/2026: NFS-e is tpDoc 91 with exactly one item, opSimpNac /
+# regApIBSCBSSN / regApTribSN instead of CRT, and the taxpayer's PGDAS effective
+# rates for the period in aliquotasEfetivas (text, percentage points).
+UNASSISTED_PATH = "/calculadora/observabilidade/simples-nacional/nao-assistido"
+UNASSISTED_PAYLOAD_VERSION = "3.0.0"
+NFSE_DOCUMENT_TYPE = "91"
+_RATE_TEXT = re.compile(r"[0-9]{1,3}(\.[0-9]{1,34})?\Z")
+_ANNEXES = ("I", "II", "III", "IV", "V")
+_ISS_ANNEXES = frozenset({"III", "IV", "V"})
+
+
+def _rate_text(value: str | None, field: str) -> str | None:
+    if value is None:
+        return None
+    if not isinstance(value, str) or not _RATE_TEXT.fullmatch(value):
+        raise RfbCalculatorError(f"{field} must be a percentage-point text")
+    return value
+
+
+@dataclass(frozen=True, slots=True)
+class AnnexRates:
+    """One PGDAS annex line: CBS/IBS effective rates (percentage points, as text)."""
+
+    p_cbs_sn: str
+    p_ibs_sn: str | None
+    without_iss_p_cbs_sn: str | None = None
+    without_iss_p_ibs_sn: str | None = None
+
+    def as_payload(self, annex: str) -> dict[str, object]:
+        payload: dict[str, object] = {"pCBSSN": _rate_text(self.p_cbs_sn, "pCBSSN")}
+        if self.p_ibs_sn is not None:
+            payload["pIBSSN"] = _rate_text(self.p_ibs_sn, "pIBSSN")
+        if annex in _ISS_ANNEXES and self.without_iss_p_cbs_sn is not None:
+            pair: dict[str, object] = {
+                "pCBSSN": _rate_text(self.without_iss_p_cbs_sn, "pCBSSN"),
+            }
+            if self.without_iss_p_ibs_sn is not None:
+                pair["pIBSSN"] = _rate_text(self.without_iss_p_ibs_sn, "pIBSSN")
+            payload["semRedistribuicaoISS"] = pair
+        elif annex not in _ISS_ANNEXES and self.without_iss_p_cbs_sn is not None:
+            raise RfbCalculatorError(f"Annex {annex} has no pair without ISS redistribution")
+        return payload
+
+
+@dataclass(frozen=True, slots=True)
+class SimplesEffectiveRates:
+    """The taxpayer's PGDAS line for the period; supplied by the accountant."""
+
+    annexes: Mapping[str, AnnexRates]
+    factor_r: bool | None = None
+    above_sublimit: bool = False
+
+    def as_payload(self) -> dict[str, object]:
+        if not self.annexes or set(self.annexes) - set(_ANNEXES):
+            raise RfbCalculatorError("Effective rates need annexes among I..V")
+        payload: dict[str, object] = {"impedimentoSublimite": self.above_sublimit}
+        if self.factor_r is not None:
+            payload["fatorR"] = self.factor_r
+        for annex, rates in self.annexes.items():
+            payload[f"anexo{annex}"] = rates.as_payload(annex)
+        return payload
+
+
+@dataclass(frozen=True, slots=True)
+class NfseSimplesItem:
+    numero: int
+    c_ativ_sn: str
+    c_class_trib: str
+    nbs: str
+    base_calculo: Decimal
+    iss_taxation: str  # tribISSQN 1..4
+    iss_withheld: bool  # tpRetISSQN 2 = withheld
+    municipal_benefit: str = "1"  # tpBM
+
+    def as_payload(self) -> dict[str, object]:
+        if not _ATIV_SN.fullmatch(self.c_ativ_sn or ""):
+            raise RfbCalculatorError("cAtivSN must have 2 digits")
+        if not _CLASS_TRIB.fullmatch(self.c_class_trib or ""):
+            raise RfbCalculatorError("cClassTrib must have 6 digits")
+        if not re.fullmatch(r"[0-9]{9}", self.nbs or ""):
+            raise RfbCalculatorError("NBS must have 9 digits")
+        if self.iss_taxation not in {"1", "2", "3", "4"}:
+            raise RfbCalculatorError("tribISSQN must be 1..4")
+        return {
+            "numero": self.numero, "cAtivSN": self.c_ativ_sn, "cClassTrib": self.c_class_trib,
+            "nbs": self.nbs, "baseCalculo": _money(self.base_calculo),
+            "tribISSQN": self.iss_taxation, "tpRetISSQN": "2" if self.iss_withheld else "1",
+            "tpBM": self.municipal_benefit,
+        }
+
+
+def build_nfse_request(
+    *, operation_id: str, date: str, simples_option: str, ibs_cbs_regime: str,
+    taxes_regime: str, rates: SimplesEffectiveRates, item: NfseSimplesItem,
+) -> dict[str, object]:
+    """NFS-e (tpDoc 91): exactly one item; opSimpNac 3 (ME/EPP) or 4 (pending)."""
+    if not isinstance(operation_id, str) or not 1 <= len(operation_id) <= 120:
+        raise RfbCalculatorError("Operation id is required")
+    if not re.fullmatch(r"[0-9]{4}-[0-9]{2}-[0-9]{2}", date or ""):
+        raise RfbCalculatorError("Operation date must be YYYY-MM-DD")
+    if simples_option not in {"3", "4"}:
+        raise RfbCalculatorError("opSimpNac must be 3 (ME/EPP) or 4 (pending) for this shadow")
+    if ibs_cbs_regime not in {"1", "2", "3"} or taxes_regime not in {"1", "2", "3"}:
+        raise RfbCalculatorError("regApIBSCBSSN and regApTribSN must be 1..3")
+    if item.numero != 1:
+        raise RfbCalculatorError("NFS-e carries exactly one item, number 1")
+    return {
+        "id": operation_id, "versao": UNASSISTED_PAYLOAD_VERSION, "data": date,
+        "tpDoc": NFSE_DOCUMENT_TYPE, "opSimpNac": simples_option,
+        "regApIBSCBSSN": ibs_cbs_regime, "regApTribSN": taxes_regime,
+        "aliquotasEfetivas": rates.as_payload(), "itens": [item.as_payload()],
+    }
+
+
+def calculate_unassisted(
+    client: RfbSimplesCalculatorClient, request: Mapping[str, object],
+) -> SimplesCalculation:
+    """Same strict per-item parsing as the assisted endpoint."""
+    return client.calculate(request, path=UNASSISTED_PATH)
