@@ -625,12 +625,13 @@ dialog::backdrop { background: rgba(2,7,13,.75); backdrop-filter: blur(7px); }
   .topbar {
     align-items: stretch;
     flex-direction: column;
-    gap: 9px;
+    gap: 4px;
     margin-bottom: 11px;
   }
   .topbar .eyebrow {
-    margin-bottom: 5px;
+    margin-bottom: 3px;
     font-size: 8px;
+    line-height: 1.2;
     letter-spacing: .105em;
   }
   .top-actions {
@@ -638,24 +639,26 @@ dialog::backdrop { background: rgba(2,7,13,.75); backdrop-filter: blur(7px); }
     max-width: 100%;
     min-width: 0;
     display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    gap: 8px;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 4px;
   }
   .top-actions > * {
     min-width: 0;
     max-width: 100%;
   }
-  .environment-control {
+  .top-actions .environment-control {
+    grid-column: 1 / -1;
     width: 100%;
-    min-height: 38px;
-    padding: 8px 11px;
+    min-height: 24px;
+    padding: 2px 8px;
     font-size: 13px;
     line-height: 1.2;
     white-space: normal;
+    overflow-wrap: anywhere;
   }
   .top-actions button {
-    min-height: 38px;
-    padding: 8px 14px;
+    min-height: 44px;
+    padding: 8px 8px;
     font-size: 13px;
     white-space: nowrap;
   }
@@ -708,11 +711,6 @@ dialog::backdrop { background: rgba(2,7,13,.75); backdrop-filter: blur(7px); }
   .version-pill { display: none; }
   .brand-copy strong { font-size: 13px; }
   .brand-copy small { font-size: 8px; }
-  .top-actions {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-  }
-  .top-actions button { width: auto; }
   .topbar h1 {
     font-size: 30px;
     line-height: .98;
@@ -920,8 +918,10 @@ html[data-theme="light"] dialog textarea { background: #ffffff; color: #0f1f33; 
 html[data-theme="light"] dialog { background: #ffffff; border: 1px solid #d5e0ee; }
 html[data-theme="light"] .product-footer { color: #5b6f87; border-top-color: #d5e0ee; }
 
-@media (max-width: 720px) {
-  .top-actions { grid-template-columns: minmax(0, 1fr) auto auto; }
+/* The session context owns a full-width row on mobile. Only the three
+   interactive controls share columns; the 44px targets are preserved. */
+@media (max-width: 360px) {
+  .top-actions button { padding-inline: 6px; }
 }
 
 /* Legibilidade: textos secundários e selos maiores, rótulos de filtro com contraste. */

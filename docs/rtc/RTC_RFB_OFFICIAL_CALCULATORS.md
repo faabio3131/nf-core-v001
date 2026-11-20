@@ -59,3 +59,7 @@ A cópia do repositório do Regime Regular veio do ZIP enviado pelo Fábio em 20
 4. ~~Indicadores da CLASSIFICACAO_TRIBUTARIA~~ **Feito para o que o NFCore emite:** `tax/rtc_group_indicators.py` traz, do V0073, quais CST exigem `gIBSCBS` e as seis classificações (000003, 000004, 200054, 410016, 410026, 410030) que exigem grupos que o NFCore não gera (gCredPresOper, gEstornoCred); essas são recusadas antes do XML. CST 400 (isenção) passou a ser emitido como o 410, validado no XSD oficial. Um teste opcional (`NFCORE_RFB_CALCULATOR_DB`) confere a tabela contra o banco. **Fora do escopo atual, recusados de forma explícita:** 010/011 (setor financeiro), 220/221/222, 510/515 (diferimento), 550, 620 (monofásico de combustíveis), 800/810/811/820/830 — exigem grupos próprios e não fazem parte do público do NFCore hoje.
 5. **Subir no Contabo.** O primeiro passo é medir memória e CPU; a estimativa é de cerca de 768m por serviço Java.
 6. **Sentinela Normativa:** observar os releases e trocar o pin só depois dos testes e da aprovação humana.
+
+## Reconciliação RTC-RFB × Economia Fiscal T07 — 20/11/2026
+
+A reconciliação tem uma única autoridade documental: [cronograma central da Economia Fiscal — T07](../NFCORE_CENTRAL_ECONOMIA_FISCAL_EXECUTION_SCHEDULE.md#reconciliação-rtc-rfb--economia-fiscal-t07--20112026). Consultar ali o estado e as evidências; este documento não replica o checkpoint.

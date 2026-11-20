@@ -18,7 +18,11 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+cognitive = [
+  "pydantic>=2.11,<3",
+]
 web = [
+  "pydantic>=2.11,<3",
   "fastapi>=0.116,<1",
   "uvicorn[standard]>=0.35,<1",
   "qrcode>=8,<9",
@@ -33,6 +37,7 @@ postgres = [
   "psycopg-pool>=3.2,<4",
 ]
 dev = [
+  "pydantic>=2.11,<3",
   "fastapi>=0.116,<1",
   "uvicorn[standard]>=0.35,<1",
   "psycopg[binary]>=3.2,<4",
