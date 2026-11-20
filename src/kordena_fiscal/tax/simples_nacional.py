@@ -72,13 +72,48 @@ _ROWS = MappingProxyType({
     Annex.ANNEX_V: ((1550, 0), (1800, 450000), (1950, 990000), (2050, 1710000),
               (2300, 6210000), (3050, 54000000)),
 })
-# ICMS/ISS part of each annex's effective rate (basis points).
+# LC 123 annexes I–V, 2026: IRPJ, CSLL, COFINS, PIS, CPP, IPI, ICMS, ISS.
+# Single partition authority; the legacy T04 local view and digest are preserved.
+TAXES = ("irpj", "csll", "cofins", "pis", "cpp", "ipi", "icms", "iss")
+_PARTITION = MappingProxyType({
+    Annex.ANNEX_I: (
+        (550, 350, 1274, 276, 4150, 0, 3400, 0),
+        (550, 350, 1274, 276, 4150, 0, 3400, 0),
+        *((550, 350, 1274, 276, 4200, 0, 3350, 0),) * 3,
+        (1350, 1000, 2827, 613, 4210, 0, 0, 0),
+    ),
+    Annex.ANNEX_II: (
+        *((550, 350, 1151, 249, 3750, 750, 3200, 0),) * 5,
+        (850, 750, 2096, 454, 2350, 3500, 0, 0),
+    ),
+    Annex.ANNEX_III: (
+        (400, 350, 1282, 278, 4340, 0, 0, 3350),
+        (400, 350, 1405, 305, 4340, 0, 0, 3200),
+        (400, 350, 1364, 296, 4340, 0, 0, 3250),
+        (400, 350, 1364, 296, 4340, 0, 0, 3250),
+        (400, 350, 1282, 278, 4340, 0, 0, 3350),
+        (3500, 1500, 1603, 347, 3050, 0, 0, 0),
+    ),
+    Annex.ANNEX_IV: (
+        (1880, 1520, 1767, 383, 0, 0, 0, 4450),
+        (1980, 1520, 2055, 445, 0, 0, 0, 4000),
+        (2080, 1520, 1973, 427, 0, 0, 0, 4000),
+        (1780, 1920, 1890, 410, 0, 0, 0, 4000),
+        (1880, 1920, 1808, 392, 0, 0, 0, 4000),
+        (5350, 2150, 2055, 445, 0, 0, 0, 0),
+    ),
+    Annex.ANNEX_V: (
+        (2500, 1500, 1410, 305, 2885, 0, 0, 1400),
+        (2300, 1500, 1410, 305, 2785, 0, 0, 1700),
+        (2400, 1500, 1492, 323, 2385, 0, 0, 1900),
+        (2100, 1500, 1574, 341, 2385, 0, 0, 2100),
+        (2300, 1250, 1410, 305, 2385, 0, 0, 2350),
+        (3500, 1550, 1644, 356, 2950, 0, 0, 0),
+    ),
+})
 _LOCAL = MappingProxyType({
-    Annex.ANNEX_I: (3400, 3400, 3350, 3350, 3350, 0),
-    Annex.ANNEX_II: (3200, 3200, 3200, 3200, 3200, 0),
-    Annex.ANNEX_III: (3350, 3200, 3250, 3250, 3350, 0),
-    Annex.ANNEX_IV: (4450, 4000, 4000, 4000, 4000, 0),
-    Annex.ANNEX_V: (1400, 1700, 1900, 2100, 2350, 0),
+    annex: tuple(row[6] + row[7] for row in rows)
+    for annex, rows in _PARTITION.items()
 })
 RULE_DIGEST = hashlib.sha256(json.dumps({
     "version": RULE_VERSION, "rows": dict(_ROWS), "local": dict(_LOCAL),
@@ -378,3 +413,46 @@ def calculate_simples(facts: SimplesFacts, *, ordinary_domestic_base_cents: int)
         _decimal(amount_rate) if amount_rate is not None else None, amount,
         annex is Annex.ANNEX_IV, tuple(reasons), fingerprint,
     )
+
+
+PARTITION_VERSION = "simples-partition-2026/v1"
+PARTITION_DIGEST = hashlib.sha256(json.dumps({
+    "version": PARTITION_VERSION, "base_rule": RULE_DIGEST,
+    "taxes": TAXES, "partition": dict(_PARTITION),
+    "iss_cap": {"III": (602, 526, 1928, 418, 6526), "IV": (3133, 3200, 3013, 654, 0)},
+}, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+
+
+def partition_effective_rate(
+    annex: Annex, rbt: Fraction, *, outside_local: bool = False,
+) -> dict[str, Fraction]:
+    """Exact 2026 effective components from the existing rate authority.
+
+    No eligibility or treatment inference. Sixth-band local formula is the
+    same one used by T04. ISS cap uses the explicit statutory annex shares.
+    """
+    idx = next((i for i, ceiling in enumerate(CEILINGS) if rbt <= ceiling), 5)
+    effective = _rate(annex, rbt, idx)
+    shares = _PARTITION[annex][idx]
+    result = {tax: effective * Fraction(share, 10000)
+              for tax, share in zip(TAXES, shares, strict=True)}
+    if result["iss"] > Fraction(5, 100):
+        remaining = effective - Fraction(5, 100)
+        capped = {
+            Annex.ANNEX_III: (602, 526, 1928, 418, 6526),
+            Annex.ANNEX_IV: (3133, 3200, 3013, 654, 0),
+        }
+        if annex in capped:
+            for tax, share in zip(TAXES[:5], capped[annex], strict=True):
+                result[tax] = remaining * Fraction(share, 10000)
+        else:
+            federal = effective - result["iss"]
+            for tax in TAXES[:6]:
+                result[tax] *= remaining / federal
+        result["iss"] = Fraction(5, 100)
+    if outside_local:
+        result["icms"] = result["iss"] = Fraction(0)
+    elif idx == 5:
+        local_tax = "icms" if annex in {Annex.ANNEX_I, Annex.ANNEX_II} else "iss"
+        result[local_tax] = _local_rate(annex, _rate(annex, rbt, 4), 4)
+    return result
