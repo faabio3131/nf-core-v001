@@ -27,9 +27,17 @@ def register(event="none", prior_taxed=200, received=300):
     }
 
 
-@pytest.mark.parametrize("event", ["closure", "return_to_accrual", "exclusion"])
+@pytest.mark.parametrize("event", ["closure", "exclusion"])
 def test_closing_recognizes_remaining(event):
     lines, totals = reconcile_cash(date(2026, 11, 1), register(event))
+    assert lines[0].cents == 800
+    assert totals["compulsory"] == 500
+
+
+def test_return_to_accrual_is_annual_and_december_recognizes_remaining():
+    with pytest.raises(FiscalValidationError, match="requires December"):
+        reconcile_cash(date(2026, 11, 1), register("return_to_accrual"))
+    lines, totals = reconcile_cash(date(2026, 12, 1), register("return_to_accrual"))
     assert lines[0].cents == 800
     assert totals["compulsory"] == 500
 

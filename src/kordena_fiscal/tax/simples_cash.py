@@ -27,6 +27,11 @@ def reconcile_cash(
     event = register["closing_event"]
     if event not in {"none", "closure", "return_to_accrual", "exclusion"}:
         raise FiscalValidationError("unknown cash closing event")
+    # CGSN 140/2018 arts. 19–20: annual, irrevocable cash option.
+    # Return to accrual is the last month of the calendar year; closure
+    # and exclusion have their own event-dependent periods.
+    if event == "return_to_accrual" and competence.month != 12:
+        raise FiscalValidationError("cash return to accrual requires December")
     if event != "none":
         _ref(register["event_reference"])
     if competence.month == 12 and event == "none":

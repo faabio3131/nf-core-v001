@@ -12,8 +12,15 @@ def compare_assessment(
 ) -> dict[str, Any]:
     _ref(reference["evidence_reference"])
     _ref(reference["review_reference"])
-    if (reference["competence"] != competence
+    # A revenue digest alone does not identify the rate, company history,
+    # partition or recognition basis used in an assessment.
+    assessment_digest = result.get("digest")
+    if (not isinstance(assessment_digest, str) or not assessment_digest
+            or result.get("competence") != competence
+            or result.get("segregation_digest") != segregation_digest
+            or reference["competence"] != competence
             or reference["segregation_digest"] != segregation_digest
+            or reference.get("assessment_digest") != assessment_digest
             or reference["review_status"] != "reviewed"):
         raise FiscalValidationError("PGDAS reference does not match scoped evidence")
     expected = reference["tax_cents"]
@@ -30,6 +37,7 @@ def compare_assessment(
     differences = {tax: actual[tax] - expected[tax] for tax in TAXES}
     return {
         "status": "match" if not any(differences.values()) else "divergent",
+        "assessment_digest": assessment_digest,
         "differences_cents": differences,
         "reference": reference["evidence_reference"],
         "review_reference": reference["review_reference"],
