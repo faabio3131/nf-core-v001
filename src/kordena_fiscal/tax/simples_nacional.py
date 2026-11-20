@@ -30,6 +30,7 @@ UF_CODES = frozenset(
 )
 LIMIT = 480_000_000
 SUBLIMIT = 360_000_000
+FACTOR_R_THRESHOLD = Fraction(28, 100)
 CEILINGS = (18_000_000, 36_000_000, 72_000_000, 180_000_000, SUBLIMIT, LIMIT)
 _MAX_CENTS = 10**15
 
@@ -205,7 +206,7 @@ class SimplesResult:
 
 def _factor(payroll: int, revenue: int, *, first: bool) -> Fraction | None:
     if not revenue:
-        return Fraction(28, 100) if payroll else (None if first else Fraction(1, 100))
+        return FACTOR_R_THRESHOLD if payroll else (None if first else Fraction(1, 100))
     return Fraction(payroll, revenue) if payroll else Fraction(1, 100)
 
 
@@ -213,7 +214,7 @@ def _annex(activity: Activity, factor: Fraction | None) -> Annex:
     if activity is Activity.SERVICE_FACTOR_R:
         if factor is None:
             raise FiscalValidationError("opening month without payroll/revenue: factor undefined")
-        return Annex.ANNEX_III if factor >= Fraction(28, 100) else Annex.ANNEX_V
+        return Annex.ANNEX_III if factor >= FACTOR_R_THRESHOLD else Annex.ANNEX_V
     return {
         Activity.COMMERCE: Annex.ANNEX_I, Activity.INDUSTRY: Annex.ANNEX_II,
         Activity.SERVICE_III: Annex.ANNEX_III, Activity.SERVICE_IV: Annex.ANNEX_IV,
