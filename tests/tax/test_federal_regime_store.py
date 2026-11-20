@@ -1,7 +1,10 @@
 """RTC-02: declared federal regime is durable, dated, CRT-consistent and audited."""
 from __future__ import annotations
 
+from concurrent.futures import ThreadPoolExecutor
+from dataclasses import replace
 from datetime import UTC, datetime
+from threading import Barrier
 
 import pytest
 
@@ -118,3 +121,38 @@ def test_profile_crt_change_makes_old_declaration_inconsistent(db) -> None:
     _declare(db, FederalIncomeTaxRegime.LUCRO_PRESUMIDO, JAN)
     status = federal_regime_status(db, SCOPE, _profile(TaxRegimeCode.SIMPLES_NACIONAL), NOW)
     assert status == {"federal_regime_status": "declaration_inconsistent_with_profile"}
+
+
+def test_declaration_store_denies_cross_host_scope(db) -> None:
+    _declare(db, FederalIncomeTaxRegime.LUCRO_PRESUMIDO, JAN)
+    other = replace(SCOPE, host_namespace="other-host")
+    with pytest.raises(FiscalValidationError, match="canonical portal scope"):
+        load_federal_regime_declarations(db, other)
+    with pytest.raises(FiscalValidationError, match="canonical portal scope"):
+        declare_federal_regime(
+            db, scope=other, crt=TaxRegimeCode.NORMAL,
+            federal_income_tax_regime=FederalIncomeTaxRegime.LUCRO_REAL,
+            effective_from=JUL, source_reference="Other host", actor="acct-1",
+            idempotency_key="foreign", occurred_at=NOW,
+        )
+    assert len(load_federal_regime_declarations(db, SCOPE)) == 1
+
+
+def test_distinct_commands_cannot_commit_same_effective_date(db) -> None:
+    barrier = Barrier(2)
+
+    def submit(index: int) -> str:
+        barrier.wait(timeout=5)
+        try:
+            _declare(db, FederalIncomeTaxRegime.LUCRO_PRESUMIDO, JAN, key=f"race-{index}")
+        except (FiscalValidationError, PersistenceConflictError):
+            return "conflict"
+        return "committed"
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        assert sorted(pool.map(submit, (1, 2))) == ["committed", "conflict"]
+    assert [d.version for d in load_federal_regime_declarations(db, SCOPE)] == [1]
+    with db() as uow:
+        assert uow.commercial.configuration_version(SCOPE, "federal_regime", "issuer") == 1
+    result = _declare(db, FederalIncomeTaxRegime.LUCRO_REAL, JUL, key="after-race")
+    assert result["version"] == 2
