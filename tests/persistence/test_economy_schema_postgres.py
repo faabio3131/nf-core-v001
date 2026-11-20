@@ -84,9 +84,22 @@ def test_real_postgres_economy_schema_scope_and_immutability():
                         "UPDATE fm_economy_snapshots SET version=2"
                     ).rowcount == 0
                     assert runtime.execute("DELETE FROM fm_economy_snapshots").rowcount == 0
+                with pytest.raises(FiscalValidationError, match="active scoped transaction"):
+                    store.records("fm_economy_snapshots")
+                with pytest.raises(FiscalValidationError, match="active scoped transaction"):
+                    EconomyStore(runtime, _scope()).snapshot("s", 1)
                 assert runtime.execute(
                     "SELECT count(*) FROM fm_economy_snapshots"
                 ).fetchone() == (0,)
+                with pytest.raises(RuntimeError, match="force rollback"):
+                    with EconomyStore.transaction(runtime, _scope()) as rollback_store:
+                        rollback_store.append_snapshot(
+                            record_id="rolled-back", version=1, competence=date(2026, 11, 1),
+                            issuer=Cnpj("12345678000195"), content={"revenue_cents": 100},
+                        )
+                        raise RuntimeError("force rollback")
+                with EconomyStore.transaction(runtime, _scope()) as rollback_store:
+                    assert rollback_store.snapshot("rolled-back", 1) is None
                 for scope in (
                     _scope(tenant="tenant-b"), _scope(unit="unit-b"), _scope(host="other"),
                 ):

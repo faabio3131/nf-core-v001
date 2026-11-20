@@ -40,6 +40,11 @@ class EconomyStore:
     def __init__(self, conn: Connection[Any], scope: ExecutionScope) -> None:
         self._conn = conn
         self._scope = scope
+        self._active = False
+
+    def _require_active(self) -> None:
+        if not self._active or self._conn.info.transaction_status.name != "INTRANS":
+            raise FiscalValidationError("economy store requires an active scoped transaction")
 
     @staticmethod
     @contextmanager
@@ -59,7 +64,12 @@ class EconomyStore:
             settings = tuple(zip(SCOPE_COLUMNS.split(", "), scope.identity_material, strict=True))
             for key, value in settings:
                 conn.execute("SELECT set_config(%s, %s, true)", ("nfcore.economy_" + key, value))
-            yield EconomyStore(conn, scope)
+            store = EconomyStore(conn, scope)
+            store._active = True
+            try:
+                yield store
+            finally:
+                store._active = False
 
     @staticmethod
     def _identity(record_id: str, version: int) -> None:
@@ -82,6 +92,7 @@ class EconomyStore:
     def _append(
         self, table: str, columns: tuple[str, ...], values: tuple[Any, ...]
     ) -> None:
+        self._require_active()
         if table not in TABLES:
             raise FiscalValidationError("unknown economy persistence table")
         names = (*SCOPE_COLUMNS.split(", "), *columns, "created_at")
@@ -99,24 +110,23 @@ class EconomyStore:
         self, *, record_id: str, version: int, competence: date,
         issuer: Cnpj, content: Mapping[str, Any],
     ) -> str:
+        self._require_active()
         self._identity(record_id, version)
-        if competence.day != 1:
+        if type(competence) is not date or competence.day != 1:
             raise FiscalValidationError("competence must use first day of month")
+        if not isinstance(issuer, Cnpj):
+            raise FiscalValidationError("invalid economy issuer")
         payload, digest = _digest(content)
-        values = (
-            *self._scope.identity_material, record_id, version, competence,
-            issuer.value, payload, digest, datetime.now(UTC),
-        )
-        self._conn.execute(
-            f"""INSERT INTO fm_economy_snapshots
-                ({SCOPE_COLUMNS}, record_id, version, competence, issuer_cnpj,
-                 content, digest, created_at)
-                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s::jsonb,%s,%s)""",
-            values,
+        self._append(
+            "fm_economy_snapshots",
+            ("record_id", "version", "competence", "issuer_cnpj", "content", "digest"),
+            (record_id, version, competence, issuer.value, Jsonb(json.loads(payload)), digest),
         )
         return digest
 
     def snapshot(self, record_id: str, version: int) -> dict[str, Any] | None:
+        self._require_active()
+        self._identity(record_id, version)
         row = self._conn.execute(
             """SELECT content, digest FROM fm_economy_snapshots
                WHERE host_namespace=%s AND tenant_id=%s AND unit_id=%s AND environment=%s
@@ -130,7 +140,6 @@ class EconomyStore:
             raise FiscalValidationError("economy snapshot integrity mismatch")
         return dict(payload)
 
-
     def append_benefit(
         self, *, record_id: str, version: int, tax_code: str, jurisdiction: str,
         normative_reference: str, valid_from: date, valid_until: date | None,
@@ -140,7 +149,10 @@ class EconomyStore:
         self._text(tax_code, "tax code")
         self._text(jurisdiction, "jurisdiction")
         self._text(normative_reference, "normative reference")
-        if valid_until is not None and valid_until <= valid_from:
+        if type(valid_from) is not date or (
+            valid_until is not None
+            and (type(valid_until) is not date or valid_until <= valid_from)
+        ):
             raise FiscalValidationError("invalid benefit validity")
         payload, digest = _digest(content)
         self._append(
@@ -185,7 +197,7 @@ class EconomyStore:
         self._text(tax_code, "tax code")
         self._text(evidence_reference, "evidence reference")
         self._cents(amount_cents, positive=True)
-        if competence.day != 1 or movement not in {
+        if type(competence) is not date or competence.day != 1 or movement not in {
             "identified", "reserved", "released", "compensated", "reversed",
         }:
             raise FiscalValidationError("invalid credit entry")
@@ -216,6 +228,7 @@ class EconomyStore:
 
     def records(self, table: str, *, limit: int = 100) -> tuple[dict[str, Any], ...]:
         """Read-only bounded scope projection; public API must enforce its own RBAC."""
+        self._require_active()
         if table not in TABLES or type(limit) is not int or not 1 <= limit <= 500:
             raise FiscalValidationError("invalid economy projection")
         statement = sql.SQL(
@@ -223,4 +236,10 @@ class EconomyStore:
             "AND unit_id=%s AND environment=%s ORDER BY created_at DESC, record_id LIMIT %s"
         ).format(sql.Identifier(table))
         rows = self._conn.execute(statement, (*self._scope.identity_material, limit)).fetchall()
-        return tuple(dict(row[0]) for row in rows)
+        result = tuple(dict(row[0]) for row in rows)
+        for record in result:
+            if "content" in record:
+                content = record["content"]
+                if not isinstance(content, dict) or _digest(content)[1] != record["digest"]:
+                    raise FiscalValidationError("economy record integrity mismatch")
+        return result
