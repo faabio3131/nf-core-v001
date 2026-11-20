@@ -6,7 +6,7 @@ A folha T23–T33, a Trilha 2 H01–H06 e a reformulação Enterprise não integ
 |---|---|---|
 | T01 | Modelagem de dados, oportunidades, benefícios, ledger, dossiês, RLS | DoD interno aprovado — 44 PASS, 0 SKIP/FAIL (44678481529, 570170f3) |
 | T02 | Contrato Core Cognitivo | ENTREGUE — DoD interno aprovado em 20/11/2026; 308 PASS, 0 SKIP/FAIL; 24 casos focais (44718504072, d53a2c62) |
-| T03 | Sentinela Normativa e anistias/REFIS | LIBERADO para engenharia interna — não iniciado |
+| T03 | Sentinela Normativa e anistias/REFIS | EM EXECUÇÃO — pipeline e projeção; certificação pendente |
 | T04 | Motor Simples e Fator R | Bloqueado |
 | T05 | Diagnóstico e otimizador Fator R | Bloqueado |
 | T06 | Classificador de receitas segregáveis | Bloqueado |
@@ -52,3 +52,6 @@ T02: `nfcore.cognitive.economy/v1`; três capabilities (Opportunity Radar, Credi
 - Evidência: https://github.com/faabio3131/nf-core-v001/actions/runs/44718504072 — SUCCESS; 308 passed, 1 warning, 0 skipped/failures; 24 casos focais. Ruff PASS, mypy PASS (445 arquivos), migration policy PASS.
 - PostgreSQL 16 real em CI: leitura transacional REPEATABLE READ READ ONLY; isolamento dos quatro eixos, recusa de escrita, vínculo de snapshot/regra e valores determinísticos; evidências sintéticas não são homologação ou crédito real.
 - CI integral do mesmo SHA: https://github.com/faabio3131/nf-core-v001/actions/runs/44718511040 — em execução na hora do registro. O E2E de layout móvel da CI anterior falhou; gate de integração e promoção do bloco segue pendente. Não houve merge, deploy, aprovação fiscal nem mudança em main/production. T03 liberada conforme DoD específico, sem início de execução.
+
+## T03 — Sentinela Normativa (20/11/2026)
+CURRENT: vigia de quatro portais, comparação de bytes e cache atômico, timer de exemplo, sem sinais tributários nem alertas por empresa. TARGET: ampliar a mesma vigia com PGFN Editais e RFB Transação, classificação determinística de títulos/links de legislação/anistia/REFIS/parcelamento/transação, checkpoint v2 e projeção autenticada por tenant/unidade/ambiente. O cache é exclusivamente de evidência pública, não catálogo de regras. Alertas são triagem, nunca vigência, elegibilidade, homologação ou autorização. Fontes nacionais iniciais, expansão das jurisdições nos pacotes T08–T10. Poll único compartilhado; IDs escopados, sem dados privados no cache. Migração automática do cache v1, sem DDL. Mantido o timer existente, sem instalação ou deploy. Aceite: fixtures de editais e normativas, idempotência, mudança, indisponibilidade parcial, validade temporal, isolamento da API, regressão dos monitores e Core; T04 bloqueada até PASS.

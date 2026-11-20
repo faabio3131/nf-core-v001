@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import hashlib
 import uuid
+from collections.abc import Callable
 from datetime import UTC, datetime
 from typing import Annotated, Any, Protocol
 
@@ -112,8 +113,21 @@ def create_cognitive_router(
     evidence: EvidenceProvider | None,
     *,
     ai_enabled: bool = False,
+    normative_radar: Callable[[AuthenticatedHuman, str, FiscalEnvironment], dict[str, Any]]
+    | None = None,
 ) -> APIRouter:
     router = APIRouter(prefix="/v1/portal/cognitive", tags=["cognitive-advisory"])
+
+    @router.get("/economy/normative-alerts")
+    async def normative_alerts(
+        request: Request, unit_id: str,
+        environment: FiscalEnvironment = FiscalEnvironment.HOMOLOGATION,
+    ) -> dict[str, Any]:
+        auth = _authenticated(request, identity, now=datetime.now(UTC))
+        _authorized(auth, PortalPermission.AUDIT_READ, unit_id=unit_id)
+        if normative_radar is None:
+            raise _bad("NORMATIVE_RADAR_NOT_CONFIGURED", "Normative radar unavailable", 503)
+        return await run_in_threadpool(normative_radar, auth, unit_id, environment)
 
     @router.get("/economy/schema")
     async def economy_schema(request: Request) -> dict[str, Any]:
