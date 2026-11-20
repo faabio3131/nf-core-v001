@@ -218,13 +218,14 @@ def _certify_t02_read_only(database):
                 }],
             },
         )
-        for cap, kind in AGENTS.items():
+        for kind in AGENTS.values():
             store.append_opportunity(
                 record_id=kind, version=1, snapshot_id="snap-t02", snapshot_version=1,
                 benefit_id="rule-t02", benefit_version=1, estimated_cents=12000,
                 content={
                     "kind": kind, "rule_digest": rule_hash, "snapshot_digest": snap_hash,
-                    "rule_review_reference": "fixture-review", "calculation_status": "deterministic",
+                    "rule_review_reference": "fixture-review",
+                    "calculation_status": "deterministic",
                     "engine_version": "test-v1", "calculation_reference": "fixture-calc",
                 },
             )

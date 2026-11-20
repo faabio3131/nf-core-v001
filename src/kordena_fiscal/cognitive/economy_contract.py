@@ -27,7 +27,6 @@ from .contracts import (
     AdviceSection,
     AdviceStatus,
     Capability,
-    Evidence,
     EvidenceKind,
     SectionKind,
     stable_hash,
