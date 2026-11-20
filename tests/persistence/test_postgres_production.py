@@ -4,10 +4,15 @@ import os
 from collections.abc import Iterator
 from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime, timedelta
+from threading import Barrier
 
 import psycopg
 import pytest
 
+from kordena_fiscal.application.federal_regime_store import (
+    declare_federal_regime,
+    load_federal_regime_declarations,
+)
 from kordena_fiscal.archive import FiscalArchiveEntry, FiscalArchiveKind, RetentionPolicyMetadata
 from kordena_fiscal.contingency import FiscalOutboxService
 from kordena_fiscal.domain import (
@@ -17,9 +22,11 @@ from kordena_fiscal.domain import (
     FiscalAccountId,
     FiscalEnvironment,
     FiscalUnitId,
+    FiscalValidationError,
     HostNamespace,
     HostScope,
     SourceReference,
+    TaxRegimeCode,
 )
 from kordena_fiscal.lifecycle import IdempotencyKey
 from kordena_fiscal.numbering import FiscalSequenceKey, FiscalSequencePolicy
@@ -28,7 +35,7 @@ from kordena_fiscal.persistence.iron_a1_delegation import (
     IronA1ScopeBusy,
     iron_a1_scope_key,
 )
-from kordena_fiscal.persistence.ports import PersistenceStateError
+from kordena_fiscal.persistence.ports import PersistenceConflictError, PersistenceStateError
 from kordena_fiscal.persistence.postgres import (
     PostgresFiscalDatabase,
     production_database_from_env,
@@ -42,6 +49,7 @@ from kordena_fiscal.security.human_identity import (
     ScryptPasswordHasher,
 )
 from kordena_fiscal.security.human_recovery import PasswordRecoveryService
+from kordena_fiscal.tax.regimes import FederalIncomeTaxRegime
 
 NOW = datetime(2026, 9, 14, 18, 0, tzinfo=UTC)
 DSN_ENV = "NFCORE_TEST_POSTGRES_DSN"
@@ -427,3 +435,36 @@ def test_postgres_iron_a1_withdrawal_serializes_and_fences_old_grants(
         replacement, _ = held.issue(**scope, allowed_origin=origin, issued_by="owner-a")
         assert not held.reserve_withdrawal(**scope, actor_id="owner-a", request_id=request_id)
         assert held.consume(token=replacement, origin=origin) is not None
+
+
+def test_postgres_federal_regime_concurrent_commands_preserve_unique_timeline(
+    database: PostgresFiscalDatabase,
+) -> None:
+    scope = ExecutionScope(
+        tenant_id="tenant-regime", unit_id="unit-regime",
+        environment=FiscalEnvironment.HOMOLOGATION,
+        correlation_id="regime-race", host_namespace="fm-nfcore",
+    )
+    start = datetime(2026, 1, 1, tzinfo=UTC)
+    barrier = Barrier(2)
+
+    def submit(index: int) -> str:
+        barrier.wait(timeout=5)
+        try:
+            declare_federal_regime(
+                database.unit_of_work, scope=scope, crt=TaxRegimeCode.NORMAL,
+                federal_income_tax_regime=FederalIncomeTaxRegime.LUCRO_PRESUMIDO,
+                effective_from=start, source_reference="synthetic evidence",
+                actor="acct-1", idempotency_key=f"regime-race-{index}", occurred_at=NOW,
+            )
+        except (FiscalValidationError, PersistenceConflictError):
+            return "conflict"
+        return "committed"
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        assert sorted(pool.map(submit, (1, 2))) == ["committed", "conflict"]
+    assert [
+        row.version for row in load_federal_regime_declarations(database.unit_of_work, scope)
+    ] == [1]
+    with database.unit_of_work() as uow:
+        assert uow.commercial.configuration_version(scope, "federal_regime", "issuer") == 1
