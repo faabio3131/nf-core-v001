@@ -63,7 +63,7 @@ def test_shadow_records_divergences_without_touching_the_document(mapping) -> No
         pytest.skip("fixture issuer is not Simples Nacional")
     assert record["status"] == "compared" and record["authoritative"] is False
     assert [d["field"] for d in record["divergences"]] == ["vCBSSN"]
-    assert record["component_version"] == "app=0.0.6;db=15.0.0"
+    assert record["component_version"] == "app=1.0.2;db=15.0.0"
     sent = json.loads(calls[1][2])
     assert sent["tpDoc"] == "55" and sent["itens"][0]["cClassTrib"] == "000001"
     json.dumps(record)  # archivable as-is
@@ -86,3 +86,45 @@ def test_lines_without_rtc_classification_are_skipped(mapping) -> None:  # noqa:
     record = run_nfe_rtc_shadow(_client([], calls), _rtc_document(mapping, classified=False),
                                 model="55", occurred_at=AT)
     assert record["status"] == "skipped_no_rtc_classification" and not calls
+
+
+def test_crt3_issuer_is_compared_with_the_regime_regular_calculator(
+    mapping, monkeypatch,  # noqa: F811
+) -> None:
+    from kordena_fiscal.tax import rtc_shadow
+    from kordena_fiscal.tax.rfb_regime_regular_calculator import (
+        CALCULATOR_DATABASE_VERSION,
+        REGIME_REGULAR_CALCULATOR_PIN,
+        RfbRegimeRegularCalculatorClient,
+    )
+
+    document = _rtc_document(mapping)
+    ours = nfe_rtc_lines(document)[0]
+    # Route as a CRT 3 (Lucro Presumido/Real) issuer; the line values stay NFCore's.
+    monkeypatch.setattr(rtc_shadow, "_crt", lambda _document: "3")
+    calls: list = []
+
+    def transport(method, url, body, timeout):
+        calls.append((method, url, body))
+        if url.endswith("/versao"):
+            return json.dumps({"versaoApp": REGIME_REGULAR_CALCULATOR_PIN.application_version,
+                               "versaoDb": CALCULATOR_DATABASE_VERSION}).encode(), {}
+        return json.dumps({"objetos": [{"nObj": 1, "estadoItem": "CALCULADO", "tribCalc": {
+            "IBSCBS": {"gIBSCBS": {
+                "vBC": str(Decimal(str(ours["base"])).quantize(Decimal("0.01"))),
+                "vIBS": str(ours["vIBS"]),
+                "gCBS": {"vCBS": str(ours["vCBS"])},
+            }}}}]}).encode(), {}
+
+    simples_calls: list = []
+    record = run_nfe_rtc_shadow(
+        _client([], simples_calls), document, model="55", occurred_at=AT,
+        regime_regular_client=RfbRegimeRegularCalculatorClient(
+            base_url="http://nfcore-rtc-regime-regular:8080/api", transport=transport),
+    )
+    assert record["status"] == "compared" and record["calculator"] == "regime_regular"
+    assert record["divergences"] == [] and not simples_calls
+    sent = json.loads(calls[1][2])
+    assert sent["tpDoc"] == 55 and sent["itens"][0]["cst"] == "000"
+    assert len(sent["itens"][0]["ncm"]) == 8
+    json.dumps(record)
