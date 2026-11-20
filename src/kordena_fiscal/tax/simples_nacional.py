@@ -301,14 +301,11 @@ def _market_rate(
     idx = next((i for i, ceiling in enumerate(CEILINGS) if rbt <= ceiling), 5)
     nominal, deduct = _ROWS[annex][idx]
     effective = _rate(annex, rbt, idx)
-    local = _local_rate(annex, effective, idx)
-    federal = effective - local
-    # Art.21 III b: if rolling revenue is in sixth band and the annual local
-    # sublimit has not taken effect, use fifth-band local formula separately.
-    if idx == 5 and not outside_local:
-        local = _local_rate(annex, _rate(annex, rbt, 4), 4)
-    elif outside_local:
-        local = Fraction(0)
+    # T04 and T07 use a single effective partition authority, including
+    # the sixth-band local supplement and ISS redistribution.
+    parts = partition_effective_rate(annex, rbt, outside_local=outside_local)
+    local = parts["icms"] + parts["iss"]
+    federal = sum((parts[tax] for tax in TAXES[:6]), Fraction(0))
     return MarketRate(
         _decimal(rbt), idx + 1, _decimal(Fraction(nominal, 10000)), deduct,
         _decimal(effective), _decimal(local), _decimal(federal), rba, rbaa,
@@ -372,22 +369,16 @@ def calculate_simples(facts: SimplesFacts, *, ordinary_domestic_base_cents: int)
 
     substatus, limstatus = status(SUBLIMIT, sub), status(LIMIT, cap)
     outside = {LimitStatus.OUTSIDE, LimitStatus.RETROACTIVE}
-    domestic, federal, local = _market_rate(
+    domestic, _, _ = _market_rate(
         annex, domestic_rbt, drba, drbaa, substatus in outside,
     )
     exported, _, _ = _market_rate(annex, export_rbt, erba, erbaa, substatus in outside)
-    # Art. 24 §§2–7: distribute the excess proportionally to this ordinary
-    # revenue base. The federal ceiling is evaluated at the sixth-band limit;
-    # the ICMS/ISS ceiling at the fifth-band limit, respecting the ISS cap.
-    sub_fraction = _excess_fraction(drba, current.domestic_cents, sub)
-    limit_fraction = _excess_fraction(drba, current.domestic_cents, cap)
-    federal_at_limit = _rate(annex, Fraction(LIMIT), 5)
-    local_at_sublimit = _local_rate(annex, _rate(annex, Fraction(SUBLIMIT), 4), 4)
-    assessed_federal = federal * (1 - limit_fraction) + federal_at_limit * limit_fraction
-    assessed_local = (
-        Fraction(0) if substatus in outside
-        else local * (1 - sub_fraction) + local_at_sublimit * sub_fraction
+    # Art. 24: reuse the same partition as the segregated apuração.
+    assessed, limit_fraction, sub_fraction = assessment_partition(
+        facts, annex, export=False, outside_local=substatus in outside,
     )
+    assessed_federal = sum((assessed[tax] for tax in TAXES[:6]), Fraction(0))
+    assessed_local = assessed["icms"] + assessed["iss"]
     reasons: list[str] = []
     if limstatus in outside:
         reasons.append("simples_excluded_or_retroactive")
@@ -396,7 +387,8 @@ def calculate_simples(facts: SimplesFacts, *, ordinary_domestic_base_cents: int)
     amount_rate = None if reasons else assessed_federal + assessed_local
     amount = None if amount_rate is None else _round_cents(base * amount_rate)
     fingerprint = hashlib.sha256(json.dumps({
-        "rule": RULE_DIGEST, "period": facts.competence.isoformat(),
+        "rule": RULE_DIGEST, "partition": PARTITION_DIGEST,
+        "period": facts.competence.isoformat(),
         "opened": facts.opened_month.isoformat(), "uf": facts.uf, "activity": facts.activity,
         "history_ref": facts.company_history_reference, "activity_ref": facts.activity_reference,
         "optant_ref": facts.optant_reference,

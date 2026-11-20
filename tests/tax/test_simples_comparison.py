@@ -15,7 +15,8 @@ def test_reviewed_reference_match_and_divergence():
     }
     reference = {
         "competence": "2026-11-01", "segregation_digest": "digest",
-        "assessment_digest": "assessment", "review_status": "reviewed", "review_reference": "review",
+        "assessment_digest": "assessment", "review_status": "reviewed",
+        "review_reference": "review",
         "evidence_reference": "synthetic-fixture", "tax_cents": deepcopy(taxes),
         "total_cents": 800,
     }

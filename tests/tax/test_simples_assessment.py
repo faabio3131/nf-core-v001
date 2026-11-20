@@ -1,3 +1,4 @@
+from dataclasses import replace
 from datetime import date
 from fractions import Fraction
 
@@ -150,10 +151,63 @@ def test_manual_pgdas_example_8_sixth_band_iss_redistribution():
                               LocalTreatment.ORDINARY, "manual", "review"),),
         domestic_cents=100_000_000, export_cents=0,
     )
-    # Exact expected cents using the engine\'s documented aggregate rounding.
+    # Exact expected cents using the engine's documented aggregate rounding.
     assert result["tax_cents"] == {
         "irpj": 6_570_570, "csll": 2_842_923, "cofins": 3_175_565,
         "pis": 687_477, "cpp": 6_329_612, "ipi": 0, "icms": 0,
         "iss": 5_000_000,
     }
     assert result["estimated_das_cents"] == 24_606_147
+
+
+def established_history(activity=Activity.COMMERCE, rolling=0):
+    months = tuple(
+        MonthFacts(date(2025, month, 1), rolling // 12 + (rolling % 12 if month == 12 else 0),
+                   0, 0, "fixture")
+        for month in range(1, 13)
+    ) + (MonthFacts(date(2026, 1, 1), 100_000, 0, 0, "fixture"),)
+    return SimplesFacts(
+        date(2026, 1, 1), date(2024, 1, 1), "SP", activity, months,
+        "company", "activity", "optant",
+    )
+
+
+def test_t04_t07_share_sixth_band_rate_authority():
+    history = established_history(Activity.SERVICE_III, rolling=350_000_000)
+    # Shift one month into 2026, keeping the prior year inside the sublimite,
+    # with rolling revenue now in band six but annual revenue still within.
+    january = MonthFacts(date(2026, 1, 1), 100_000_000, 0, 0, "fixture")
+    february = MonthFacts(date(2026, 2, 1), 100_000, 0, 0, "fixture")
+    history = replace(history, competence=february.competence,
+                      months=(*history.months[:-1], january, february))
+    assert calculate_simples(history, ordinary_domestic_base_cents=100_000).domestic.bracket == 6
+    diagnostic = calculate_simples(history, ordinary_domestic_base_cents=100_000)
+    assessed = assess_segregated(history, (line(Activity.SERVICE_III),),
+                                domestic_cents=100_000, export_cents=0)
+    assert assessed["status"] == "estimated"
+    # Diagnostic rounds total once; apuração rounds each of five components.
+    assert abs(assessed["estimated_das_cents"] - diagnostic.ordinary_domestic_estimate_cents) <= 3
+
+
+def test_cash_excess_before_impediment_uses_accrual_rate():
+    history = established_history()
+    january = MonthFacts(date(2026, 1, 1), 180_000_000, 0, 0, "fixture")
+    february = MonthFacts(date(2026, 2, 1), 200_000_000, 0, 0, "fixture")
+    history = replace(history, competence=february.competence,
+                      months=(*history.months[:-1], january, february))
+    receipt = RevenueLine("cash", 100_000_000, Activity.COMMERCE, Market.DOMESTIC,
+                          FederalTreatment.ORDINARY, LocalTreatment.ORDINARY,
+                          "receipt", "review")
+    outcome = assess_segregated(history, (receipt,), domestic_cents=100_000_000,
+                                export_cents=0, cash=True)
+    assert outcome["status"] == "estimated"
+    assert outcome["estimated_das_cents"] == 9_531_238
+    assert outcome["buckets"][0]["local_excess_fraction"] == "1/10"
+
+    crossing = replace(february, domestic_cents=260_000_000)
+    history = replace(history, months=(*history.months[:-1], crossing))
+    outcome = assess_segregated(history, (receipt,), domestic_cents=100_000_000,
+                                export_cents=0, cash=True)
+    assert outcome["status"] == "blocked"
+    assert outcome["estimated_das_cents"] is None
+    assert "cash_local_impediment_requires_separate_reconciliation" in outcome["review_reasons"]

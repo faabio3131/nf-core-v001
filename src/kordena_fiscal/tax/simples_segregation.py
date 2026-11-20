@@ -186,9 +186,17 @@ def assess_segregated(
             reasons.append("simples_excluded_or_retroactive")
         if result.sublimit_status is LimitStatus.RETROACTIVE:
             reasons.append("local_tax_retroactive_review")
-        if cash and (result.limit_status is not LimitStatus.WITHIN
-                     or result.sublimit_status is not LimitStatus.WITHIN):
-            reasons.append("cash_excess_requires_separate_local_reconciliation")
+        # CGSN 140 arts. 19, 20 IV and 24: limits and rates use accrual,
+        # the monthly taxable base uses reconciled receipts. Do not treat
+        # all excess as automatic loss of eligibility. The last month before
+        # local impediment still needs separate ICMS/ISS receivable treatment.
+        if cash and (
+            result.sublimit_status is LimitStatus.NEXT_MONTH
+            or (result.sublimit_status is LimitStatus.NEXT_YEAR
+                and facts.competence.month == 12)
+            or result.sublimit_status is LimitStatus.OUTSIDE
+        ):
+            reasons.append("cash_local_impediment_requires_separate_reconciliation")
     if not reasons:
         groups: dict[tuple[Activity, Market, FederalTreatment, LocalTreatment], int] = {}
         for line in lines:
