@@ -10,6 +10,10 @@ from decimal import ROUND_HALF_UP, Decimal
 from typing import TYPE_CHECKING, Literal
 
 from kordena_fiscal.domain import FiscalValidationError, TaxRegimeCode
+from kordena_fiscal.tax.rtc_group_indicators import (
+    SUPPORTED_RTC_CST_GROUPS,
+    require_representable_classification,
+)
 
 if TYPE_CHECKING:
     from .models import TaxDecision
@@ -263,7 +267,7 @@ def calculate_nfe_line(
     if rtc_cst is not None:
         classification = outcome.ibs_cbs_classification_code
         if (
-            rtc_cst not in {"000", "200", "410"}
+            rtc_cst not in SUPPORTED_RTC_CST_GROUPS
             or classification is None
             or len(classification) != 6
             or not classification.isascii()
@@ -271,11 +275,14 @@ def calculate_nfe_line(
             or not classification.startswith(rtc_cst)
         ):
             raise FiscalValidationError("RTC CST and classification must be approved and aligned")
-        if rtc_cst == "410":
+        require_representable_classification(classification)
+        if not SUPPORTED_RTC_CST_GROUPS[rtc_cst]:
             if policy.rtc_base_mode != "non_taxed" or policy.rtc_uf_rate is not None:
-                raise FiscalValidationError("RTC CST 410 forbids standard taxation groups")
+                raise FiscalValidationError(
+                    f"RTC CST {rtc_cst} forbids standard taxation groups"
+                )
             if any(r is not None for r in reductions):
-                raise FiscalValidationError("RTC CST 410 forbids tax reductions")
+                raise FiscalValidationError(f"RTC CST {rtc_cst} forbids tax reductions")
         elif policy.rtc_uf_rate is None or policy.rtc_base_mode == "non_taxed":
             raise FiscalValidationError("taxed RTC requires complete approved base and rates")
         elif rtc_cst == "200" and not all(r is not None for r in reductions):
