@@ -157,6 +157,8 @@ def classify_revenue(
 def assess_segregated(
     facts: SimplesFacts, lines: tuple[RevenueLine, ...], *,
     domestic_cents: int, export_cents: int, cash: bool = False,
+    cash_closing_event: str | None = None,
+    local_outstanding: tuple[RevenueLine, ...] | None = None,
 ) -> dict[str, object]:
     """Reviewed assessment, not declaration, payment or tax credit.
 
@@ -169,8 +171,27 @@ def assess_segregated(
     if not cash and (domestic_cents > facts.months[-1].domestic_cents
             or export_cents > facts.months[-1].export_cents):
         raise FiscalValidationError("unit revenue exceeds company totals")
+    if not cash and (cash_closing_event is not None or local_outstanding is not None):
+        raise FiscalValidationError("cash context requires cash basis")
+    if cash_closing_event not in {None, "none", "closure", "return_to_accrual", "exclusion"}:
+        raise FiscalValidationError("unknown cash closing context")
+    if local_outstanding is not None:
+        # Reclassify reviewed balances through the same classifier.
+        outstanding_classification = classify_revenue(
+            facts.competence, local_outstanding,
+            domestic_cents=sum(line.cents for line in local_outstanding
+                               if line.market is Market.DOMESTIC),
+            export_cents=sum(line.cents for line in local_outstanding
+                             if line.market is Market.EXPORT),
+        )
+    else:
+        outstanding_classification = None
     reasons: list[str] = []
     rows: list[dict[str, object]] = []
+    direct_rows: list[dict[str, object]] = []
+    direct_totals = {"icms": Fraction(0), "iss": Fraction(0)}
+    direct_required = False
+    local_outside = False
     totals = {tax: Fraction(0) for tax in TAXES}
     baseline = {tax: Fraction(0) for tax in TAXES}
     if classified["status"] != "classified":
@@ -178,7 +199,9 @@ def assess_segregated(
     # Assess the same company history per documented activity. A single
     # company rate result cannot be applied to all its distinct annexes.
     rates = {}
-    for activity in sorted({line.activity for line in lines} or {facts.activity}):
+    activities = {line.activity for line in lines}
+    activities.update(line.activity for line in (local_outstanding or ()))
+    for activity in sorted(activities or {facts.activity}):
         result = calculate_simples(replace(facts, activity=activity),
                                    ordinary_domestic_base_cents=0)
         rates[activity] = result
@@ -186,17 +209,27 @@ def assess_segregated(
             reasons.append("simples_excluded_or_retroactive")
         if result.sublimit_status is LimitStatus.RETROACTIVE:
             reasons.append("local_tax_retroactive_review")
-        # CGSN 140 arts. 19, 20 IV and 24: limits and rates use accrual,
-        # the monthly taxable base uses reconciled receipts. Do not treat
-        # all excess as automatic loss of eligibility. The last month before
-        # local impediment still needs separate ICMS/ISS receivable treatment.
-        if cash and (
-            result.sublimit_status is LimitStatus.NEXT_MONTH
-            or (result.sublimit_status is LimitStatus.NEXT_YEAR
-                and facts.competence.month == 12)
-            or result.sublimit_status is LimitStatus.OUTSIDE
-        ):
-            reasons.append("cash_local_impediment_requires_separate_reconciliation")
+        local_outside = local_outside or result.sublimit_status is LimitStatus.OUTSIDE
+        # CGSN 140 art. 20 II and IV distinguish termination of the cash
+        # option from an ICMS/ISS impediment while cash basis continues.
+        if cash:
+            federal_exit = (
+                result.limit_status is LimitStatus.NEXT_MONTH
+                or result.limit_status is LimitStatus.NEXT_YEAR and facts.competence.month == 12
+            )
+            local_exit = (
+                result.sublimit_status is LimitStatus.NEXT_MONTH
+                or result.sublimit_status is LimitStatus.NEXT_YEAR and facts.competence.month == 12
+            )
+            if federal_exit and cash_closing_event not in {"exclusion", "closure"}:
+                reasons.append("cash_exclusion_closing_evidence_required")
+            if local_exit and cash_closing_event in {None, "none"}:
+                direct_required = True
+    if direct_required and (
+        cash_closing_event != "none" or outstanding_classification is None
+        or outstanding_classification["status"] != "classified"
+    ):
+        reasons.append("cash_local_impediment_requires_separate_reconciliation")
     if not reasons:
         groups: dict[tuple[Activity, Market, FederalTreatment, LocalTreatment], int] = {}
         for line in lines:
@@ -234,6 +267,30 @@ def assess_segregated(
                 "local_excess_fraction": str(local_excess),
                 "local_outside_das": result.sublimit_status is LimitStatus.OUTSIDE,
             })
+    if not reasons and direct_required:
+        # The outstanding, non-recognized ICMS/ISS base is collectible
+        # directly by the competent entity, not part of this DAS. No payment
+        # or jurisdiction-specific collection instruction is generated here.
+        for balance in sorted(local_outstanding or (), key=lambda item: item.line_id):
+            if balance.market is Market.EXPORT:
+                continue
+            annex = rates[balance.activity].annex
+            ordinary, _, _ = assessment_partition(
+                facts, annex, export=False, outside_local=False,
+            )
+            tax = "icms" if annex.value in {"I", "II"} else "iss"
+            if balance.local in {LocalTreatment.ICMS_SUBSTITUTED,
+                                 LocalTreatment.ICMS_FINAL_ADVANCE,
+                                 LocalTreatment.ISS_WITHHELD}:
+                continue
+            amount = ordinary[tax] * balance.cents
+            direct_totals[tax] += amount
+            direct_rows.append({
+                "line_id": balance.line_id, "annex": annex.value,
+                "tax": tax, "base_cents": balance.cents,
+                "rate_fraction": str(ordinary[tax]), "amount_fraction_cents": str(amount),
+                "treatment_reference": balance.treatment_reference,
+            })
     by_tax = {tax: _round_cents(value) for tax, value in totals.items()}
     ordinary_by_tax = {tax: _round_cents(value) for tax, value in baseline.items()}
     payload: dict[str, object] = {
@@ -248,6 +305,18 @@ def assess_segregated(
             sum(ordinary_by_tax.values()) - sum(by_tax.values())
         ),
         "basis": "cash" if cash else "accrual",
+        "local_direct_collection": {
+            "status": "blocked" if reasons else (
+                "estimated_direct" if direct_required else (
+                    "outside_das" if local_outside else "not_applicable"
+                )
+            ),
+            "tax_cents": ({tax: _round_cents(value) for tax, value in direct_totals.items()}
+                          if not reasons and direct_required else None),
+            "items": direct_rows,
+            "legal_basis": "CGSN 140/2018 art. 20 IV" if cash else None,
+            "included_in_das": False,
+        },
         "advisory_only": True, "rounding": "half_up_per_tax_after_aggregation",
     }
     return {**payload, "digest": hashlib.sha256(json.dumps(

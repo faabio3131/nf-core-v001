@@ -211,3 +211,37 @@ def test_cash_excess_before_impediment_uses_accrual_rate():
     assert outcome["status"] == "blocked"
     assert outcome["estimated_das_cents"] is None
     assert "cash_local_impediment_requires_separate_reconciliation" in outcome["review_reasons"]
+
+
+def test_cash_local_impediment_separates_direct_collection_from_das():
+    history = established_history()
+    january = MonthFacts(date(2026, 1, 1), 180_000_000, 0, 0, "fixture")
+    february = MonthFacts(date(2026, 2, 1), 260_000_000, 0, 0, "fixture")
+    history = replace(history, competence=february.competence,
+                      months=(*history.months[:-1], january, february))
+    receipt = replace(line(), cents=100_000_000)
+    balance = replace(receipt, cents=160_000_000)
+    result = assess_segregated(
+        history, (receipt,), domestic_cents=receipt.cents, export_cents=0, cash=True,
+        cash_closing_event="none", local_outstanding=(balance,),
+    )
+    assert result["status"] == "estimated"
+    direct = result["local_direct_collection"]
+    assert direct["status"] == "estimated_direct"
+    assert direct["included_in_das"] is False
+    rates, _, _ = assessment_partition(history, Annex.ANNEX_I, export=False, outside_local=False)
+    assert direct["tax_cents"]["icms"] == round(rates["icms"] * balance.cents)
+    assert direct["tax_cents"]["iss"] == 0
+    assert result["estimated_das_cents"] == sum(result["tax_cents"].values())
+    # In the next period ICMS is outside DAS. A zero local DAS component
+    # is not a declaration that the taxpayer owes no ICMS.
+    march = MonthFacts(date(2026, 3, 1), 100_000, 0, 0, "fixture")
+    history = replace(history, competence=march.competence, months=(*history.months, march))
+    outside = assess_segregated(
+        history, (receipt,), domestic_cents=receipt.cents, export_cents=0, cash=True,
+        cash_closing_event="none", local_outstanding=(balance,),
+    )
+    assert outside["status"] == "estimated"
+    assert outside["tax_cents"]["icms"] == 0
+    assert outside["local_direct_collection"]["status"] == "outside_das"
+    assert outside["local_direct_collection"]["tax_cents"] is None

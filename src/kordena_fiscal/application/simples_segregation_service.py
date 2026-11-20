@@ -8,7 +8,7 @@ from typing import Any
 from kordena_fiscal.cognitive.economy_contract import LegalCitation
 from kordena_fiscal.domain import Cnpj, FiscalValidationError
 from kordena_fiscal.persistence.economy_store import EconomyStore, _digest
-from kordena_fiscal.tax.simples_cash import reconcile_cash, verify_cash_continuity
+from kordena_fiscal.tax.simples_cash import reconcile_cash_detail, verify_cash_continuity
 from kordena_fiscal.tax.simples_comparison import compare_assessment
 from kordena_fiscal.tax.simples_nacional import Activity, MonthFacts, SimplesFacts
 from kordena_fiscal.tax.simples_segregation import (
@@ -149,7 +149,9 @@ def _evaluate(
             export_cents=content["export_cents"],
         )
         if cash:
-            cash_lines, reconciliation = reconcile_cash(competence, content["cash_register"])
+            cash_lines, reconciliation, outstanding = reconcile_cash_detail(
+                competence, content["cash_register"],
+            )
             if reconciliation["accrued"] != content["domestic_cents"] + content["export_cents"]:
                 raise FiscalValidationError("cash accrual total does not reconcile")
             accrued_groups: dict[tuple[str, ...], int] = {}
@@ -168,6 +170,8 @@ def _evaluate(
             if assessment:
                 result = assess_segregated(
                     facts, cash_lines, domestic_cents=domestic, export_cents=exported, cash=True,
+                    cash_closing_event=content["cash_register"]["closing_event"],
+                    local_outstanding=outstanding,
                 )
             result = {**result, "cash_reconciliation": reconciliation}
         elif assessment:

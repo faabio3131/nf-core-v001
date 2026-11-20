@@ -3,6 +3,7 @@
 No independent tax rates or persistence. A complete reviewed installment
 register is required; prior taxable amounts include compulsory recognition.
 """
+from dataclasses import replace
 from datetime import date
 from typing import Any
 
@@ -21,6 +22,18 @@ from kordena_fiscal.tax.simples_segregation import (
 def reconcile_cash(
     competence: date, register: dict[str, Any],
 ) -> tuple[tuple[RevenueLine, ...], dict[str, int]]:
+    lines, totals, _ = reconcile_cash_detail(competence, register)
+    return lines, totals
+
+
+def reconcile_cash_detail(
+    competence: date, register: dict[str, Any],
+) -> tuple[tuple[RevenueLine, ...], dict[str, int], tuple[RevenueLine, ...]]:
+    """Return taxable lines, controls and remaining unrecognized balances.
+
+    Separate balances support art. 20 IV for local-tax impediment. They are
+    not added to the regular monthly DAS base.
+    """
     if competence.year != 2026 or competence.day != 1:
         raise FiscalValidationError("cash rules limited to 2026")
     _ref(register["review_reference"])
@@ -43,6 +56,7 @@ def reconcile_cash(
                   previously_taxed_received=0, compulsory=0)
     seen: set[str] = set()
     result: list[RevenueLine] = []
+    outstanding: list[RevenueLine] = []
     end = date(competence.year + (competence.month == 12), competence.month % 12 + 1, 1)
     for row in rows:
         key = row["installment_id"]
@@ -83,18 +97,21 @@ def reconcile_cash(
         totals["taxable"] += taxable
         totals["previously_taxed_received"] += already_taxed
         totals["compulsory"] += compulsory
-        result.append(RevenueLine(
+        line = RevenueLine(
             key, taxable, Activity(row["activity"]), Market(row["market"]),
             FederalTreatment(row["federal"]), LocalTreatment(row["local"]),
             row["evidence_reference"], row["treatment_reference"],
-        ))
+        )
+        result.append(line)
+        if remaining_unrecognized > compulsory:
+            outstanding.append(replace(line, cents=remaining_unrecognized - compulsory))
     if totals["opening"] + totals["accrued"] - totals["received"] != totals["closing"]:
         raise FiscalValidationError("cash register does not reconcile")
     for key, value in totals.items():
         _amount(register["control_totals"][key])
         if register["control_totals"][key] != value:
             raise FiscalValidationError("cash control totals do not reconcile")
-    return tuple(result), totals
+    return tuple(result), totals, tuple(outstanding)
 
 
 def verify_cash_continuity(
