@@ -30,9 +30,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ea33b304640f668ce6d334657aa0e53305655ff5
+          ref: 6a0cf5bee4562807180cc0e60bd69bb84cd8bdb4
       - name: Confirmar HEAD T03
-        run: test "$(git rev-parse HEAD)" = "ea33b304640f668ce6d334657aa0e53305655ff5"
+        run: test "$(git rev-parse HEAD)" = "6a0cf5bee4562807180cc0e60bd69bb84cd8bdb4"
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
@@ -46,7 +46,7 @@ jobs:
         run: python scripts/ci/migration_guard.py --check-policy
       - name: Normative sentinel, cognitive and PostgreSQL regression
         run: |
-          pytest -ra --junitxml=/tmp/nfcore-t03.xml tests/compliance tests/cognitive tests/test_cognitive_router_and_sentinel.py tests/persistence/test_economy_schema_postgres.py tests/persistence/test_postgres_production.py::test_economy_v25_readiness_detects_policy_and_index_drift
+          pytest -ra --junitxml=/tmp/nfcore-t03.xml tests/compliance tests/cognitive tests/test_cognitive_router_and_sentinel.py tests/control_plane/test_v2_12_closure.py::test_v2_12_structural_secret_dependency_architecture_and_product_neutrality tests/persistence/test_economy_schema_postgres.py tests/persistence/test_postgres_production.py::test_economy_v25_readiness_detects_policy_and_index_drift
           python - <<'PY'
           import xml.etree.ElementTree as ET
           root = ET.parse("/tmp/nfcore-t03.xml").getroot()
@@ -59,4 +59,5 @@ jobs:
           PY
       - name: Validate production opt-in composition
         run: |
+          touch deploy/contabo/.env
           POSTGRES_PASSWORD=fixture-only docker compose -f deploy/contabo/compose.prod.yml -f deploy/contabo/compose.normative-radar.api.opt-in.yml config --quiet
