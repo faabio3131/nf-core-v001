@@ -23,7 +23,36 @@ from kordena_fiscal.domain import Cnpj, ExecutionScope, FiscalValidationError
 from .economy_schema import SCOPE_COLUMNS, TABLES
 
 
+def _validate_json(value: Any, depth: int = 0) -> None:
+    """Fiscal values must be exact JSON integers or explicit decimal strings."""
+    if depth > 32:
+        raise FiscalValidationError("economy record JSON is too deeply nested")
+    if value is None or isinstance(value, bool):
+        return
+    if isinstance(value, str):
+        if "\\x00" in value:
+            raise FiscalValidationError("economy record text contains a null byte")
+        return
+    if type(value) is int and -(2**63) <= value < 2**63:
+        return
+    if isinstance(value, list):
+        for item in value:
+            _validate_json(item, depth + 1)
+        return
+    if isinstance(value, dict):
+        for key, item in value.items():
+            if not isinstance(key, str):
+                raise FiscalValidationError("economy record JSON keys must be text")
+            _validate_json(key, depth + 1)
+            _validate_json(item, depth + 1)
+        return
+    raise FiscalValidationError("economy record JSON requires exact values, not floats")
+
+
 def _digest(content: Mapping[str, Any]) -> tuple[str, str]:
+    if not isinstance(content, Mapping):
+        raise FiscalValidationError("economy record content must be a JSON object")
+    _validate_json(dict(content))
     serialized = json.dumps(
         dict(content), ensure_ascii=False, sort_keys=True,
         separators=(",", ":"), allow_nan=False,
@@ -60,7 +89,8 @@ class EconomyStore:
                 EconomyStore._text(runtime_role, "runtime role")
                 conn.execute(sql.SQL("SET LOCAL ROLE {}").format(sql.Identifier(runtime_role)))
             privileged = conn.execute(
-                "SELECT rolsuper OR rolbypassrls FROM pg_roles WHERE rolname = current_user"
+                "SELECT rolsuper OR rolbypassrls OR rolcreaterole OR rolcreatedb "
+                "FROM pg_roles WHERE rolname = current_user"
             ).fetchone()
             if privileged is None or privileged[0]:
                 raise FiscalValidationError("economy runtime role must not bypass RLS")

@@ -168,6 +168,15 @@ class RuntimeApi:
                         database.require_current_schema(require_bling=True)
                     else:
                         database.require_current_schema()
+                elif os.environ.get("NFCORE_ECONOMY_ENABLED") == "true":
+                    runtime_role = os.environ.get("NFCORE_ECONOMY_RUNTIME_ROLE", "").strip()
+                    if not runtime_role:
+                        raise RuntimeError("restricted economy runtime role is required")
+                    database.initialize(
+                        enable_bling=os.environ.get("NFCORE_BLING_INSTALLATIONS_ENABLED") == "true",
+                        enable_mfa=os.environ.get("NFCORE_HUMAN_MFA") == "enabled",
+                        enable_economy=True, economy_runtime_role=runtime_role,
+                    )
                 else:
                     database.initialize(
                         enable_bling=os.environ.get("NFCORE_BLING_INSTALLATIONS_ENABLED") == "true"

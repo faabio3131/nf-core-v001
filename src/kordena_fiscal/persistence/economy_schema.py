@@ -6,6 +6,8 @@ No DDL is executed on application startup in staging or production.
 
 from __future__ import annotations
 
+import re
+
 ECONOMY_VERSION = 25
 ECONOMY_NAME = "economy_t01_scoped_foundation"
 SCOPE_COLUMNS = "host_namespace, tenant_id, unit_id, environment"
@@ -127,3 +129,14 @@ ECONOMY_RLS = tuple(
     )
 )
 ECONOMY_SCHEMA = ECONOMY_TABLES + ECONOMY_RLS
+
+
+def is_scope_predicate(expression: str | None) -> bool:
+    """Recognize only the exact predicate emitted by this pinned migration."""
+    if expression is None:
+        return False
+
+    def normalized(value: str) -> str:
+        return re.sub(r"\s+|[()]|::text", "", value)
+
+    return normalized(expression) == normalized(SCOPE_PREDICATE)

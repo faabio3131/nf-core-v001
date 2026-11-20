@@ -80,7 +80,13 @@ from .customer_configuration_schema import (
     CUSTOMER_CONFIGURATION_SCHEMA,
     CUSTOMER_CONFIGURATION_VERSION,
 )
-from .economy_schema import ECONOMY_NAME, ECONOMY_SCHEMA, ECONOMY_VERSION, TABLES
+from .economy_schema import (
+    ECONOMY_NAME,
+    ECONOMY_SCHEMA,
+    ECONOMY_VERSION,
+    TABLES,
+    is_scope_predicate,
+)
 from .economy_store import EconomyStore
 from .fiscal_scope_schema import FISCAL_SCOPE_NAME, FISCAL_SCOPE_SCHEMA, FISCAL_SCOPE_VERSION
 from .human_mfa_schema import (
@@ -1002,7 +1008,10 @@ class PostgresFiscalDatabase:
                         raw.execute(
                             "INSERT INTO fm_schema_migrations (version, name, applied_at) "
                             "VALUES (%s, %s, %s)",
-                            (ECONOMY_VERSION, ECONOMY_NAME, datetime.now().astimezone().isoformat()),
+                            (
+                                ECONOMY_VERSION, ECONOMY_NAME,
+                                datetime.now().astimezone().isoformat(),
+                            ),
                         )
                         new_versions.append(ECONOMY_VERSION)
                     if economy_runtime_role is not None:
@@ -1028,7 +1037,7 @@ class PostgresFiscalDatabase:
         owner = raw.execute(
             "SELECT count(*) FROM pg_class WHERE oid = ANY("
             "ARRAY(SELECT to_regclass(name)::oid FROM unnest(%s::text[]) AS name)) "
-            "AND pg_has_role(%s, relowner, 'MEMBER')", (list(TABLES), role),
+            "AND pg_has_role(%s::name, relowner, 'MEMBER')", (list(TABLES), role),
         ).fetchone()
         if owner is None or owner[0]:
             raise FiscalValidationError("economy runtime role must not own fiscal tables")
@@ -1167,7 +1176,8 @@ class PostgresFiscalDatabase:
                         (list(TABLES),),
                     ).fetchall()
                     policies = connection.execute(
-                        "SELECT tablename, policyname, cmd FROM pg_policies "
+                        "SELECT tablename, policyname, cmd, permissive, roles::text, "
+                        "qual, with_check FROM pg_policies "
                         "WHERE schemaname='public' AND tablename=ANY(?::text[])",
                         (list(TABLES),),
                     ).fetchall()
@@ -1180,6 +1190,12 @@ class PostgresFiscalDatabase:
                     {str(row[0]) for row in economy_rows if row[1] and row[2]} != set(TABLES)
                     or {(str(row[0]), str(row[1]), str(row[2])) for row in policies}
                     != expected_policies
+                    or any(
+                        row[3] != "PERMISSIVE" or row[4] != "{public}"
+                        or not is_scope_predicate(row[5] if row[2] == "SELECT" else row[6])
+                        or (row[6] is not None if row[2] == "SELECT" else row[5] is not None)
+                        for row in policies
+                    )
                 ):
                     raise PersistenceStateError("economy scope isolation schema is incomplete")
             except PersistenceStateError:

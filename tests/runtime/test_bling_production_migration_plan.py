@@ -260,3 +260,13 @@ def test_economy_optional_migration_boundaries(monkeypatch) -> None:
     )
     monkeypatch.setenv("NFCORE_HUMAN_MFA", "enabled")
     assert guard._release_schemas(enable_bling=True) == (tuple(range(1, 26)),)
+
+
+def test_economy_existing_schema_can_enable_mfa_later(monkeypatch) -> None:
+    monkeypatch.setenv("NFCORE_ECONOMY_ENABLED", "true")
+    monkeypatch.setenv("NFCORE_HUMAN_MFA", "enabled")
+    assert (*range(1, 20), 22, 23, 25) in guard._known_fiscal_schemas()
+    assert (*range(1, 24), 25) in guard._known_fiscal_schemas()
+    assert guard._release_schemas(enable_bling=False) == (
+        (*range(1, 20), 22, 23, 24, 25), tuple(range(1, 26)),
+    )

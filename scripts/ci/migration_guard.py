@@ -311,11 +311,16 @@ def _known_fiscal_schemas() -> tuple[tuple[int, ...], ...]:
     a1 = (*dps, IRON_A1_DELEGATION_VERSION)
     a1_bling = (*dps_bling, IRON_A1_DELEGATION_VERSION)
     known = (baseline, bling, dps, dps_bling, a1, a1_bling)
+    if _economy_enabled():
+        # An existing economy-only installation can later add optional MFA.
+        known = (*known, (*a1, ECONOMY_VERSION), (*a1_bling, ECONOMY_VERSION))
     if _mfa_enabled():
         known = (*known, (*a1, HUMAN_MFA_VERSION), (*a1_bling, HUMAN_MFA_VERSION))
-    if _economy_enabled():
-        current, current_bling = known[-2:]
-        known = (*known, (*current, ECONOMY_VERSION), (*current_bling, ECONOMY_VERSION))
+        if _economy_enabled():
+            known = (
+                *known, (*a1, HUMAN_MFA_VERSION, ECONOMY_VERSION),
+                (*a1_bling, HUMAN_MFA_VERSION, ECONOMY_VERSION),
+            )
     return known
 
 

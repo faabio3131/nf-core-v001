@@ -9,13 +9,19 @@ import pytest
 from psycopg import sql
 
 from kordena_fiscal.domain import Cnpj, ExecutionScope, FiscalEnvironment, FiscalValidationError
-from kordena_fiscal.persistence.economy_schema import ECONOMY_VERSION, TABLES
+from kordena_fiscal.persistence.economy_schema import (
+    ECONOMY_VERSION,
+    SCOPE_PREDICATE,
+    TABLES,
+    is_scope_predicate,
+)
 from kordena_fiscal.persistence.economy_store import EconomyStore
 from kordena_fiscal.persistence.postgres import PostgresFiscalDatabase
 
 
-def _scope(tenant="tenant-a", unit="unit-a", host="fm-nfcore"):
-    return ExecutionScope(tenant, unit, FiscalEnvironment.HOMOLOGATION, "test", host)
+def _scope(tenant="tenant-a", unit="unit-a", host="fm-nfcore",
+           environment=FiscalEnvironment.HOMOLOGATION):
+    return ExecutionScope(tenant, unit, environment, "test", host)
 
 
 def test_real_postgres_economy_schema_scope_and_immutability(monkeypatch):
@@ -128,6 +134,7 @@ def test_real_postgres_economy_schema_scope_and_immutability(monkeypatch):
                     assert rollback_store.snapshot("rolled-back", 1) is None
                 for scope in (
                     _scope(tenant="tenant-b"), _scope(unit="unit-b"), _scope(host="other"),
+                    _scope(environment=FiscalEnvironment.PRODUCTION),
                 ):
                     with EconomyStore.transaction(runtime, scope) as store:
                         assert store.snapshot("s", 1) is None
@@ -138,6 +145,11 @@ def test_real_postgres_economy_schema_scope_and_immutability(monkeypatch):
                         ).fetchone() == (0,)
                 with EconomyStore.transaction(runtime, _scope()) as store:
                     assert store.snapshot("s", 1) == {"revenue_cents": 100}
+                    with pytest.raises(FiscalValidationError, match="exact values"):
+                        store.append_snapshot(
+                            record_id="invalid", version=1, competence=date(2026, 11, 1),
+                            issuer=Cnpj("12345678000195"), content={"value": 0.1},
+                        )
                     with pytest.raises(psycopg.errors.UniqueViolation):
                         with runtime.transaction():
                             store.append_snapshot(
@@ -163,3 +175,11 @@ def test_real_postgres_economy_schema_scope_and_immutability(monkeypatch):
                 database.close()
             admin.execute(sql.SQL("DROP SCHEMA {} CASCADE").format(sql.Identifier(schema_name)))
             admin.execute(sql.SQL("DROP ROLE {}").format(sql.Identifier(role_name)))
+
+
+def test_rls_predicate_pin_rejects_tenant_bypass():
+    assert is_scope_predicate(SCOPE_PREDICATE)
+    assert is_scope_predicate("(" + SCOPE_PREDICATE.replace("',", "'::text,") + ")")
+    assert not is_scope_predicate("true")
+    assert not is_scope_predicate(SCOPE_PREDICATE.replace(" AND ", " OR ", 1))
+    assert not is_scope_predicate(SCOPE_PREDICATE.replace("nfcore.economy_unit_id", "other"))
