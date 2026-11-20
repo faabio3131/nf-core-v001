@@ -22,6 +22,19 @@ SOURCES: dict[str, str] = {
     "NFSE": "https://www.gov.br/nfse/pt-br/biblioteca/documentacao-tecnica/rtc",
     "DOU": "https://www.in.gov.br/",
 }
+ECONOMY_SOURCES: dict[str, str] = {
+    "PGFN_EDITAIS": (
+        "https://www.gov.br/pgfn/pt-br/servicos/editais-de-notificacao/"
+        "acordo-de-transacao-por-adesao-1"
+    ),
+    "RFB_LEGISLACAO": (
+        "https://www.gov.br/receitafederal/pt-br/acesso-a-informacao/legislacao/legislacao"
+    ),
+    "RFB_TRANSACAO": (
+        "https://www.gov.br/receitafederal/pt-br/assuntos/orientacao-tributaria/"
+        "pagamentos-e-parcelamentos/transacao-tributaria"
+    ),
+}
 MAX_BYTES = 2 * 1024 * 1024
 _STATE_SCHEMA = 1
 
@@ -45,7 +58,7 @@ class _NoRedirect(HTTPRedirectHandler):
 
 def fetch_official_portal(url: str) -> bytes:
     """Fetch an immutable allowlisted portal URL, without following redirects."""
-    if url not in SOURCES.values():
+    if url not in (*SOURCES.values(), *ECONOMY_SOURCES.values()):
         raise NormativeWatchError("normative portal URL is not allowlisted")
     request = Request(
         url,
@@ -102,6 +115,7 @@ def poll_normative_sources(
     state_path: Path,
     fetch: Callable[[str], bytes] = fetch_official_portal,
     observed_at: datetime | None = None,
+    economy: bool = False,
 ) -> tuple[dict[str, str], ...]:
     """Compare portal bytes, write checkpoint atomically, return review events.
 
@@ -125,6 +139,10 @@ def poll_normative_sources(
         raise NormativeWatchError("normative monitoring lock unavailable") from exc
     try:
         os.close(handle)
+        if economy:
+            from .normative_radar import poll_radar_locked
+
+            return poll_radar_locked(state_path, temp, fetch, when)
         before = _load_state(state_path)
         now: dict[str, str] = {}
         events: list[dict[str, str]] = []

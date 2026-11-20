@@ -24,6 +24,7 @@ from .durable_usage import DurableTokenQuotaStore
 from .economy_reader import EconomyReader
 from .governance import DEFAULT_PILOT_DAILY_LIMIT, InMemoryUsageLedger, pilot_entitlement
 from .knowledge.official import OfficialTablesError, cached_official_catalog
+from .normative_radar_api import build_normative_reader
 from .portal_evidence import PortalSurfaceEvidenceProvider, SurfaceReader
 from .ports import AuditSinkPort
 from .quota_model import QuotaGovernedAdvisoryClient
@@ -125,6 +126,7 @@ def build_cognitive_routers(
             service,
             PortalSurfaceEvidenceProvider(portal_executor, economy_reader=economy_reader),
             ai_enabled=model is not None,
+            normative_radar=build_normative_reader(portal_executor, environ),
         ),
         create_command_metrics_router(aggregates, environ, ai_enabled=model is not None),
     ]

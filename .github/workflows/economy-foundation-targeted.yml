@@ -1,4 +1,4 @@
-name: NFCore Economia - validacao focal T02
+name: NFCore Economia - validacao focal T03
 on:
   push:
     branches: ["validation/nfcore-economy-foundation-20261120"]
@@ -8,7 +8,7 @@ concurrency:
   group: nfcore-economy-foundation-validation
   cancel-in-progress: true
 jobs:
-  t02:
+  t03:
     runs-on: ubuntu-24.04
     timeout-minutes: 12
     services:
@@ -30,9 +30,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: d53a2c62d54a252eda1baa6e64f4a8d1ba0183cc
-      - name: Confirmar HEAD T02
-        run: test "$(git rev-parse HEAD)" = "d53a2c62d54a252eda1baa6e64f4a8d1ba0183cc"
+          ref: ea33b304640f668ce6d334657aa0e53305655ff5
+      - name: Confirmar HEAD T03
+        run: test "$(git rev-parse HEAD)" = "ea33b304640f668ce6d334657aa0e53305655ff5"
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
@@ -44,17 +44,19 @@ jobs:
         run: mypy
       - name: Migration policy
         run: python scripts/ci/migration_guard.py --check-policy
-      - name: Cognitive core and real PostgreSQL regressions
+      - name: Normative sentinel, cognitive and PostgreSQL regression
         run: |
-          pytest -ra --junitxml=/tmp/nfcore-t02.xml tests/cognitive tests/persistence/test_economy_schema_postgres.py tests/persistence/test_postgres_production.py::test_economy_v25_readiness_detects_policy_and_index_drift
+          pytest -ra --junitxml=/tmp/nfcore-t03.xml tests/compliance tests/cognitive tests/test_cognitive_router_and_sentinel.py tests/persistence/test_economy_schema_postgres.py tests/persistence/test_postgres_production.py::test_economy_v25_readiness_detects_policy_and_index_drift
           python - <<'PY'
           import xml.etree.ElementTree as ET
-          root = ET.parse("/tmp/nfcore-t02.xml").getroot()
+          root = ET.parse("/tmp/nfcore-t03.xml").getroot()
           cases = root.findall(".//testcase")
-          selected = [c for c in cases if "test_economy_contract" in c.get("classname","") or c.get("name","").startswith(("test_economy_contract_api", "test_real_postgres_economy_schema", "test_economy_v25_readiness"))]
-          assert len(selected) >= 20, len(selected)
+          focal = [c for c in cases if "test_normative_radar" in c.get("classname", "")]
+          assert len(focal) >= 6, len(focal)
           assert not root.findall(".//failure") and not root.findall(".//error")
-          assert not any(c.find("skipped") is not None for c in selected)
-          print(f"T02: {len(selected)} targeted cases PASS; total {len(cases)} regression cases")
-          print(f"Regression skips: {len(root.findall('.//skipped'))}")
+          assert not root.findall(".//skipped"), "no skipped tests in selected suites"
+          print(f"T03: {len(focal)} targeted cases PASS; total {len(cases)} regression cases")
           PY
+      - name: Validate production opt-in composition
+        run: |
+          POSTGRES_PASSWORD=fixture-only docker compose -f deploy/contabo/compose.prod.yml -f deploy/contabo/compose.normative-radar.api.opt-in.yml config --quiet
