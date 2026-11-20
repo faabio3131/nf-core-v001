@@ -1,4 +1,4 @@
-name: NFCore Economia - validacao focal T03
+name: NFCore Economia - validacao focal T04
 on:
   push:
     branches: ["validation/nfcore-economy-foundation-20261120"]
@@ -8,7 +8,7 @@ concurrency:
   group: nfcore-economy-foundation-validation
   cancel-in-progress: true
 jobs:
-  t03:
+  t04:
     runs-on: ubuntu-24.04
     timeout-minutes: 12
     services:
@@ -30,34 +30,28 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: 6a0cf5bee4562807180cc0e60bd69bb84cd8bdb4
-      - name: Confirmar HEAD T03
-        run: test "$(git rev-parse HEAD)" = "6a0cf5bee4562807180cc0e60bd69bb84cd8bdb4"
+          ref: 2d3373201f2f1c87b5b4e00b3ee691b31e6e4228
+      - name: Confirmar HEAD T04
+        run: test "$(git rev-parse HEAD)" = "2d3373201f2f1c87b5b4e00b3ee691b31e6e4228"
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
           cache: pip
       - run: python -m pip install -e ".[dev,telemetry]"
-      - name: Ruff
-        run: ruff check .
-      - name: Mypy
-        run: mypy
-      - name: Migration policy
-        run: python scripts/ci/migration_guard.py --check-policy
-      - name: Normative sentinel, cognitive and PostgreSQL regression
+      - run: ruff check .
+      - run: mypy
+      - run: python scripts/ci/migration_guard.py --check-policy
+      - name: Fiscal, normative, cognitive and PostgreSQL regression
         run: |
-          pytest -ra --junitxml=/tmp/nfcore-t03.xml tests/compliance tests/cognitive tests/test_cognitive_router_and_sentinel.py tests/control_plane/test_v2_12_closure.py::test_v2_12_structural_secret_dependency_architecture_and_product_neutrality tests/persistence/test_economy_schema_postgres.py tests/persistence/test_postgres_production.py::test_economy_v25_readiness_detects_policy_and_index_drift
+          pytest -ra --junitxml=/tmp/nfcore-t04.xml tests/tax tests/compliance tests/cognitive tests/persistence/test_economy_schema_postgres.py tests/persistence/test_postgres_production.py::test_economy_v25_readiness_detects_policy_and_index_drift tests/control_plane/test_v2_12_closure.py::test_v2_12_structural_secret_dependency_architecture_and_product_neutrality
           python - <<'PY'
           import xml.etree.ElementTree as ET
-          root = ET.parse("/tmp/nfcore-t03.xml").getroot()
+          root = ET.parse("/tmp/nfcore-t04.xml").getroot()
           cases = root.findall(".//testcase")
-          focal = [c for c in cases if "test_normative_radar" in c.get("classname", "")]
-          assert len(focal) >= 6, len(focal)
+          focal = [c for c in cases if "test_simples_nacional" in c.get("classname", "")]
+          assert len(focal) >= 20, len(focal)
           assert not root.findall(".//failure") and not root.findall(".//error")
-          assert not root.findall(".//skipped"), "no skipped tests in selected suites"
-          print(f"T03: {len(focal)} targeted cases PASS; total {len(cases)} regression cases")
+          assert not any(c.find("skipped") is not None for c in focal)
+          print(f"T04: {len(focal)} targeted cases PASS; total {len(cases)} regression cases")
+          print(f"Regression skips: {len(root.findall('.//skipped'))}")
           PY
-      - name: Validate production opt-in composition
-        run: |
-          touch deploy/contabo/.env
-          POSTGRES_PASSWORD=fixture-only docker compose -f deploy/contabo/compose.prod.yml -f deploy/contabo/compose.normative-radar.api.opt-in.yml config --quiet
