@@ -164,6 +164,14 @@ def main() -> int:
         return run(handler_factory=lambda database, settings: build_bling_worker(
             database, os.environ,
         ))
+    if os.environ.get("NFCORE_ENVIRONMENT") == "production" and os.environ.get(
+        "NFCORE_WORKER_LOCAL_VAULT_MODE"
+    ):
+        if os.environ.get("NFCORE_WORKER_GSM_MODE"):
+            raise RuntimeConfigurationError("ambiguous worker secret backend")
+        from .production_local_vault import production_local_vault_worker_handler_factory
+
+        return run(handler_factory=production_local_vault_worker_handler_factory(os.environ))
     if os.environ.get("NFCORE_ENVIRONMENT") == "production":
         from .production_gsm import production_worker_handler_factory
         from .production_multi_gsm import MULTI_MODE, production_multi_worker_handler_factory
