@@ -7,7 +7,7 @@ A folha T23–T33, a Trilha 2 H01–H06 e a reformulação Enterprise não integ
 | T01 | Modelagem de dados, oportunidades, benefícios, ledger, dossiês, RLS | DoD interno aprovado — 44 PASS, 0 SKIP/FAIL (44678481529, 570170f3) |
 | T02 | Contrato Core Cognitivo | ENTREGUE — DoD interno aprovado em 20/11/2026; 308 PASS, 0 SKIP/FAIL; 24 casos focais (44718504072, d53a2c62) |
 | T03 | Sentinela Normativa e anistias/REFIS | ENTREGUE — DoD interno aprovado em 20/11/2026; 525 PASS, 0 SKIP/FAIL; 6 casos focais (44720120616, 6a0cf5be) |
-| T04 | Motor Simples e Fator R | LIBERADO para engenharia interna — não iniciado |
+| T04 | Motor Simples e Fator R | EM EXECUÇÃO — motor determinístico candidato, certificação pendente |
 | T05 | Diagnóstico e otimizador Fator R | Bloqueado |
 | T06 | Classificador de receitas segregáveis | Bloqueado |
 | T07 | Apuração/PGDAS segregada | Bloqueado |
@@ -65,3 +65,6 @@ Regressão integral herdada da T02 (CI 44718511040): gate de dependências do mo
 - https://github.com/faabio3131/nf-core-v001/actions/runs/44720120616 — SUCCESS, 525 PASS, 0 SKIP/FAIL, 1 warning; 6 casos focais T03; Ruff, mypy (447 arquivos), migração, PostgreSQL real da regressão T01–T02 e compose opt-in PASS. Gate de dependências V2-12 original aprovado após reposicionamento do Pydantic nos extras cognitivo/web/dev.
 - T03 usa a sentinela e o timer diário existentes, sete fontes públicas iniciais, cache atômico v2, alertas de alterações e categorias e API autenticada por unidade/ambiente. Não há prova de coleta real contínua no host, vigência ou elegibilidade, nem de cobertura estadual/municipal integral. A coleta por fixtures não é homologação fiscal externa. Estado atual das fontes é projeção de triagem, não histórico completo de editais ou regras. Timer e compose apenas preparados; instalação/ativação não executada.
 - CI integral do código: https://github.com/faabio3131/nf-core-v001/actions/runs/44720129576 em execução na certificação. Gate de promoção integral continua aberto; sem merge, deploy, mudança em main/production ou migration produtiva. Fase 0 certificada internamente por DoDs T01/T02/T03. T04 liberada pela trava específica, não iniciada.
+
+## T04 — motor Simples Nacional
+CURRENT: regime federal canônico e adaptador RFB RTC, sem motor PGDAS-base. TARGET: cálculo independente de IA no tax package, tabelas LC123 I–V, história consolidada da empresa, RBT12 separado por mercado, Fator R combinado, limites/sublimites e estado temporal, memória determinística e centavos. Fontes: https://legis.senado.gov.br/norma/572878/publicacao/34621013, https://normas.receita.fazenda.gov.br/sijut2consulta/link.action?idAto=92278, Portaria CGSN 54/2025 (todos os 27 UFs em 2026). Regra 2026 explicitamente versionada; 2027 exige nova regra devido à Resolução CGSN 190/2026. T04 entrega base de alíquota e diagnóstico; segregação especial e apuração PGDAS final são T06/T07. Excesso art.24 não recebe valor único inseguro: revisão explícita. T05 deverá consumir o motor por snapshot autorizado; sem emissão, aprovação ou deploy. Testes ainda não executados.
