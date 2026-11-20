@@ -25,7 +25,6 @@ from .contracts import (
     Evidence,
     EvidenceKind,
 )
-
 from .economy_contract import CAPABILITIES
 from .economy_reader import EconomyReader
 
@@ -84,6 +83,7 @@ class PortalSurfaceEvidenceProvider:
             # portal before creating a database scope, even for unrestricted owners.
             authorized = any(
                 row.get("unit_id") == unit_id
+                and row.get("tenant_id", tenant) == tenant
                 and environment.value in (row.get("enabled_environments") or ())
                 for row in rows("units")
             )

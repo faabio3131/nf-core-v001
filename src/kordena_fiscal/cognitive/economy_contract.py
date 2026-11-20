@@ -11,7 +11,14 @@ from datetime import date
 from typing import Annotated, Literal, Self
 from urllib.parse import urlsplit
 
-from pydantic import BaseModel, ConfigDict, Field, StringConstraints, ValidationError, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    StringConstraints,
+    ValidationError,
+    model_validator,
+)
 
 from .baseline import Baseline, insufficient
 from .contracts import (
@@ -26,11 +33,12 @@ from .contracts import (
     stable_hash,
 )
 
-SCHEMA_VERSION = "nfcore.cognitive.economy/v1"
+SCHEMA_VERSION: Literal["nfcore.cognitive.economy/v1"] = "nfcore.cognitive.economy/v1"
 CAPABILITIES = frozenset({
     Capability.OPPORTUNITY_RADAR, Capability.CREDIT_RECOVERY, Capability.TAX_SIMULATION,
 })
-AGENTS = {
+AgentKind = Literal["opportunity", "credit", "simulation"]
+AGENTS: dict[Capability, AgentKind] = {
     Capability.OPPORTUNITY_RADAR: "opportunity",
     Capability.CREDIT_RECOVERY: "credit",
     Capability.TAX_SIMULATION: "simulation",
@@ -50,7 +58,6 @@ Digest = Annotated[str, StringConstraints(pattern=r"^[0-9a-f]{64}$")]
 Version = Annotated[int, Field(ge=1, le=2147483647)]
 Cents = Annotated[int, Field(ge=0, le=9223372036854775807)]
 Day = Annotated[str, StringConstraints(pattern=r"^\d{4}-\d{2}-\d{2}$")]
-AgentKind = Literal["opportunity", "credit", "simulation"]
 
 
 class ContractModel(BaseModel):
@@ -80,7 +87,7 @@ class LegalCitation(ContractModel):
         if (
             url.scheme != "https" or url.username or url.password
             or url.port is not None
-            or not hostname.endswith((".gov.br", ".leg.br", ".jus.br"))
+            or not (hostname == "gov.br" or hostname.endswith((".gov.br", ".leg.br", ".jus.br")))
             or not url.path.startswith("/")
             or any(ch.isspace() for ch in self.source_url)
         ):
@@ -131,6 +138,9 @@ class EconomyCandidate(ContractModel):
             raise ValueError("competence must be the first day of a month")
         if any(not citation.covers(self.competence) for citation in self.legal_citations):
             raise ValueError("citation does not cover the whole competence")
+        if not all(value.strip() for value in (self.tax_code, self.engine_version,
+                                               self.calculation_reference)):
+            raise ValueError("calculation references must be nonblank")
         if len(self.evidence_ids) != len(self.legal_citations) + 1:
             raise ValueError("each legal citation requires its own evidence id")
         if len(set(self.evidence_ids)) != len(self.evidence_ids):
@@ -198,8 +208,9 @@ def _candidate_from_request(request: AdviceRequest) -> EconomyCandidate | None:
             ):
                 return None
             item.pop("scope_hash")
-            item["valid_until"] = item["valid_until"] or None
-            citations.append(LegalCitation.model_validate(item))
+            citations.append(LegalCitation.model_validate({
+                **item, "valid_until": item["valid_until"] or None,
+            }))
         return EconomyCandidate.model_validate({
             "kind": data["kind"],
             "evaluation": {

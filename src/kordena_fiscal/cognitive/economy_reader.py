@@ -16,12 +16,7 @@ from kordena_fiscal.domain import ExecutionScope
 from kordena_fiscal.persistence.economy_store import EconomyStore
 
 from .contracts import Capability, Evidence, EvidenceKind, stable_hash
-from .economy_contract import (
-    AGENTS,
-    LEGAL_ORIGIN,
-    ORIGIN,
-    LegalCitation,
-)
+from .economy_contract import AGENTS, LEGAL_ORIGIN, ORIGIN, LegalCitation
 
 EconomyReader = Callable[[ExecutionScope, Capability, str], tuple[Evidence, ...]]
 
@@ -56,7 +51,8 @@ def read_economy_evidence(
     try:
         payload: dict[str, Any] = evaluation["content"]
         if (
-            payload["kind"] != AGENTS[capability]
+            type(evaluation["estimated_cents"]) is not int
+            or payload["kind"] != AGENTS[capability]
             or payload["rule_digest"] != rule["digest"]
             or payload["snapshot_digest"] != snapshot["digest"]
             or payload["rule_review_reference"] != rule["content"]["review_reference"]

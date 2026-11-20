@@ -7,7 +7,6 @@ from dataclasses import dataclass
 from decimal import Decimal
 
 from .context import INJECTION_MARKERS
-from .economy_contract import CAPABILITIES, economy_model_action_allowed
 from .contracts import (
     MAX_SECTION_CHARS,
     AdviceRequest,
@@ -16,6 +15,7 @@ from .contracts import (
     EvidenceKind,
     SectionKind,
 )
+from .economy_contract import CAPABILITIES, economy_model_action_allowed
 from .ports import ProviderSection
 from .redaction import Redactor
 

@@ -79,12 +79,15 @@ class EconomyStore:
     @contextmanager
     def transaction(
         conn: Connection[Any], scope: ExecutionScope, *, runtime_role: str | None = None,
+        read_only: bool = False,
     ) -> Iterator[EconomyStore]:
         if not scope.host_namespace:
             raise FiscalValidationError("economy requires bound fiscal host scope")
         if conn.info.transaction_status.name != "IDLE":
             raise FiscalValidationError("economy transaction requires idle connection")
         with conn.transaction():
+            if read_only:
+                conn.execute("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY")
             if runtime_role is not None:
                 EconomyStore._text(runtime_role, "runtime role")
                 conn.execute(sql.SQL("SET LOCAL ROLE {}").format(sql.Identifier(runtime_role)))

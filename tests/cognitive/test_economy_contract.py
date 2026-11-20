@@ -1,4 +1,5 @@
 """T02 structured economy contract regression: synthetic evidence only."""
+import json
 from dataclasses import replace
 from datetime import date
 from typing import Any
@@ -162,7 +163,6 @@ def test_wire_contract_forbids_approval_or_missing_citations():
     req = request()
     result = CognitiveAdviceService(baselines=default_baselines()).advise(req)
     payload = project_economy(req, result).model_dump(mode="json")
-    import json
     for key, value in (
         ("approved_cents", 12000), ("realized_cents", 12000),
         ("estimated_cents", 1.25), ("legal_citations", []), ("execute", True),
@@ -177,3 +177,29 @@ def test_citation_malformed_or_future():
         LegalCitation.model_validate({**legal(), "published_on": "9999-01-01"})
     with pytest.raises(ValidationError):
         LegalCitation.model_validate({**legal(), "valid_from": date(2026, 1, 1)})
+
+
+def test_provider_unavailable_preserves_deterministic_candidate():
+    from kordena_fiscal.cognitive.ports import ModelProviderUnavailable
+
+    req = request()
+    model = ScriptedModel(error=ModelProviderUnavailable())
+    result = CognitiveAdviceService(
+        baselines=default_baselines(), model=model, audit=Recorder(),
+    ).advise(req)
+    assert result.status is AdviceStatus.BASELINE_ONLY
+    assert result.provenance.degraded_reason == "provider_unavailable"
+    assert project_economy(req, result).candidates[0].estimated_cents == 12000
+
+
+def test_denied_capability_does_not_call_model():
+    req = replace(request(), granted_capabilities=frozenset())
+    model = ScriptedModel()
+    recorder = Recorder()
+    result = CognitiveAdviceService(
+        baselines=default_baselines(), model=model, audit=recorder,
+    ).advise(req)
+    assert result.status is AdviceStatus.DENIED
+    assert not project_economy(req, result).candidates
+    assert model.calls == 0
+    assert recorder.events

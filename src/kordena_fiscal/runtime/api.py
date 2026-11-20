@@ -1194,7 +1194,9 @@ def create_runtime_app(
                 audit_uow_factory=runtime.database,
                 runtime_environment=resolved.environment.value,
                 economy_reader=(
-                    partial(read_economy_evidence, runtime.database.economy)
+                    partial(
+                        read_economy_evidence, partial(runtime.database.economy, read_only=True)
+                    )
                     if runtime.database is not None
                     and os.environ.get("NFCORE_ECONOMY_ENABLED") == "true" else None
                 ),

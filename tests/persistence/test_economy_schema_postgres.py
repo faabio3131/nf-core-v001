@@ -8,6 +8,10 @@ import psycopg
 import pytest
 from psycopg import sql
 
+from kordena_fiscal.cognitive import CognitiveAdviceService, default_baselines
+from kordena_fiscal.cognitive.contracts import AdviceRequest
+from kordena_fiscal.cognitive.economy_contract import AGENTS, project_economy
+from kordena_fiscal.cognitive.economy_reader import read_economy_evidence
 from kordena_fiscal.domain import Cnpj, ExecutionScope, FiscalEnvironment, FiscalValidationError
 from kordena_fiscal.persistence.economy_schema import (
     ECONOMY_VERSION,
@@ -67,6 +71,7 @@ def test_real_postgres_economy_schema_scope_and_immutability(monkeypatch):
                     record_id="migration-proof", version=1, competence=date(2026, 11, 1),
                     issuer=Cnpj("12345678000195"), content={"revenue_cents": 20},
                 )
+            _certify_t02_read_only(database)
             admin.execute(sql.SQL("SET search_path TO {}").format(sql.Identifier(schema_name)))
             # Explicitly add DML permissions only in this sandbox to prove
             # that the RLS policies, not solely GRANTs, deny mutation.
@@ -187,3 +192,69 @@ def test_rls_predicate_pin_rejects_tenant_bypass():
         "nfcore.economy_unit_id", "nfcore.economy_unit_id "
     ))
     assert not is_scope_predicate(42)
+
+
+def _certify_t02_read_only(database):
+    from functools import partial
+
+    scope = _scope(tenant="economy-t02")
+    issuer = Cnpj("12345678000195")
+    with database.economy(scope) as store:
+        snap_hash = store.append_snapshot(
+            record_id="snap-t02", version=1, competence=date(2026, 11, 1),
+            issuer=issuer, content={"restricted_detail": "DO_NOT_SEND_TO_MODEL"},
+        )
+        rule_hash = store.append_benefit(
+            record_id="rule-t02", version=1, tax_code="ICMS", jurisdiction="SP",
+            normative_reference="synthetic-only", valid_from=date(2026, 1, 1),
+            valid_until=date(2027, 1, 1), content={
+                "review_status": "reviewed", "review_reference": "fixture-review",
+                "legal_citations": [{
+                    "act": "Synthetic test act", "provision": "Test article",
+                    "source_url": "https://www.gov.br/receitafederal/pt-br",
+                    "source_sha256": "c" * 64, "published_on": "2025-01-01",
+                    "valid_from": "2026-01-01", "valid_until": "2027-01-01",
+                    "review_reference": "fixture-review",
+                }],
+            },
+        )
+        for cap, kind in AGENTS.items():
+            store.append_opportunity(
+                record_id=kind, version=1, snapshot_id="snap-t02", snapshot_version=1,
+                benefit_id="rule-t02", benefit_version=1, estimated_cents=12000,
+                content={
+                    "kind": kind, "rule_digest": rule_hash, "snapshot_digest": snap_hash,
+                    "rule_review_reference": "fixture-review", "calculation_status": "deterministic",
+                    "engine_version": "test-v1", "calculation_reference": "fixture-calc",
+                },
+            )
+    reader = partial(database.economy, read_only=True)
+    for cap, kind in AGENTS.items():
+        evidence = read_economy_evidence(reader, scope, cap, kind)
+        assert len(evidence) == 2
+        assert "DO_NOT_SEND_TO_MODEL" not in repr(evidence)
+        request = AdviceRequest(
+            scope=scope, request_id=kind, actor_id="synthetic-role",
+            granted_capabilities=frozenset({cap}), capability=cap,
+            evidence=evidence, subject_id=kind,
+        )
+        result = CognitiveAdviceService(baselines=default_baselines()).advise(request)
+        candidate = project_economy(request, result).candidates[0]
+        assert candidate.estimated_cents == 12000
+        assert candidate.rule.digest == rule_hash
+        assert candidate.snapshot.digest == snap_hash
+        for foreign in (
+            _scope(tenant="foreign"), _scope(tenant="economy-t02", unit="foreign"),
+            _scope(tenant="economy-t02", host="foreign"),
+            _scope(tenant="economy-t02", environment=FiscalEnvironment.PRODUCTION),
+        ):
+            assert read_economy_evidence(reader, foreign, cap, kind) == ()
+    with pytest.raises(psycopg.errors.ReadOnlySqlTransaction):
+        with database.economy(scope, read_only=True) as store:
+            store.append_snapshot(
+                record_id="no-write", version=1, competence=date(2026, 11, 1),
+                issuer=issuer, content={},
+            )
+    with database.economy(scope) as store:
+        assert store.snapshot("no-write", 1) is None
+        assert len(store.records("fm_economy_opportunities")) == 3
