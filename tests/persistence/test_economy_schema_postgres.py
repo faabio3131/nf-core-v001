@@ -417,6 +417,11 @@ def _certify_t06(database):
         assert store.record("fm_economy_benefits", "t06-rule", 1) is not None
     with database.economy(scope, read_only=True) as store:
         assert evaluate_segregation(store, **refs) == result
+        assessment = evaluate_segregation(store, **refs, assessment=True)
+        assert assessment["status"] == "estimated"
+        assert assessment["estimated_das_cents"] == 12
+        assert assessment["advisory_only"] is True
+        assert assessment == evaluate_segregation(store, **refs, assessment=True)
     for foreign in (
         _scope(tenant="foreign"), _scope(tenant="economy-t06", unit="foreign"),
         _scope(tenant="economy-t06", host="foreign"),
@@ -436,3 +441,7 @@ def _certify_t06(database):
     with database.economy(scope, read_only=True) as store:
         assert evaluate_segregation(store, **refs) == result
         assert evaluate_segregation(store, **{**refs, "snapshot_version": 2}) == outcome
+        blocked_assessment = evaluate_segregation(
+            store, **{**refs, "snapshot_version": 2}, assessment=True,
+        )
+        assert blocked_assessment["estimated_das_cents"] is None

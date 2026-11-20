@@ -32,7 +32,7 @@ def build_diagnostic_runner(
     reader: SurfaceReader,
     store_factory: Callable[[ExecutionScope], AbstractContextManager[EconomyStore]],
     uow_factory: Callable[[], AbstractContextManager[Any]],
-    *, segregation: bool = False,
+    *, segregation: bool = False, assessment: bool = False,
 ) -> DiagnosticRunner:
     def run(
         authority: AuthenticatedHuman, unit_id: str, environment: FiscalEnvironment,
@@ -58,8 +58,13 @@ def build_diagnostic_runner(
 
         try:
             with store_factory(scope) as store:
-                evaluator = evaluate_segregation if segregation else evaluate_and_record
-                return evaluator(
+                if segregation or assessment:
+                    return evaluate_segregation(
+                        store, snapshot_id=snapshot_id, snapshot_version=snapshot_version,
+                        rule_id=rule_id, rule_version=rule_version, verify_issuer=verify,
+                        assessment=assessment,
+                    )
+                return evaluate_and_record(
                     store, snapshot_id=snapshot_id, snapshot_version=snapshot_version,
                     rule_id=rule_id, rule_version=rule_version, verify_issuer=verify,
                 )

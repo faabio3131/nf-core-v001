@@ -56,6 +56,7 @@ def build_cognitive_routers(
     economy_reader: EconomyReader | None = None,
     diagnostic_runner: DiagnosticRunner | None = None,
     segregation_runner: DiagnosticRunner | None = None,
+    assessment_runner: DiagnosticRunner | None = None,
 ) -> list[APIRouter]:
     """Portal advisory route (opt-in) plus the Command read-only metrics route (always mounted).
 
@@ -132,6 +133,7 @@ def build_cognitive_routers(
             normative_radar=build_normative_reader(portal_executor, environ),
             diagnostic_runner=diagnostic_runner,
             segregation_runner=segregation_runner,
+        assessment_runner=assessment_runner,
         ),
         create_command_metrics_router(aggregates, environ, ai_enabled=model is not None),
     ]
@@ -149,6 +151,7 @@ def build_cognitive_router(
     economy_reader: EconomyReader | None = None,
     diagnostic_runner: DiagnosticRunner | None = None,
     segregation_runner: DiagnosticRunner | None = None,
+    assessment_runner: DiagnosticRunner | None = None,
 ) -> APIRouter | None:
     """One router mounting the Portal advisory route and the Command metrics route."""
     routers = build_cognitive_routers(
@@ -160,6 +163,7 @@ def build_cognitive_router(
         economy_reader=economy_reader,
         diagnostic_runner=diagnostic_runner,
         segregation_runner=segregation_runner,
+            assessment_runner=assessment_runner,
     )
     if not routers:
         return None
