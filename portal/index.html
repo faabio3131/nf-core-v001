@@ -35,6 +35,28 @@
         <p id="login-error" class="form-error" role="alert" aria-live="polite"></p>
       </form>
 
+      <form id="mfa-form" hidden>
+        <p id="mfa-intro">Digite o código de 6 dígitos do seu app autenticador.</p>
+        <div id="mfa-enroll" hidden>
+          <p>Abra o Google Authenticator, Microsoft Authenticator, Authy ou 1Password, toque em adicionar e leia o QR code. Se não conseguir ler, digite a chave abaixo no app.</p>
+          <div class="mfa-qr"><img id="mfa-qr" alt="QR code para o app autenticador" hidden></div>
+          <p class="form-hint">Chave de configuração: <code id="mfa-secret"></code></p>
+        </div>
+        <label>Código do app<input id="mfa-code" name="code" inputmode="numeric" autocomplete="one-time-code" maxlength="11" required></label>
+        <p class="form-hint" id="mfa-recovery-hint">Sem o celular? Use um dos códigos de recuperação no lugar do código do app.</p>
+        <label class="check-row"><input id="mfa-remember" type="checkbox"> Lembrar este navegador por 30 dias</label>
+        <button class="primary" type="submit" id="mfa-submit">Confirmar</button>
+        <button class="ghost" id="mfa-cancel" type="button">Voltar</button>
+        <p id="mfa-status" class="form-error" role="alert" aria-live="polite"></p>
+      </form>
+
+      <div id="mfa-recovery" hidden>
+        <h2>Guarde seus códigos de recuperação</h2>
+        <p>Cada código funciona uma única vez, se você perder o celular. Guarde em um lugar seguro: eles não serão mostrados de novo.</p>
+        <ol id="mfa-recovery-list" class="mfa-recovery-list"></ol>
+        <button class="primary" id="mfa-recovery-done" type="button">Já guardei os códigos</button>
+      </div>
+
       <form id="password-reset-request-form" hidden>
         <p>Informe o e-mail da conta. Se ela for elegível, enviaremos as instruções de recuperação pelo canal configurado.</p>
         <label>E-mail<input id="password-reset-email" name="email" type="email" autocomplete="email" required></label>
@@ -91,6 +113,7 @@
         <div class="top-actions">
           <span class="environment-control" id="authority-context">Sessão autenticada</span>
           <button class="ghost" type="button" id="theme-toggle">Tema escuro</button>
+          <button class="ghost" type="button" id="security-action">Segurança</button>
           <button class="ghost" type="button" id="logout-action">Sair</button>
         </div>
       </header>
@@ -108,6 +131,37 @@
       </footer>
     </main>
   </div>
+
+  <dialog id="step-up-dialog" aria-labelledby="step-up-title">
+    <form id="step-up-form" method="dialog">
+      <p class="eyebrow">Confirmação de segurança</p>
+      <h2 id="step-up-title">Confirme com o app autenticador</h2>
+      <p>Esta ação é sensível (certificado, regime/CRT, usuários ou produção). Digite o código atual do app para continuar.</p>
+      <label>Código do app<input id="step-up-code" inputmode="numeric" autocomplete="one-time-code" maxlength="11" required></label>
+      <p id="step-up-status" class="form-error" role="alert" aria-live="polite"></p>
+      <div class="dialog-actions">
+        <button class="ghost" type="button" id="step-up-cancel">Cancelar</button>
+        <button class="primary" type="submit">Confirmar</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="security-dialog" aria-labelledby="security-title">
+    <div>
+      <p class="eyebrow">Sua conta</p>
+      <h2 id="security-title">Segurança</h2>
+      <p id="security-summary">Carregando…</p>
+      <div class="dialog-actions security-actions">
+        <button class="ghost" type="button" id="security-enroll" hidden>Ativar app autenticador</button>
+        <button class="ghost" type="button" id="security-codes" hidden>Gerar novos códigos de recuperação</button>
+        <button class="ghost" type="button" id="security-devices" hidden>Esquecer navegadores lembrados</button>
+        <button class="ghost" type="button" id="security-policy" hidden>Exigir app autenticador de todos</button>
+      </div>
+      <ol id="security-codes-list" class="mfa-recovery-list" hidden></ol>
+      <p id="security-status" class="form-error" role="status" aria-live="polite"></p>
+      <div class="dialog-actions"><button class="primary" type="button" id="security-close">Fechar</button></div>
+    </div>
+  </dialog>
 
   <dialog id="operation-dialog" aria-labelledby="operation-dialog-title">
     <form id="operation-form" method="dialog">

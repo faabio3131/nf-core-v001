@@ -247,5 +247,6 @@ def test_policy_manifest_includes_and_checks_delegation_v23(monkeypatch) -> None
         original(**kwargs)
 
     monkeypatch.setattr(guard, "_reject_unapproved_destructive", check)
-    assert guard.validate_policy() == tuple(range(1, 24))
+    assert guard.validate_policy() == tuple(range(1, 25))
     assert guard.IRON_A1_DELEGATION_VERSION in checked
+    assert guard.HUMAN_MFA_VERSION in checked

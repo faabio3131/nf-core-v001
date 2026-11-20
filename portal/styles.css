@@ -1028,3 +1028,13 @@ html[data-theme="light"] .rtc-status { color: #153453; }
     padding: 12px;
   }
 }
+
+/* MFA (TOTP) */
+.mfa-qr { display: flex; justify-content: center; margin: 12px 0; }
+.mfa-qr img { width: 196px; height: 196px; background: #ffffff; border-radius: 8px; padding: 6px; }
+.mfa-recovery-list { columns: 2; font-family: ui-monospace, monospace; font-size: 15px; padding-left: 22px; }
+.mfa-recovery-list li { margin: 4px 0; }
+.check-row { display: flex; gap: 8px; align-items: center; }
+.check-row input { width: auto; }
+.security-actions { flex-wrap: wrap; justify-content: flex-start; }
+#mfa-secret { word-break: break-all; }

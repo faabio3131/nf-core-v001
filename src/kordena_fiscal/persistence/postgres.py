@@ -81,6 +81,12 @@ from .customer_configuration_schema import (
     CUSTOMER_CONFIGURATION_VERSION,
 )
 from .fiscal_scope_schema import FISCAL_SCOPE_NAME, FISCAL_SCOPE_SCHEMA, FISCAL_SCOPE_VERSION
+from .human_mfa_schema import (
+    HUMAN_MFA_NAME,
+    HUMAN_MFA_SCHEMA,
+    HUMAN_MFA_VERSION,
+    PostgresHumanMfaStore,
+)
 from .iron_a1_delegation import (
     IRON_A1_DELEGATION_NAME,
     IRON_A1_DELEGATION_SCHEMA,
@@ -691,7 +697,9 @@ class PostgresFiscalDatabase:
         with self._pool.connection() as raw:
             yield _PostgresCompatConnection(raw)
 
-    def initialize(self, *, enable_bling: bool = False) -> tuple[int, ...]:
+    def initialize(
+        self, *, enable_bling: bool = False, enable_mfa: bool = False,
+    ) -> tuple[int, ...]:
         with self._pool.connection() as raw:
             try:
                 raw.execute(
@@ -974,6 +982,16 @@ class PostgresFiscalDatabase:
                          datetime.now().astimezone().isoformat()),
                     )
                     new_versions.append(IRON_A1_DELEGATION_VERSION)
+                if enable_mfa and HUMAN_MFA_VERSION not in applied:
+                    for statement in HUMAN_MFA_SCHEMA:
+                        raw.execute(statement)
+                    raw.execute(
+                        "INSERT INTO fm_schema_migrations (version, name, applied_at) "
+                        "VALUES (%s, %s, %s)",
+                        (HUMAN_MFA_VERSION, HUMAN_MFA_NAME,
+                         datetime.now().astimezone().isoformat()),
+                    )
+                    new_versions.append(HUMAN_MFA_VERSION)
                 raw.commit()
                 return tuple(new_versions)
             except Exception:
@@ -1007,10 +1025,19 @@ class PostgresFiscalDatabase:
         a1_nfse_bling = (*nfse_bling, IRON_A1_DELEGATION_VERSION)
         # Optional Bling 20/21 and additive DPS 22 can be independently
         # installed. Partial Bling installation remains forbidden.
-        ready_schemas = (bling_ready, nfse_bling, a1_nfse_bling) if require_bling else (
+        ready_schemas: tuple[tuple[int, ...], ...] = (
+            bling_ready, nfse_bling, a1_nfse_bling,
+        ) if require_bling else (
             baseline, bling_ready, nfse_baseline, nfse_bling,
             a1_nfse_baseline, a1_nfse_bling,
         )
+        # Additive MFA 24 sits on top of the A1 schemas and is the exact
+        # boundary only when NFCORE_HUMAN_MFA=enabled; otherwise it is drift.
+        if os.environ.get("NFCORE_HUMAN_MFA", "").strip().casefold() == "enabled":
+            ready_schemas = tuple(
+                (*schema, HUMAN_MFA_VERSION) for schema in ready_schemas
+                if IRON_A1_DELEGATION_VERSION in schema
+            )
         if applied not in ready_schemas:
             raise PersistenceStateError(
                 "PostgreSQL schema is not at the certified migration version"
@@ -1098,6 +1125,9 @@ class PostgresFiscalDatabase:
 
     def human_administration(self) -> PostgresHumanAdministrationStore:
         return PostgresHumanAdministrationStore(self)
+
+    def human_mfa(self) -> PostgresHumanMfaStore:
+        return PostgresHumanMfaStore(self.connection)
 
     def web_sessions(self) -> PostgresWebSessionRepository:
         return PostgresWebSessionRepository(self)

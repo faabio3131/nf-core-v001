@@ -48,6 +48,11 @@ from kordena_fiscal.persistence.fiscal_scope_schema import (
     FISCAL_SCOPE_SCHEMA,
     FISCAL_SCOPE_VERSION,
 )
+from kordena_fiscal.persistence.human_mfa_schema import (
+    HUMAN_MFA_NAME,
+    HUMAN_MFA_SCHEMA,
+    HUMAN_MFA_VERSION,
+)
 from kordena_fiscal.persistence.iron_a1_delegation import (
     IRON_A1_DELEGATION_NAME,
     IRON_A1_DELEGATION_SCHEMA,
@@ -132,6 +137,7 @@ def validate_policy() -> tuple[int, ...]:
         BLING_WORKER_POLICY_VERSION,
         NFSE_DPS_NUMBERING_VERSION,
         IRON_A1_DELEGATION_VERSION,
+        HUMAN_MFA_VERSION,
     )
     if versions != tuple(range(1, max(versions) + 1)):
         raise RuntimeError(f"migration versions must be contiguous from 1: {versions!r}")
@@ -227,6 +233,11 @@ def validate_policy() -> tuple[int, ...]:
         name=IRON_A1_DELEGATION_NAME,
         statements=IRON_A1_DELEGATION_SCHEMA,
     )
+    _reject_unapproved_destructive(
+        version=HUMAN_MFA_VERSION,
+        name=HUMAN_MFA_NAME,
+        statements=HUMAN_MFA_SCHEMA,
+    )
     print(
         "migration policy: PASS "
         f"versions={','.join(str(item) for item in versions)} "
@@ -248,20 +259,26 @@ def _require_apply_approval(environment: str) -> None:
 
 
 
+def _mfa_enabled() -> bool:
+    return os.getenv("NFCORE_HUMAN_MFA", "").strip().casefold() == "enabled"
+
+
 def _known_fiscal_schemas() -> tuple[tuple[int, ...], ...]:
     """Exact migration boundaries; Bling 20/21 is an independent pair."""
     baseline = tuple(range(1, COGNITIVE_QUOTA_VERSION + 1))
     bling = tuple(range(1, BLING_WORKER_POLICY_VERSION + 1))
     dps = (*baseline, NFSE_DPS_NUMBERING_VERSION)
     dps_bling = (*bling, NFSE_DPS_NUMBERING_VERSION)
-    return (
-        baseline, bling, dps, dps_bling,
-        (*dps, IRON_A1_DELEGATION_VERSION),
-        (*dps_bling, IRON_A1_DELEGATION_VERSION),
-    )
+    a1 = (*dps, IRON_A1_DELEGATION_VERSION)
+    a1_bling = (*dps_bling, IRON_A1_DELEGATION_VERSION)
+    known = (baseline, bling, dps, dps_bling, a1, a1_bling)
+    if _mfa_enabled():
+        known = (*known, (*a1, HUMAN_MFA_VERSION), (*a1_bling, HUMAN_MFA_VERSION))
+    return known
 
 
 def _release_schemas(*, enable_bling: bool) -> tuple[tuple[int, ...], ...]:
+    """v23 release boundary; additive MFA v24 only when NFCORE_HUMAN_MFA=enabled."""
     current, current_bling = _known_fiscal_schemas()[-2:]
     return (current_bling,) if enable_bling else (current, current_bling)
 
@@ -342,7 +359,10 @@ def plan_production_bling() -> None:
     dsn = os.getenv("DATABASE_URL", "").strip()
     if not dsn:
         raise RuntimeError("Bling production plan requires DATABASE_URL")
-    if expected != tuple(range(1, IRON_A1_DELEGATION_VERSION + 1)):
+    if not _mfa_enabled():
+        expected = tuple(version for version in expected if version != HUMAN_MFA_VERSION)
+    top = HUMAN_MFA_VERSION if _mfa_enabled() else IRON_A1_DELEGATION_VERSION
+    if expected != tuple(range(1, top + 1)):
         raise RuntimeError("Bling production migration policy changed unexpectedly")
     database = PostgresFiscalDatabase(dsn)
     try:
@@ -435,7 +455,7 @@ def apply() -> None:
                 require_bling=BLING_WORKER_POLICY_VERSION in before
             )
             _assert_cakto_current(database)
-        applied = database.initialize(enable_bling=enable_bling)
+        applied = database.initialize(enable_bling=enable_bling, enable_mfa=_mfa_enabled())
         after = database.require_current_schema(
             require_bling=enable_bling or BLING_WORKER_POLICY_VERSION in before
         )

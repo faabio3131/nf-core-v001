@@ -1,7 +1,7 @@
 "use strict";
 
 /** @typedef {{tenant_id:string, role:string, unit_ids:string[]|null, platform_admin:boolean, permissions:string[], supported_documents:string[], projection:Record<string, unknown>}} BootstrapState */
-/** @typedef {{method?:string, headers?:Record<string,string>, body?:string}} ApiOptions */
+/** @typedef {{method?:string, headers?:Record<string,string>, body?:string, stepUpRetried?:boolean}} ApiOptions */
 
 const navigation = [
   { label: "Operação", items: [["overview", "Visão geral"], ["documents", "Documentos"], ["issuances", "Emissões"], ["inutilizations", "Inutilização"], ["errors", "Erros"], ["reconciliation", "Conciliação"], ["tax-reform", "Reforma Tributária"]] },
@@ -141,6 +141,34 @@ function operationPayloadForSelection() {
   throw new Error("Operação fiscal não reconhecida.");
 }
 
+const mfaForm = /** @type {HTMLFormElement} */ (document.getElementById("mfa-form"));
+const mfaIntro = /** @type {HTMLElement} */ (document.getElementById("mfa-intro"));
+const mfaEnroll = /** @type {HTMLElement} */ (document.getElementById("mfa-enroll"));
+const mfaQr = /** @type {HTMLImageElement} */ (document.getElementById("mfa-qr"));
+const mfaSecret = /** @type {HTMLElement} */ (document.getElementById("mfa-secret"));
+const mfaCode = /** @type {HTMLInputElement} */ (document.getElementById("mfa-code"));
+const mfaRecoveryHint = /** @type {HTMLElement} */ (document.getElementById("mfa-recovery-hint"));
+const mfaRemember = /** @type {HTMLInputElement} */ (document.getElementById("mfa-remember"));
+const mfaCancel = /** @type {HTMLButtonElement} */ (document.getElementById("mfa-cancel"));
+const mfaStatus = /** @type {HTMLElement} */ (document.getElementById("mfa-status"));
+const mfaRecovery = /** @type {HTMLElement} */ (document.getElementById("mfa-recovery"));
+const mfaRecoveryList = /** @type {HTMLElement} */ (document.getElementById("mfa-recovery-list"));
+const mfaRecoveryDone = /** @type {HTMLButtonElement} */ (document.getElementById("mfa-recovery-done"));
+const stepUpDialog = /** @type {HTMLDialogElement} */ (document.getElementById("step-up-dialog"));
+const stepUpForm = /** @type {HTMLFormElement} */ (document.getElementById("step-up-form"));
+const stepUpCode = /** @type {HTMLInputElement} */ (document.getElementById("step-up-code"));
+const stepUpStatus = /** @type {HTMLElement} */ (document.getElementById("step-up-status"));
+const stepUpCancel = /** @type {HTMLButtonElement} */ (document.getElementById("step-up-cancel"));
+const securityAction = /** @type {HTMLButtonElement} */ (document.getElementById("security-action"));
+const securityDialog = /** @type {HTMLDialogElement} */ (document.getElementById("security-dialog"));
+const securitySummary = /** @type {HTMLElement} */ (document.getElementById("security-summary"));
+const securityEnroll = /** @type {HTMLButtonElement} */ (document.getElementById("security-enroll"));
+const securityCodes = /** @type {HTMLButtonElement} */ (document.getElementById("security-codes"));
+const securityDevices = /** @type {HTMLButtonElement} */ (document.getElementById("security-devices"));
+const securityPolicy = /** @type {HTMLButtonElement} */ (document.getElementById("security-policy"));
+const securityCodesList = /** @type {HTMLElement} */ (document.getElementById("security-codes-list"));
+const securityStatus = /** @type {HTMLElement} */ (document.getElementById("security-status"));
+const securityClose = /** @type {HTMLButtonElement} */ (document.getElementById("security-close"));
 const operationError = /** @type {HTMLElement} */ (document.getElementById("operation-error"));
 const operationCancel = /** @type {HTMLButtonElement} */ (document.getElementById("operation-cancel"));
 
@@ -1960,8 +1988,18 @@ async function api(path, options = {}) {
       EGRESS_FORBIDDEN: "Apenas a administração da plataforma pode alterar destinos externos.",
       EGRESS_RUNTIME_NOT_READY: "A gestão de destinos externos ainda não está disponível neste ambiente.",
       INVALID_EGRESS_DECISION: "Pedido de destino externo inválido. Confira o endereço e a validade.",
+      MFA_INVALID_CODE: "Código incorreto ou já usado. Confira o horário do celular e digite o código atual do app.",
+      MFA_CHALLENGE_INVALID: "O tempo para digitar o código acabou ou houve tentativas demais. Entre de novo com e-mail e senha.",
+      MFA_RATE_LIMITED: "Muitas tentativas. Aguarde alguns minutos e tente de novo.",
+      MFA_ALREADY_ENROLLED: "O app autenticador já está ativo nesta conta.",
+      MFA_ENROLLMENT_REQUIRED: "Sua conta exige o app autenticador. Ative-o para continuar.",
+      STEP_UP_REQUIRED: "Esta ação precisa do código atual do app autenticador.",
+      INVALID_MFA_PAYLOAD: "Digite o código de 6 dígitos do app.",
     };
     const code = detail && typeof detail === "object" && typeof detail.code === "string" ? detail.code : "";
+    if (code === "STEP_UP_REQUIRED" && !options.stepUpRetried && await requestStepUp()) {
+      return api(path, {...options, stepUpRetried: true});
+    }
     const translated = messages[/** @type {keyof typeof messages} */ (code)];
     const message = translated || (detail && typeof detail === "object" && typeof detail.message === "string"
       ? detail.message
@@ -4386,10 +4424,236 @@ async function bootstrap() {
     applyBootstrap(state);
   } catch (error) {
     const status = error instanceof Error && "status" in error ? error.status : null;
-    if (status === 401) showLogin();
+    if (passwordResetErrorCode(error) === "MFA_ENROLLMENT_REQUIRED") await showMfa(null, "enroll");
+    else if (status === 401) showLogin();
     else showLogin(error instanceof Error ? error.message : "Portal indisponível");
   }
 }
+
+/** @type {{challenge: string|null, purpose: "enroll"|"verify"}|null} */
+let mfaState = null;
+
+/** @param {unknown} error */
+function errorMessage(error) {
+  return error instanceof Error ? error.message : "Não foi possível concluir.";
+}
+
+/** Code typed by the user: digits for the app, or a recovery code. @param {string} value */
+function cleanCode(value) {
+  return value.trim().replace(/\s+/g, "");
+}
+
+/** @param {string|null} challenge @param {"enroll"|"verify"} purpose */
+async function showMfa(challenge, purpose) {
+  mfaState = {challenge, purpose};
+  loginView.hidden = false;
+  appShell.hidden = true;
+  loginForm.hidden = true;
+  passwordResetRequestForm.hidden = true;
+  passwordResetCompleteForm.hidden = true;
+  mfaRecovery.hidden = true;
+  mfaForm.hidden = false;
+  mfaStatus.textContent = "";
+  mfaCode.value = "";
+  const enrolling = purpose === "enroll";
+  mfaEnroll.hidden = !enrolling;
+  mfaRecoveryHint.hidden = enrolling;
+  const rememberRow = mfaRemember.closest("label");
+  if (rememberRow) rememberRow.hidden = challenge === null;
+  mfaIntro.textContent = enrolling
+    ? "Para proteger certificados e emissões, ative o app autenticador. É rápido e só precisa ser feito uma vez."
+    : "Digite o código de 6 dígitos do seu app autenticador.";
+  if (enrolling) {
+    mfaQr.hidden = true;
+    mfaSecret.textContent = "…";
+    try {
+      const setup = await api("/v1/auth/mfa/enroll/start", {
+        method: "POST",
+        headers: challenge ? {} : {"X-CSRF-Token": csrfToken()},
+        body: JSON.stringify(challenge ? {challenge} : {}),
+      });
+      mfaSecret.textContent = String(setup.secret_base32 || "").replace(/(.{4})/g, "$1 ").trim();
+      if (typeof setup.qr_data_uri === "string" && setup.qr_data_uri.startsWith("data:image/svg+xml")) {
+        mfaQr.src = setup.qr_data_uri;
+        mfaQr.hidden = false;
+      }
+    } catch (error) {
+      mfaStatus.textContent = errorMessage(error);
+    }
+  }
+  mfaCode.focus();
+}
+
+/** @param {HTMLElement} list @param {unknown} codes */
+function renderRecoveryCodes(list, codes) {
+  list.replaceChildren(...(Array.isArray(codes) ? codes : []).map((code) => {
+    const item = document.createElement("li");
+    item.textContent = String(code);
+    return item;
+  }));
+}
+
+async function finishMfa() {
+  mfaState = null;
+  mfaForm.hidden = true;
+  mfaRecovery.hidden = true;
+  loginForm.hidden = false;
+  await bootstrap();
+}
+
+mfaForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  if (!mfaState) return;
+  mfaStatus.textContent = "";
+  const code = cleanCode(mfaCode.value);
+  const {challenge, purpose} = mfaState;
+  try {
+    if (purpose === "enroll") {
+      const result = await api("/v1/auth/mfa/enroll/confirm", {
+        method: "POST",
+        headers: challenge ? {} : {"X-CSRF-Token": csrfToken()},
+        body: JSON.stringify(challenge
+          ? {challenge, code, remember_device: mfaRemember.checked}
+          : {code}),
+      });
+      mfaForm.hidden = true;
+      renderRecoveryCodes(mfaRecoveryList, result.recovery_codes);
+      mfaRecovery.hidden = false;
+      mfaRecoveryDone.focus();
+    } else {
+      await api("/v1/auth/mfa/verify", {
+        method: "POST",
+        body: JSON.stringify({challenge, code, remember_device: mfaRemember.checked}),
+      });
+      await finishMfa();
+    }
+  } catch (error) {
+    mfaStatus.textContent = errorMessage(error);
+    if (passwordResetErrorCode(error) === "MFA_CHALLENGE_INVALID") {
+      mfaState = null;
+      mfaForm.hidden = true;
+      showRegularLogin();
+      showLogin(errorMessage(error));
+    }
+  }
+});
+
+mfaRecoveryDone.addEventListener("click", () => { void finishMfa(); });
+mfaCancel.addEventListener("click", () => {
+  mfaState = null;
+  mfaForm.hidden = true;
+  showRegularLogin();
+  showLogin();
+});
+
+/** Ask for a fresh code before a sensitive action. @returns {Promise<boolean>} */
+function requestStepUp() {
+  return new Promise((resolve) => {
+    stepUpCode.value = "";
+    stepUpStatus.textContent = "";
+    /** @param {boolean} confirmed */
+    const done = (confirmed) => {
+      stepUpForm.removeEventListener("submit", submit);
+      stepUpCancel.removeEventListener("click", cancel);
+      stepUpDialog.removeEventListener("cancel", cancel);
+      if (stepUpDialog.open) stepUpDialog.close();
+      resolve(confirmed);
+    };
+    /** @param {Event} event */
+    const submit = async (event) => {
+      event.preventDefault();
+      try {
+        await api("/v1/auth/mfa/step-up", {
+          method: "POST",
+          headers: {"X-CSRF-Token": csrfToken()},
+          body: JSON.stringify({code: cleanCode(stepUpCode.value)}),
+          stepUpRetried: true,
+        });
+        done(true);
+      } catch (error) {
+        stepUpStatus.textContent = errorMessage(error);
+      }
+    };
+    const cancel = () => done(false);
+    stepUpForm.addEventListener("submit", submit);
+    stepUpCancel.addEventListener("click", cancel);
+    stepUpDialog.addEventListener("cancel", cancel);
+    stepUpDialog.showModal();
+    stepUpCode.focus();
+  });
+}
+
+async function refreshSecurity() {
+  securityStatus.textContent = "";
+  for (const button of [securityEnroll, securityCodes, securityDevices, securityPolicy]) button.hidden = true;
+  try {
+    const [status, me] = await Promise.all([api("/v1/auth/mfa/status"), api("/v1/auth/me")]);
+    const enrolled = status.enrolled === true;
+    securitySummary.textContent = enrolled
+      ? `App autenticador ativo. Códigos de recuperação restantes: ${Number(status.recovery_codes_remaining) || 0}.`
+      : status.required
+        ? "O app autenticador é obrigatório para o seu perfil e ainda não foi ativado."
+        : "O app autenticador é opcional para o seu perfil, mas recomendado.";
+    securityEnroll.hidden = enrolled;
+    securityCodes.hidden = !enrolled;
+    securityDevices.hidden = !enrolled;
+    const owner = me && me.account && me.account.role === "owner";
+    securityPolicy.hidden = !owner || !enrolled;
+    securityPolicy.dataset.requireAll = status.tenant_requires_all ? "true" : "false";
+    securityPolicy.textContent = status.tenant_requires_all
+      ? "Deixar o app opcional para quem não emite nem gerencia"
+      : "Exigir app autenticador de todos";
+  } catch (error) {
+    const status = error instanceof Error && "status" in error ? error.status : null;
+    securitySummary.textContent = status === 404
+      ? "O app autenticador ainda não foi ativado neste ambiente."
+      : errorMessage(error);
+  }
+}
+
+securityAction.addEventListener("click", async () => {
+  securityCodesList.hidden = true;
+  securityDialog.showModal();
+  await refreshSecurity();
+});
+securityClose.addEventListener("click", () => securityDialog.close());
+securityEnroll.addEventListener("click", async () => {
+  securityDialog.close();
+  await showMfa(null, "enroll");
+});
+securityCodes.addEventListener("click", async () => {
+  try {
+    const result = await api("/v1/auth/mfa/recovery-codes", {method: "POST", headers: {"X-CSRF-Token": csrfToken()}});
+    renderRecoveryCodes(securityCodesList, result.recovery_codes);
+    securityCodesList.hidden = false;
+    securityStatus.textContent = "Novos códigos gerados. Os anteriores deixaram de valer. Guarde estes em local seguro.";
+  } catch (error) {
+    securityStatus.textContent = errorMessage(error);
+  }
+});
+securityDevices.addEventListener("click", async () => {
+  try {
+    await api("/v1/auth/mfa/forget-devices", {method: "POST", headers: {"X-CSRF-Token": csrfToken()}});
+    securityStatus.textContent = "Pronto: os navegadores lembrados vão pedir o código no próximo acesso.";
+  } catch (error) {
+    securityStatus.textContent = errorMessage(error);
+  }
+});
+securityPolicy.addEventListener("click", async () => {
+  const requireAll = securityPolicy.dataset.requireAll !== "true";
+  try {
+    await api("/v1/auth/mfa/policy", {
+      method: "POST", headers: {"X-CSRF-Token": csrfToken()},
+      body: JSON.stringify({require_all: requireAll}),
+    });
+    await refreshSecurity();
+    securityStatus.textContent = requireAll
+      ? "Agora todos da empresa precisam do app autenticador."
+      : "O app voltou a ser opcional para quem não emite nem gerencia (dono, administradores e quem emite continuam obrigados).";
+  } catch (error) {
+    securityStatus.textContent = errorMessage(error);
+  }
+});
 
 loginForm.addEventListener("submit", async (event) => {
   event.preventDefault();
@@ -4397,8 +4661,12 @@ loginForm.addEventListener("submit", async (event) => {
   const email = loginEmail.value;
   const password = loginPassword.value;
   try {
-    await api("/v1/auth/login", { method: "POST", body: JSON.stringify({ email, password }) });
+    const result = await api("/v1/auth/login", { method: "POST", body: JSON.stringify({ email, password }) });
     loginPassword.value = "";
+    if (result && typeof result === "object" && result.mfa && typeof result.mfa.challenge === "string") {
+      await showMfa(result.mfa.challenge, result.mfa.purpose === "enroll" ? "enroll" : "verify");
+      return;
+    }
     await bootstrap();
   } catch (error) {
     showLogin(error instanceof Error ? error.message : "Falha ao autenticar");
