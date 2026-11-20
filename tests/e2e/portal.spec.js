@@ -394,12 +394,20 @@ for (const [view, label, operation, fields] of [
       return route.fulfill({json: {status: "configuration_recorded", version: 1, approval_status: view === "webhooks" ? "pending" : undefined}});
     });
     await page.goto("/"); await page.getByRole("button", {name: label, exact: true}).click();
-    for (const [field, value] of Object.entries(fields)) await page.locator(`#configuration-${field}`).fill(value);
+    for (const [field, value] of Object.entries(fields)) {
+      const control = page.locator(`#configuration-${field}`);
+      // Fixed technical values are Portuguese-labelled selects; free values stay text inputs.
+      if (await control.evaluate((element) => element.tagName) === "SELECT") await control.selectOption(value);
+      else await control.fill(value);
+    }
     await page.locator("#customer-configuration-form button[type=submit]").click();
     await expect(page.locator("#customer-configuration-form [role=status]")).toContainText("versão 1");
     expect(submitted.unit_id).toBe("unit-a"); expect(submitted.environment).toBe("homologation");
     expect(submitted.expected_version).toBe(0); expect(submitted.tenant_id).toBeUndefined();
     expect(submitted.platform_admin).toBeUndefined();
+    for (const [field, value] of Object.entries(fields)) {
+      if (["kind", "document_kind", "operation"].includes(field)) expect(submitted.values[field]).toBe(value);
+    }
     if (view === "webhooks") await expect(page.locator("#customer-configuration-form [role=status]")).toContainText("aprovação pending");
   });
 }

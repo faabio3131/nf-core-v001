@@ -250,7 +250,7 @@ function appendNativeSalePreparation(article) {
   };
   const model = select(form, "document_kind", "Documento", [["nfe", "NF-e 55 — SP/MG"], ["nfce", "NFC-e 65 — SP/MG"]]);
   const reference = input(form, "source_id", "Referência única desta venda");
-  const issued = input(form, "issued_at", "Data e hora da venda com fuso", new Date().toISOString());
+  const issued = input(form, "issued_at", "Data e hora da venda (horário local com fuso)", localIsoWithOffset(new Date()));
   const review = document.createElement("button"); review.type = "button"; review.textContent = "Carregar configuração fiscal";
   form.append(review);
   const recipient = document.createElement("fieldset");
@@ -399,7 +399,7 @@ function appendNativeNfsePreparation(article) {
   heading.textContent = "Preparar NFS-e pelo NFCore — canal fiscal configurado";
   const info = document.createElement("p");
   info.className = "empty-state";
-  info.textContent = "Emissor próprio, sem ERP. Somente homologação. O provedor municipal ou nacional é definido no servidor pelo vínculo fiscal da unidade. Informe NBS 2.0 revisado quando exigido pelo município (Santana de Parnaíba). Preparar não transmite a nota.";
+  info.textContent = "Emissor próprio, sem ERP. Somente homologação. O provedor municipal ou nacional é definido no servidor pelo vínculo fiscal da unidade. Informe o NBS 2.0 revisado quando o município da unidade exigir. Preparar não transmite a nota.";
   form.append(heading, info);
   const identityLabel = document.createElement("label");
   identityLabel.textContent = "Identificação fiscal do tomador";
@@ -809,7 +809,7 @@ function appendExtremaNfsePreparation(article) {
     || !["owner", "admin"].includes(bootstrapState.role)) return;
   const info = document.createElement("p");
   info.className = "empty-state";
-  info.textContent = "Extrema/MG · NFS-e WebISS 2.02/RTC. Preparação fiscal somente em homologação, com revisão humana explícita. Preparar um RPS não é emitir uma NFS-e. Sem certificado A1 e vínculo municipal aprovados, a transmissão permanece bloqueada.";
+  info.textContent = "Somente para emitentes de Extrema/MG (NFS-e WebISS 2.02/RTC). Unidades de outros municípios usam o formulário de NFS-e acima. Preparação fiscal somente em homologação, com revisão humana explícita. Preparar um RPS não é emitir uma NFS-e. Sem certificado A1 e vínculo municipal aprovados, a transmissão permanece bloqueada.";
   article.append(info);
   const form = document.createElement("form");
   form.id = "extrema-nfse-preparation";
@@ -2037,6 +2037,17 @@ function text(value) {
   return String(value);
 }
 
+/** Local wall-clock time with its UTC offset, e.g. 2026-11-19T22:43:30-03:00.
+ * @param {Date} date */
+function localIsoWithOffset(date) {
+  const pad = (/** @type {number} */ n) => String(Math.trunc(Math.abs(n))).padStart(2, "0");
+  const offset = -date.getTimezoneOffset();
+  const sign = offset >= 0 ? "+" : "-";
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`
+    + `T${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`
+    + `${sign}${pad(offset / 60)}:${pad(offset % 60)}`;
+}
+
 /** @param {unknown} value */
 function tone(value) {
   const normalized = text(value).toUpperCase();
@@ -2096,6 +2107,12 @@ function shown(value) {
   if (value === true) return "Sim";
   if (value === false) return "Não";
   if (Array.isArray(value)) return value.map(shown).join(", ");
+  if (value && typeof value === "object") {
+    // Never show raw JSON: a unit shows its name, other objects become "Rótulo: valor".
+    const record = /** @type {Record<string, unknown>} */ (value);
+    if (typeof record.display_name === "string" && record.display_name) return record.display_name;
+    return Object.entries(record).map(([key, item]) => `${fieldLabel(key)}: ${shown(item)}`).join("; ");
+  }
   if (typeof value === "string" && value) {
     const found = termLabels[value.toLowerCase()];
     if (found) return found;
@@ -2695,8 +2712,8 @@ async function renderCheckoutAdmin() {
 /** @param {string} viewId */
 /** @type {Record<string, {operation:string, permission:string, fields:[string,string,string][]}>} */
 const customerForms = {
-  certificates: {operation: "configureCertificates", permission: "certificate.manage", fields: [["reference_id", "Referência governada (sem material secreto)", "text"], ["kind", "Tipo: certificate, csc ou credentials", "text"], ["provider_id", "Provedor (opcional para certificado)", "optional"]]},
-  providers: {operation: "configureProviders", permission: "integration.manage", fields: [["binding_id", "ID do vínculo", "text"], ["document_kind", "Documento: nfe, nfce ou nfse", "text"], ["state_code", "UF", "text"], ["municipality_ibge_code", "Município IBGE (NFS-e)", "optional"], ["operation", "Operação: authorize, query, cancel, inutilize ou status", "text"], ["provider_id", "Provider", "text"], ["enabled", "Vínculo habilitado", "checkbox"]]},
+  certificates: {operation: "configureCertificates", permission: "certificate.manage", fields: [["reference_id", "Referência governada (sem material secreto)", "text"], ["kind", "Tipo de referência", "choice:certificate=Certificado digital A1|csc=CSC da NFC-e|credentials=Credenciais do provedor"], ["provider_id", "Provedor (opcional para certificado)", "optional"]]},
+  providers: {operation: "configureProviders", permission: "integration.manage", fields: [["binding_id", "ID do vínculo", "text"], ["document_kind", "Documento", "choice:nfe=NF-e (55)|nfce=NFC-e (65)|nfse=NFS-e"], ["state_code", "UF", "text"], ["municipality_ibge_code", "Município IBGE (NFS-e)", "optional"], ["operation", "Operação", "choice:authorize=Autorização|query=Consulta|cancel=Cancelamento|inutilize=Inutilização|status=Status do serviço"], ["provider_id", "Provider", "text"], ["enabled", "Vínculo habilitado", "checkbox"]]},
   webhooks: {operation: "configureWebhooks", permission: "integration.manage", fields: [["destination_id", "ID do destino", "text"], ["url", "HTTPS público com path explícito, sem query ou credenciais", "url"], ["enabled", "Solicitar entrega após aprovação da plataforma", "checkbox"]]},
   integrations: {operation: "configureIntegrations", permission: "integration.manage", fields: [["module_id", "ID do módulo", "text"], ["enabled", "Módulo habilitado", "checkbox"]]},
   settings: {operation: "configureSettings", permission: "configuration.write", fields: [["policy_id", "ID da política", "text"], ["provider_id", "Provider", "text"], ["connect_timeout_seconds", "Timeout de conexão (segundos)", "number"], ["read_timeout_seconds", "Timeout de leitura (segundos)", "number"], ["max_attempts", "Máximo de tentativas", "number"], ["base_delay_seconds", "Espera inicial (segundos)", "number"], ["max_delay_seconds", "Espera máxima (segundos)", "number"], ["jitter_ratio", "Jitter (0 a 1)", "number"], ["circuit_failure_threshold", "Falhas para abrir circuito", "number"], ["circuit_recovery_seconds", "Recuperação do circuito (segundos)", "number"], ["circuit_success_threshold", "Sucessos para fechar circuito", "number"]]},
@@ -2705,6 +2722,21 @@ const customerForms = {
 /** @param {HTMLFormElement} form @param {string} key @param {string} label @param {string} kind @returns {HTMLInputElement} */
 function configurationInput(form, key, label, kind) {
   const wrapper = document.createElement("label"); wrapper.textContent = label;
+  if (kind.startsWith("choice:")) {
+    // Fixed technical values shown with Portuguese labels; the payload keeps the canonical value.
+    const select = document.createElement("select"); select.name = key;
+    select.id = `configuration-${key}`; select.required = true;
+    const placeholder = document.createElement("option");
+    placeholder.value = ""; placeholder.textContent = "Selecione"; placeholder.disabled = true; placeholder.selected = true;
+    select.append(placeholder);
+    for (const pair of kind.slice("choice:".length).split("|")) {
+      const [value, text] = pair.split("=");
+      const option = document.createElement("option"); option.value = value; option.textContent = text;
+      select.append(option);
+    }
+    wrapper.append(select); form.append(wrapper);
+    return /** @type {HTMLInputElement} */ (/** @type {unknown} */ (select));
+  }
   const input = document.createElement("input"); input.name = key;
   input.id = `configuration-${key}`; input.type = kind === "optional" ? "text" : kind;
   input.required = kind !== "optional" && kind !== "checkbox";
