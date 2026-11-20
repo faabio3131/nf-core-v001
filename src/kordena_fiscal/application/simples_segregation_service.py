@@ -16,6 +16,7 @@ from kordena_fiscal.tax.simples_segregation import (
     LocalTreatment,
     Market,
     RevenueLine,
+    assess_segregated,
     classify_revenue,
 )
 
@@ -28,17 +29,18 @@ NORMATIVE_REFERENCE = "CGSN140/2018 art.25"
 def evaluate_segregation(
     store: EconomyStore, *, snapshot_id: str, snapshot_version: int,
     rule_id: str, rule_version: int, verify_issuer: Callable[[str, SimplesFacts], None],
+    assessment: bool = False,
 ) -> dict[str, Any]:
     snapshot = store.record("fm_economy_snapshots", snapshot_id, snapshot_version)
     rule = store.record("fm_economy_benefits", rule_id, rule_version)
     if snapshot is None or rule is None:
         raise FiscalValidationError("scoped segregation evidence unavailable")
-    return _evaluate(snapshot, rule, verify_issuer=verify_issuer)
+    return _evaluate(snapshot, rule, verify_issuer=verify_issuer, assessment=assessment)
 
 
 def _evaluate(
     snapshot: dict[str, Any], rule: dict[str, Any], *,
-    verify_issuer: Callable[[str, SimplesFacts], None],
+    verify_issuer: Callable[[str, SimplesFacts], None], assessment: bool = False,
 ) -> dict[str, Any]:
     try:
         content = snapshot["content"]
@@ -95,6 +97,11 @@ def _evaluate(
             competence, lines, domestic_cents=content["domestic_cents"],
             export_cents=content["export_cents"],
         )
+        if assessment:
+            result = assess_segregated(
+                facts, lines, domestic_cents=content["domestic_cents"],
+                export_cents=content["export_cents"],
+            )
         return {
             **result, "snapshot_id": snapshot["record_id"], "snapshot_version": snapshot["version"],
             "snapshot_digest": snapshot["digest"], "rule_id": rule["record_id"],
