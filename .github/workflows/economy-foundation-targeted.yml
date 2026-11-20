@@ -30,9 +30,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: b587903ccfb7260cae3b6cde69fcab7907f8e73c
+          ref: d53a2c62d54a252eda1baa6e64f4a8d1ba0183cc
       - name: Confirmar HEAD T02
-        run: test "$(git rev-parse HEAD)" = "b587903ccfb7260cae3b6cde69fcab7907f8e73c"
+        run: test "$(git rev-parse HEAD)" = "d53a2c62d54a252eda1baa6e64f4a8d1ba0183cc"
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
