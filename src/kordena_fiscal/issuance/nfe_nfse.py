@@ -36,6 +36,7 @@ from kordena_fiscal.lifecycle import (
     build_issuance_key,
     build_request_fingerprint,
 )
+from kordena_fiscal.tax.federal_withholding import FederalWithholding
 from kordena_fiscal.xml import NfeAccessKey
 
 
@@ -690,8 +691,13 @@ class NfseCanonicalDocument:
     dps_number: int | None = None
     national_tax_treatment: NfseNationalTaxTreatment | None = None
     national_substitution: NfseNationalSubstitution | None = None
+    federal_withholding: FederalWithholding | None = None
 
     def __post_init__(self) -> None:
+        if self.federal_withholding is not None and not isinstance(
+            self.federal_withholding, FederalWithholding
+        ):
+            raise FiscalValidationError("federal_withholding must be FederalWithholding")
         object.__setattr__(self, "document_id", _required(self.document_id, "document_id", 128))
         if not isinstance(self.scope, ExecutionScope):
             raise FiscalValidationError("scope must be ExecutionScope")
@@ -939,6 +945,8 @@ def build_nfse_request_fingerprint(document: NfseCanonicalDocument) -> str:
             for line in document.services
         ],
     }
+    if document.federal_withholding is not None:
+        payload["federal_withholding"] = document.federal_withholding.as_payload()
     if document.national_tax_treatment is not None:
         treatment = document.national_tax_treatment
         treatment_payload: dict[str, object] = {

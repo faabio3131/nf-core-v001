@@ -1456,7 +1456,8 @@ class DurableHumanPortalExecutor:
                 )
             result = declare_federal_regime(
                 self._unit_of_work_factory, scope=scope, crt=profile.tax_regime,
-                issuer_cnpj=profile.cnpj, federal_income_tax_regime=regime, effective_from=effective_from,
+                issuer_cnpj=profile.cnpj, federal_income_tax_regime=regime,
+                effective_from=effective_from,
                 source_reference=payload["source_reference"],
                 actor=authority.account.account_id,
                 idempotency_key=idempotency_key or "", occurred_at=now,
