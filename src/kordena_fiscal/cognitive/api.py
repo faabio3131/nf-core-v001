@@ -17,12 +17,12 @@ from fastapi import APIRouter, Body, HTTPException, Request, status
 from fastapi.concurrency import run_in_threadpool
 
 from kordena_fiscal.domain import ExecutionScope, FiscalEnvironment
-from kordena_fiscal.tax.federal_benefits import PROGRAMS
 from kordena_fiscal.security.human_identity import (
     AuthenticatedHuman,
     HumanIdentityService,
     PortalPermission,
 )
+from kordena_fiscal.tax.federal_benefits import PROGRAMS
 from kordena_fiscal.web.portal_api import (
     _authenticated,
     _authorized,
