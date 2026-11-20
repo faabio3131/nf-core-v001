@@ -61,10 +61,12 @@ def test_calculated_items_are_parsed_as_decimals_with_version_evidence() -> None
     result = client.calculate(request).require_all_calculated()
     assert result.items[0].values["vIBSSN"] == Decimal("1.9")
     assert isinstance(result.items[0].values["vCBSSN"], Decimal)
-    assert result.component_version == "app=0.0.6;db=15.0.0"
+    assert result.component_version == "app=1.0.2;db=15.0.0"
     assert calls[1][1] == BASE + CALCULATE_PATH
     sent = json.loads(calls[1][2])
-    assert sent["itens"][0] == {"numero": 1, "cClassTrib": "000001", "baseCalculo": "950.00"}
+    assert sent["itens"][0] == {"numero": 1, "cClassTrib": "000001", "baseCalculo": "950.00",
+                                "valorImpostoSeletivo": "0.00"}
+    assert sent["versao"] == "2.0.0"
 
 
 @pytest.mark.parametrize("state", ["NAO_CALCULADO", "NAO_IMPLEMENTADO",
