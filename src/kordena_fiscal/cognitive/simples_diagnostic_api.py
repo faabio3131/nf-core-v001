@@ -11,6 +11,7 @@ from fastapi import HTTPException
 
 from kordena_fiscal.application.federal_regime_store import load_federal_regime_declarations
 from kordena_fiscal.application.simples_diagnostic_service import evaluate_and_record
+from kordena_fiscal.application.simples_segregation_service import evaluate_segregation
 from kordena_fiscal.domain import ExecutionScope, FiscalEnvironment, FiscalValidationError
 from kordena_fiscal.persistence.economy_store import EconomyStore
 from kordena_fiscal.security.human_identity import AuthenticatedHuman, PortalPermission
@@ -31,6 +32,7 @@ def build_diagnostic_runner(
     reader: SurfaceReader,
     store_factory: Callable[[ExecutionScope], AbstractContextManager[EconomyStore]],
     uow_factory: Callable[[], AbstractContextManager[Any]],
+    *, segregation: bool = False,
 ) -> DiagnosticRunner:
     def run(
         authority: AuthenticatedHuman, unit_id: str, environment: FiscalEnvironment,
@@ -56,7 +58,8 @@ def build_diagnostic_runner(
 
         try:
             with store_factory(scope) as store:
-                return evaluate_and_record(
+                evaluator = evaluate_segregation if segregation else evaluate_and_record
+                return evaluator(
                     store, snapshot_id=snapshot_id, snapshot_version=snapshot_version,
                     rule_id=rule_id, rule_version=rule_version, verify_issuer=verify,
                 )
