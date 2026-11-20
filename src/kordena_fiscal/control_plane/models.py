@@ -73,6 +73,7 @@ class ControlPlaneAuditAction(StrEnum):
     UNIT_ONBOARDED = "unit.onboarded"
     SECRET_REFERENCE_BOUND = "secret_reference.bound"
     FISCAL_PROFILE_ADDED = "fiscal_profile.added"
+    FISCAL_PROFILE_SUPERSEDED = "fiscal_profile.superseded"
     PILOT_ACTIVATED = "pilot.activated"
     PILOT_DEACTIVATED = "pilot.deactivated"
     PILOT_SCOPE_CHANGED = "pilot.scope_changed"

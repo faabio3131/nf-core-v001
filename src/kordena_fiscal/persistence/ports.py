@@ -163,6 +163,10 @@ class ControlPlaneStore(Protocol):
 
     def add_profile(self, profile: FiscalProfile) -> FiscalProfile: ...
 
+    def supersede_profile(
+        self, previous: FiscalProfile, successor: FiscalProfile,
+    ) -> FiscalProfile: ...
+
     def get_profile(self, profile_id: str, version: int) -> FiscalProfile | None: ...
 
     def resolve_profile(
