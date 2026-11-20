@@ -85,12 +85,16 @@ def evaluate_segregation(
     if snapshot is None or rule is None:
         raise FiscalValidationError("scoped segregation evidence unavailable")
     _verify_cash_history(store, snapshot)
-    return _evaluate(snapshot, rule, verify_issuer=verify_issuer, assessment=assessment)
+    return _evaluate(
+        snapshot, rule, verify_issuer=verify_issuer, assessment=assessment,
+        scope_identity=store.scope_identity,
+    )
 
 
 def _evaluate(
     snapshot: dict[str, Any], rule: dict[str, Any], *,
-    verify_issuer: Callable[[str, SimplesFacts], None], assessment: bool = False,
+    verify_issuer: Callable[[str, SimplesFacts], None], scope_identity: tuple[str, ...],
+    assessment: bool = False,
 ) -> dict[str, Any]:
     try:
         content = snapshot["content"]
@@ -179,6 +183,20 @@ def _evaluate(
                 facts, lines, domestic_cents=content["domestic_cents"],
                 export_cents=content["export_cents"],
             )
+        if assessment:
+            # Bind even zero-activity/blocked assessments to the complete reviewed
+            # inputs and canonical transaction scope, without a recursive digest.
+            facts_payload = {k: v for k, v in content.items() if k != "pgdas_reference"}
+            result = {**result, "digest": _digest({
+                "engine_digest": result["digest"],
+                "scope": list(scope_identity),
+                "issuer": snapshot["issuer_cnpj"],
+                "competence": snapshot["competence"],
+                "facts_digest": _digest(facts_payload)[1],
+                "rule_digest": rule["digest"],
+                "rule_valid_from": rule["valid_from"],
+                "rule_valid_until": rule["valid_until"],
+            })[1]}
         if assessment and "pgdas_reference" in content and "segregation_digest" in result:
             result = {**result, "pgdas_comparison": compare_assessment(
                 result, content["pgdas_reference"],
@@ -220,12 +238,15 @@ def import_reviewed_segregation(
         "jurisdiction": JURISDICTION, "normative_reference": NORMATIVE_REFERENCE,
         "content": rule_content, "digest": _digest(rule_content)[1],
     }
-    result = _evaluate(snapshot, rule, verify_issuer=verify_issuer)
+    result = _evaluate(
+        snapshot, rule, verify_issuer=verify_issuer, scope_identity=store.scope_identity,
+    )
     _verify_cash_history(store, snapshot)
     # Validate optional comparison evidence before inserting immutable records.
     if "pgdas_reference" in content:
         assessment_result = _evaluate(
             snapshot, rule, verify_issuer=verify_issuer, assessment=True,
+            scope_identity=store.scope_identity,
         )
         if assessment_result.get("pgdas_comparison", {}).get("status") not in {
             "match", "divergent",

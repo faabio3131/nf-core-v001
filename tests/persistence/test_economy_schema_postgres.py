@@ -440,6 +440,13 @@ def _certify_t06(database):
                 **kwargs, "snapshot_id": "invalid-pgdas", "content": invalid_ref,
             })
         assert store.snapshot("invalid-pgdas", 1) is None
+        changed_history = deepcopy(reviewed)
+        changed_history["company_history_reference"] = "other-reviewed-history"
+        with pytest.raises(FiscalValidationError, match="scoped"):
+            import_reviewed_segregation(store, **{
+                **kwargs, "snapshot_id": "changed-history", "content": changed_history,
+            })
+        assert store.snapshot("changed-history", 1) is None
         import_reviewed_segregation(store, **{
             **kwargs, "snapshot_id": "reviewed-pgdas", "content": reviewed,
         })
@@ -469,6 +476,13 @@ def _certify_t06(database):
         with database.economy(foreign, read_only=True) as store:
             with pytest.raises(FiscalValidationError, match="unavailable"):
                 evaluate_segregation(store, **refs)
+    # An identical bundle in another authorized tenant needs its own reference.
+    with database.economy(_scope(tenant="economy-t06-other")) as store:
+        with pytest.raises(FiscalValidationError, match="scoped"):
+            import_reviewed_segregation(store, **{
+                **kwargs, "snapshot_id": "cross-scope-pgdas", "content": reviewed,
+            })
+        assert store.snapshot("cross-scope-pgdas", 1) is None
     blocked = deepcopy(content)
     blocked["lines"][0]["federal"] = "unknown"
     with database.economy(scope) as store:
