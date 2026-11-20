@@ -128,3 +128,22 @@ def test_crt3_issuer_is_compared_with_the_regime_regular_calculator(
     assert sent["tpDoc"] == 55 and sent["itens"][0]["cst"] == "000"
     assert len(sent["itens"][0]["ncm"]) == 8
     json.dumps(record)
+
+
+def test_rule_cativsn_is_sent_to_the_simples_calculator(mapping) -> None:  # noqa: F811
+    from kordena_fiscal.domain import FiscalValidationError
+
+    document = _rtc_document(mapping)
+    rule = mapping["rules"][0]
+    with pytest.raises(FiscalValidationError):
+        replace(rule.outcome, simples_activity_code="15")
+    mapping["rules"] = (replace(rule, outcome=replace(rule.outcome, simples_activity_code="01")),)
+    document = map_bling_document(order(), **mapping)
+    assert nfe_rtc_lines(document)[0]["cAtivSN"] == "01"
+    calls: list = []
+    record = run_nfe_rtc_shadow(_client([{"nObj": 1, "estadoItem": "CALCULADO", "tribCalc": {
+        "vBC": "1.00", "vIBSSN": "0.00", "vCBSSN": "0.00"}}], calls), document, model="55",
+        occurred_at=AT)
+    if record["status"] == "skipped_outside_official_simples_scope":
+        pytest.skip("fixture issuer is not Simples Nacional")
+    assert json.loads(calls[1][2])["itens"][0]["cAtivSN"] == "01"
