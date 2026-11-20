@@ -454,7 +454,8 @@ def test_postgres_federal_regime_concurrent_commands_preserve_unique_timeline(
         try:
             declare_federal_regime(
                 database.unit_of_work, scope=scope, crt=TaxRegimeCode.NORMAL,
-                issuer_cnpj=Cnpj("12345678000195"), federal_income_tax_regime=FederalIncomeTaxRegime.LUCRO_PRESUMIDO,
+                issuer_cnpj=Cnpj("12345678000195"),
+                federal_income_tax_regime=FederalIncomeTaxRegime.LUCRO_PRESUMIDO,
                 effective_from=start, source_reference="synthetic evidence",
                 actor="acct-1", idempotency_key=f"regime-race-{index}", occurred_at=NOW,
             )
