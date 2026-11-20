@@ -10,9 +10,15 @@ from zoneinfo import ZoneInfo
 from fastapi import HTTPException
 
 from kordena_fiscal.application.federal_regime_store import load_federal_regime_declarations
+from kordena_fiscal.application.rtc_shadow_recorder import shadow_clients_from_env
 from kordena_fiscal.application.simples_diagnostic_service import evaluate_and_record
 from kordena_fiscal.application.simples_segregation_service import evaluate_segregation
-from kordena_fiscal.domain import ExecutionScope, FiscalEnvironment, FiscalValidationError
+from kordena_fiscal.domain import (
+    ExecutionScope,
+    FiscalEnvironment,
+    FiscalProfile,
+    FiscalValidationError,
+)
 from kordena_fiscal.persistence.economy_store import EconomyStore
 from kordena_fiscal.security.human_identity import AuthenticatedHuman, PortalPermission
 from kordena_fiscal.tax.regimes import (
@@ -32,7 +38,7 @@ def build_diagnostic_runner(
     reader: SurfaceReader,
     store_factory: Callable[[ExecutionScope], AbstractContextManager[EconomyStore]],
     uow_factory: Callable[[], AbstractContextManager[Any]],
-    *, segregation: bool = False,
+    *, segregation: bool = False, assessment: bool = False,
 ) -> DiagnosticRunner:
     def run(
         authority: AuthenticatedHuman, unit_id: str, environment: FiscalEnvironment,
@@ -58,8 +64,16 @@ def build_diagnostic_runner(
 
         try:
             with store_factory(scope) as store:
-                evaluator = evaluate_segregation if segregation else evaluate_and_record
-                return evaluator(
+                if segregation or assessment:
+                    rtc_simples, rtc_regular = shadow_clients_from_env() if assessment else (
+                        None, None,
+                    )
+                    return evaluate_segregation(
+                        store, snapshot_id=snapshot_id, snapshot_version=snapshot_version,
+                        rule_id=rule_id, rule_version=rule_version, verify_issuer=verify,
+                        assessment=assessment, rtc_simples=rtc_simples, rtc_regular=rtc_regular,
+                    )
+                return evaluate_and_record(
                     store, snapshot_id=snapshot_id, snapshot_version=snapshot_version,
                     rule_id=rule_id, rule_version=rule_version, verify_issuer=verify,
                 )
@@ -71,30 +85,39 @@ def build_diagnostic_runner(
 
 def build_issuer_verifier(
     uow_factory: Callable[[], AbstractContextManager[Any]], scope: ExecutionScope,
-) -> Callable[[str, SimplesFacts], None]:
+) -> Callable[[str, SimplesFacts], FiscalProfile]:
     """Reuse existing effective-dated issuer and declared-regime authority."""
-    def verify(issuer: str, facts: SimplesFacts) -> None:
+    def verify(issuer: str, facts: SimplesFacts) -> FiscalProfile:
         start = datetime.combine(
             facts.competence, time.min, tzinfo=ZoneInfo("America/Sao_Paulo"),
         )
         end = (start.replace(day=28) + timedelta(days=4)).replace(day=1)
+        opening = facts.registered_on is not None and facts.opened_month == facts.competence
+        if opening and facts.registered_on is not None:
+            start = datetime.combine(facts.registered_on, time.min, tzinfo=start.tzinfo)
         with uow_factory() as uow:
             profile = uow.control_plane.resolve_profile(
                 host_namespace="fm-nfcore", tenant_id=scope.tenant_id,
-                unit_id=scope.unit_id, environment=scope.environment, instant=start,
+                unit_id=scope.unit_id, environment=scope.environment,
+                instant=end - timedelta(microseconds=1) if opening else start,
             )
         if (
-            profile is None or profile.cnpj.value != issuer
+            not isinstance(profile, FiscalProfile) or profile.cnpj.value != issuer
             or profile.address.jurisdiction.state_code != facts.uf
             or int(profile.tax_regime) not in (1, 2)
             or profile.effective_to is not None and profile.effective_to < end
         ):
             raise FiscalValidationError("canonical issuer does not match reviewed snapshot")
+        if opening:
+            if profile.effective_from.astimezone(start.tzinfo).date() > start.date():
+                raise FiscalValidationError("canonical profile does not cover registration day")
+            start = max(start, profile.effective_from)
         declarations = load_federal_regime_declarations(uow_factory, scope)
         for instant in (start, end - timedelta(microseconds=1)):
             if resolve_federal_regime_timeline(
                 profile, declarations, instant,
             ) is not FederalIncomeTaxRegime.SIMPLES_NACIONAL:
                 raise FiscalValidationError("Simples regime not declared for competence")
+        return profile
 
     return verify

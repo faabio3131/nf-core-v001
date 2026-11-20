@@ -118,6 +118,7 @@ def create_cognitive_router(
     | None = None,
     diagnostic_runner: DiagnosticRunner | None = None,
     segregation_runner: DiagnosticRunner | None = None,
+    assessment_runner: DiagnosticRunner | None = None,
 ) -> APIRouter:
     router = APIRouter(prefix="/v1/portal/cognitive", tags=["cognitive-advisory"])
 
@@ -190,6 +191,37 @@ def create_cognitive_router(
             raise _bad("SIMPLES_NOT_CONFIGURED", "Simples segregation unavailable", 503)
         return await run_in_threadpool(
             segregation_runner, auth, unit_id, environment,
+            body["snapshot_id"].strip(), body["snapshot_version"],
+            body["rule_id"].strip(), body["rule_version"],
+        )
+
+    @router.post("/economy/simples-assessment")
+    async def simples_assessment(
+        request: Request, body: Annotated[dict[str, Any], Body()],
+    ) -> dict[str, Any]:
+        auth = _authenticated(request, identity, now=datetime.now(UTC))
+        _reject_browser_authority(body)
+        fields = {"unit_id", "environment", "snapshot_id", "snapshot_version",
+                  "rule_id", "rule_version"}
+        if set(body) != fields:
+            raise _bad("INVALID_SIMPLES_INPUT", "Only scoped record references are accepted")
+        for key in ("unit_id", "snapshot_id", "rule_id"):
+            if not isinstance(body[key], str) or not 1 <= len(body[key].strip()) <= 128:
+                raise _bad("INVALID_SIMPLES_REFERENCE", "Invalid record reference")
+        for key in ("snapshot_version", "rule_version"):
+            if type(body[key]) is not int or not 1 <= body[key] <= 2147483647:
+                raise _bad("INVALID_SIMPLES_VERSION", "Invalid record version")
+        unit_id = body["unit_id"].strip()
+        _authorized(auth, PortalPermission.AUDIT_READ, unit_id=unit_id)
+        _csrf(request, identity, auth)
+        try:
+            environment = FiscalEnvironment(body["environment"])
+        except (TypeError, ValueError) as exc:
+            raise _bad("INVALID_ENVIRONMENT", "Unknown environment") from exc
+        if assessment_runner is None:
+            raise _bad("SIMPLES_NOT_CONFIGURED", "Simples assessment unavailable", 503)
+        return await run_in_threadpool(
+            assessment_runner, auth, unit_id, environment,
             body["snapshot_id"].strip(), body["snapshot_version"],
             body["rule_id"].strip(), body["rule_version"],
         )

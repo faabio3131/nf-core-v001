@@ -14,6 +14,7 @@ from pathlib import Path
 from kordena_fiscal.application.simples_diagnostic_service import import_reviewed_inputs
 from kordena_fiscal.application.simples_segregation_service import (
     SCHEMA,
+    TRANSITION_SCHEMA,
     import_reviewed_segregation,
 )
 from kordena_fiscal.cognitive.simples_diagnostic_api import build_issuer_verifier
@@ -40,9 +41,12 @@ def main() -> None:
     from kordena_fiscal.application.simples_diagnostic_service import SNAPSHOT_SCHEMA
 
     schema = bundle["content"].get("schema_version")
-    if schema not in {SCHEMA, SNAPSHOT_SCHEMA}:
+    if schema not in {SCHEMA, TRANSITION_SCHEMA, SNAPSHOT_SCHEMA}:
         parser.error("unknown reviewed bundle schema")
-    importer = import_reviewed_segregation if schema == SCHEMA else import_reviewed_inputs
+    importer = (
+        import_reviewed_segregation if schema in {SCHEMA, TRANSITION_SCHEMA}
+        else import_reviewed_inputs
+    )
     scope = ExecutionScope(
         tenant_id=args.tenant, unit_id=args.unit, environment=FiscalEnvironment.HOMOLOGATION,
         correlation_id="simples-reviewed-import", host_namespace="fm-nfcore",
@@ -64,7 +68,7 @@ def main() -> None:
                 verify_issuer=build_issuer_verifier(database, scope),
             )
         receipt = {"snapshot_id": result["snapshot_id"]}
-        if schema == SCHEMA:
+        if schema in {SCHEMA, TRANSITION_SCHEMA}:
             receipt.update({
                 "snapshot_digest": result["snapshot_digest"], "rule_digest": result["rule_digest"],
                 "classification_digest": result["digest"], "status": result["status"],

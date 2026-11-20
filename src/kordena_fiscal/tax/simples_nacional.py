@@ -17,6 +17,7 @@ from fractions import Fraction
 from types import MappingProxyType
 
 from kordena_fiscal.domain import FiscalValidationError
+from kordena_fiscal.tax.regimes import SimplesIbsCbsMode
 
 RULE_VERSION = "simples-lc123-cgsn140-2026/v1"
 LEGAL_REFERENCES = (
@@ -46,6 +47,7 @@ class Annex(StrEnum):
 class Activity(StrEnum):
     COMMERCE = "commerce"
     INDUSTRY = "industry"
+    INDUSTRY_WITHOUT_IPI = "industry_without_ipi"
     SERVICE_III = "service_iii"
     SERVICE_IV = "service_iv"
     SERVICE_FACTOR_R = "service_factor_r"
@@ -72,13 +74,48 @@ _ROWS = MappingProxyType({
     Annex.ANNEX_V: ((1550, 0), (1800, 450000), (1950, 990000), (2050, 1710000),
               (2300, 6210000), (3050, 54000000)),
 })
-# ICMS/ISS part of each annex's effective rate (basis points).
+# LC 123 annexes I–V, 2026: IRPJ, CSLL, COFINS, PIS, CPP, IPI, ICMS, ISS.
+# Single partition authority; the legacy T04 local view and digest are preserved.
+TAXES = ("irpj", "csll", "cofins", "pis", "cpp", "ipi", "icms", "iss")
+_PARTITION = MappingProxyType({
+    Annex.ANNEX_I: (
+        (550, 350, 1274, 276, 4150, 0, 3400, 0),
+        (550, 350, 1274, 276, 4150, 0, 3400, 0),
+        *((550, 350, 1274, 276, 4200, 0, 3350, 0),) * 3,
+        (1350, 1000, 2827, 613, 4210, 0, 0, 0),
+    ),
+    Annex.ANNEX_II: (
+        *((550, 350, 1151, 249, 3750, 750, 3200, 0),) * 5,
+        (850, 750, 2096, 454, 2350, 3500, 0, 0),
+    ),
+    Annex.ANNEX_III: (
+        (400, 350, 1282, 278, 4340, 0, 0, 3350),
+        (400, 350, 1405, 305, 4340, 0, 0, 3200),
+        (400, 350, 1364, 296, 4340, 0, 0, 3250),
+        (400, 350, 1364, 296, 4340, 0, 0, 3250),
+        (400, 350, 1282, 278, 4340, 0, 0, 3350),
+        (3500, 1500, 1603, 347, 3050, 0, 0, 0),
+    ),
+    Annex.ANNEX_IV: (
+        (1880, 1520, 1767, 383, 0, 0, 0, 4450),
+        (1980, 1520, 2055, 445, 0, 0, 0, 4000),
+        (2080, 1520, 1973, 427, 0, 0, 0, 4000),
+        (1780, 1920, 1890, 410, 0, 0, 0, 4000),
+        (1880, 1920, 1808, 392, 0, 0, 0, 4000),
+        (5350, 2150, 2055, 445, 0, 0, 0, 0),
+    ),
+    Annex.ANNEX_V: (
+        (2500, 1500, 1410, 305, 2885, 0, 0, 1400),
+        (2300, 1500, 1410, 305, 2785, 0, 0, 1700),
+        (2400, 1500, 1492, 323, 2385, 0, 0, 1900),
+        (2100, 1500, 1574, 341, 2385, 0, 0, 2100),
+        (2300, 1250, 1410, 305, 2385, 0, 0, 2350),
+        (3500, 1550, 1644, 356, 2950, 0, 0, 0),
+    ),
+})
 _LOCAL = MappingProxyType({
-    Annex.ANNEX_I: (3400, 3400, 3350, 3350, 3350, 0),
-    Annex.ANNEX_II: (3200, 3200, 3200, 3200, 3200, 0),
-    Annex.ANNEX_III: (3350, 3200, 3250, 3250, 3350, 0),
-    Annex.ANNEX_IV: (4450, 4000, 4000, 4000, 4000, 0),
-    Annex.ANNEX_V: (1400, 1700, 1900, 2100, 2350, 0),
+    annex: tuple(row[6] + row[7] for row in rows)
+    for annex, rows in _PARTITION.items()
 })
 RULE_DIGEST = hashlib.sha256(json.dumps({
     "version": RULE_VERSION, "rows": dict(_ROWS), "local": dict(_LOCAL),
@@ -141,14 +178,22 @@ class SimplesFacts:
     company_history_reference: str
     activity_reference: str
     optant_reference: str
+    registered_on: date | None = None
 
     def __post_init__(self) -> None:
         _month(self.competence)
         _month(self.opened_month)
-        if self.competence.year != 2026 or self.opened_month > self.competence:
-            raise FiscalValidationError("only reviewed 2026 rules are available")
+        if self.registered_on is not None and (
+            self.competence.year != 2027 or type(self.registered_on) is not date
+            or self.registered_on.replace(day=1) != self.opened_month
+        ):
+            raise FiscalValidationError("registration date must match reviewed opening month")
+        if self.competence.year not in {2026, 2027} or self.opened_month > self.competence:
+            raise FiscalValidationError("only reviewed 2026/2027 rules are available")
         if self.uf not in UF_CODES or not isinstance(self.activity, Activity):
             raise FiscalValidationError("UF and documented activity classification are required")
+        if self.competence.year == 2026 and self.activity is Activity.INDUSTRY_WITHOUT_IPI:
+            raise FiscalValidationError("transition activity unavailable in 2026")
         for ref in (self.company_history_reference, self.activity_reference, self.optant_reference):
             if not isinstance(ref, str) or not ref.strip() or len(ref) > 256:
                 raise FiscalValidationError("documented company/regime/activity evidence required")
@@ -157,7 +202,10 @@ class SimplesFacts:
         ):
             raise FiscalValidationError("immutable complete company monthly history required")
         # Prior calendar year and rolling 12, including all establishments.
-        start = max(self.opened_month, date(2025, 1, 1))
+        start = max(
+            self.opened_month,
+            date(2025, 1 if self.competence.year == 2026 else 12, 1),
+        )
         expected: list[date] = []
         while start <= self.competence:
             expected.append(start)
@@ -217,6 +265,7 @@ def _annex(activity: Activity, factor: Fraction | None) -> Annex:
         return Annex.ANNEX_III if factor >= FACTOR_R_THRESHOLD else Annex.ANNEX_V
     return {
         Activity.COMMERCE: Annex.ANNEX_I, Activity.INDUSTRY: Annex.ANNEX_II,
+        Activity.INDUSTRY_WITHOUT_IPI: Annex.ANNEX_I,
         Activity.SERVICE_III: Annex.ANNEX_III, Activity.SERVICE_IV: Annex.ANNEX_IV,
     }[activity]
 
@@ -262,18 +311,25 @@ def _local_rate(annex: Annex, total_rate: Fraction, bracket: int) -> Fraction:
 
 def _market_rate(
     annex: Annex, rbt: Fraction, rba: int, rbaa: int, outside_local: bool,
+    *, competence: date, mode: SimplesIbsCbsMode | None,
 ) -> tuple[MarketRate, Fraction, Fraction]:
     idx = next((i for i, ceiling in enumerate(CEILINGS) if rbt <= ceiling), 5)
-    nominal, deduct = _ROWS[annex][idx]
-    effective = _rate(annex, rbt, idx)
-    local = _local_rate(annex, effective, idx)
-    federal = effective - local
-    # Art.21 III b: if rolling revenue is in sixth band and the annual local
-    # sublimit has not taken effect, use fifth-band local formula separately.
-    if idx == 5 and not outside_local:
-        local = _local_rate(annex, _rate(annex, rbt, 4), 4)
-    elif outside_local:
-        local = Fraction(0)
+    if competence.year == 2027:
+        nominal, deduct, _ = transition_band(competence, annex, idx + 1)
+        effective = _transition_rate(competence, annex, rbt, idx + 1)
+    else:
+        nominal, deduct = _ROWS[annex][idx]
+        effective = _rate(annex, rbt, idx)
+    # T04 and T07 use a single effective partition authority, including
+    # the sixth-band local supplement and ISS redistribution.
+    if competence.year == 2027:
+        parts = transition_effective_rate(
+            competence, annex, rbt, outside_local=outside_local, mode=mode,
+        )
+    else:
+        parts = partition_effective_rate(annex, rbt, outside_local=outside_local)
+    local = parts["icms"] + parts["iss"] + parts.get("ibs", Fraction(0))
+    federal = sum(parts.values(), Fraction(0)) - local
     return MarketRate(
         _decimal(rbt), idx + 1, _decimal(Fraction(nominal, 10000)), deduct,
         _decimal(effective), _decimal(local), _decimal(federal), rba, rbaa,
@@ -288,7 +344,10 @@ def _excess_fraction(year_total: int, month_revenue: int, cap: int) -> Fraction:
     return Fraction(excess, month_revenue)
 
 
-def calculate_simples(facts: SimplesFacts, *, ordinary_domestic_base_cents: int) -> SimplesResult:
+def calculate_simples(
+    facts: SimplesFacts, *, ordinary_domestic_base_cents: int,
+    mode: SimplesIbsCbsMode | None = None,
+) -> SimplesResult:
     """Return base-rate diagnostic, not a PGDAS declaration.
 
     Ordinary base is a documented unit/activity domestic accrual base, without
@@ -305,31 +364,29 @@ def calculate_simples(facts: SimplesFacts, *, ordinary_domestic_base_cents: int)
     current = facts.months[-1]
     if base > current.domestic_cents:
         raise FiscalValidationError("unit base exceeds company domestic accrued revenue")
-    history = facts.months[:-1][-12:]
+    year_number = facts.competence.year
+    transition = year_number == 2027
+    _verify_mode(facts.competence, mode)
+    window = _rate_window(facts)
+    fs = sum(item.payroll_cents for item in window)
+    fr = sum(item.domestic_cents + item.export_cents for item in window)
     first = facts.opened_month == facts.competence
-    factor_history = (current,) if first else history
-    fs = sum(item.payroll_cents for item in factor_history)
-    fr = sum(item.domestic_cents + item.export_cents for item in factor_history)
-    factor = _factor(fs, fr, first=first)
+    factor = FACTOR_R_THRESHOLD if transition and not window else _factor(fs, fr, first=first)
     annex = _annex(facts.activity, factor)
-    window = (current,) if first else history
-    divisor = len(window)
-    if not divisor:
-        raise FiscalValidationError("incomplete rolling company history")
-    domestic_rbt = Fraction(sum(item.domestic_cents for item in window) * 12, divisor)
-    export_rbt = Fraction(sum(item.export_cents for item in window) * 12, divisor)
-    prior = tuple(item for item in facts.months if item.competence.year == 2025)
-    year = tuple(item for item in facts.months if item.competence.year == 2026)
-    startup = facts.opened_month.year == 2026
-    sub = _annual_limit(facts.opened_month, 2026, SUBLIMIT)
-    cap = _annual_limit(facts.opened_month, 2026, LIMIT)
+    domestic_rbt = _window_revenue(window, export=False)
+    export_rbt = _window_revenue(window, export=True)
+    prior = tuple(item for item in facts.months if item.competence.year == year_number - 1)
+    year = tuple(item for item in facts.months if item.competence.year == year_number)
+    startup = facts.opened_month.year == year_number
+    sub = _annual_limit(facts.opened_month, year_number, SUBLIMIT)
+    cap = _annual_limit(facts.opened_month, year_number, LIMIT)
     drba = sum(item.domestic_cents for item in year)
     erba = sum(item.export_cents for item in year)
     drbaa = sum(item.domestic_cents for item in prior)
     erbaa = sum(item.export_cents for item in prior)
 
     def status(ceiling: int, actual_cap: int) -> LimitStatus:
-        previous = _annual_limit(facts.opened_month, 2025, ceiling)
+        previous = _annual_limit(facts.opened_month, year_number - 1, ceiling)
         return _worst(
             _status(drbaa, drba - current.domestic_cents, drba, actual_cap, previous, startup),
             _status(erbaa, erba - current.export_cents, erba, actual_cap, previous, startup),
@@ -337,22 +394,20 @@ def calculate_simples(facts: SimplesFacts, *, ordinary_domestic_base_cents: int)
 
     substatus, limstatus = status(SUBLIMIT, sub), status(LIMIT, cap)
     outside = {LimitStatus.OUTSIDE, LimitStatus.RETROACTIVE}
-    domestic, federal, local = _market_rate(
+    domestic, _, _ = _market_rate(
         annex, domestic_rbt, drba, drbaa, substatus in outside,
+        competence=facts.competence, mode=mode,
     )
-    exported, _, _ = _market_rate(annex, export_rbt, erba, erbaa, substatus in outside)
-    # Art. 24 §§2–7: distribute the excess proportionally to this ordinary
-    # revenue base. The federal ceiling is evaluated at the sixth-band limit;
-    # the ICMS/ISS ceiling at the fifth-band limit, respecting the ISS cap.
-    sub_fraction = _excess_fraction(drba, current.domestic_cents, sub)
-    limit_fraction = _excess_fraction(drba, current.domestic_cents, cap)
-    federal_at_limit = _rate(annex, Fraction(LIMIT), 5)
-    local_at_sublimit = _local_rate(annex, _rate(annex, Fraction(SUBLIMIT), 4), 4)
-    assessed_federal = federal * (1 - limit_fraction) + federal_at_limit * limit_fraction
-    assessed_local = (
-        Fraction(0) if substatus in outside
-        else local * (1 - sub_fraction) + local_at_sublimit * sub_fraction
+    exported, _, _ = _market_rate(
+        annex, export_rbt, erba, erbaa, substatus in outside,
+        competence=facts.competence, mode=mode,
     )
+    # Art. 24: reuse the same partition as the segregated apuração.
+    assessed, limit_fraction, sub_fraction = assessment_partition(
+        facts, annex, export=False, outside_local=substatus in outside, mode=mode,
+    )
+    assessed_local = assessed["icms"] + assessed["iss"] + assessed.get("ibs", Fraction(0))
+    assessed_federal = sum(assessed.values(), Fraction(0)) - assessed_local
     reasons: list[str] = []
     if limstatus in outside:
         reasons.append("simples_excluded_or_retroactive")
@@ -360,8 +415,12 @@ def calculate_simples(facts: SimplesFacts, *, ordinary_domestic_base_cents: int)
         reasons.append("local_tax_retroactive_review")
     amount_rate = None if reasons else assessed_federal + assessed_local
     amount = None if amount_rate is None else _round_cents(base * amount_rate)
+    rule_digest = TRANSITION_TABLE_DIGEST if transition else RULE_DIGEST
+    partition_digest = TRANSITION_PARTITION_DIGEST if transition else PARTITION_DIGEST
     fingerprint = hashlib.sha256(json.dumps({
-        "rule": RULE_DIGEST, "period": facts.competence.isoformat(),
+        "rule": rule_digest, "partition": partition_digest,
+        **({"ibs_cbs_mode": mode} if transition else {}),
+        "period": facts.competence.isoformat(),
         "opened": facts.opened_month.isoformat(), "uf": facts.uf, "activity": facts.activity,
         "history_ref": facts.company_history_reference, "activity_ref": facts.activity_reference,
         "optant_ref": facts.optant_reference,
@@ -370,7 +429,8 @@ def calculate_simples(facts: SimplesFacts, *, ordinary_domestic_base_cents: int)
         "base": base,
     }, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
     return SimplesResult(
-        RULE_VERSION, RULE_DIGEST, annex, _decimal(factor) if factor is not None else None,
+        TRANSITION_RULE_VERSION if transition else RULE_VERSION,
+        rule_digest, annex, _decimal(factor) if factor is not None else None,
         fs, fr, domestic, exported, sub, cap, substatus, limstatus,
         _decimal(sub_fraction), _decimal(limit_fraction),
         _decimal(assessed_federal) if amount_rate is not None else None,
@@ -378,3 +438,298 @@ def calculate_simples(facts: SimplesFacts, *, ordinary_domestic_base_cents: int)
         _decimal(amount_rate) if amount_rate is not None else None, amount,
         annex is Annex.ANNEX_IV, tuple(reasons), fingerprint,
     )
+
+
+PARTITION_VERSION = "simples-partition-2026/v2"
+PARTITION_DIGEST = hashlib.sha256(json.dumps({
+    "version": PARTITION_VERSION, "base_rule": RULE_DIGEST,
+    "taxes": TAXES, "partition": dict(_PARTITION),
+    "iss_cap": {"III": (602, 526, 1928, 418, 6526), "IV": (3133, 3200, 3013, 654, 0)},
+}, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+
+
+def _sixth_band_local_components(annex: Annex, rbt: Fraction) -> dict[str, Fraction]:
+    """Local fifth-band supplement, including federal redistribution of ISS.
+
+    PGDAS-D manual, example 8, pp. 117–118; LC 123 annexes III–V.
+    This supplement is independent of the sixth-band federal component.
+    """
+    parts = dict.fromkeys(TAXES, Fraction(0))
+    raw = _rate(annex, rbt, 4) * Fraction(_LOCAL[annex][4], 10000)
+    if annex in {Annex.ANNEX_I, Annex.ANNEX_II}:
+        parts["icms"] = raw
+        return parts
+    parts["iss"] = min(raw, Fraction(5, 100))
+    excess = raw - parts["iss"]
+    if excess:
+        fixed = {
+            Annex.ANNEX_III: (602, 526, 1928, 418, 6526),
+            Annex.ANNEX_IV: (3133, 3200, 3013, 654, 0),
+        }
+        if annex in fixed:
+            for tax, share in zip(TAXES[:5], fixed[annex], strict=True):
+                parts[tax] = excess * Fraction(share, 10000)
+        else:
+            shares = _PARTITION[annex][4][:6]
+            for tax, share in zip(TAXES[:6], shares, strict=True):
+                parts[tax] = excess * Fraction(share, sum(shares))
+    return parts
+
+
+def partition_effective_rate(
+    annex: Annex, rbt: Fraction, *, outside_local: bool = False,
+) -> dict[str, Fraction]:
+    """Exact 2026 effective components from the existing rate authority.
+
+    No eligibility or treatment inference. Sixth-band local formula is the
+    same one used by T04. ISS cap uses the explicit statutory annex shares.
+    """
+    idx = next((i for i, ceiling in enumerate(CEILINGS) if rbt <= ceiling), 5)
+    effective = _rate(annex, rbt, idx)
+    shares = _PARTITION[annex][idx]
+    result = {tax: effective * Fraction(share, 10000)
+              for tax, share in zip(TAXES, shares, strict=True)}
+    if result["iss"] > Fraction(5, 100):
+        remaining = effective - Fraction(5, 100)
+        capped = {
+            Annex.ANNEX_III: (602, 526, 1928, 418, 6526),
+            Annex.ANNEX_IV: (3133, 3200, 3013, 654, 0),
+        }
+        if annex in capped:
+            for tax, share in zip(TAXES[:5], capped[annex], strict=True):
+                result[tax] = remaining * Fraction(share, 10000)
+        else:
+            federal = effective - result["iss"]
+            for tax in TAXES[:6]:
+                result[tax] *= remaining / federal
+        result["iss"] = Fraction(5, 100)
+    if outside_local:
+        result["icms"] = result["iss"] = Fraction(0)
+    elif idx == 5:
+        supplement = _sixth_band_local_components(annex, rbt)
+        for tax in TAXES:
+            result[tax] += supplement[tax]
+    return result
+
+
+def assessment_partition(
+    facts: SimplesFacts, annex: Annex, *, export: bool, outside_local: bool,
+    mode: SimplesIbsCbsMode | None = None,
+) -> tuple[dict[str, Fraction], Fraction, Fraction]:
+    """Art. 24: versioned treatment of excess revenue by market and tax."""
+    _verify_mode(facts.competence, mode)
+    history = _rate_window(facts)
+    if facts.competence.year == 2027:
+        rbt = _window_revenue(history, export=export)
+        return transition_effective_rate(
+            facts.competence, annex, rbt, outside_local=outside_local, mode=mode,
+        ), Fraction(0), Fraction(0)
+    def revenue(month: MonthFacts) -> int:
+        return month.export_cents if export else month.domestic_cents
+    rbt = Fraction(sum(map(revenue, history)) * 12, len(history))
+    annual = sum(revenue(m) for m in facts.months if m.competence.year == 2026)
+    current = revenue(facts.months[-1])
+    federal_fraction = _excess_fraction(
+        annual, current, _annual_limit(facts.opened_month, 2026, LIMIT),
+    )
+    local_fraction = _excess_fraction(
+        annual, current, _annual_limit(facts.opened_month, 2026, SUBLIMIT),
+    )
+    federal_cap = partition_effective_rate(annex, Fraction(LIMIT), outside_local=True)
+    if rbt > SUBLIMIT and not outside_local:
+        federal = partition_effective_rate(annex, rbt, outside_local=True)
+        local = _sixth_band_local_components(annex, rbt)
+        capped_local = _sixth_band_local_components(annex, Fraction(SUBLIMIT))
+        return {
+            tax: federal[tax] * (1 - federal_fraction)
+            + federal_cap[tax] * federal_fraction
+            + local[tax] * (1 - local_fraction)
+            + capped_local[tax] * local_fraction
+            for tax in TAXES
+        }, federal_fraction, local_fraction
+    normal = partition_effective_rate(annex, rbt, outside_local=outside_local)
+    local_cap = partition_effective_rate(annex, Fraction(SUBLIMIT))
+    for tax in TAXES:
+        if tax in {"icms", "iss"}:
+            if not outside_local:
+                normal[tax] = normal[tax] * (1 - local_fraction) + (
+                    local_cap[tax] * local_fraction
+                )
+        else:
+            normal[tax] = normal[tax] * (1 - federal_fraction) + (
+                federal_cap[tax] * federal_fraction
+            )
+    return normal, federal_fraction, local_fraction
+
+
+# LC 214/2025 annexes XVIII–XXII, consolidated by LC 227/2026.
+# Data for the 2027–2028 transition; not authorization to assess future PA.
+TRANSITION_TAXES = ("irpj", "csll", "cbs", "cpp", "ipi", "icms", "iss", "ibs")
+TRANSITION_SOURCE = (
+    "https://www2.camara.leg.br/legin/fed/leicom/2025/"
+    "leicomplementar-214-16-janeiro-2025-796905-normaatualizada-pl.html"
+)
+_TRANSITION_PARTITION = MappingProxyType({
+    Annex.ANNEX_I: (
+        (550, 350, 1533, 4150, 0, 3400, 0, 17),
+        (550, 350, 1533, 4150, 0, 3400, 0, 17),
+        (550, 350, 1533, 4200, 0, 3350, 0, 17),
+        (550, 350, 1533, 4200, 0, 3350, 0, 17),
+        (550, 350, 1533, 4200, 0, 3350, 0, 17),
+        (1358, 1006, 3402, 4234, 0, 0, 0, 0),
+    ),
+    Annex.ANNEX_II: (
+        (550, 350, 1385, 3750, 750, 3200, 0, 15),
+        (550, 350, 1385, 3750, 750, 3200, 0, 15),
+        (550, 350, 1385, 3750, 750, 3200, 0, 15),
+        (550, 350, 1385, 3750, 750, 3200, 0, 15),
+        (550, 350, 1385, 3750, 750, 3200, 0, 15),
+        (853, 753, 2522, 2359, 3513, 0, 0, 0),
+    ),
+    Annex.ANNEX_III: (
+        (400, 350, 1543, 4340, 0, 0, 3350, 17),
+        (400, 350, 1691, 4340, 0, 0, 3200, 19),
+        (400, 350, 1641, 4340, 0, 0, 3250, 19),
+        (400, 350, 1641, 4340, 0, 0, 3250, 19),
+        (400, 350, 1543, 4340, 0, 0, 3350, 17),
+        (3509, 1504, 1929, 3058, 0, 0, 0, 0),
+    ),
+    Annex.ANNEX_IV: (
+        (1880, 1520, 2126, 0, 0, 0, 4450, 24),
+        (1980, 1520, 2473, 0, 0, 0, 4000, 27),
+        (2080, 1520, 2374, 0, 0, 0, 4000, 26),
+        (1780, 1920, 2275, 0, 0, 0, 4000, 25),
+        (1880, 1920, 2176, 0, 0, 0, 4000, 24),
+        (5371, 2159, 2470, 0, 0, 0, 0, 0),
+    ),
+    Annex.ANNEX_V: (
+        (2500, 1500, 1696, 2885, 0, 0, 1400, 19),
+        (2300, 1500, 1696, 2785, 0, 0, 1700, 19),
+        (2400, 1500, 1795, 2385, 0, 0, 1900, 20),
+        (2100, 1500, 1894, 2385, 0, 0, 2100, 21),
+        (2300, 1250, 1696, 2385, 0, 0, 2350, 19),
+        (3510, 1554, 1978, 2958, 0, 0, 0, 0),
+    ),
+})
+_TRANSITION_ROWS = MappingProxyType({
+    annex: (*rows[:5], (rows[5][0] - 10, rows[5][1]))
+    for annex, rows in _ROWS.items()
+})
+_TRANSITION_ISS_CAP = MappingProxyType({
+    Annex.ANNEX_III: (602, 526, 2320, 6526, 0, 0, 0, 26),
+    Annex.ANNEX_IV: (3133, 3200, 3627, 0, 0, 0, 0, 40),
+})
+TRANSITION_TABLE_DIGEST = hashlib.sha256(json.dumps({
+    "version": "lc214-lc227-2027-2028/v1",
+    "source": TRANSITION_SOURCE, "valid_from": "2027-01-01",
+    "valid_until": "2029-01-01", "taxes": TRANSITION_TAXES,
+    "rows": dict(_TRANSITION_ROWS), "partition": dict(_TRANSITION_PARTITION),
+    "iss_cap": dict(_TRANSITION_ISS_CAP),
+}, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+
+
+def transition_band(
+    competence: date, annex: Annex, band: int,
+) -> tuple[int, int, dict[str, int]]:
+    """Versioned statutory lookup, before any regime, rate or basis decision."""
+    if _month(competence).year not in {2027, 2028}:
+        raise FiscalValidationError("transition table only valid in 2027–2028")
+    if not isinstance(annex, Annex) or type(band) is not int or not 1 <= band <= 6:
+        raise FiscalValidationError("explicit annex and band required")
+    nominal, deduction = _TRANSITION_ROWS[annex][band - 1]
+    return nominal, deduction, dict(zip(
+        TRANSITION_TAXES, _TRANSITION_PARTITION[annex][band - 1], strict=True,
+    ))
+
+
+# CGSN 190/2026 arts. 21, 22, 22-A, 24 and 26. These rates are
+# consultative; the application must resolve the canonical election.
+TRANSITION_RULE_VERSION = "simples-cgsn190-2027/v1"
+TRANSITION_PARTITION_DIGEST = hashlib.sha256(json.dumps({
+    "version": TRANSITION_RULE_VERSION, "table_digest": TRANSITION_TABLE_DIGEST,
+    "history": "lagged-12-months", "startup": "first-two-28-percent-first-band",
+    "excess": "same-effective-rate", "local_taxes": ["icms", "iss", "ibs"],
+    "regular_option": "remove-ibs-cbs-without-redistribution",
+    "source": LEGAL_REFERENCES[1],
+}, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+
+
+def _verify_mode(competence: date, mode: SimplesIbsCbsMode | None) -> None:
+    if competence.year == 2027:
+        if not isinstance(mode, SimplesIbsCbsMode) or mode not in {
+            SimplesIbsCbsMode.SIMPLES_UNIFIED, SimplesIbsCbsMode.REGULAR_SEPARATE,
+        }:
+            raise FiscalValidationError("resolved IBS/CBS mode required for 2027")
+    elif mode is not None:
+        raise FiscalValidationError("IBS/CBS election does not apply to 2026 assessment")
+
+
+def _rate_window(facts: SimplesFacts) -> tuple[MonthFacts, ...]:
+    if facts.competence.year == 2027:
+        return facts.months[:-2][-12:]
+    return facts.months[:-1][-12:] or facts.months[-1:]
+
+
+def _window_revenue(window: tuple[MonthFacts, ...], *, export: bool) -> Fraction:
+    if not window:
+        return Fraction(0)
+    total = sum(m.export_cents if export else m.domestic_cents for m in window)
+    return Fraction(total * 12, len(window))
+
+
+def _transition_rate(competence: date, annex: Annex, rbt: Fraction, band: int) -> Fraction:
+    nominal, deduction, _ = transition_band(competence, annex, band)
+    return Fraction(nominal, 10000) - Fraction(deduction) / (rbt or Fraction(100))
+
+
+def _transition_iss_excess(
+    annex: Annex, shares: dict[str, int], excess: Fraction,
+) -> dict[str, Fraction]:
+    if annex in _TRANSITION_ISS_CAP:
+        cap_shares = dict(zip(TRANSITION_TAXES, _TRANSITION_ISS_CAP[annex], strict=True))
+        return {tax: excess * Fraction(share, 10000) for tax, share in cap_shares.items()}
+    eligible = {
+        tax: share for tax, share in shares.items() if tax not in {"iss", "icms"}
+    }
+    return {tax: excess * Fraction(share, sum(eligible.values()))
+            for tax, share in eligible.items()}
+
+
+def transition_effective_rate(
+    competence: date, annex: Annex, rbt: Fraction, *, outside_local: bool,
+    mode: SimplesIbsCbsMode | None, redistribute_iss: bool = True,
+) -> dict[str, Fraction]:
+    """Exact ordinary components, before reviewed operation-specific exclusions."""
+    if competence.year != 2027 or rbt < 0:
+        raise FiscalValidationError("reviewed 2027 rate window required")
+    _verify_mode(competence, mode)
+    idx = next((i for i, ceiling in enumerate(CEILINGS) if rbt <= ceiling), 5)
+    _, _, shares = transition_band(competence, annex, idx + 1)
+    effective = _transition_rate(competence, annex, rbt, idx + 1)
+    result = {tax: effective * Fraction(share, 10000) for tax, share in shares.items()}
+    if idx == 5 and not outside_local:
+        _, _, fifth = transition_band(competence, annex, 5)
+        fifth_effective = _transition_rate(competence, annex, rbt, 5)
+        for tax in ("icms", "iss", "ibs"):
+            result[tax] = fifth_effective * Fraction(fifth[tax], 10000)
+        shares = fifth
+    if result["iss"] > Fraction(5, 100):
+        excess = result["iss"] - Fraction(5, 100)
+        result["iss"] = Fraction(5, 100)
+        if redistribute_iss and not outside_local:
+            if idx < 5 and annex in _TRANSITION_ISS_CAP:
+                cap_shares = dict(zip(
+                    TRANSITION_TAXES, _TRANSITION_ISS_CAP[annex], strict=True,
+                ))
+                for tax, share in cap_shares.items():
+                    if tax != "iss":
+                        result[tax] = (effective - Fraction(5, 100)) * Fraction(share, 10000)
+            else:
+                for tax, extra in _transition_iss_excess(annex, shares, excess).items():
+                    result[tax] += extra
+    if outside_local:
+        for tax in ("icms", "iss", "ibs"):
+            result[tax] = Fraction(0)
+    if mode is SimplesIbsCbsMode.REGULAR_SEPARATE:
+        result["ibs"] = result["cbs"] = Fraction(0)
+    return result

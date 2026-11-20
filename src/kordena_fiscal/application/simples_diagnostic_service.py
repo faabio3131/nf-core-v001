@@ -11,7 +11,7 @@ from typing import Any
 
 from kordena_fiscal.cognitive.contracts import stable_hash
 from kordena_fiscal.cognitive.economy_contract import LegalCitation
-from kordena_fiscal.domain import Cnpj, FiscalValidationError
+from kordena_fiscal.domain import Cnpj, FiscalProfile, FiscalValidationError
 from kordena_fiscal.persistence.economy_store import EconomyStore
 from kordena_fiscal.tax.simples_diagnostic import (
     DIAGNOSTIC_VERSION,
@@ -27,6 +27,7 @@ from kordena_fiscal.tax.simples_nacional import (
 )
 
 SNAPSHOT_SCHEMA = "nfcore.simples-facts/2026-v1"
+IssuerVerifier = Callable[[str, SimplesFacts], FiscalProfile | None]
 
 
 def _month(row: dict[str, Any]) -> MonthFacts:
@@ -40,7 +41,7 @@ def evaluate_snapshot(
     snapshot: dict[str, Any],
     rule: dict[str, Any],
     *,
-    verify_issuer: Callable[[str, SimplesFacts], None],
+    verify_issuer: IssuerVerifier,
 ) -> dict[str, Any]:
     """Decode reviewed facts, pin legal evidence and delegate all tax math."""
     try:
@@ -111,7 +112,7 @@ def evaluate_snapshot(
 
 def evaluate_and_record(
     store: EconomyStore, *, snapshot_id: str, snapshot_version: int,
-    rule_id: str, rule_version: int, verify_issuer: Callable[[str, SimplesFacts], None],
+    rule_id: str, rule_version: int, verify_issuer: IssuerVerifier,
 ) -> dict[str, Any]:
     """Persist only positive, costed hypothetical opportunities, not credits.
 
@@ -163,7 +164,7 @@ def import_reviewed_inputs(
     store: EconomyStore, *, snapshot_id: str, snapshot_version: int,
     competence: date, issuer: Cnpj, content: dict[str, Any],
     rule_id: str, rule_version: int, rule_content: dict[str, Any],
-    verify_issuer: Callable[[str, SimplesFacts], None],
+    verify_issuer: IssuerVerifier,
 ) -> dict[str, Any]:
     """Trusted operator import into the SAME scoped transaction, never public UI.
 

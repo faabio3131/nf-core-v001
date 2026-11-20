@@ -53,7 +53,52 @@ def test_service_treatment(activity, local):
 def test_export_distinct(activity):
     result = classify_revenue(PERIOD, (line(activity=activity, market=Market.EXPORT),),
                               domestic_cents=0, export_cents=100)
+    if activity is Activity.INDUSTRY_WITHOUT_IPI:
+        assert result["status"] == "blocked"
+        assert result["buckets"] == []
+        assert result["blocked"] == [{
+            "line_id": "a", "reason": "transition_treatment_unavailable_in_2026",
+        }]
+    else:
+        assert result["status"] == "classified"
+        assert result["buckets"] == [{
+            "activity": activity.value, "market": "export",
+            "federal": "ordinary", "local": "ordinary", "cents": 100,
+        }]
+
+
+@pytest.mark.parametrize("market", list(Market))
+def test_industry_without_ipi_requires_2027_and_reviewed_treatments(market):
+    from dataclasses import replace
+
+    item = line(activity=Activity.INDUSTRY_WITHOUT_IPI, market=market)
+    totals = {
+        "domestic_cents": 100 if market is Market.DOMESTIC else 0,
+        "export_cents": 100 if market is Market.EXPORT else 0,
+    }
+    transition = date(2027, 1, 1)
+    assert classify_revenue(PERIOD, (item,), **totals)["status"] == "blocked"
+    incomplete = classify_revenue(transition, (item,), **totals)
+    assert incomplete["status"] == "blocked"
+    assert incomplete["buckets"] == []
+    assert incomplete["blocked"] == [{
+        "line_id": "a", "reason": "explicit_2027_per_tax_treatment_required",
+    }]
+    treatment = "export" if market is Market.EXPORT else "ordinary"
+    reviewed = replace(item, transition_treatments=(
+        treatment, treatment, "non_incident", treatment, "non_incident",
+    ))
+    result = classify_revenue(transition, (reviewed,), **totals)
     assert result["status"] == "classified"
+    assert result["buckets"] == [{
+        "activity": "industry_without_ipi", "market": market.value,
+        "federal": "ordinary", "local": "ordinary", "cents": 100,
+        "transition_treatments": {
+            "cbs": treatment, "ibs": treatment, "ipi": "non_incident",
+            "icms": treatment, "iss": "non_incident",
+        },
+    }]
+    assert classify_revenue(PERIOD, (reviewed,), **totals)["status"] == "blocked"
 
 
 @pytest.mark.parametrize("row", [
@@ -93,9 +138,21 @@ def test_invalid_money(amount):
         line(cents=amount)
 
 
-def test_future_and_empty():
-    with pytest.raises(FiscalValidationError):
-        classify_revenue(date(2027, 1, 1), (), domestic_cents=0, export_cents=0)
-    assert classify_revenue(
-        PERIOD, (), domestic_cents=0, export_cents=0,
-    )["status"] == "classified"
+@pytest.mark.parametrize("competence", [date(2025, 12, 1), date(2028, 1, 1), date(2027, 1, 2)])
+def test_unsupported_competence(competence):
+    with pytest.raises(FiscalValidationError, match="2026/2027 competence"):
+        classify_revenue(competence, (), domestic_cents=0, export_cents=0)
+
+
+@pytest.mark.parametrize("competence,version", [
+    (PERIOD, "simples-segregation-2026/v1"),
+    (date(2027, 1, 1), "simples-segregation-2027/v1"),
+    (date(2027, 12, 1), "simples-segregation-2027/v1"),
+])
+def test_empty_reconciled_competence(competence, version):
+    result = classify_revenue(competence, (), domestic_cents=0, export_cents=0)
+    assert result["status"] == "classified"
+    assert result["version"] == version
+    assert result["buckets"] == result["blocked"] == result["evidence"] == []
+    with pytest.raises(FiscalValidationError, match="reconcile"):
+        classify_revenue(competence, (), domestic_cents=1, export_cents=0)

@@ -446,7 +446,7 @@ class NfseSimplesItem:
     base_calculo: Decimal
     iss_taxation: str  # tribISSQN 1..4
     iss_withheld: bool  # tpRetISSQN 2 = withheld
-    municipal_benefit: str = "1"  # tpBM
+    municipal_benefit: str | None = None  # tpBM: 1 is exemption, never a default
 
     def as_payload(self) -> dict[str, object]:
         if not _ATIV_SN.fullmatch(self.c_ativ_sn or ""):
@@ -457,12 +457,14 @@ class NfseSimplesItem:
             raise RfbCalculatorError("NBS must have 9 digits")
         if self.iss_taxation not in {"1", "2", "3", "4"}:
             raise RfbCalculatorError("tribISSQN must be 1..4")
-        return {
+        payload: dict[str, object] = {
             "numero": self.numero, "cAtivSN": self.c_ativ_sn, "cClassTrib": self.c_class_trib,
             "nbs": self.nbs, "baseCalculo": _money(self.base_calculo),
             "tribISSQN": self.iss_taxation, "tpRetISSQN": "2" if self.iss_withheld else "1",
-            "tpBM": self.municipal_benefit,
         }
+        if self.municipal_benefit is not None:
+            payload["tpBM"] = self.municipal_benefit
+        return payload
 
 
 def build_nfse_request(

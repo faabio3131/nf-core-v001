@@ -75,6 +75,12 @@ class EconomyStore:
         if not self._active or self._conn.info.transaction_status.name != "INTRANS":
             raise FiscalValidationError("economy store requires an active scoped transaction")
 
+    @property
+    def scope_identity(self) -> tuple[str, ...]:
+        """Read the canonical identity of the active scoped transaction."""
+        self._require_active()
+        return self._scope.identity_material
+
     @staticmethod
     @contextmanager
     def transaction(

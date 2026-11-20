@@ -74,6 +74,7 @@ def test_real_postgres_economy_schema_scope_and_immutability(monkeypatch):
             _certify_t02_read_only(database)
             _certify_t05(database)
             _certify_t06(database)
+            _certify_t07_transition(database)
             admin.execute(sql.SQL("SET search_path TO {}").format(sql.Identifier(schema_name)))
             # Explicitly add DML permissions only in this sandbox to prove
             # that the RLS policies, not solely GRANTs, deny mutation.
@@ -417,6 +418,68 @@ def _certify_t06(database):
         assert store.record("fm_economy_benefits", "t06-rule", 1) is not None
     with database.economy(scope, read_only=True) as store:
         assert evaluate_segregation(store, **refs) == result
+        assessment = evaluate_segregation(store, **refs, assessment=True)
+        assert assessment["status"] == "estimated"
+        assert assessment["estimated_das_cents"] == 12
+        assert assessment["advisory_only"] is True
+        assert assessment == evaluate_segregation(store, **refs, assessment=True)
+    # Reference fixtures are synthetic, never evidence of official parity.
+    reviewed = deepcopy(content)
+    reviewed["pgdas_reference"] = {
+        "competence": competence.isoformat(), "review_status": "reviewed",
+        "review_reference": "fixture-review", "evidence_reference": "synthetic-pgdas",
+        "segregation_digest": assessment["segregation_digest"],
+        "assessment_digest": assessment["digest"],
+        "tax_cents": assessment["tax_cents"],
+        "total_cents": assessment["estimated_das_cents"],
+    }
+    with database.economy(scope) as store:
+        invalid_ref = deepcopy(reviewed)
+        invalid_ref["pgdas_reference"]["assessment_digest"] = "stale"
+        with pytest.raises(FiscalValidationError, match="scoped"):
+            import_reviewed_segregation(store, **{
+                **kwargs, "snapshot_id": "invalid-pgdas", "content": invalid_ref,
+            })
+        assert store.snapshot("invalid-pgdas", 1) is None
+        changed_history = deepcopy(reviewed)
+        changed_history["company_history_reference"] = "other-reviewed-history"
+        with pytest.raises(FiscalValidationError, match="scoped"):
+            import_reviewed_segregation(store, **{
+                **kwargs, "snapshot_id": "changed-history", "content": changed_history,
+            })
+        assert store.snapshot("changed-history", 1) is None
+        verify_calls = []
+
+        def count_verify(issuer, facts):
+            verify_calls.append(issuer)
+            return kwargs["verify_issuer"](issuer, facts)
+
+        imported = import_reviewed_segregation(store, **{
+            **kwargs, "snapshot_id": "reviewed-pgdas", "content": reviewed,
+            "verify_issuer": count_verify,
+        })
+        assert verify_calls == ["12345678000195"]
+        assert imported["status"] == "classified"
+        assert "pgdas_comparison" not in imported
+        assert imported["buckets"] == result["buckets"]
+        # A malformed historical cash record must fail with the domain error,
+        # not leak an unhandled KeyError or be treated as an estimate.
+        malformed = deepcopy(content)
+        malformed["basis"] = "cash"
+        store.append_snapshot(
+            record_id="invalid-cash-history", version=1, competence=competence,
+            issuer=Cnpj("12345678000195"), content=malformed,
+        )
+    with database.economy(scope, read_only=True) as store:
+        comparison = evaluate_segregation(store, **{
+            **refs, "snapshot_id": "reviewed-pgdas", "assessment": True,
+        })["pgdas_comparison"]
+        assert comparison["status"] == "match"
+        assert comparison["official_certification"] is False
+        with pytest.raises(FiscalValidationError, match="invalid reviewed cash history"):
+            evaluate_segregation(store, **{
+                **refs, "snapshot_id": "invalid-cash-history", "assessment": True,
+            })
     for foreign in (
         _scope(tenant="foreign"), _scope(tenant="economy-t06", unit="foreign"),
         _scope(tenant="economy-t06", host="foreign"),
@@ -425,6 +488,13 @@ def _certify_t06(database):
         with database.economy(foreign, read_only=True) as store:
             with pytest.raises(FiscalValidationError, match="unavailable"):
                 evaluate_segregation(store, **refs)
+    # An identical bundle in another authorized tenant needs its own reference.
+    with database.economy(_scope(tenant="economy-t06-other")) as store:
+        with pytest.raises(FiscalValidationError, match="scoped"):
+            import_reviewed_segregation(store, **{
+                **kwargs, "snapshot_id": "cross-scope-pgdas", "content": reviewed,
+            })
+        assert store.snapshot("cross-scope-pgdas", 1) is None
     blocked = deepcopy(content)
     blocked["lines"][0]["federal"] = "unknown"
     with database.economy(scope) as store:
@@ -436,3 +506,113 @@ def _certify_t06(database):
     with database.economy(scope, read_only=True) as store:
         assert evaluate_segregation(store, **refs) == result
         assert evaluate_segregation(store, **{**refs, "snapshot_version": 2}) == outcome
+        blocked_assessment = evaluate_segregation(
+            store, **{**refs, "snapshot_version": 2}, assessment=True,
+        )
+        assert blocked_assessment["estimated_das_cents"] is None
+
+
+
+def _certify_t07_transition(database):
+    from copy import deepcopy
+    from datetime import UTC, datetime
+
+    from kordena_fiscal.application.simples_segregation_service import (
+        TRANSITION_SCHEMA,
+        evaluate_segregation,
+        import_reviewed_segregation,
+    )
+    from kordena_fiscal.domain import (
+        BrazilianJurisdiction,
+        CnaeCode,
+        FiscalAddress,
+        FiscalProfile,
+        StateRegistration,
+        TaxRegimeCode,
+    )
+    from kordena_fiscal.tax.simples_nacional import TRANSITION_PARTITION_DIGEST
+    from kordena_fiscal.tax.simples_segregation import SOURCE, TRANSITION_VERSION
+
+    scope = _scope(tenant="economy-t07")
+    competence = date(2027, 1, 1)
+    profile = FiscalProfile(
+        profile_id="t07-test-issuer", scope=scope, cnpj=Cnpj("12345678000195"),
+        legal_name="Synthetic T07", tax_regime=TaxRegimeCode.SIMPLES_NACIONAL,
+        state_registration=StateRegistration("SP", "123456789"),
+        primary_cnae=CnaeCode("5611-2/01"),
+        address=FiscalAddress(
+            street="Rua Exemplo", number="100", district="Centro",
+            municipality_name="Sao Paulo", jurisdiction=BrazilianJurisdiction("SP", "3550308"),
+            postal_code="01001000",
+        ),
+        effective_from=datetime(2026, 1, 1, tzinfo=UTC),
+    )
+    evidence = {
+        "scope_identity": list(scope.identity_material),
+        "issuer_cnpj": profile.cnpj.value, "profile_id": profile.profile_id,
+        "profile_version": profile.version, "crt": int(profile.tax_regime),
+        "mode": "simples_unified", "effective_from": "2027-01-01T03:00:00+00:00",
+        "source_reference": "synthetic-election", "version": 1,
+        "refund_restriction_clear": True,
+    }
+    content = {
+        "schema_version": TRANSITION_SCHEMA, "review_status": "reviewed",
+        "review_reference": "synthetic-review", "opened_month": "2027-01-01",
+        "uf": "SP", "activity": "commerce", "basis": "accrual",
+        "company_history_reference": "fixture", "activity_reference": "fixture",
+        "optant_reference": "fixture", "domestic_cents": 100000, "export_cents": 0,
+        "months": [{"competence": "2027-01-01", "domestic_cents": 100000,
+                    "export_cents": 0, "payroll_cents": 0, "evidence_reference": "fixture"}],
+        "lines": [{
+            "line_id": "a", "cents": 100000, "activity": "commerce", "market": "domestic",
+            "federal": "ordinary", "local": "ordinary", "evidence_reference": "fixture-doc",
+            "treatment_reference": "fixture-review",
+            "transition_treatments": {
+                "cbs": "ordinary", "ibs": "ordinary", "ipi": "non_incident",
+                "icms": "ordinary", "iss": "non_incident",
+            },
+        }],
+        "ibs_cbs_election": evidence,
+    }
+    policy = {
+        "engine_version": TRANSITION_VERSION, "review_status": "reviewed",
+        "engine_partition_digest": TRANSITION_PARTITION_DIGEST,
+        "review_reference": "synthetic-review",
+        "legal_citations": [{
+            "act": "Synthetic fixture", "provision": "art.22 test", "source_url": SOURCE,
+            "source_sha256": "c" * 64, "published_on": "2026-08-04",
+            "valid_from": "2027-01-01", "valid_until": "2028-01-01",
+            "review_reference": "synthetic-review",
+        }],
+    }
+
+    def verify(issuer, facts):
+        assert issuer == profile.cnpj.value
+        assert facts.competence == competence
+        return profile
+
+    refs = dict(snapshot_id="t07-snapshot", snapshot_version=1, rule_id="t07-rule",
+                rule_version=1, verify_issuer=verify)
+    kwargs = dict(**refs, competence=competence, issuer=profile.cnpj,
+                  content=content, rule_content=policy)
+    with database.economy(scope) as store:
+        result = import_reviewed_segregation(store, **kwargs)
+        assert result["status"] == "classified"
+        assert result == import_reviewed_segregation(store, **kwargs)
+        forged = deepcopy(content)
+        forged["ibs_cbs_election"]["scope_identity"][0] = "foreign"
+        with pytest.raises(FiscalValidationError, match="scope/profile mismatch"):
+            import_reviewed_segregation(store, **{
+                **kwargs, "snapshot_id": "forged", "content": forged,
+            })
+        assert store.snapshot("forged", 1) is None
+    with database.economy(scope, read_only=True) as store:
+        assessment = evaluate_segregation(store, **refs, assessment=True)
+        assert assessment["status"] == "estimated"
+        assert assessment["estimated_das_cents"] == 4000
+        assert assessment["rtc_projection"]["issuance_authorized"] is False
+        assert assessment["tax_cents"]["cbs"] == 613
+        assert assessment["tax_cents"]["ibs"] == 7
+    with database.economy(_scope(tenant="economy-t07-other"), read_only=True) as store:
+        with pytest.raises(FiscalValidationError, match="unavailable"):
+            evaluate_segregation(store, **refs, assessment=True)
