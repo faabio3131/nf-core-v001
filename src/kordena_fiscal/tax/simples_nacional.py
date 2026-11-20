@@ -456,3 +456,35 @@ def partition_effective_rate(
         local_tax = "icms" if annex in {Annex.ANNEX_I, Annex.ANNEX_II} else "iss"
         result[local_tax] = _local_rate(annex, _rate(annex, rbt, 4), 4)
     return result
+
+
+def assessment_partition(
+    facts: SimplesFacts, annex: Annex, *, export: bool, outside_local: bool,
+) -> tuple[dict[str, Fraction], Fraction, Fraction]:
+    """Art. 24: exact proportional excess allocation by market and tax."""
+    history = facts.months[:-1][-12:] or facts.months[-1:]
+    def revenue(month: MonthFacts) -> int:
+        return month.export_cents if export else month.domestic_cents
+    rbt = Fraction(sum(map(revenue, history)) * 12, len(history))
+    annual = sum(revenue(m) for m in facts.months if m.competence.year == 2026)
+    current = revenue(facts.months[-1])
+    federal_fraction = _excess_fraction(
+        annual, current, _annual_limit(facts.opened_month, 2026, LIMIT),
+    )
+    local_fraction = _excess_fraction(
+        annual, current, _annual_limit(facts.opened_month, 2026, SUBLIMIT),
+    )
+    normal = partition_effective_rate(annex, rbt, outside_local=outside_local)
+    federal_cap = partition_effective_rate(annex, Fraction(LIMIT), outside_local=True)
+    local_cap = partition_effective_rate(annex, Fraction(SUBLIMIT))
+    for tax in TAXES:
+        if tax in {"icms", "iss"}:
+            if not outside_local:
+                normal[tax] = normal[tax] * (1 - local_fraction) + (
+                    local_cap[tax] * local_fraction
+                )
+        else:
+            normal[tax] = normal[tax] * (1 - federal_fraction) + (
+                federal_cap[tax] * federal_fraction
+            )
+    return normal, federal_fraction, local_fraction

@@ -21,8 +21,8 @@ from kordena_fiscal.tax.simples_nacional import (
     LimitStatus,
     SimplesFacts,
     _round_cents,
+    assessment_partition,
     calculate_simples,
-    partition_effective_rate,
 )
 
 VERSION = "simples-segregation-2026/v1"
@@ -156,9 +156,9 @@ def classify_revenue(
 
 def assess_segregated(
     facts: SimplesFacts, lines: tuple[RevenueLine, ...], *,
-    domestic_cents: int, export_cents: int,
+    domestic_cents: int, export_cents: int, cash: bool = False,
 ) -> dict[str, object]:
-    """Reviewed accrual assessment, not declaration, payment or tax credit.
+    """Reviewed assessment, not declaration, payment or tax credit.
 
     Reclassify canonical inputs, never accept caller-produced buckets.
     Excess/retroactive periods require an additional reviewed allocation.
@@ -166,7 +166,7 @@ def assess_segregated(
     classified = classify_revenue(
         facts.competence, lines, domestic_cents=domestic_cents, export_cents=export_cents,
     )
-    if (domestic_cents > facts.months[-1].domestic_cents
+    if not cash and (domestic_cents > facts.months[-1].domestic_cents
             or export_cents > facts.months[-1].export_cents):
         raise FiscalValidationError("unit revenue exceeds company totals")
     reasons: list[str] = []
@@ -182,9 +182,13 @@ def assess_segregated(
         result = calculate_simples(replace(facts, activity=activity),
                                    ordinary_domestic_base_cents=0)
         rates[activity] = result
-        if (result.limit_status is not LimitStatus.WITHIN
-                or result.sublimit_status is not LimitStatus.WITHIN):
-            reasons.append("annual_limit_allocation_requires_review")
+        if result.limit_status in {LimitStatus.OUTSIDE, LimitStatus.RETROACTIVE}:
+            reasons.append("simples_excluded_or_retroactive")
+        if result.sublimit_status is LimitStatus.RETROACTIVE:
+            reasons.append("local_tax_retroactive_review")
+        if cash and (result.limit_status is not LimitStatus.WITHIN
+                     or result.sublimit_status is not LimitStatus.WITHIN):
+            reasons.append("cash_excess_requires_separate_local_reconciliation")
     if not reasons:
         groups: dict[tuple[Activity, Market, FederalTreatment, LocalTreatment], int] = {}
         for line in lines:
@@ -192,14 +196,10 @@ def assess_segregated(
             groups[key] = groups.get(key, 0) + line.cents
         for (activity, market, federal, local), cents in sorted(groups.items()):
             result = rates[activity]
-            # Exact rolling revenue: do not round the annualization Decimal.
-            history = facts.months[:-1][-12:] or facts.months[-1:]
-            revenue = sum(
-                m.domestic_cents if market is Market.DOMESTIC else m.export_cents
-                for m in history
+            ordinary, federal_excess, local_excess = assessment_partition(
+                facts, result.annex, export=market is Market.EXPORT,
+                outside_local=result.sublimit_status is LimitStatus.OUTSIDE,
             )
-            rbt = Fraction(revenue * 12, len(history))
-            ordinary = partition_effective_rate(result.annex, rbt)
             excluded: set[str] = set()
             if market is Market.EXPORT:
                 excluded.update(("pis", "cofins", "ipi", "icms", "iss"))
@@ -222,6 +222,9 @@ def assess_segregated(
                 "amount_fractions_cents": {tax: str(value) for tax, value in amounts.items()},
                 "base_calculation_digest": result.calculation_digest,
                 "cpp_outside_das": result.cpp_outside_das,
+                "federal_excess_fraction": str(federal_excess),
+                "local_excess_fraction": str(local_excess),
+                "local_outside_das": result.sublimit_status is LimitStatus.OUTSIDE,
             })
     by_tax = {tax: _round_cents(value) for tax, value in totals.items()}
     ordinary_by_tax = {tax: _round_cents(value) for tax, value in baseline.items()}
@@ -236,6 +239,7 @@ def assess_segregated(
         "excluded_comparison_cents": None if reasons else (
             sum(ordinary_by_tax.values()) - sum(by_tax.values())
         ),
+        "basis": "cash" if cash else "accrual",
         "advisory_only": True, "rounding": "half_up_per_tax_after_aggregation",
     }
     return {**payload, "digest": hashlib.sha256(json.dumps(
