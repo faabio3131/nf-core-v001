@@ -16,6 +16,7 @@ from kordena_fiscal.application.federal_regime_store import (
 from kordena_fiscal.archive import FiscalArchiveEntry, FiscalArchiveKind, RetentionPolicyMetadata
 from kordena_fiscal.contingency import FiscalOutboxService
 from kordena_fiscal.domain import (
+    Cnpj,
     ElectronicInvoiceModel,
     ExecutionScope,
     FiscalAccountBinding,
@@ -453,7 +454,7 @@ def test_postgres_federal_regime_concurrent_commands_preserve_unique_timeline(
         try:
             declare_federal_regime(
                 database.unit_of_work, scope=scope, crt=TaxRegimeCode.NORMAL,
-                federal_income_tax_regime=FederalIncomeTaxRegime.LUCRO_PRESUMIDO,
+                issuer_cnpj=Cnpj("12345678000195"), federal_income_tax_regime=FederalIncomeTaxRegime.LUCRO_PRESUMIDO,
                 effective_from=start, source_reference="synthetic evidence",
                 actor="acct-1", idempotency_key=f"regime-race-{index}", occurred_at=NOW,
             )

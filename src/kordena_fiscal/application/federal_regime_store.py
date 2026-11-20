@@ -24,7 +24,7 @@ from kordena_fiscal.archive import (
     FiscalArchiveKind,
     RetentionPolicyMetadata,
 )
-from kordena_fiscal.domain import ExecutionScope, FiscalValidationError, TaxRegimeCode
+from kordena_fiscal.domain import Cnpj, ExecutionScope, FiscalValidationError, TaxRegimeCode
 from kordena_fiscal.tax.regimes import (
     FederalIncomeTaxRegime,
     FederalRegimeDeclaration,
@@ -66,17 +66,20 @@ def _decode_declarations(
     for receipt in receipts:
         try:
             rows.append((
-                _aware(datetime.fromisoformat(str(receipt["effective_from"])), "stored effective_from"),
+                _aware(
+                    datetime.fromisoformat(str(receipt["effective_from"])), "stored effective_from",
+                ),
                 int(str(receipt["version"])),
                 TaxRegimeCode(int(str(receipt["crt"]))),
                 FederalIncomeTaxRegime(str(receipt["federal_income_tax_regime"])),
                 str(receipt["source_reference"]),
+                Cnpj(str(receipt["issuer_cnpj"])),
             ))
         except (KeyError, TypeError, ValueError):
             raise FiscalValidationError("Stored federal regime declaration is invalid") from None
     rows.sort(key=lambda row: (row[0], row[1]))
     declarations: list[FederalRegimeDeclaration] = []
-    for effective_from, version, crt, regime, source in rows:
+    for effective_from, version, crt, regime, source, issuer_cnpj in rows:
         if version != len(declarations) + 1:
             raise FiscalValidationError("Stored federal regime versions are not sequential")
         if declarations:
@@ -87,6 +90,7 @@ def _decode_declarations(
         declarations.append(FederalRegimeDeclaration(
             scope=scope, crt=crt, federal_income_tax_regime=regime,
             effective_from=effective_from, source_reference=source, version=version,
+            issuer_cnpj=issuer_cnpj,
         ))
     return tuple(declarations)
 
@@ -96,6 +100,7 @@ def declare_federal_regime(
     *,
     scope: ExecutionScope,
     crt: TaxRegimeCode,
+    issuer_cnpj: Cnpj,
     federal_income_tax_regime: FederalIncomeTaxRegime,
     effective_from: datetime,
     source_reference: str,
@@ -112,13 +117,17 @@ def declare_federal_regime(
     if not key or len(key) > 256:
         raise FiscalValidationError("idempotency key required")
     _require_portal_scope(scope)
+    if not isinstance(issuer_cnpj, Cnpj):
+        raise FiscalValidationError("issuer CNPJ is required")
     # Domain consistency (CRT x regime, dates, source) before any write.
     candidate = FederalRegimeDeclaration(
         scope=scope, crt=crt, federal_income_tax_regime=federal_income_tax_regime,
         effective_from=effective_from, source_reference=source_reference,
+        issuer_cnpj=issuer_cnpj,
     )
     command = {
         "crt": int(crt),
+        "issuer_cnpj": issuer_cnpj.value,
         "federal_income_tax_regime": federal_income_tax_regime.value,
         "effective_from": effective_from.isoformat(),
         "source_reference": candidate.source_reference,

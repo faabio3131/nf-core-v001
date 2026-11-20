@@ -59,7 +59,8 @@ def db(tmp_path):
 
 def _declare(db, regime, start, *, key="k1", crt=TaxRegimeCode.NORMAL, source="ECF 2026"):
     return declare_federal_regime(
-        db, scope=SCOPE, crt=crt, federal_income_tax_regime=regime,
+        db, scope=SCOPE, crt=crt, issuer_cnpj=_profile(crt).cnpj,
+        federal_income_tax_regime=regime,
         effective_from=start, source_reference=source, actor="acct-1",
         idempotency_key=key, occurred_at=NOW,
     )
@@ -130,7 +131,7 @@ def test_declaration_store_denies_cross_host_scope(db) -> None:
         load_federal_regime_declarations(db, other)
     with pytest.raises(FiscalValidationError, match="canonical portal scope"):
         declare_federal_regime(
-            db, scope=other, crt=TaxRegimeCode.NORMAL,
+            db, scope=other, crt=TaxRegimeCode.NORMAL, issuer_cnpj=_profile().cnpj,
             federal_income_tax_regime=FederalIncomeTaxRegime.LUCRO_REAL,
             effective_from=JUL, source_reference="Other host", actor="acct-1",
             idempotency_key="foreign", occurred_at=NOW,
@@ -156,3 +157,13 @@ def test_distinct_commands_cannot_commit_same_effective_date(db) -> None:
         assert uow.commercial.configuration_version(SCOPE, "federal_regime", "issuer") == 1
     result = _declare(db, FederalIncomeTaxRegime.LUCRO_REAL, JUL, key="after-race")
     assert result["version"] == 2
+
+
+def test_previous_issuer_regime_is_not_inherited_by_new_cnpj(db) -> None:
+    _declare(db, FederalIncomeTaxRegime.LUCRO_PRESUMIDO, JAN)
+    stored = load_federal_regime_declarations(db, SCOPE)
+    assert stored[0].issuer_cnpj == _profile().cnpj
+    replacement = replace(_profile(), cnpj=Cnpj("12345678000195"))
+    assert federal_regime_status(db, SCOPE, replacement, NOW) == {
+        "federal_regime_status": "declaration_inconsistent_with_profile",
+    }
