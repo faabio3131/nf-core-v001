@@ -323,3 +323,11 @@ test("Cajamar read-only investigation exposes evidence without claiming cancella
   assert.match(form, /reply\.official_fiscal_confirmation === true/);
   assert.doesNotMatch(form, /innerHTML|insertAdjacentHTML/);
 });
+
+test("portal never prints raw JSON objects and uses PT-BR choices for fixed technical values", () => {
+  assert.match(script, /if \(typeof record\.display_name === "string" && record\.display_name\) return record\.display_name;/);
+  assert.match(script, /choice:certificate=Certificado digital A1\|csc=CSC da NFC-e\|credentials=Credenciais do provedor/);
+  assert.doesNotMatch(script, /Tipo: certificate, csc ou credentials/);
+  assert.doesNotMatch(script, /"issued_at", "Data e hora da venda com fuso", new Date\(\)\.toISOString\(\)/);
+  assert.match(script, /localIsoWithOffset\(new Date\(\)\)/);
+});
