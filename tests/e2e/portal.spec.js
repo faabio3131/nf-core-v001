@@ -367,6 +367,29 @@ test("mobile overview keeps premium header compact", async ({ page, context }) =
   expect(geometry.sidebarHeight).toBeLessThanOrEqual(150);
   expect(geometry.topbarHeight).toBeLessThanOrEqual(125);
   expect(geometry.bannerTop).toBeLessThanOrEqual(305);
+
+  // MFA added a fourth header element. All session actions must remain present
+  // and usable; compactness must not be achieved by clipping or hiding them.
+  for (const id of ["theme-toggle", "security-action", "logout-action"]) {
+    const action = page.locator("#" + id);
+    await expect(action).toBeVisible();
+    await expect(action).toBeEnabled();
+    const bounds = await action.boundingBox();
+    expect(bounds.height).toBeGreaterThanOrEqual(44);
+    expect(bounds.x).toBeGreaterThanOrEqual(0);
+    expect(bounds.x + bounds.width).toBeLessThanOrEqual(391);
+  }
+  await page.setViewportSize({ width: 320, height: 844 });
+  await expect(page.locator("#authority-context")).toHaveText("nfcore-staging-e2e · owner");
+  for (const id of ["authority-context", "theme-toggle", "security-action", "logout-action"]) {
+    const element = page.locator("#" + id);
+    await expect(element).toBeVisible();
+    const bounds = await element.boundingBox();
+    expect(bounds.x).toBeGreaterThanOrEqual(0);
+    expect(bounds.x + bounds.width).toBeLessThanOrEqual(321);
+  }
+  expect(await page.evaluate(() => document.documentElement.scrollWidth))
+    .toBeLessThanOrEqual(320);
 });
 
 for (const [view, label, operation, fields] of [
