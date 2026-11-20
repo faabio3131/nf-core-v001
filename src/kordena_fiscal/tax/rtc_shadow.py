@@ -129,7 +129,7 @@ def _run_regime_regular(
 
 
 def run_nfe_rtc_shadow(
-    client: RfbSimplesCalculatorClient, document: Any, *, model: str,
+    client: RfbSimplesCalculatorClient | None, document: Any, *, model: str,
     occurred_at: datetime,
     regime_regular_client: RfbRegimeRegularCalculatorClient | None = None,
 ) -> dict[str, object]:
@@ -150,6 +150,8 @@ def run_nfe_rtc_shadow(
             )
         if crt not in {"1", "2"}:
             return {**record, "status": "skipped_outside_official_simples_scope", "crt": crt}
+        if client is None:
+            return {**record, "status": "skipped_simples_calculator_not_configured"}
         request = build_request(
             operation_id=str(record["document_id"] or "shadow"),
             date=document.issued_at.date().isoformat(), document_type=model, crt=crt,

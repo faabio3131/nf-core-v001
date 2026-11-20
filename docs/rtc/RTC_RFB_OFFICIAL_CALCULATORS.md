@@ -53,9 +53,9 @@ A cópia do repositório do Regime Regular veio do ZIP enviado pelo Fábio em 20
 
 ## Pendências
 
-1. **Ligar a sombra depois da emissão.** A preparação da NF-e roda dentro de uma transação, então o executor deve rodar depois do commit, sobre o pedido arquivado. Isso exige o decodificador do payload canônico.
+1. ~~Ligar a sombra depois da emissão~~ **Feito:** `prepare_nfe_sale` chama `record_rtc_shadow` depois do commit, ativado por `NFCORE_RTC_SIMPLES_URL` e `NFCORE_RTC_REGIME_REGULAR_URL` (o overlay do compose já define as duas). O registro fica arquivado junto da nota, e qualquer falha é engolida.
 2. **Migrar o Simples para `/nao-assistido`**, para conferir também a NFS-e.
-3. **Cadastrar o `cAtivSN` (atividade do Simples) no produto.** Sem ele, o Simples responde `NAO_CALCULADO`.
+3. ~~cAtivSN~~ **Feito:** `simples_activity_code` na regra fiscal (códigos oficiais 01–14 e 90), enviado à calculadora como `cAtivSN`.
 4. **Usar as colunas da tabela CLASSIFICACAO_TRIBUTARIA.** Os indicadores de grupo (gMono*, gCredPresOper, gEstornoCred etc.) estão no banco V0073 e destravam os demais CST no XML da NF-e.
 5. **Subir no Contabo.** O primeiro passo é medir memória e CPU; a estimativa é de cerca de 768m por serviço Java.
 6. **Sentinela Normativa:** observar os releases e trocar o pin só depois dos testes e da aprovação humana.

@@ -7,7 +7,14 @@ from datetime import UTC, datetime
 from decimal import Decimal
 
 import pytest
-from test_bling_canonical import map_bling_document, mapping, order, sale_document  # noqa: F401
+from test_bling_canonical import (  # noqa: F401
+    map_bling_document,
+    mapping,
+    order,
+    preparation_database,
+    sale_document,
+    signing_material,
+)
 
 from kordena_fiscal.tax.rfb_simples_calculator import (
     SIMPLES_CALCULATOR_PIN,
@@ -147,3 +154,48 @@ def test_rule_cativsn_is_sent_to_the_simples_calculator(mapping) -> None:  # noq
     if record["status"] == "skipped_outside_official_simples_scope":
         pytest.skip("fixture issuer is not Simples Nacional")
     assert json.loads(calls[1][2])["itens"][0]["cAtivSN"] == "01"
+
+
+def test_preparation_archives_the_shadow_after_commit_and_never_breaks_it(
+    mapping, signing_material, preparation_database, monkeypatch,  # noqa: F811
+) -> None:
+    from kordena_fiscal.application import rtc_shadow_recorder
+    from kordena_fiscal.application.nfe_preparation import prepare_nfe_sale
+    from kordena_fiscal.issuance.nfe_builder import NfeSaleOptions
+    from kordena_fiscal.tax.rtc_shadow import SHADOW_MEDIA_TYPE
+
+    document = _rtc_document(mapping)
+    ours = nfe_rtc_lines(document)[0]
+    official = [{"nObj": 1, "estadoItem": "CALCULADO", "tribCalc": {
+        "vBC": str(ours["base"]), "vIBSSN": str(ours["vIBS"]), "vCBSSN": str(ours["vCBS"])}}]
+    calls: list = []
+    monkeypatch.setattr(rtc_shadow_recorder, "shadow_clients_from_env",
+                        lambda: (_client(official, calls), None))
+    result = prepare_nfe_sale(
+        preparation_database, document, options=NfeSaleOptions("VENDA", 1, 9), series=1,
+        certificate=signing_material, now=datetime.now(UTC),
+    )
+    with preparation_database() as uow:
+        entries = uow.archive.list_for_document(document.scope, result)
+    shadows = [entry for entry in entries if entry.media_type == SHADOW_MEDIA_TYPE]
+    assert len(shadows) == 1
+    record = json.loads(shadows[0].content)
+    assert record["authoritative"] is False
+    assert record["status"] in {"compared", "skipped_outside_official_simples_scope"}
+
+
+def test_shadow_recorder_swallows_archive_failures(mapping) -> None:  # noqa: F811
+    from kordena_fiscal.application.rtc_shadow_recorder import record_rtc_shadow
+
+    def broken_factory():
+        raise RuntimeError("database down")
+
+    document = _rtc_document(mapping)
+    assert record_rtc_shadow(
+        broken_factory, document, model="55", occurred_at=AT,
+        simples=_client([], []), regime_regular=None,
+    ) is None
+    assert record_rtc_shadow(
+        broken_factory, document, model="55", occurred_at=AT,
+        simples=None, regime_regular=None,
+    ) is None
