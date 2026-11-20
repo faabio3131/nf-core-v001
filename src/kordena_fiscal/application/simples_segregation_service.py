@@ -417,7 +417,10 @@ def _evaluate(
                 plans, rtc_simples, rtc_regular,
             )}
         if validate_import_reference:
-            if result.get("pgdas_comparison", {}).get("status") not in {"match", "divergent"}:
+            comparison = result.get("pgdas_comparison")
+            if not isinstance(comparison, dict) or comparison.get("status") not in {
+                "match", "divergent",
+            }:
                 raise FiscalValidationError("PGDAS comparison requires an estimated assessment")
             result = classification_result
         return {
