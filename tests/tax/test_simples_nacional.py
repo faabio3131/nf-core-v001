@@ -123,8 +123,10 @@ def test_first_month_annualized_and_prorated_limits():
 def test_startup_sublimit_strict_20_percent(revenue, status):
     result = calculate_simples(startup(revenue), ordinary_domestic_base_cents=revenue)
     assert result.sublimit_status is status
-    if status is not LimitStatus.WITHIN:
+    if status is LimitStatus.RETROACTIVE:
         assert result.ordinary_domestic_estimate_cents is None
+    else:
+        assert result.ordinary_domestic_estimate_cents is not None
 
 
 def test_startup_month_two_annualizes_previous_month_not_current():
@@ -224,7 +226,7 @@ def test_current_year_sublimit_effect(before, month, status):
 @pytest.mark.parametrize("activity,expected", [
     (Activity.SERVICE_III, Decimal("0.05")),
     (Activity.SERVICE_IV, Decimal("0.05")),
-    (Activity.SERVICE_FACTOR_R, Decimal("0.05")),
+    (Activity.SERVICE_FACTOR_R, Decimal("0.04999625")),
 ])
 def test_iss_cap_and_federal_redistribution(activity, expected):
     result = calculate_simples(
@@ -261,3 +263,57 @@ def test_one_cent_transitions(activity, annex, ceiling):
     b = calculate_simples(established(activity, ceiling + 1), ordinary_domestic_base_cents=100)
     assert a.annex is b.annex is annex
     assert b.domestic.bracket == a.domestic.bracket + 1
+
+
+def test_art24_sublimit_crossing_proportional_ordinary_base():
+    # RBT12=1.8M in February: previous 2025 Feb-Dec zero, Jan 2026 1.8M.
+    # Current revenue 2M, with 0.2M above 3.6M; 90% at ordinary rate,
+    # 10% at the fifth-band ICMS cap; federal part remains unchanged.
+    facts = established(rolling=0)
+    january = replace(facts.months[-1], domestic_cents=180_000_000)
+    february = MonthFacts(date(2026, 2, 1), 200_000_000, 0, 0, "fixture")
+    result = calculate_simples(
+        replace(facts, competence=february.competence,
+                months=(*facts.months[:-1], january, february)),
+        ordinary_domestic_base_cents=200_000_000,
+    )
+    assert result.domestic_sublimit_excess_fraction == Decimal("0.1")
+    assert result.domestic_limit_excess_fraction == 0
+    assert result.sublimit_status is LimitStatus.NEXT_YEAR
+    assert result.ordinary_domestic_local_rate == Decimal("0.032469875")
+    assert result.ordinary_domestic_federal_rate == Decimal("0.0628425")
+    assert result.ordinary_domestic_estimate_cents == 19_062_475
+
+
+def test_art24_federal_excess_and_next_month_effect():
+    facts = established(rolling=0)
+    january = replace(facts.months[-1], domestic_cents=450_000_000)
+    february = MonthFacts(date(2026, 2, 1), 60_000_000, 0, 0, "fixture")
+    result = calculate_simples(
+        replace(facts, competence=february.competence,
+                months=(*facts.months[:-1], january, february)),
+        ordinary_domestic_base_cents=60_000_000,
+    )
+    assert result.sublimit_status is LimitStatus.OUTSIDE
+    assert result.limit_status is LimitStatus.NEXT_YEAR
+    assert result.domestic_limit_excess_fraction == Decimal("0.5")
+    assert result.ordinary_domestic_federal_rate == Decimal("0.108625")
+    assert result.ordinary_domestic_local_rate == Decimal(0)
+    assert result.ordinary_domestic_estimate_cents == 6_517_500
+
+
+def test_rolling_above_limit_does_not_itself_exclude_simples():
+    # Prior year under the legal ceiling; rolling 12 exceeds it because of
+    # current-year revenue. No retroactive or prior-year exclusion.
+    facts = established(rolling=450_000_000)
+    january = replace(facts.months[-1], domestic_cents=100_000_000)
+    february = MonthFacts(date(2026, 2, 1), 100, 0, 0, "fixture")
+    result = calculate_simples(
+        replace(facts, competence=february.competence,
+                months=(*facts.months[:-1], january, february)),
+        ordinary_domestic_base_cents=100,
+    )
+    assert result.domestic.rbt12_cents > 480_000_000
+    assert result.domestic.bracket == 6
+    assert result.limit_status is LimitStatus.WITHIN
+    assert result.ordinary_domestic_estimate_cents is not None

@@ -192,6 +192,10 @@ class SimplesResult:
     limit_cents: int
     sublimit_status: LimitStatus
     limit_status: LimitStatus
+    domestic_sublimit_excess_fraction: Decimal
+    domestic_limit_excess_fraction: Decimal
+    ordinary_domestic_federal_rate: Decimal | None
+    ordinary_domestic_local_rate: Decimal | None
     ordinary_domestic_rate: Decimal | None
     ordinary_domestic_estimate_cents: int | None
     cpp_outside_das: bool
@@ -275,14 +279,24 @@ def _market_rate(
     ), federal, local
 
 
+def _excess_fraction(year_total: int, month_revenue: int, cap: int) -> Fraction:
+    """Art. 24: fraction of current monthly revenue above the annual ceiling."""
+    if month_revenue == 0:
+        return Fraction(0)
+    excess = min(month_revenue, max(0, year_total - cap))
+    return Fraction(excess, month_revenue)
+
+
 def calculate_simples(facts: SimplesFacts, *, ordinary_domestic_base_cents: int) -> SimplesResult:
     """Return base-rate diagnostic, not a PGDAS declaration.
 
     Ordinary base is a documented unit/activity domestic accrual base, without
     ST, monophase, withholding, export relief or fixed tax treatment. T06/T07
-    own special segregation and final assessment. Art.24 excess splitting is
-    explicitly blocked for the amount diagnostic rather than producing an
-    incorrect single-rate amount; boundary status and base rates remain visible.
+    own special segregation and final assessment. Art.24 excess splitting
+    yields an ordinary-base diagnostic only, never a definitive DAS. Local
+    taxes outside Simples and Annex IV CPP are not part of that amount.
+    MonthFacts payroll is the documented qualifying FS aggregate (art.26),
+    not all employer costs or an inferred payroll.
     """
     if not isinstance(facts, SimplesFacts):
         raise FiscalValidationError("SimplesFacts required")
@@ -326,18 +340,24 @@ def calculate_simples(facts: SimplesFacts, *, ordinary_domestic_base_cents: int)
         annex, domestic_rbt, drba, drbaa, substatus in outside,
     )
     exported, _, _ = _market_rate(annex, export_rbt, erba, erbaa, substatus in outside)
+    # Art. 24 §§2–7: distribute the excess proportionally to this ordinary
+    # revenue base. The federal ceiling is evaluated at the sixth-band limit;
+    # the ICMS/ISS ceiling at the fifth-band limit, respecting the ISS cap.
+    sub_fraction = _excess_fraction(drba, current.domestic_cents, sub)
+    limit_fraction = _excess_fraction(drba, current.domestic_cents, cap)
+    federal_at_limit = _rate(annex, Fraction(LIMIT), 5)
+    local_at_sublimit = _local_rate(annex, _rate(annex, Fraction(SUBLIMIT), 4), 4)
+    assessed_federal = federal * (1 - limit_fraction) + federal_at_limit * limit_fraction
+    assessed_local = (
+        Fraction(0) if substatus in outside
+        else local * (1 - sub_fraction) + local_at_sublimit * sub_fraction
+    )
     reasons: list[str] = []
     if limstatus in outside:
         reasons.append("simples_excluded_or_retroactive")
-    elif limstatus is not LimitStatus.WITHIN:
-        reasons.append("art24_limit_excess_requires_segregated_assessment")
-    if substatus in {LimitStatus.NEXT_MONTH, LimitStatus.NEXT_YEAR}:
-        reasons.append("art24_sublimit_excess_requires_segregated_assessment")
     if substatus is LimitStatus.RETROACTIVE:
         reasons.append("local_tax_retroactive_review")
-    if domestic_rbt > LIMIT:
-        reasons.append("rolling_revenue_above_last_band_requires_review")
-    amount_rate = None if reasons else federal + local
+    amount_rate = None if reasons else assessed_federal + assessed_local
     amount = None if amount_rate is None else _round_cents(base * amount_rate)
     fingerprint = hashlib.sha256(json.dumps({
         "rule": RULE_DIGEST, "period": facts.competence.isoformat(),
@@ -351,6 +371,9 @@ def calculate_simples(facts: SimplesFacts, *, ordinary_domestic_base_cents: int)
     return SimplesResult(
         RULE_VERSION, RULE_DIGEST, annex, _decimal(factor) if factor is not None else None,
         fs, fr, domestic, exported, sub, cap, substatus, limstatus,
+        _decimal(sub_fraction), _decimal(limit_fraction),
+        _decimal(assessed_federal) if amount_rate is not None else None,
+        _decimal(assessed_local) if amount_rate is not None else None,
         _decimal(amount_rate) if amount_rate is not None else None, amount,
         annex is Annex.IV, tuple(reasons), fingerprint,
     )
