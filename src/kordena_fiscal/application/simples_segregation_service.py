@@ -6,7 +6,11 @@ from datetime import date, datetime, time, timedelta
 from typing import Any
 from zoneinfo import ZoneInfo
 
-from kordena_fiscal.application.simples_rtc_bridge import project_rtc_rates
+from kordena_fiscal.application.simples_rtc_bridge import (
+    execute_nfse_comparisons,
+    plan_nfse_comparisons,
+    project_rtc_rates,
+)
 from kordena_fiscal.cognitive.economy_contract import LegalCitation
 from kordena_fiscal.domain import Cnpj, FiscalProfile, FiscalValidationError, TaxRegimeCode
 from kordena_fiscal.persistence.economy_store import EconomyStore, _digest
@@ -19,6 +23,8 @@ from kordena_fiscal.tax.regimes import (
     SimplesRenunciationReceipt2027H2,
     resolve_simples_ibs_cbs_mode,
 )
+from kordena_fiscal.tax.rfb_regime_regular_calculator import RfbRegimeRegularCalculatorClient
+from kordena_fiscal.tax.rfb_simples_calculator import RfbSimplesCalculatorClient
 from kordena_fiscal.tax.simples_cash import reconcile_cash_detail, verify_cash_continuity
 from kordena_fiscal.tax.simples_comparison import compare_assessment
 from kordena_fiscal.tax.simples_nacional import (
@@ -224,6 +230,8 @@ def evaluate_segregation(
     store: EconomyStore, *, snapshot_id: str, snapshot_version: int,
     rule_id: str, rule_version: int, verify_issuer: IssuerVerifier,
     assessment: bool = False,
+    rtc_simples: RfbSimplesCalculatorClient | None = None,
+    rtc_regular: RfbRegimeRegularCalculatorClient | None = None,
 ) -> dict[str, Any]:
     snapshot = store.record("fm_economy_snapshots", snapshot_id, snapshot_version)
     rule = store.record("fm_economy_benefits", rule_id, rule_version)
@@ -232,7 +240,7 @@ def evaluate_segregation(
     _verify_cash_history(store, snapshot)
     return _evaluate(
         snapshot, rule, verify_issuer=verify_issuer, assessment=assessment,
-        scope_identity=store.scope_identity,
+        scope_identity=store.scope_identity, rtc_simples=rtc_simples, rtc_regular=rtc_regular,
     )
 
 
@@ -240,6 +248,8 @@ def _evaluate(
     snapshot: dict[str, Any], rule: dict[str, Any], *,
     verify_issuer: IssuerVerifier, scope_identity: tuple[str, ...],
     assessment: bool = False,
+    rtc_simples: RfbSimplesCalculatorClient | None = None,
+    rtc_regular: RfbRegimeRegularCalculatorClient | None = None,
 ) -> dict[str, Any]:
     try:
         content = snapshot["content"]
@@ -348,6 +358,13 @@ def _evaluate(
                 (local.get("status") == "outside_das") != (int(profile.tax_regime) == 2)
             ):
                 raise FiscalValidationError("reviewed sublimite conflicts with canonical CRT")
+        plans = ()
+        if "rtc_nfse_operations" in content:
+            if not transition or mode is None:
+                raise FiscalValidationError("RTC NFS-e comparison requires reviewed 2027 mode")
+            if result.get("status") not in {"classified", "estimated"}:
+                raise FiscalValidationError("RTC comparison requires valid classification")
+            plans = plan_nfse_comparisons(facts, lines, mode, content["rtc_nfse_operations"])
         if assessment and transition and result.get("status") == "estimated":
             if mode is None:
                 raise FiscalValidationError("reviewed IBS/CBS mode required")
@@ -372,6 +389,10 @@ def _evaluate(
                 result, content["pgdas_reference"],
                 segregation_digest=str(result["segregation_digest"]),
                 competence=competence.isoformat(),
+            )}
+        if assessment and transition and result.get("status") == "estimated":
+            result = {**result, "rtc_nfse_comparison": execute_nfse_comparisons(
+                plans, rtc_simples, rtc_regular,
             )}
         return {
             **result, "snapshot_id": snapshot["record_id"], "snapshot_version": snapshot["version"],

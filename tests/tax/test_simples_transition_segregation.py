@@ -104,3 +104,54 @@ def test_rtc_projection_reuses_same_rates_and_is_never_issuance() -> None:
     separate = project_rtc_rates(company(), (line(),), SimplesIbsCbsMode.REGULAR_SEPARATE)
     assert separate["regular_calculator_required"] is True
     assert "domestic" not in separate
+
+
+def test_nfse_comparison_calls_pinned_calculator_with_projected_rates() -> None:
+    import json
+    from dataclasses import replace
+    from decimal import Decimal
+    from pathlib import Path
+
+    from kordena_fiscal.application.simples_rtc_bridge import (
+        execute_nfse_comparisons,
+        plan_nfse_comparisons,
+    )
+    from kordena_fiscal.tax.rfb_simples_calculator import RfbSimplesCalculatorClient
+
+    item = replace(
+        line(), activity=Activity.SERVICE_III,
+        transition_treatments=("ordinary", "ordinary", "non_incident",
+                               "non_incident", "ordinary"),
+    )
+    raw = {
+        "line_id": item.line_id, "document_reference": item.evidence_reference,
+        "review_reference": "fixture-review", "occurred_at": "2027-01-10T10:00:00-03:00",
+        "simples_base_cents": item.cents, "activity_code": "08",
+        "c_class_trib": "000001", "nbs": "114051100",
+        "iss_taxation": "1", "iss_withheld": False,
+    }
+    plan = plan_nfse_comparisons(company(), (item,), UNIFIED, [raw])
+    assert len(plan) == 1
+    calls = []
+    fixture_dir = Path(__file__).parent / "fixtures" / "rfb"
+
+    def transport(method, url, body, timeout):
+        calls.append((method, url, body))
+        filename = "sn_versao.json" if method == "GET" else "sn_nfse_calc.json"
+        return (fixture_dir / filename).read_bytes(), {}
+
+    client = RfbSimplesCalculatorClient(base_url="http://rtc-simples:8082/api",
+                                        transport=transport)
+    output = execute_nfse_comparisons(plan, client, None)
+    sent = json.loads(calls[-1][2])
+    assert sent["tpDoc"] == "91"
+    assert Decimal(sent["aliquotasEfetivas"]["anexoIII"]["pCBSSN"]) == Decimal("0.9258")
+    # Recorded response has a different base/rate, so must diverge.
+    assert output["status"] == "review_required"
+    assert output["operations"][0]["status"] == "divergent"
+    assert output["official_pgdas_certification"] is False
+    assert execute_nfse_comparisons(plan, None, None)["status"] == "review_required"
+    with pytest.raises(FiscalValidationError, match="document"):
+        plan_nfse_comparisons(
+            company(), (item,), UNIFIED, [{**raw, "document_reference": "foreign"}],
+        )

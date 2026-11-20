@@ -10,6 +10,7 @@ from zoneinfo import ZoneInfo
 from fastapi import HTTPException
 
 from kordena_fiscal.application.federal_regime_store import load_federal_regime_declarations
+from kordena_fiscal.application.rtc_shadow_recorder import shadow_clients_from_env
 from kordena_fiscal.application.simples_diagnostic_service import evaluate_and_record
 from kordena_fiscal.application.simples_segregation_service import evaluate_segregation
 from kordena_fiscal.domain import (
@@ -64,10 +65,13 @@ def build_diagnostic_runner(
         try:
             with store_factory(scope) as store:
                 if segregation or assessment:
+                    rtc_simples, rtc_regular = shadow_clients_from_env() if assessment else (
+                        None, None,
+                    )
                     return evaluate_segregation(
                         store, snapshot_id=snapshot_id, snapshot_version=snapshot_version,
                         rule_id=rule_id, rule_version=rule_version, verify_issuer=verify,
-                        assessment=assessment,
+                        assessment=assessment, rtc_simples=rtc_simples, rtc_regular=rtc_regular,
                     )
                 return evaluate_and_record(
                     store, snapshot_id=snapshot_id, snapshot_version=snapshot_version,
