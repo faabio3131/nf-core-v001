@@ -14,6 +14,7 @@ from kordena_fiscal.tax.regimes import (
     SimplesIbsCbsElection,
     SimplesIbsCbsMode,
     SimplesRegularOptionReceipt2027H1,
+    SimplesRegularOptionReceipt2027H2,
     resolve_simples_ibs_cbs_mode,
 )
 from kordena_fiscal.tax.simples_cash import reconcile_cash_detail, verify_cash_continuity
@@ -135,9 +136,27 @@ def _reviewed_mode(
             cancelled_at=(datetime.fromisoformat(receipt_data["cancelled_at"])
                           if receipt_data.get("cancelled_at") is not None else None),
         )
+    receipt_h2 = None
+    raw_h2 = evidence.get("regular_option_receipt_2027_h2")
+    if raw_h2 is not None:
+        bound(raw_h2)
+        receipt_h2 = SimplesRegularOptionReceipt2027H2(
+            scope=profile.scope, profile_id=raw_h2["profile_id"],
+            profile_version=raw_h2["profile_version"], crt=TaxRegimeCode(raw_h2["crt"]),
+            confirmed_at=datetime.fromisoformat(raw_h2["confirmed_at"]),
+            protocol_reference=raw_h2["protocol_reference"],
+            submitted_at=(datetime.fromisoformat(raw_h2["submitted_at"])
+                          if raw_h2.get("submitted_at") is not None else None),
+            prior_protocol_reference=raw_h2.get("prior_protocol_reference"),
+            cancelled_at=(datetime.fromisoformat(raw_h2["cancelled_at"])
+                          if raw_h2.get("cancelled_at") is not None else None),
+        )
     if election.mode is SimplesIbsCbsMode.SIMPLES_UNIFIED:
-        if receipt is not None and receipt.cancelled_at is None:
+        active_receipt = receipt if competence.month <= 6 else receipt_h2
+        if active_receipt is not None and active_receipt.cancelled_at is None:
             raise FiscalValidationError("unresolved regular option conflicts with unified mode")
+        if (competence.month >= 7 and receipt is not None and receipt.cancelled_at is None):
+            raise FiscalValidationError("reviewed renunciation of prior regular option required")
         if evidence.get("refund_restriction_clear") is not True:
             raise FiscalValidationError("reviewed CGSN art. 40-E eligibility required")
     start = datetime.combine(competence, time.min, tzinfo=ZoneInfo("America/Sao_Paulo"))
@@ -145,6 +164,7 @@ def _reviewed_mode(
     modes = {
         resolve_simples_ibs_cbs_mode(
             profile, (election,), instant, regular_option_receipt_2027_h1=receipt,
+            regular_option_receipt_2027_h2=receipt_h2,
         ) for instant in (start, end - timedelta(microseconds=1))
     }
     if len(modes) != 1:
