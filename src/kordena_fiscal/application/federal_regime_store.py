@@ -24,7 +24,13 @@ from kordena_fiscal.archive import (
     FiscalArchiveKind,
     RetentionPolicyMetadata,
 )
-from kordena_fiscal.domain import Cnpj, ExecutionScope, FiscalValidationError, TaxRegimeCode
+from kordena_fiscal.domain import (
+    Cnpj,
+    ExecutionScope,
+    FiscalProfile,
+    FiscalValidationError,
+    TaxRegimeCode,
+)
 from kordena_fiscal.tax.regimes import (
     FederalIncomeTaxRegime,
     FederalRegimeDeclaration,
@@ -175,7 +181,7 @@ def declare_federal_regime(
 
 
 def federal_regime_status(
-    factory: Callable[[], Any], scope: ExecutionScope, profile: Any, instant: datetime,
+    factory: Callable[[], Any], scope: ExecutionScope, profile: FiscalProfile, instant: datetime,
 ) -> dict[str, object]:
     """Read model for the Portal; never infers the regime from the CRT."""
     try:
@@ -184,6 +190,20 @@ def federal_regime_status(
         return {"federal_regime_status": "declaration_invalid"}
     if not declarations:
         return {"federal_regime_status": "declaration_not_configured"}
+    if (
+        not isinstance(profile, FiscalProfile)
+        or profile.scope.identity_partition_key != scope.identity_partition_key
+        or not profile.is_effective_at(_aware(instant, "instant"))
+    ):
+        return {"federal_regime_status": "declaration_inconsistent_with_profile"}
+    if declarations[0].effective_from > instant:
+        first = declarations[0]
+        if first.issuer_cnpj != profile.cnpj or first.crt != profile.tax_regime:
+            return {"federal_regime_status": "declaration_inconsistent_with_profile"}
+        return {
+            "federal_regime_status": "declaration_scheduled",
+            "federal_regime_effective_from": first.effective_from.isoformat(),
+        }
     try:
         regime = resolve_federal_regime_timeline(profile, declarations, instant)
     except FiscalValidationError:
