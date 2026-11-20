@@ -3,9 +3,10 @@ from __future__ import annotations
 
 import base64
 import sqlite3
-from contextlib import contextmanager
+from contextlib import contextmanager, nullcontext
 from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
+from uuid import uuid4
 
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
@@ -29,6 +30,10 @@ class _Database:
         self.db = sqlite3.connect(":memory:", check_same_thread=False)
         for statement in IRON_A1_DELEGATION_SCHEMA:
             self.db.execute(statement)
+        self.db.execute("""CREATE TABLE fm_control_plane_audit (
+            event_id TEXT PRIMARY KEY, occurred_at TEXT, actor_id TEXT, action TEXT,
+            target_type TEXT, target_id TEXT, correlation_id TEXT, tenant_id TEXT, unit_id TEXT
+        )""")
         self.db.commit()
         self.cnpj = _CNPJ
 
@@ -58,6 +63,10 @@ class _Vault:
         self.evidence = SimpleNamespace(expires_at=datetime.now(UTC) + timedelta(days=7))
         return self.evidence
 
+    def withdraw(self, *, scope, issuer_cnpj):
+        assert scope.host_namespace == "fm.iron" and issuer_cnpj == _CNPJ
+        self.evidence = None
+
     def inspect(self, *, scope, issuer_cnpj):
         assert scope.host_namespace == "fm.iron"
         assert scope.tenant_id == "tenant-a"
@@ -71,7 +80,7 @@ class _Security:
 
     def authorize(self, *, operation_id, context):
         self.calls.append(operation_id)
-        if operation_id not in {"prepareIronA1Delegation", "readIronA1Status"}:
+        if operation_id not in {"prepareIronA1Delegation", "readIronA1Status", "withdrawIronA1"}:
             raise HttpContractError(
                 403,"WORKLOAD_CAPABILITY_DENIED","not allowed", context.correlation_id,
             )
@@ -107,6 +116,7 @@ def _fixture(*, environment=FiscalEnvironment.HOMOLOGATION, origin=_ORIGIN, vaul
     app.include_router(create_iron_a1_router(
         security=security, database=db, vault=vault if vault_available else None,
         allowed_origin=origin, context_from_request=_context,
+        scope_lock=lambda _key, store: nullcontext(store),
     ))
     @app.exception_handler(HttpContractError)
     async def errors(_request, exc):
@@ -274,3 +284,33 @@ def test_body_size_caps_stream_without_materializing_request_body(monkeypatch):
     )
     assert accepted.status_code == 200
     assert len(vault.calls) == 1
+
+
+def test_withdraw_invalidates_issued_grant_and_replay_cannot_remove_replacement():
+    client, db, vault, security = _fixture()
+    token = _prepare(client).json()["delegation_token"]
+    payload = {"issuer_cnpj": _CNPJ, "actor_user_id": "user-owner-1", "request_id": str(uuid4())}
+    path = "/v1/iron/a1/withdraw"
+    denied = client.post(path, headers=_workload_headers("fm.kordena"), json=payload)
+    assert denied.status_code == 403
+    result = client.post(path, headers=_workload_headers(), json=payload)
+    assert result.status_code == 200
+    assert result.json() == {
+        "status": "WITHDRAWN", "official_revocation": "NOT_PERFORMED",
+        "official_homologation": "NOT_VERIFIED",
+    }
+    audit = db.db.execute(
+        "SELECT action,actor_id,tenant_id,unit_id FROM fm_control_plane_audit",
+    ).fetchall()
+    assert audit == [("certificate.withdrawal_requested", "user-owner-1", "tenant-a", "unit-a")]
+    old_upload = {"delegation_token": token, "pfx_base64": base64.b64encode(b"pfx").decode(),
+                  "password": "sample-only"}
+    headers = {"Origin": _ORIGIN, "Content-Type": "application/json"}
+    assert client.post("/v1/iron/a1/upload", headers=headers, json=old_upload).status_code == 409
+    new_token = _prepare(client).json()["delegation_token"]
+    assert client.post("/v1/iron/a1/upload", headers=headers,
+                       json={**old_upload, "delegation_token": new_token}).status_code == 200
+    assert vault.evidence is not None
+    assert client.post(path, headers=_workload_headers(), json=payload).status_code == 409
+    assert vault.evidence is not None
+    assert "withdrawIronA1" in security.calls
