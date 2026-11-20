@@ -38,9 +38,11 @@ def test_real_postgres_economy_schema_scope_and_immutability():
                     sql.Identifier(schema_name), sql.Identifier(role_name),
                 ))
                 for table in TABLES:
-                    admin.execute(sql.SQL("GRANT SELECT, INSERT, UPDATE, DELETE ON {} TO {}").format(
-                        sql.Identifier(table), sql.Identifier(role_name),
-                    ))
+                    admin.execute(
+                        sql.SQL("GRANT SELECT, INSERT, UPDATE, DELETE ON {} TO {}").format(
+                            sql.Identifier(table), sql.Identifier(role_name),
+                        )
+                    )
             with psycopg.connect(dsn, autocommit=True) as runtime:
                 runtime.execute(sql.SQL("SET search_path TO {}").format(
                     sql.Identifier(schema_name)
@@ -78,9 +80,13 @@ def test_real_postgres_economy_schema_scope_and_immutability():
                     )
                     for table in TABLES:
                         assert len(store.records(table)) == 1
-                    assert runtime.execute("UPDATE fm_economy_snapshots SET version=2").rowcount == 0
+                    assert runtime.execute(
+                        "UPDATE fm_economy_snapshots SET version=2"
+                    ).rowcount == 0
                     assert runtime.execute("DELETE FROM fm_economy_snapshots").rowcount == 0
-                assert runtime.execute("SELECT count(*) FROM fm_economy_snapshots").fetchone() == (0,)
+                assert runtime.execute(
+                    "SELECT count(*) FROM fm_economy_snapshots"
+                ).fetchone() == (0,)
                 for scope in (
                     _scope(tenant="tenant-b"), _scope(unit="unit-b"), _scope(host="other"),
                 ):
