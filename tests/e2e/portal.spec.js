@@ -368,6 +368,10 @@ test("mobile overview keeps premium header compact", async ({ page, context }) =
   expect(geometry.topbarHeight).toBeLessThanOrEqual(125);
   expect(geometry.bannerTop).toBeLessThanOrEqual(305);
 
+  // A long tenant label must not collapse into a narrow fourth column.
+  const contextBounds = await page.locator("#authority-context").boundingBox();
+  const actionsBounds = await page.locator(".top-actions").boundingBox();
+  expect(contextBounds.width).toBeGreaterThanOrEqual(actionsBounds.width - 1);
   // MFA added a fourth header element. All session actions must remain present
   // and usable; compactness must not be achieved by clipping or hiding them.
   for (const id of ["theme-toggle", "security-action", "logout-action"]) {
