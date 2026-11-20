@@ -54,7 +54,7 @@ A cópia do repositório do Regime Regular veio do ZIP enviado pelo Fábio em 20
 ## Pendências
 
 1. ~~Ligar a sombra depois da emissão~~ **Feito:** `prepare_nfe_sale` chama `record_rtc_shadow` depois do commit, ativado por `NFCORE_RTC_SIMPLES_URL` e `NFCORE_RTC_REGIME_REGULAR_URL` (o overlay do compose já define as duas). O registro fica arquivado junto da nota, e qualquer falha é engolida.
-2. **Migrar o Simples para `/nao-assistido`**, para conferir também a NFS-e.
+2. ~~`/nao-assistido`~~ **Feito no adaptador:** `build_nfse_request` e `calculate_unassisted` montam a NFS-e (tpDoc 91, um item, `opSimpNac`, `regApIBSCBSSN`, `regApTribSN`, `aliquotasEfetivas` por anexo, com o par sem redistribuição do ISS nos anexos III/IV/V), conferidos contra resposta real (`sn_nfse_calc.json`). **Ainda não ligado à emissão da NFS-e:** depende das alíquotas efetivas do PGDAS de cada empresa no período, dado externo que o contador informa. Observação: o NBS do exemplo oficial (114051000) não existe no banco V0073 (VSN-050); usamos 114051100.
 3. ~~cAtivSN~~ **Feito:** `simples_activity_code` na regra fiscal (códigos oficiais 01–14 e 90), enviado à calculadora como `cAtivSN`.
 4. **Usar as colunas da tabela CLASSIFICACAO_TRIBUTARIA.** Os indicadores de grupo (gMono*, gCredPresOper, gEstornoCred etc.) estão no banco V0073 e destravam os demais CST no XML da NF-e.
 5. **Subir no Contabo.** O primeiro passo é medir memória e CPU; a estimativa é de cerca de 768m por serviço Java.

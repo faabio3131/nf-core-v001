@@ -105,3 +105,59 @@ def test_regime_regular_refuses_other_versions_and_2027_without_nominal_rates() 
                          municipality_ibge="3106200", state_code="MG", document_type=55,
                          items=[RegimeRegularItem(1, "000", "000001", Decimal("1"),
                                                   ncm="84713012")])
+
+
+def _nfse_request(**overrides):
+    from kordena_fiscal.tax.rfb_simples_calculator import (
+        AnnexRates,
+        NfseSimplesItem,
+        SimplesEffectiveRates,
+        build_nfse_request,
+    )
+    rates = SimplesEffectiveRates(
+        annexes={"III": AnnexRates("2.3874", "0.0263", "2.3591", "0.0260")}, factor_r=False,
+    )
+    item = overrides.pop("item", None) or NfseSimplesItem(
+        1, "12", "000001", "114051100", Decimal("10000.00"), "1", False,
+    )
+    args = dict(operation_id="ens-nfse-1", date="2027-03-15", simples_option="3",
+                ibs_cbs_regime="1", taxes_regime="1", rates=rates, item=item)
+    args.update(overrides)
+    return build_nfse_request(**args)
+
+
+def test_live_unassisted_nfse_reply_calculates_cbs_and_ibs() -> None:
+    from kordena_fiscal.tax.rfb_simples_calculator import UNASSISTED_PATH, calculate_unassisted
+    calls: list = []
+    client = RfbSimplesCalculatorClient(
+        base_url="http://rtc-simples:8082/api",
+        transport=_transport("sn_versao.json", "sn_nfse_calc.json", calls),
+    )
+    request = _nfse_request()
+    assert request["tpDoc"] == "91" and request["versao"] == "3.0.0"
+    assert request["aliquotasEfetivas"]["anexoIII"]["semRedistribuicaoISS"] == {
+        "pCBSSN": "2.3591", "pIBSSN": "0.0260",
+    }
+    result = calculate_unassisted(client, request)
+    assert any(url.endswith(UNASSISTED_PATH) for method, url, _ in calls if method == "POST")
+    (only,) = result.items
+    assert only.state == "CALCULADO"
+    assert only.values["vCBSSN"] == Decimal("236.00")
+    assert only.values["vIBSSN"] == Decimal("3.00")
+    result.require_all_calculated()
+
+
+def test_unassisted_nfse_request_refuses_invalid_shapes() -> None:
+    from kordena_fiscal.tax.rfb_simples_calculator import AnnexRates, NfseSimplesItem
+    with pytest.raises(RfbCalculatorError):
+        _nfse_request(item=NfseSimplesItem(2, "12", "000001", "114051100",
+                                           Decimal("1.00"), "1", False))
+    with pytest.raises(RfbCalculatorError):
+        _nfse_request(simples_option="1")
+    with pytest.raises(RfbCalculatorError):
+        _nfse_request(item=NfseSimplesItem(1, "12", "000001", "11405", Decimal("1.00"),
+                                           "1", False))
+    with pytest.raises(RfbCalculatorError):
+        AnnexRates("1,5", None).as_payload("I")
+    with pytest.raises(RfbCalculatorError):
+        AnnexRates("1.0", None, "0.9").as_payload("I")
