@@ -44,7 +44,8 @@ def test_t07_route_authority():
     assert anonymous.post(ROUTE, json=BODY).status_code == 401
     assert web.post(ROUTE, json=BODY).status_code == 403
     assert web.post(ROUTE, json=BODY, headers=headers).json() == {"advisory_only": True}
-    for extra in ("tenant_id", "payroll_cents", "legal_citations", "estimated_cents"):
+    for extra in ("tenant_id", "payroll_cents", "legal_citations", "estimated_cents",
+                  "ibs_cbs_election", "rtc_projection", "nominal_rates"):
         assert web.post(ROUTE, json={**BODY, extra: "forged"}, headers=headers).status_code == 400
     invalid = web.post(ROUTE, json={**BODY, "snapshot_version": True}, headers=headers)
     assert invalid.status_code == 400

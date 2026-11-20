@@ -89,3 +89,18 @@ def test_transition_rejects_2026_cash_and_missing_mode():
         )
     with pytest.raises(FiscalValidationError, match="resolved IBS/CBS"):
         assess_segregated(company(), (line(),), domestic_cents=100_000, export_cents=0)
+
+
+def test_rtc_projection_reuses_same_rates_and_is_never_issuance() -> None:
+    from decimal import Decimal
+
+    from kordena_fiscal.application.simples_rtc_bridge import project_rtc_rates
+
+    result = project_rtc_rates(company(), (line(),), UNIFIED)
+    assert result["issuance_authorized"] is False
+    assert result["regular_calculator_required"] is False
+    assert Decimal(result["domestic"]["anexoI"]["pCBSSN"]) == Decimal("0.6132")
+    assert Decimal(result["domestic"]["anexoI"]["pIBSSN"]) == Decimal("0.0068")
+    separate = project_rtc_rates(company(), (line(),), SimplesIbsCbsMode.REGULAR_SEPARATE)
+    assert separate["regular_calculator_required"] is True
+    assert "domestic" not in separate

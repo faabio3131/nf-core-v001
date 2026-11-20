@@ -161,3 +161,29 @@ def test_unassisted_nfse_request_refuses_invalid_shapes() -> None:
         AnnexRates("1,5", None).as_payload("I")
     with pytest.raises(RfbCalculatorError):
         AnnexRates("1.0", None, "0.9").as_payload("I")
+
+
+def test_regular_nfse_2027_nominals_are_explicit_and_per_item() -> None:
+    from kordena_fiscal.tax.rfb_regime_regular_calculator import RegimeRegularNominalRates
+
+    item = RegimeRegularItem(
+        1, "000", "000001", Decimal("100.00"), nbs="114051100",
+        nominal_rates=RegimeRegularNominalRates(
+            Decimal("8.80"), Decimal("0.05"), Decimal("0.05"), "synthetic-reviewed",
+        ),
+    )
+    args = dict(operation_id="nfse-2027", municipality_ibge="3550308", state_code="SP",
+                document_type=91, items=[item])
+    request = build_rr_request(occurred_at_iso="2027-01-02T10:00:00-03:00", **args)
+    assert request["itens"][0]["aliquotasNominais"] == {
+        "cbs": "8.8000", "ibsEstadual": "0.0500", "ibsMunicipal": "0.0500",
+    }
+    with pytest.raises(RfbCalculatorError, match="forbidden"):
+        build_rr_request(occurred_at_iso="2026-11-20T10:00:00-03:00", **args)
+
+
+def test_nfse_no_implicit_iss_exemption() -> None:
+    from kordena_fiscal.tax.rfb_simples_calculator import NfseSimplesItem
+
+    item = NfseSimplesItem(1, "12", "000001", "114051100", Decimal("100.00"), "1", False)
+    assert "tpBM" not in item.as_payload()
