@@ -1,0 +1,63 @@
+name: NFCore Economia - validacao focal T01
+on:
+  push:
+    branches: ["validation/nfcore-economy-foundation-20261120"]
+permissions:
+  contents: read
+concurrency:
+  group: nfcore-economy-foundation-validation
+  cancel-in-progress: true
+jobs:
+  t01:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: nfcore_test
+          POSTGRES_USER: nfcore
+          POSTGRES_PASSWORD: nfcore_test_password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U nfcore -d nfcore_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      NFCORE_TEST_POSTGRES_DSN: postgresql://nfcore:nfcore_test_password@127.0.0.1:5432/nfcore_test
+    steps:
+      - name: Checkout HEAD exato da PR 587
+        uses: actions/checkout@v4
+        with:
+          ref: 570170f30ef7e1e515b05f06aa6de73453a6f8d7
+      - name: Confirmar revision sob teste
+        run: test "$(git rev-parse HEAD)" = "570170f30ef7e1e515b05f06aa6de73453a6f8d7"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - run: python -m pip install -e ".[dev,telemetry]"
+      - name: Governanca da migracao
+        run: python scripts/ci/migration_guard.py --check-policy
+      - name: Testes obrigatorios T01 com PostgreSQL real
+        run: |
+          pytest -ra --junitxml=/tmp/nfcore-t01.xml tests/persistence/test_economy_schema_postgres.py tests/persistence/test_postgres_production.py::test_economy_v25_readiness_detects_policy_and_index_drift tests/runtime/test_bling_production_migration_plan.py
+          python - <<'PY'
+          import xml.etree.ElementTree as ET
+          root = ET.parse("/tmp/nfcore-t01.xml").getroot()
+          cases = root.findall(".//testcase")
+          names = {case.get("name") for case in cases}
+          required = {
+              "test_real_postgres_economy_schema_scope_and_immutability",
+              "test_economy_v25_readiness_detects_policy_and_index_drift",
+              "test_rls_predicate_pin_rejects_tenant_bypass",
+              "test_economy_optional_migration_boundaries",
+              "test_economy_existing_schema_can_enable_mfa_later",
+          }
+          assert required <= names, required - names
+          assert not root.findall(".//skipped"), "certificacao T01 nao aceita skips"
+          assert not root.findall(".//failure") and not root.findall(".//error")
+          print(f"T01: {len(cases)} testes, zero skip/failure/error, migration v25 PostgreSQL real")
+          PY
