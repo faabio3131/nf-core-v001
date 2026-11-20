@@ -61,6 +61,21 @@ def read_economy_evidence(
         ):
             return ()
         competence = date.fromisoformat(snapshot["competence"])
+        source_competence = competence
+        if payload["engine_version"] == "nfcore.simples-diagnostic/2026-v1":
+            competence = date.fromisoformat(payload["target_competence"])
+            expected = date(source_competence.year + (source_competence.month == 12),
+                            source_competence.month % 12 + 1, 1)
+            if competence != expected or competence.year != 2026:
+                return ()
+            diagnostic = payload["diagnostic"]
+            if (stable_hash(diagnostic) != payload["calculation_reference"]
+                or diagnostic["snapshot_digest"] != snapshot["digest"]
+                or diagnostic["reviewed_rule_digest"] != rule["digest"]
+                or diagnostic["scenario"]["net_estimated_tax_saving_cents"]
+                != evaluation["estimated_cents"]
+                or diagnostic["scenario"]["target_competence"] != competence.isoformat()):
+                return ()
         end = date(competence.year + (competence.month == 12), competence.month % 12 + 1, 1)
         if (
             date.fromisoformat(rule["valid_from"]) > competence
@@ -89,7 +104,7 @@ def read_economy_evidence(
             **rule_ref, "kind": payload["kind"], "record_id": str(evaluation["record_id"]),
             "version": str(evaluation["version"]), "digest": str(evaluation["digest"]),
             "snapshot_id": str(snapshot["record_id"]), "snapshot_version": str(snapshot["version"]),
-            "snapshot_digest": str(snapshot["digest"]), "competence": snapshot["competence"],
+            "snapshot_digest": str(snapshot["digest"]), "competence": competence.isoformat(),
             "tax_code": rule["tax_code"], "engine_version": payload["engine_version"],
             "calculation_reference": payload["calculation_reference"],
             "estimated_cents": str(evaluation["estimated_cents"]),

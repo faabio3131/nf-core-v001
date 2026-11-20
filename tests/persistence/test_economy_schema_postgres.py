@@ -72,6 +72,7 @@ def test_real_postgres_economy_schema_scope_and_immutability(monkeypatch):
                     issuer=Cnpj("12345678000195"), content={"revenue_cents": 20},
                 )
             _certify_t02_read_only(database)
+            _certify_t05(database)
             admin.execute(sql.SQL("SET search_path TO {}").format(sql.Identifier(schema_name)))
             # Explicitly add DML permissions only in this sandbox to prove
             # that the RLS policies, not solely GRANTs, deny mutation.
@@ -259,3 +260,81 @@ def _certify_t02_read_only(database):
     with database.economy(scope) as store:
         assert store.snapshot("no-write", 1) is None
         assert len(store.records("fm_economy_opportunities")) == 3
+
+
+def _certify_t05(database):
+    from functools import partial
+
+    from kordena_fiscal.application.simples_diagnostic_service import import_reviewed_inputs
+    from kordena_fiscal.tax.simples_nacional import LEGAL_REFERENCES, RULE_DIGEST
+
+    scope = _scope(tenant="economy-t05")
+    competence = date(2026, 1, 1)
+    content = {
+        "schema_version": "nfcore.simples-facts/2026-v1",
+        "review_status": "reviewed", "review_reference": "synthetic-fixture-review",
+        "opened_month": "2024-01-01", "uf": "SP", "activity": "service_factor_r",
+        "company_history_reference": "fixture", "activity_reference": "fixture",
+        "optant_reference": "fixture", "ordinary_domestic_base_cents": 100_000,
+        "months": [
+            {"competence": f"2025-{m:02d}-01", "domestic_cents": 1_500_000,
+             "export_cents": 0, "payroll_cents": 0, "evidence_reference": "fixture"}
+            for m in range(1, 13)
+        ] + [{"competence": "2026-01-01", "domestic_cents": 100_000,
+              "export_cents": 0, "payroll_cents": 0, "evidence_reference": "fixture"}],
+        "scenario": {
+            "next_month": {"competence": "2026-02-01", "domestic_cents": 100_000,
+                           "export_cents": 0, "payroll_cents": 0,
+                           "evidence_reference": "forecast-fixture"},
+            "ordinary_domestic_base_cents": 100_000,
+            "additional_pro_labore_cents": 4_648_000,
+            "additional_tax_cost_cents": 1000, "cost_reference": "fixture",
+        },
+    }
+    policy = {
+        "engine_rule_digest": RULE_DIGEST, "review_status": "reviewed",
+        "review_reference": "synthetic-fixture-review",
+        "legal_citations": [
+            {"act": "Synthetic fixture", "provision": "test", "source_url": url,
+             "source_sha256": "c" * 64, "published_on": "2025-01-01",
+             "valid_from": "2026-01-01", "valid_until": "2027-01-01",
+             "review_reference": "synthetic-fixture-review"} for url in LEGAL_REFERENCES
+        ],
+    }
+
+    def verify(issuer, facts):
+        assert issuer == "12345678000195"
+        assert facts.uf == "SP"
+
+    kwargs = dict(
+        snapshot_id="t05-snapshot", snapshot_version=1, competence=competence,
+        issuer=Cnpj("12345678000195"), content=content, rule_id="t05-rule",
+        rule_version=1, rule_content=policy, verify_issuer=verify,
+    )
+    with database.economy(scope) as store:
+        result = import_reviewed_inputs(store, **kwargs)
+        assert result == import_reviewed_inputs(store, **kwargs)
+        assert len(store.records("fm_economy_opportunities")) == 2
+        assert not store.records("fm_economy_credit_entries")
+    reader = partial(database.economy, read_only=True)
+    for capability, kind in AGENTS.items():
+        if kind == "credit":
+            continue
+        record_id = result["evaluation_ids"][kind]
+        evidence = read_economy_evidence(reader, scope, capability, record_id)
+        assert len(evidence) == 4
+        request = AdviceRequest(
+            scope=scope, request_id=kind, actor_id="synthetic-reviewer",
+            granted_capabilities=frozenset({capability}), capability=capability,
+            evidence=evidence, subject_id=record_id,
+        )
+        advice = CognitiveAdviceService(baselines=default_baselines()).advise(request)
+        candidate = project_economy(request, advice).candidates[0]
+        assert candidate.competence == "2026-02-01"
+        assert candidate.estimated_cents == result["scenario"]["net_estimated_tax_saving_cents"]
+        for foreign in (
+            _scope(tenant="foreign"), _scope(tenant="economy-t05", unit="foreign"),
+            _scope(tenant="economy-t05", host="foreign"),
+            _scope(tenant="economy-t05", environment=FiscalEnvironment.PRODUCTION),
+        ):
+            assert read_economy_evidence(reader, foreign, capability, record_id) == ()

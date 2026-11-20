@@ -52,29 +52,7 @@ def build_diagnostic_runner(
             correlation_id="simples-diagnostic", host_namespace="fm-nfcore",
         )
 
-        def verify(issuer: str, facts: SimplesFacts) -> None:
-            start = datetime.combine(
-                facts.competence, time.min, tzinfo=ZoneInfo("America/Sao_Paulo"),
-            )
-            end = (start.replace(day=28) + timedelta(days=4)).replace(day=1)
-            with uow_factory() as uow:
-                profile = uow.control_plane.resolve_profile(
-                    host_namespace="fm-nfcore", tenant_id=scope.tenant_id,
-                    unit_id=scope.unit_id, environment=scope.environment, instant=start,
-                )
-            if (
-                profile is None or profile.cnpj.value != issuer
-                or profile.address.jurisdiction.state_code != facts.uf
-                or int(profile.tax_regime) not in (1, 2)
-                or profile.effective_to is not None and profile.effective_to < end
-            ):
-                raise FiscalValidationError("canonical issuer does not match reviewed snapshot")
-            declarations = load_federal_regime_declarations(uow_factory, scope)
-            for instant in (start, end - timedelta(microseconds=1)):
-                if resolve_federal_regime_timeline(
-                    profile, declarations, instant,
-                ) is not FederalIncomeTaxRegime.SIMPLES_NACIONAL:
-                    raise FiscalValidationError("Simples regime not declared for competence")
+        verify = build_issuer_verifier(uow_factory, scope)
 
         try:
             with store_factory(scope) as store:
@@ -86,3 +64,34 @@ def build_diagnostic_runner(
             raise HTTPException(422, detail={"code": "SIMPLES_EVIDENCE_INSUFFICIENT"}) from None
 
     return run
+
+
+def build_issuer_verifier(
+    uow_factory: Callable[[], AbstractContextManager[Any]], scope: ExecutionScope,
+) -> Callable[[str, SimplesFacts], None]:
+    """Reuse existing effective-dated issuer and declared-regime authority."""
+    def verify(issuer: str, facts: SimplesFacts) -> None:
+        start = datetime.combine(
+            facts.competence, time.min, tzinfo=ZoneInfo("America/Sao_Paulo"),
+        )
+        end = (start.replace(day=28) + timedelta(days=4)).replace(day=1)
+        with uow_factory() as uow:
+            profile = uow.control_plane.resolve_profile(
+                host_namespace="fm-nfcore", tenant_id=scope.tenant_id,
+                unit_id=scope.unit_id, environment=scope.environment, instant=start,
+            )
+        if (
+            profile is None or profile.cnpj.value != issuer
+            or profile.address.jurisdiction.state_code != facts.uf
+            or int(profile.tax_regime) not in (1, 2)
+            or profile.effective_to is not None and profile.effective_to < end
+        ):
+            raise FiscalValidationError("canonical issuer does not match reviewed snapshot")
+        declarations = load_federal_regime_declarations(uow_factory, scope)
+        for instant in (start, end - timedelta(microseconds=1)):
+            if resolve_federal_regime_timeline(
+                profile, declarations, instant,
+            ) is not FederalIncomeTaxRegime.SIMPLES_NACIONAL:
+                raise FiscalValidationError("Simples regime not declared for competence")
+
+    return verify

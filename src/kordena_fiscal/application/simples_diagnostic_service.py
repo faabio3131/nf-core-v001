@@ -11,7 +11,7 @@ from typing import Any
 
 from kordena_fiscal.cognitive.contracts import stable_hash
 from kordena_fiscal.cognitive.economy_contract import LegalCitation
-from kordena_fiscal.domain import FiscalValidationError
+from kordena_fiscal.domain import Cnpj, FiscalValidationError
 from kordena_fiscal.persistence.economy_store import EconomyStore
 from kordena_fiscal.tax.simples_diagnostic import (
     DIAGNOSTIC_VERSION,
@@ -19,6 +19,7 @@ from kordena_fiscal.tax.simples_diagnostic import (
     diagnose_simples,
 )
 from kordena_fiscal.tax.simples_nacional import (
+    LEGAL_REFERENCES,
     RULE_DIGEST,
     Activity,
     MonthFacts,
@@ -53,6 +54,8 @@ def evaluate_snapshot(
             or not content["review_reference"].strip()
             or policy["engine_rule_digest"] != RULE_DIGEST
             or policy["review_status"] != "reviewed"
+            or not isinstance(policy["review_reference"], str)
+            or not policy["review_reference"].strip()
             or rule["tax_code"] != "SIMPLES_NACIONAL"
         ):
             raise FiscalValidationError("reviewed Simples snapshot and policy required")
@@ -75,7 +78,9 @@ def evaluate_snapshot(
         citations = tuple(
             LegalCitation.model_validate(item) for item in policy["legal_citations"]
         )
-        if not 1 <= len(citations) <= 8:
+        if not 1 <= len(citations) <= 8 or not {c.source_url for c in citations}.issuperset(
+            LEGAL_REFERENCES
+        ):
             raise FiscalValidationError("reviewed legal citations required")
         for period in periods:
             end = date(period.year + (period.month == 12), period.month % 12 + 1, 1)
@@ -152,3 +157,50 @@ def evaluate_and_record(
                 raise FiscalValidationError("Simples evaluation replay mismatch")
             ids[kind] = record_id
     return {**result, "evaluation_ids": ids}
+
+
+def import_reviewed_inputs(
+    store: EconomyStore, *, snapshot_id: str, snapshot_version: int,
+    competence: date, issuer: Cnpj, content: dict[str, Any],
+    rule_id: str, rule_version: int, rule_content: dict[str, Any],
+    verify_issuer: Callable[[str, SimplesFacts], None],
+) -> dict[str, Any]:
+    """Trusted operator import into the SAME scoped transaction, never public UI.
+
+    Review assertions must come from a responsible fiscal reviewer, not this
+    function. Source hashes must be obtained from the archived source bytes.
+    No review is inferred or generated. IDs and content are immutable.
+    """
+    from kordena_fiscal.persistence.economy_store import _digest
+
+    snapshot = {
+        "record_id": snapshot_id, "version": snapshot_version,
+        "competence": competence.isoformat(), "issuer_cnpj": issuer.value,
+        "content": content, "digest": _digest(content)[1],
+    }
+    rule = {
+        "record_id": rule_id, "version": rule_version, "tax_code": "SIMPLES_NACIONAL",
+        "valid_from": "2026-01-01", "valid_until": "2027-01-01",
+        "content": rule_content, "digest": _digest(rule_content)[1],
+    }
+    evaluate_snapshot(snapshot, rule, verify_issuer=verify_issuer)
+    old_snapshot = store.record("fm_economy_snapshots", snapshot_id, snapshot_version)
+    old_rule = store.record("fm_economy_benefits", rule_id, rule_version)
+    for old, new in ((old_snapshot, snapshot), (old_rule, rule)):
+        if old is not None and any(old.get(key) != value for key, value in new.items()):
+            raise FiscalValidationError("immutable reviewed input conflict; use new version")
+    if old_snapshot is None:
+        store.append_snapshot(
+            record_id=snapshot_id, version=snapshot_version, competence=competence,
+            issuer=issuer, content=content,
+        )
+    if old_rule is None:
+        store.append_benefit(
+            record_id=rule_id, version=rule_version, tax_code="SIMPLES_NACIONAL",
+            jurisdiction="BR", normative_reference="LC123/2006; CGSN140/2018; CGSN54/2025",
+            valid_from=date(2026, 1, 1), valid_until=date(2027, 1, 1), content=rule_content,
+        )
+    return evaluate_and_record(
+        store, snapshot_id=snapshot_id, snapshot_version=snapshot_version,
+        rule_id=rule_id, rule_version=rule_version, verify_issuer=verify_issuer,
+    )
