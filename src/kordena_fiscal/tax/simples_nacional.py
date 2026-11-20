@@ -415,12 +415,40 @@ def calculate_simples(facts: SimplesFacts, *, ordinary_domestic_base_cents: int)
     )
 
 
-PARTITION_VERSION = "simples-partition-2026/v1"
+PARTITION_VERSION = "simples-partition-2026/v2"
 PARTITION_DIGEST = hashlib.sha256(json.dumps({
     "version": PARTITION_VERSION, "base_rule": RULE_DIGEST,
     "taxes": TAXES, "partition": dict(_PARTITION),
     "iss_cap": {"III": (602, 526, 1928, 418, 6526), "IV": (3133, 3200, 3013, 654, 0)},
 }, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+
+
+def _sixth_band_local_components(annex: Annex, rbt: Fraction) -> dict[str, Fraction]:
+    """Local fifth-band supplement, including federal redistribution of ISS.
+
+    PGDAS-D manual, example 8, pp. 117–118; LC 123 annexes III–V.
+    This supplement is independent of the sixth-band federal component.
+    """
+    parts = dict.fromkeys(TAXES, Fraction(0))
+    raw = _rate(annex, rbt, 4) * Fraction(_LOCAL[annex][4], 10000)
+    if annex in {Annex.ANNEX_I, Annex.ANNEX_II}:
+        parts["icms"] = raw
+        return parts
+    parts["iss"] = min(raw, Fraction(5, 100))
+    excess = raw - parts["iss"]
+    if excess:
+        fixed = {
+            Annex.ANNEX_III: (602, 526, 1928, 418, 6526),
+            Annex.ANNEX_IV: (3133, 3200, 3013, 654, 0),
+        }
+        if annex in fixed:
+            for tax, share in zip(TAXES[:5], fixed[annex], strict=True):
+                parts[tax] = excess * Fraction(share, 10000)
+        else:
+            shares = _PARTITION[annex][4][:6]
+            for tax, share in zip(TAXES[:6], shares, strict=True):
+                parts[tax] = excess * Fraction(share, sum(shares))
+    return parts
 
 
 def partition_effective_rate(
@@ -453,8 +481,9 @@ def partition_effective_rate(
     if outside_local:
         result["icms"] = result["iss"] = Fraction(0)
     elif idx == 5:
-        local_tax = "icms" if annex in {Annex.ANNEX_I, Annex.ANNEX_II} else "iss"
-        result[local_tax] = _local_rate(annex, _rate(annex, rbt, 4), 4)
+        supplement = _sixth_band_local_components(annex, rbt)
+        for tax in TAXES:
+            result[tax] += supplement[tax]
     return result
 
 
@@ -474,8 +503,19 @@ def assessment_partition(
     local_fraction = _excess_fraction(
         annual, current, _annual_limit(facts.opened_month, 2026, SUBLIMIT),
     )
-    normal = partition_effective_rate(annex, rbt, outside_local=outside_local)
     federal_cap = partition_effective_rate(annex, Fraction(LIMIT), outside_local=True)
+    if rbt > SUBLIMIT and not outside_local:
+        federal = partition_effective_rate(annex, rbt, outside_local=True)
+        local = _sixth_band_local_components(annex, rbt)
+        capped_local = _sixth_band_local_components(annex, Fraction(SUBLIMIT))
+        return {
+            tax: federal[tax] * (1 - federal_fraction)
+            + federal_cap[tax] * federal_fraction
+            + local[tax] * (1 - local_fraction)
+            + capped_local[tax] * local_fraction
+            for tax in TAXES
+        }, federal_fraction, local_fraction
+    normal = partition_effective_rate(annex, rbt, outside_local=outside_local)
     local_cap = partition_effective_rate(annex, Fraction(SUBLIMIT))
     for tax in TAXES:
         if tax in {"icms", "iss"}:
