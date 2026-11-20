@@ -15,6 +15,7 @@ from datetime import UTC, datetime, timedelta
 from html.parser import HTMLParser
 from pathlib import Path
 from typing import Any
+from urllib.parse import urljoin, urlsplit, urlunsplit
 
 from kordena_fiscal.domain import ExecutionScope
 
@@ -49,7 +50,8 @@ class _Headlines(HTMLParser):
 
     def __init__(self) -> None:
         super().__init__(convert_charrefs=True)
-        self.labels: list[str] = []
+        self.labels: list[tuple[str, str]] = []
+        self._href = ""
         self._capture: str | None = None
         self._parts: list[str] = []
         self._ignored = 0
@@ -60,12 +62,15 @@ class _Headlines(HTMLParser):
         elif not self._ignored and tag in {"a", "h1", "h2", "h3", "h4"} and not self._capture:
             self._capture = tag
             self._parts = []
+            self._href = ""
+        if tag == "a" and self._capture and not self._ignored:
+            self._href = next((v or "" for k, v in attrs if k == "href"), "")
 
     def handle_endtag(self, tag: str) -> None:
         if tag in {"script", "style", "noscript"}:
             self._ignored = max(0, self._ignored - 1)
         elif self._capture == tag and not self._ignored:
-            self.labels.append(_normalize(" ".join(self._parts))[:1000])
+            self.labels.append((_normalize(" ".join(self._parts))[:1000], self._href))
             self._capture = None
 
     def handle_data(self, data: str) -> None:
@@ -73,14 +78,33 @@ class _Headlines(HTMLParser):
             self._parts.append(data)
 
 
-def detect_signals(payload: bytes) -> tuple[tuple[str, str], ...]:
-    """Keyword signals only. Hash labels rather than storing potentially personal text."""
+def _document_url(base: str, href: str) -> str:
+    """Only allow public same-origin HTTPS paths; never fetch these links."""
+    try:
+        parsed = urlsplit(urljoin(base, href))
+        original = urlsplit(base)
+        if (
+            parsed.scheme != "https" or parsed.netloc != original.netloc
+            or parsed.username or parsed.password or parsed.port is not None
+            or any(ch.isspace() or ord(ch) < 32 for ch in parsed.path)
+            or not parsed.path.startswith("/") or len(parsed.path) > 500
+            or "\\" in parsed.path
+        ):
+            return base
+        return urlunsplit((parsed.scheme, parsed.netloc, parsed.path, "", ""))
+    except ValueError:
+        return base
+
+
+def detect_signals(payload: bytes, source_url: str) -> tuple[tuple[str, str, str], ...]:
+    """Keyword signals only; hash labels rather than exposing arbitrary public text."""
     parser = _Headlines()
     parser.feed(payload.decode("utf-8", errors="replace"))
     parser.close()
     signals = {
-        (kind, _sha(label.encode()))
-        for label in parser.labels if label
+        (kind, _sha((label + "\n" + _document_url(source_url, href)).encode()),
+         _document_url(source_url, href))
+        for label, href in parser.labels if label
         for kind, pattern in CATEGORIES.items()
         if re.search(pattern, label)
     }
@@ -145,15 +169,22 @@ def _load(path: Path) -> dict[str, Any]:
         for event in entries:
             if not isinstance(event, dict) or set(event) != {
                 "category", "signal_sha256", "source_sha256", "observed_at", "alert_id",
+                "document_url",
             }:
                 raise NormativeWatchError("invalid radar alert")
-            if event["category"] not in {*CATEGORIES, "alteracao_portal"} or not all(
+            if not isinstance(event["category"], str) or (
+                event["category"] not in {*CATEGORIES, "alteracao_portal"}
+            ) or not all(
                 _is_digest(event[key])
                 for key in ("signal_sha256", "source_sha256", "alert_id")
             ):
                 raise NormativeWatchError("invalid radar evidence")
             if source not in hashes or event["source_sha256"] != hashes[source]:
                 raise NormativeWatchError("alert not linked to source checkpoint")
+            if not isinstance(event["document_url"], str) or (
+                _document_url(REGISTRY[source], event["document_url"]) != event["document_url"]
+            ):
+                raise NormativeWatchError("invalid radar document URL")
             if event["alert_id"] != _alert_id(
                 source, event["category"], event["signal_sha256"], event["source_sha256"],
             ):
@@ -163,7 +194,8 @@ def _load(path: Path) -> dict[str, Any]:
 
 
 def _alert_id(source: str, category: str, signal: str, digest: str) -> str:
-    return _sha(f"normative-radar/v1:{source}:{category}:{signal}:{digest}".encode())
+    revision = digest if category == "alteracao_portal" else signal
+    return _sha(f"normative-radar/v1:{source}:{category}:{signal}:{revision}".encode())
 
 
 def poll_radar_locked(
@@ -176,6 +208,8 @@ def poll_radar_locked(
     statuses: dict[str, dict[str, str]] = {}
     events: list[dict[str, str]] = []
     timestamp = when.astimezone(UTC).isoformat()
+    if state.get("observed_at") and when < _timestamp(state["observed_at"]):
+        raise NormativeWatchError("radar observation time regressed")
     for source, url in REGISTRY.items():
         old = hashes.get(source, "")
         try:
@@ -183,7 +217,7 @@ def poll_radar_locked(
             if not isinstance(payload, bytes) or not payload or len(payload) > MAX_BYTES:
                 raise NormativeWatchError("invalid portal response")
             digest = _sha(payload)
-            signals = detect_signals(payload)
+            signals = detect_signals(payload, url)
         except (NormativeWatchError, OSError, ValueError):
             statuses[source] = {"status": "unavailable", "checked_at": timestamp}
             events.append({
@@ -196,13 +230,18 @@ def poll_radar_locked(
         hashes[source] = digest
         changed = old != digest or source not in alerts
         if changed:
+            previous = {entry["alert_id"]: entry for entry in alerts.get(source, [])}
             alerts[source] = [
                 {
                     "category": category, "signal_sha256": signal,
-                    "source_sha256": digest, "observed_at": timestamp,
+                    "source_sha256": digest,
+                    "observed_at": previous.get(
+                        _alert_id(source, category, signal, digest), {},
+                    ).get("observed_at", timestamp),
+                    "document_url": document_url,
                     "alert_id": _alert_id(source, category, signal, digest),
                 }
-                for category, signal in (("alteracao_portal", digest), *signals)
+                for category, signal, document_url in (("alteracao_portal", digest, url), *signals)
             ]
         events.append({
             "source": source, "url": url, "sha256": digest, "previous_sha256": old,

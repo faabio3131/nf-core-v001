@@ -27,6 +27,9 @@ ECONOMY_SOURCES: dict[str, str] = {
         "https://www.gov.br/pgfn/pt-br/servicos/editais-de-notificacao/"
         "acordo-de-transacao-por-adesao-1"
     ),
+    "RFB_LEGISLACAO": (
+        "https://www.gov.br/receitafederal/pt-br/acesso-a-informacao/legislacao/legislacao"
+    ),
     "RFB_TRANSACAO": (
         "https://www.gov.br/receitafederal/pt-br/assuntos/orientacao-tributaria/"
         "pagamentos-e-parcelamentos/transacao-tributaria"

@@ -15,10 +15,12 @@ Environment=PYTHONPATH=/opt/nfcore/current/src
 Environment=NFCORE_NORMATIVE_WATCH_ENABLED=true
 Environment=NFCORE_NORMATIVE_RADAR_ENABLED=true
 StateDirectory=nfcore/normative-watch
+StateDirectoryMode=0755
+UMask=0022
 ExecStart=/usr/bin/python3 /opt/nfcore/current/scripts/nfcore_normative_watch_once.py --state-file /var/lib/nfcore/normative-watch/state.json --acknowledge-network
 NoNewPrivileges=true
 PrivateTmp=true
 ProtectSystem=strict
 ProtectHome=true
 ReadWritePaths=/var/lib/nfcore/normative-watch
-TimeoutStartSec=95
+TimeoutStartSec=110
