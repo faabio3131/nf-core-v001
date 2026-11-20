@@ -548,3 +548,31 @@ def test_unified_resolver_rejects_active_regular_receipt() -> None:
             profile, (_simples_election(profile),), datetime(2027, 1, 5, 12, tzinfo=UTC),
             regular_option_receipt_2027_h1=_simples_receipt(profile),
         )
+
+
+def test_opening_extension_cancellation_and_correct_2026_cutoff() -> None:
+    profile = _simples_profile()
+    opening = SimplesOpeningOptionReceipt(
+        profile.scope, profile.profile_id, profile.version, profile.tax_regime,
+        date(2027, 4, 10), datetime(2027, 4, 10, 12, tzinfo=UTC),
+        datetime(2027, 4, 10, 13, tzinfo=UTC), "regular", "simples", "mat",
+        next_semester_cancelled_at=datetime(2027, 5, 10, 12, tzinfo=UTC),
+        cancellation_reference="reviewed-cancellation-fixture",
+    )
+    active = _simples_election(
+        profile, mode=SimplesIbsCbsMode.REGULAR_SEPARATE,
+        effective_from=datetime(2027, 4, 10, 3, tzinfo=UTC),
+    )
+    assert resolve_simples_ibs_cbs_mode(
+        profile, (active,), datetime(2027, 6, 1, 12, tzinfo=UTC), opening_receipt=opening,
+    ) is SimplesIbsCbsMode.REGULAR_SEPARATE
+    with pytest.raises(FiscalValidationError, match="extension was cancelled"):
+        resolve_simples_ibs_cbs_mode(
+            profile, (active,), datetime(2027, 7, 1, 12, tzinfo=UTC), opening_receipt=opening,
+        )
+    assert resolve_simples_ibs_cbs_mode(
+        profile, (_simples_election(profile),), datetime(2027, 7, 1, 12, tzinfo=UTC),
+        opening_receipt=opening,
+    ) is SimplesIbsCbsMode.SIMPLES_UNIFIED
+    with pytest.raises(FiscalValidationError, match="reviewed horizon"):
+        replace(opening, registered_on=date(2026, 10, 30))

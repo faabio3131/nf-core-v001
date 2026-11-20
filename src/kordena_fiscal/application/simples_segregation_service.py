@@ -174,9 +174,19 @@ def _reviewed_mode(
             protocol_reference=raw_opening["protocol_reference"],
             simples_protocol_reference=raw_opening["simples_protocol_reference"],
             registration_reference=raw_opening["registration_reference"],
+            next_semester_cancelled_at=(
+                datetime.fromisoformat(raw_opening["next_semester_cancelled_at"])
+                if raw_opening.get("next_semester_cancelled_at") is not None else None
+            ),
+            cancellation_reference=raw_opening.get("cancellation_reference"),
         )
         if opening.registered_on != facts.registered_on:
             raise FiscalValidationError("opening option does not match reviewed registration")
+    if facts.registered_on is not None:
+        registration_ref = snapshot["content"].get("registration_reference")
+        if (not isinstance(registration_ref, str) or not registration_ref.strip()
+                or opening is not None and registration_ref != opening.registration_reference):
+            raise FiscalValidationError("reviewed registration evidence required")
     renunciation = None
     raw_renunciation = evidence.get("renunciation_receipt_2027_h2")
     if raw_renunciation is not None:
@@ -202,8 +212,11 @@ def _reviewed_mode(
     end = (start.replace(day=28) + timedelta(days=4)).replace(day=1)
     if facts.registered_on is not None and facts.opened_month == competence:
         start = datetime.combine(facts.registered_on, time.min, tzinfo=start.tzinfo)
+        if election.effective_from.astimezone(start.tzinfo).date() > facts.registered_on:
+            raise FiscalValidationError("opening election does not cover registration date")
+        start = max(start, profile.effective_from)
         if opening is not None:
-            start = max(start, opening.confirmed_at, profile.effective_from)
+            start = max(start, opening.confirmed_at)
         if start >= end:
             raise FiscalValidationError("opening option confirmed outside competence")
     modes = {

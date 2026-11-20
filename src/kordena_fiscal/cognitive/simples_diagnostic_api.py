@@ -92,12 +92,14 @@ def build_issuer_verifier(
             facts.competence, time.min, tzinfo=ZoneInfo("America/Sao_Paulo"),
         )
         end = (start.replace(day=28) + timedelta(days=4)).replace(day=1)
-        if facts.registered_on is not None and facts.opened_month == facts.competence:
+        opening = facts.registered_on is not None and facts.opened_month == facts.competence
+        if opening and facts.registered_on is not None:
             start = datetime.combine(facts.registered_on, time.min, tzinfo=start.tzinfo)
         with uow_factory() as uow:
             profile = uow.control_plane.resolve_profile(
                 host_namespace="fm-nfcore", tenant_id=scope.tenant_id,
-                unit_id=scope.unit_id, environment=scope.environment, instant=start,
+                unit_id=scope.unit_id, environment=scope.environment,
+                instant=end - timedelta(microseconds=1) if opening else start,
             )
         if (
             not isinstance(profile, FiscalProfile) or profile.cnpj.value != issuer
@@ -106,6 +108,10 @@ def build_issuer_verifier(
             or profile.effective_to is not None and profile.effective_to < end
         ):
             raise FiscalValidationError("canonical issuer does not match reviewed snapshot")
+        if opening:
+            if profile.effective_from.astimezone(start.tzinfo).date() > start.date():
+                raise FiscalValidationError("canonical profile does not cover registration day")
+            start = max(start, profile.effective_from)
         declarations = load_federal_regime_declarations(uow_factory, scope)
         for instant in (start, end - timedelta(microseconds=1)):
             if resolve_federal_regime_timeline(

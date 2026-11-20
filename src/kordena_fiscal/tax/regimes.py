@@ -362,10 +362,12 @@ class SimplesOpeningOptionReceipt:
     protocol_reference: str
     simples_protocol_reference: str
     registration_reference: str
+    next_semester_cancelled_at: datetime | None = None
+    cancellation_reference: str | None = None
 
     def __post_init__(self) -> None:
         if type(self.registered_on) is not date or not (
-            date(2026, 10, 1) <= self.registered_on <= date(2027, 12, 31)
+            date(2026, 10, 31) <= self.registered_on <= date(2027, 12, 31)
         ):
             raise FiscalValidationError("opening option registration outside reviewed horizon")
         for value in (self.submitted_at, self.confirmed_at):
@@ -380,6 +382,19 @@ class SimplesOpeningOptionReceipt:
                     self.registration_reference):
             if not isinstance(ref, str) or not ref.strip():
                 raise FiscalValidationError("opening option requires reviewed protocols")
+        if self.next_semester_cancelled_at is not None:
+            cancelled = self.next_semester_cancelled_at
+            if (
+                not isinstance(cancelled, datetime) or cancelled.utcoffset() is None
+                or not date(2027, 4, 1) <= self.registered_on <= date(2027, 6, 30)
+                or cancelled < self.submitted_at
+                or cancelled.astimezone(ZoneInfo("America/Sao_Paulo")).date() > date(2027, 5, 31)
+                or not isinstance(self.cancellation_reference, str)
+                or not self.cancellation_reference.strip()
+            ):
+                raise FiscalValidationError("invalid opening-option next-semester cancellation")
+        elif self.cancellation_reference is not None:
+            raise FiscalValidationError("opening cancellation date required")
 
 
 @dataclass(frozen=True, slots=True)
@@ -512,6 +527,10 @@ def resolve_simples_ibs_cbs_mode(
     prior_option = regular_option_receipt_2027_h1
     prior_opening = (opening_receipt if opening_receipt is not None
                      and opening_receipt.registered_on < date(2027, 7, 1) else None)
+    cancelled_extension = (
+        opening_receipt is not None and opening_receipt.next_semester_cancelled_at is not None
+        and local_date >= date(2027, 7, 1)
+    )
     if mode is SimplesIbsCbsMode.SIMPLES_UNIFIED:
         active = (prior_option if local_date < date(2027, 7, 1)
                   else regular_option_receipt_2027_h2)
@@ -519,13 +538,13 @@ def resolve_simples_ibs_cbs_mode(
             raise FiscalValidationError("active regular option conflicts with unified mode")
         if opening_receipt is not None and (
             local_date < date(2027, 7, 1)
-            or opening_receipt.registered_on >= date(2027, 4, 1)
+            or opening_receipt.registered_on >= date(2027, 4, 1) and not cancelled_extension
         ):
             raise FiscalValidationError("opening regular option conflicts with unified mode")
         if local_date >= date(2027, 7, 1):
             active_prior = (
                 prior_option if prior_option is not None and prior_option.cancelled_at is None
-                else prior_opening
+                else None if cancelled_extension else prior_opening
             )
             if active_prior is not None:
                 _assert_option_receipt(profile, active_prior, instant)
@@ -544,6 +563,8 @@ def resolve_simples_ibs_cbs_mode(
             opened = opening_receipt.registered_on
             horizon = (date(2027, 6, 30) if opened < date(2027, 4, 1)
                        else date(2027, 12, 31))
+            if cancelled_extension:
+                raise FiscalValidationError("opening-option extension was cancelled")
             if local_date <= horizon:
                 return mode
         if date(2027, 1, 1) <= local_date <= date(2027, 6, 30):
