@@ -8,9 +8,9 @@ evidence record with every divergence. The caller may archive it.
 
 Scope: NF-e (55) / NFC-e (65). CRT 1/2 go to the Simples calculator; CRT 3
 (Lucro Presumido/Real) goes to the Regime Regular calculator when a client is
-given. Lines without an IBS/CBS classification are skipped. NFCore has no
-cAtivSN (Simples activity code) yet, so the official component may answer
-NAO_CALCULADO; that is recorded, not hidden.
+given. Lines without an IBS/CBS classification are skipped. cAtivSN comes from
+the tax rule (simples_activity_code); without it the official component answers
+NAO_CALCULADO (CATIVSN_AUSENTE), which is recorded, not hidden.
 """
 from __future__ import annotations
 
@@ -66,6 +66,7 @@ def nfe_rtc_lines(document: Any) -> list[dict[str, object]]:
             "ncm": line.product.ncm.value,
             "cst": outcome.ibs_cbs_cst_code,
             "cClassTrib": outcome.ibs_cbs_classification_code,
+            "cAtivSN": outcome.simples_activity_code,
             "base": taxes.rtc_base,
             "vIBS": taxes.rtc_ibs_uf_amount + taxes.rtc_ibs_municipal_amount,
             "vCBS": taxes.rtc_cbs_amount,
@@ -128,7 +129,7 @@ def _run_regime_regular(
 
 
 def run_nfe_rtc_shadow(
-    client: RfbSimplesCalculatorClient, document: Any, *, model: str,
+    client: RfbSimplesCalculatorClient | None, document: Any, *, model: str,
     occurred_at: datetime,
     regime_regular_client: RfbRegimeRegularCalculatorClient | None = None,
 ) -> dict[str, object]:
@@ -149,12 +150,15 @@ def run_nfe_rtc_shadow(
             )
         if crt not in {"1", "2"}:
             return {**record, "status": "skipped_outside_official_simples_scope", "crt": crt}
+        if client is None:
+            return {**record, "status": "skipped_simples_calculator_not_configured"}
         request = build_request(
             operation_id=str(record["document_id"] or "shadow"),
             date=document.issued_at.date().isoformat(), document_type=model, crt=crt,
             items=[
                 SimplesItem(
                     numero=int(str(line["numero"])), c_class_trib=str(line["cClassTrib"]),
+                    c_ativ_sn=(str(line["cAtivSN"]) if line.get("cAtivSN") else None),
                     base_calculo=Decimal(str(line["base"])).quantize(Decimal("0.01")),
                 ) for line in lines
             ],

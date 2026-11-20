@@ -174,4 +174,19 @@ def prepare_nfe_sale(
         if commit_preparation is not None:
             commit_preparation(uow, document.document_id)
         uow.commit()
+    # RTC-RFB-07: official-calculator comparison only after the preparation is
+    # durable; opt-in by environment, never raises, never changes the document.
+    from kordena_fiscal.application.rtc_shadow_recorder import (
+        record_rtc_shadow,
+        shadow_clients_from_env,
+    )
+
+    try:
+        simples, regime_regular = shadow_clients_from_env()
+    except Exception:  # misconfigured shadow must not affect issuance  # noqa: BLE001
+        simples = regime_regular = None
+    record_rtc_shadow(
+        factory, document, model=str(int(model)), occurred_at=now,
+        simples=simples, regime_regular=regime_regular,
+    )
     return document.document_id

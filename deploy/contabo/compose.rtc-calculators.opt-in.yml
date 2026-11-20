@@ -16,12 +16,18 @@ x-rtc-common: &rtc
       source: ${NFCORE_RTC_DB_DIR:?build-deploy/rfb/database-first}
       target: /app/calculadora/db
       read_only: true
+  networks: [internal]
   mem_limit: 768m
   cpus: 1.0
   security_opt:
     - no-new-privileges:true
 
 services:
+  # The API compares each NF-e/NFC-e after the preparation commits (shadow only).
+  nfcore-api:
+    environment:
+      NFCORE_RTC_SIMPLES_URL: http://nfcore-rtc-simples:8082/api
+      NFCORE_RTC_REGIME_REGULAR_URL: http://nfcore-rtc-regime-regular:8080/api
   nfcore-rtc-simples:
     <<: *rtc
     build:

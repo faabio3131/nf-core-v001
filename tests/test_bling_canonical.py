@@ -1622,6 +1622,7 @@ def test_tax_matrix_missing_rate_or_wrong_cst_fails_closed(mapping):
             "100.40",
         ),
         ("410", "410008", {"rtc_base_mode": "non_taxed"}, "100.00"),
+        ("400", "400003", {"rtc_base_mode": "non_taxed"}, "100.00"),
     ],
 )
 def test_rtc_expanded_cst200_410_signed_schema(
@@ -1937,3 +1938,38 @@ def test_b01_unmodelled_icms_never_degrades_to_a_supported_tax_group(
             net_amount=line.net_amount.amount,
             regime=document.issuer.tax_regime,
         )
+
+
+def test_rtc_cst400_and_unsupported_group_classifications_are_refused(mapping):
+    from kordena_fiscal.tax.nfe_calculation import calculate_nfe_line
+
+    document = sale_document(mapping, normal=True)
+    line = document.items[0]
+    original = line.tax_decision.outcome
+    rates = original.nfe_rates
+    assert rates is not None
+    taxed = replace(
+        rates, rtc_uf_rate=Decimal("0.1"), rtc_municipal_rate=Decimal("0"),
+        rtc_cbs_rate=Decimal("0.9"), rtc_base_mode="net",
+        rtc_financial_mode="informational_2026",
+    )
+
+    def calc(cst, code, policy):
+        return calculate_nfe_line(
+            replace(line.tax_decision, outcome=replace(
+                original, ibs_cbs_cst_code=cst, ibs_cbs_classification_code=code,
+                ibs_cbs_classification_table_version="v1.71", nfe_rates=policy,
+            )),
+            net_amount=Decimal("1.00"), regime=TaxRegimeCode.NORMAL,
+        )
+
+    with pytest.raises(FiscalValidationError, match="CST 400 forbids standard taxation"):
+        calc("400", "400003", taxed)
+    with pytest.raises(FiscalValidationError, match="gCredPresOper"):
+        calc("000", "000003", taxed)
+    with pytest.raises(FiscalValidationError, match="gEstornoCred"):
+        calc("410", "410026", replace(
+            rates, rtc_base_mode="non_taxed", rtc_financial_mode="informational_2026",
+        ))
+    with pytest.raises(FiscalValidationError, match="approved and aligned"):
+        calc("510", "510001", taxed)

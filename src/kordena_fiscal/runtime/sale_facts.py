@@ -91,6 +91,7 @@ def parse_sale_rule(
         "ibs_cbs_classification_code",
         "ibs_cbs_cst_code",
         "ibs_cbs_classification_table_version",
+        "simples_activity_code",
     }:
         raise FiscalValidationError("unsupported fiscal rule outcome fields")
     required_rates = {"icms_rate", "pis_rate", "cofins_rate", "pis_base", "cofins_base"}
@@ -152,6 +153,7 @@ def parse_sale_rule(
             ibs_cbs_classification_table_version=outcome.get(
                 "ibs_cbs_classification_table_version"
             ),
+            simples_activity_code=outcome.get("simples_activity_code"),
             nfe_rates=NfeRateParameters(
                 Decimal(str(rates["icms_rate"])),
                 Decimal(str(rates["pis_rate"])),

@@ -12,6 +12,10 @@ from lxml import etree
 from kordena_fiscal.documents import CanonicalFiscalDocument, PaymentMethodKind
 from kordena_fiscal.domain import Cnpj, FiscalAddress, FiscalEnvironment, FiscalValidationError
 from kordena_fiscal.tax.nfe_calculation import NfeCalculatedTaxes, calculate_nfe_line
+from kordena_fiscal.tax.rtc_group_indicators import (
+    require_representable_classification,
+    rtc_cst_requires_gibscbs,
+)
 from kordena_fiscal.xml import NfeAccessKey
 
 NS = "http://www.portalfiscal.inf.br/nfe"
@@ -573,13 +577,14 @@ def _taxes(parent: etree._Element, outcome: object, origin: int, tax: NfeCalcula
         _element(uf, "vICMSUFDest", _money(tax.difal_amount))
         _element(uf, "vICMSUFRemet", "0.00")
     if outcome.ibs_cbs_cst_code is not None:
-        if outcome.ibs_cbs_cst_code not in {"000", "200", "410"}:
-            raise FiscalValidationError("RTC XML requires supported approved CST")
+        with_group = rtc_cst_requires_gibscbs(outcome.ibs_cbs_cst_code)
+        if outcome.ibs_cbs_classification_code is not None:
+            require_representable_classification(outcome.ibs_cbs_classification_code)
         rtc = _element(parent, "IBSCBS")
         _element(rtc, "CST", outcome.ibs_cbs_cst_code)
         _element(rtc, "cClassTrib", outcome.ibs_cbs_classification_code)
-        if outcome.ibs_cbs_cst_code == "410":
-            return  # CST 410 explicitly forbids gIBSCBS.
+        if not with_group:
+            return  # CST 400/410: SITUACAO_TRIBUTARIA forbids gIBSCBS.
         rtc_group = _element(rtc, "gIBSCBS")
         _element(rtc_group, "vBC", _money(tax.rtc_base))
         for name, rtc_rate, rtc_value, reduction, rate_tag, value_tag in (
