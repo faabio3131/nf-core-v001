@@ -24,6 +24,7 @@ from kordena_fiscal.domain import (
     StateRegistration,
     TaxRegimeCode,
 )
+from kordena_fiscal.tax.federal_withholding import FederalWithholding
 
 from .nfe_nfse import (
     NfseAuthorizationRequest,
@@ -227,6 +228,10 @@ def encode_prepared_nfse(request: NfseAuthorizationRequest) -> bytes:
                 "reason_description": document.national_substitution.reason_description,
                 "approval_reference": document.national_substitution.approval_reference,
             }
+        ),
+        **(
+            {"federal_withholding": document.federal_withholding.as_payload()}
+            if document.federal_withholding is not None else {}
         ),
         "dps_series": document.dps_series,
         "dps_number": document.dps_number,
@@ -473,6 +478,19 @@ def decode_prepared_nfse(content: bytes, *, scope: ExecutionScope) -> NfseAuthor
                 reason_description=_text(data["reason_description"], "reason_description"),
                 approval_reference=_text(data["approval_reference"], "approval_reference"),
             )
+        withholding = None
+        if root.get("federal_withholding") is not None:
+            raw = _mapping(root["federal_withholding"], "federal_withholding")
+            money = ("base", "pis_rate", "cofins_rate", "pis", "cofins", "irrf", "csll")
+            if set(raw) != {*money, "retention_type", "cst", "review_reference", "ruleset_id"}:
+                raise FiscalValidationError("Invalid archived federal withholding fields")
+            withholding = FederalWithholding(
+                **{name: Decimal(_text(raw[name], name)) for name in money},
+                retention_type=_text(raw["retention_type"], "retention_type"),
+                cst=_text(raw["cst"], "cst"),
+                review_reference=_text(raw["review_reference"], "review_reference"),
+                ruleset_id=_text(raw["ruleset_id"], "ruleset_id"),
+            )
         document = NfseCanonicalDocument(
             document_id=_text(root["document_id"], "document_id"),
             scope=scope,
@@ -497,6 +515,7 @@ def decode_prepared_nfse(content: bytes, *, scope: ExecutionScope) -> NfseAuthor
             dps_number=root.get("dps_number"),
             national_tax_treatment=treatment,
             national_substitution=substitution,
+            federal_withholding=withholding,
         )
         request = NfseAuthorizationRequest.build(document)
         if request.idempotency_key.value != _text(root["idempotency_key"], "idempotency_key"):

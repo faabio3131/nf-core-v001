@@ -379,6 +379,25 @@ def build_unsigned_dps(
         # rejects ordinary taxable policies without their exact reviewed rate.
         rate = (iss_amount / taxable * 100).quantize(_CENT, rounding=ROUND_HALF_UP)
         _child(trib_mun, "pAliq", _money(rate))
+    withholding = document.federal_withholding
+    if withholding is not None:
+        # Reviewed values only (review_reference is mandatory on the object).
+        if withholding.base != service.gross_amount.amount.quantize(_CENT):
+            raise FiscalValidationError("federal withholding base must equal the service value")
+        trib_fed = etree.SubElement(trib, f"{{{_NFSE_NS}}}tribFed")
+        if withholding.pis or withholding.cofins:
+            pis_cofins = etree.SubElement(trib_fed, f"{{{_NFSE_NS}}}piscofins")
+            _child(pis_cofins, "CST", withholding.cst)
+            _child(pis_cofins, "vBCPisCofins", _money(withholding.base))
+            _child(pis_cofins, "pAliqPis", _money(withholding.pis_rate))
+            _child(pis_cofins, "pAliqCofins", _money(withholding.cofins_rate))
+            _child(pis_cofins, "vPis", _money(withholding.pis))
+            _child(pis_cofins, "vCofins", _money(withholding.cofins))
+            _child(pis_cofins, "tpRetPisCofins", withholding.retention_type)
+        if withholding.irrf:
+            _child(trib_fed, "vRetIRRF", _money(withholding.irrf))
+        if withholding.csll:
+            _child(trib_fed, "vRetCSLL", _money(withholding.csll))
     tot_trib = etree.SubElement(trib, f"{{{_NFSE_NS}}}totTrib")
     _child(tot_trib, "indTotTrib", "0")  # Decreto 8.264/2014: no tax-total estimate declared
 
