@@ -13,7 +13,7 @@ import binascii
 import json
 from collections.abc import Mapping, Sequence
 from datetime import UTC, datetime
-from typing import Annotated, Any, Protocol, runtime_checkable
+from typing import TYPE_CHECKING, Annotated, Any, Protocol, runtime_checkable
 from uuid import uuid4
 
 from fastapi import APIRouter, Body, HTTPException, Request, status
@@ -35,6 +35,9 @@ from kordena_fiscal.signing.contracts import (
 )
 from kordena_fiscal.vault.encrypted_a1 import A1VaultUnavailable, EncryptedA1Vault
 from kordena_fiscal.web.human_auth import CSRF_COOKIE, CSRF_HEADER, SESSION_COOKIE
+
+if TYPE_CHECKING:
+    from kordena_fiscal.security.human_mfa import HumanMfaService
 
 
 @runtime_checkable
@@ -135,6 +138,17 @@ _OPERATION_PERMISSIONS: dict[str, PortalPermission] = {
     "inutilizeFiscalRange": PortalPermission.DOCUMENT_INUTILIZE,
     "reconcileFiscalOperation": PortalPermission.RECONCILIATION_EXECUTE,
 }
+
+# Approved step-up list: A1, regime/CRT, users (role changes). The A1 upload and
+# the production egress decision have their own routes and are checked there.
+STEP_UP_OPERATIONS = frozenset({
+    "configureCertificates",
+    "registerFiscalProfile",
+    "declareFederalRegime",
+    "changeFiscalProfileCrt",
+    "createUser",
+    "updateUser",
+})
 
 _IDEMPOTENT_MUTATIONS = {
     "onboardUnit",
@@ -317,11 +331,29 @@ def create_portal_router(
     *,
     platform_surfaces: tuple[str, ...] = (),
     certificate_vault: EncryptedA1Vault | None = None,
+    mfa: HumanMfaService | None = None,
 ) -> APIRouter:
     router = APIRouter(prefix="/v1/portal", tags=["human-portal"])
 
     def authority(request: Request) -> AuthenticatedHuman:
-        return _authenticated(request, identity, now=datetime.now(UTC))
+        auth = _authenticated(request, identity, now=datetime.now(UTC))
+        if (
+            mfa is not None and mfa.required_for(auth.account)
+            and not mfa.is_enrolled(auth.account.account_id)
+        ):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail={"code": "MFA_ENROLLMENT_REQUIRED",
+                        "message": "Ative o app autenticador para continuar"},
+            )
+        return auth
+
+    def step_up(auth: AuthenticatedHuman) -> None:
+        if mfa is not None and not mfa.has_recent_step_up(auth.session_id, datetime.now(UTC)):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail={"code": "STEP_UP_REQUIRED", "message": "Confirme o código do app"},
+            )
 
     def require_executor() -> HumanPortalExecutor:
         if executor is None:
@@ -386,6 +418,7 @@ def create_portal_router(
     async def upload_a1(request: Request) -> dict[str, str]:
         auth = authority(request)
         _csrf(request, identity, auth)
+        step_up(auth)
         if certificate_vault is None:
             raise HTTPException(
                 status_code=503,
@@ -644,6 +677,8 @@ def create_portal_router(
             )
         _authorized(auth, permission, unit_id=unit_id)
         _csrf(request, identity, auth)
+        if operation_id in STEP_UP_OPERATIONS:
+            step_up(auth)
         idempotency_key = request.headers.get("Idempotency-Key")
         if operation_id in _IDEMPOTENT_MUTATIONS and not (idempotency_key or "").strip():
             raise HTTPException(
@@ -704,6 +739,7 @@ def create_portal_router(
         if not auth.account.platform_admin:
             raise HTTPException(403, detail={"code": "EGRESS_FORBIDDEN"})
         _csrf(request, identity, auth)
+        step_up(auth)
         _reject_browser_authority(payload)
         if set(payload) - {"url", "expires_at", "expected_version"}:
             raise HTTPException(400, detail={"code": "INVALID_EGRESS_DECISION"})

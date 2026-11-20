@@ -1,6 +1,7 @@
 """PostgreSQL T01 schema rehearsal: real SQL, RLS and immutable rows."""
 import os
 from datetime import date
+from urllib.parse import parse_qsl, quote, urlencode, urlsplit, urlunsplit
 from uuid import uuid4
 
 import psycopg
@@ -8,15 +9,16 @@ import pytest
 from psycopg import sql
 
 from kordena_fiscal.domain import Cnpj, ExecutionScope, FiscalEnvironment, FiscalValidationError
-from kordena_fiscal.persistence.economy_schema import ECONOMY_SCHEMA, TABLES
+from kordena_fiscal.persistence.economy_schema import ECONOMY_VERSION, TABLES
 from kordena_fiscal.persistence.economy_store import EconomyStore
+from kordena_fiscal.persistence.postgres import PostgresFiscalDatabase
 
 
 def _scope(tenant="tenant-a", unit="unit-a", host="fm-nfcore"):
     return ExecutionScope(tenant, unit, FiscalEnvironment.HOMOLOGATION, "test", host)
 
 
-def test_real_postgres_economy_schema_scope_and_immutability():
+def test_real_postgres_economy_schema_scope_and_immutability(monkeypatch):
     dsn = os.environ.get("NFCORE_TEST_POSTGRES_DSN")
     if not dsn:
         pytest.skip("real PostgreSQL required for T01")
@@ -29,20 +31,44 @@ def test_real_postgres_economy_schema_scope_and_immutability():
         admin.execute(sql.SQL("CREATE ROLE {} NOLOGIN NOSUPERUSER NOBYPASSRLS").format(
             sql.Identifier(role_name)
         ))
+        database = None
         try:
+            uri = urlsplit(dsn)
+            query = dict(parse_qsl(uri.query, keep_blank_values=True))
+            query["options"] = f"-c search_path={schema_name}"
+            database = PostgresFiscalDatabase(
+                urlunsplit(uri._replace(query=urlencode(query, quote_via=quote)))
+            )
+            assert ECONOMY_VERSION not in database.initialize()
+            assert database.initialize(
+                enable_economy=True, economy_runtime_role=role_name,
+            ) == (ECONOMY_VERSION,)
+            assert database.initialize(enable_economy=True) == ()
+            assert database.applied_migrations()[-1] == ECONOMY_VERSION
+            monkeypatch.setenv("NFCORE_ECONOMY_ENABLED", "true")
+            monkeypatch.setenv("NFCORE_ECONOMY_RUNTIME_ROLE", role_name)
+            with database.economy(_scope(tenant="tenant-migration")) as scoped:
+                scoped.append_snapshot(
+                    record_id="migration-proof", version=1, competence=date(2026, 11, 1),
+                    issuer=Cnpj("12345678000195"), content={"revenue_cents": 10},
+                )
+            with database.economy(_scope(tenant="tenant-b")) as scoped:
+                assert scoped.snapshot("migration-proof", 1) is None
+            with database.economy(_scope(tenant="tenant-migration")) as scoped:
+                assert scoped.snapshot("migration-proof", 1) == {"revenue_cents": 10}
+            with database.economy(_scope(tenant="tenant-c")) as scoped:
+                scoped.append_snapshot(
+                    record_id="migration-proof", version=1, competence=date(2026, 11, 1),
+                    issuer=Cnpj("12345678000195"), content={"revenue_cents": 20},
+                )
             admin.execute(sql.SQL("SET search_path TO {}").format(sql.Identifier(schema_name)))
-            with admin.transaction():
-                for statement in ECONOMY_SCHEMA:
-                    admin.execute(statement)
-                admin.execute(sql.SQL("GRANT USAGE ON SCHEMA {} TO {}").format(
-                    sql.Identifier(schema_name), sql.Identifier(role_name),
+            # Explicitly add DML permissions only in this sandbox to prove
+            # that the RLS policies, not solely GRANTs, deny mutation.
+            for table in TABLES:
+                admin.execute(sql.SQL("GRANT UPDATE, DELETE ON {} TO {}").format(
+                    sql.Identifier(table), sql.Identifier(role_name),
                 ))
-                for table in TABLES:
-                    admin.execute(
-                        sql.SQL("GRANT SELECT, INSERT, UPDATE, DELETE ON {} TO {}").format(
-                            sql.Identifier(table), sql.Identifier(role_name),
-                        )
-                    )
+            # Keep the subsequent original tests in a distinct partition.
             with psycopg.connect(dsn, autocommit=True) as runtime:
                 runtime.execute(sql.SQL("SET search_path TO {}").format(
                     sql.Identifier(schema_name)
@@ -133,5 +159,7 @@ def test_real_postgres_economy_schema_scope_and_immutability():
                             FROM fm_economy_snapshots"""
                         )
         finally:
+            if database is not None:
+                database.close()
             admin.execute(sql.SQL("DROP SCHEMA {} CASCADE").format(sql.Identifier(schema_name)))
             admin.execute(sql.SQL("DROP ROLE {}").format(sql.Identifier(role_name)))

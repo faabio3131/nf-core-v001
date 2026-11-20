@@ -247,5 +247,16 @@ def test_policy_manifest_includes_and_checks_delegation_v23(monkeypatch) -> None
         original(**kwargs)
 
     monkeypatch.setattr(guard, "_reject_unapproved_destructive", check)
-    assert guard.validate_policy() == tuple(range(1, 24))
+    assert guard.validate_policy() == tuple(range(1, 26))
     assert guard.IRON_A1_DELEGATION_VERSION in checked
+    assert guard.HUMAN_MFA_VERSION in checked
+
+
+def test_economy_optional_migration_boundaries(monkeypatch) -> None:
+    monkeypatch.setenv("NFCORE_ECONOMY_ENABLED", "true")
+    monkeypatch.delenv("NFCORE_HUMAN_MFA", raising=False)
+    assert guard._release_schemas(enable_bling=False) == (
+        (*range(1, 20), 22, 23, 25), (*range(1, 24), 25),
+    )
+    monkeypatch.setenv("NFCORE_HUMAN_MFA", "enabled")
+    assert guard._release_schemas(enable_bling=True) == (tuple(range(1, 26)),)

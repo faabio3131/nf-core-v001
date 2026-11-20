@@ -22,7 +22,7 @@ from types import TracebackType
 from typing import Any, TypeVar, cast
 from uuid import uuid4
 
-from psycopg import Connection, Cursor, IntegrityError
+from psycopg import Connection, Cursor, IntegrityError, sql
 from psycopg.errors import UndefinedTable
 from psycopg_pool import ConnectionPool
 
@@ -80,7 +80,15 @@ from .customer_configuration_schema import (
     CUSTOMER_CONFIGURATION_SCHEMA,
     CUSTOMER_CONFIGURATION_VERSION,
 )
+from .economy_schema import ECONOMY_NAME, ECONOMY_SCHEMA, ECONOMY_VERSION, TABLES
+from .economy_store import EconomyStore
 from .fiscal_scope_schema import FISCAL_SCOPE_NAME, FISCAL_SCOPE_SCHEMA, FISCAL_SCOPE_VERSION
+from .human_mfa_schema import (
+    HUMAN_MFA_NAME,
+    HUMAN_MFA_SCHEMA,
+    HUMAN_MFA_VERSION,
+    PostgresHumanMfaStore,
+)
 from .iron_a1_delegation import (
     IRON_A1_DELEGATION_NAME,
     IRON_A1_DELEGATION_SCHEMA,
@@ -691,7 +699,10 @@ class PostgresFiscalDatabase:
         with self._pool.connection() as raw:
             yield _PostgresCompatConnection(raw)
 
-    def initialize(self, *, enable_bling: bool = False) -> tuple[int, ...]:
+    def initialize(
+        self, *, enable_bling: bool = False, enable_mfa: bool = False,
+        enable_economy: bool = False, economy_runtime_role: str | None = None,
+    ) -> tuple[int, ...]:
         with self._pool.connection() as raw:
             try:
                 raw.execute(
@@ -974,11 +985,76 @@ class PostgresFiscalDatabase:
                          datetime.now().astimezone().isoformat()),
                     )
                     new_versions.append(IRON_A1_DELEGATION_VERSION)
+                if enable_mfa and HUMAN_MFA_VERSION not in applied:
+                    for statement in HUMAN_MFA_SCHEMA:
+                        raw.execute(statement)
+                    raw.execute(
+                        "INSERT INTO fm_schema_migrations (version, name, applied_at) "
+                        "VALUES (%s, %s, %s)",
+                        (HUMAN_MFA_VERSION, HUMAN_MFA_NAME,
+                         datetime.now().astimezone().isoformat()),
+                    )
+                    new_versions.append(HUMAN_MFA_VERSION)
+                if enable_economy:
+                    if ECONOMY_VERSION not in applied:
+                        for statement in ECONOMY_SCHEMA:
+                            raw.execute(statement)
+                        raw.execute(
+                            "INSERT INTO fm_schema_migrations (version, name, applied_at) "
+                            "VALUES (%s, %s, %s)",
+                            (ECONOMY_VERSION, ECONOMY_NAME, datetime.now().astimezone().isoformat()),
+                        )
+                        new_versions.append(ECONOMY_VERSION)
+                    if economy_runtime_role is not None:
+                        self._grant_economy_access(raw, economy_runtime_role)
                 raw.commit()
                 return tuple(new_versions)
             except Exception:
                 raw.rollback()
                 raise
+
+    @staticmethod
+    def _grant_economy_access(raw: Connection[Any], role: str) -> None:
+        """Grant only economy privileges to an explicitly provisioned restricted role."""
+        if not isinstance(role, str) or not role.strip() or len(role.encode("utf-8")) > 63:
+            raise FiscalValidationError("invalid economy runtime role")
+        record = raw.execute(
+            "SELECT rolsuper OR rolbypassrls OR rolcreaterole OR rolcreatedb "
+            "FROM pg_roles WHERE rolname = %s",
+            (role,),
+        ).fetchone()
+        if record is None or record[0]:
+            raise FiscalValidationError("economy runtime role must be precreated and restricted")
+        owner = raw.execute(
+            "SELECT count(*) FROM pg_class WHERE oid = ANY("
+            "ARRAY(SELECT to_regclass(name)::oid FROM unnest(%s::text[]) AS name)) "
+            "AND pg_has_role(%s, relowner, 'MEMBER')", (list(TABLES), role),
+        ).fetchone()
+        if owner is None or owner[0]:
+            raise FiscalValidationError("economy runtime role must not own fiscal tables")
+        schema = raw.execute("SELECT current_schema()").fetchone()
+        if schema is None or not isinstance(schema[0], str):
+            raise PersistenceStateError("economy migration requires a current schema")
+        raw.execute(sql.SQL("GRANT USAGE ON SCHEMA {} TO {}").format(
+            sql.Identifier(schema[0]), sql.Identifier(role),
+        ))
+        for table in TABLES:
+            qualified = sql.Identifier(schema[0], table)
+            raw.execute(sql.SQL("GRANT SELECT, INSERT ON {} TO {}").format(
+                qualified, sql.Identifier(role),
+            ))
+
+    @contextmanager
+    def economy(self, scope: ExecutionScope) -> Iterator[EconomyStore]:
+        """Use the existing canonical database, never an independent fiscal database."""
+        if os.environ.get("NFCORE_ECONOMY_ENABLED") != "true":
+            raise PersistenceStateError("Central de Economia Fiscal is disabled")
+        role = os.environ.get("NFCORE_ECONOMY_RUNTIME_ROLE", "").strip()
+        if not role:
+            raise PersistenceStateError("restricted economy runtime role is required")
+        with self._pool.connection() as raw:
+            with EconomyStore.transaction(raw, scope, runtime_role=role) as store:
+                yield store
 
     def applied_migrations(self) -> tuple[int, ...]:
         with self._pool.connection() as raw:
@@ -991,7 +1067,10 @@ class PostgresFiscalDatabase:
                 return ()
             return tuple(int(row[0]) for row in rows)
 
-    def require_current_schema(self, *, require_bling: bool = False) -> tuple[int, ...]:
+    def require_current_schema(
+        self, *, require_bling: bool = False, require_mfa: bool | None = None,
+        require_economy: bool | None = None,
+    ) -> tuple[int, ...]:
         """Check schema compatibility without DDL or migration side effects.
 
         In staging/production only the governed migration_guard orchestrator may
@@ -1007,10 +1086,28 @@ class PostgresFiscalDatabase:
         a1_nfse_bling = (*nfse_bling, IRON_A1_DELEGATION_VERSION)
         # Optional Bling 20/21 and additive DPS 22 can be independently
         # installed. Partial Bling installation remains forbidden.
-        ready_schemas = (bling_ready, nfse_bling, a1_nfse_bling) if require_bling else (
+        ready_schemas: tuple[tuple[int, ...], ...] = (
+            bling_ready, nfse_bling, a1_nfse_bling,
+        ) if require_bling else (
             baseline, bling_ready, nfse_baseline, nfse_bling,
             a1_nfse_baseline, a1_nfse_bling,
         )
+        # Additive MFA 24 sits on top of the A1 schemas and is the exact
+        # boundary only when NFCORE_HUMAN_MFA=enabled; otherwise it is drift.
+        if require_mfa is None:
+            require_mfa = os.environ.get("NFCORE_HUMAN_MFA", "").strip().casefold() == "enabled"
+        if require_economy is None:
+            require_economy = os.environ.get("NFCORE_ECONOMY_ENABLED") == "true"
+        if require_mfa:
+            ready_schemas = tuple(
+                (*schema, HUMAN_MFA_VERSION) for schema in ready_schemas
+                if IRON_A1_DELEGATION_VERSION in schema
+            )
+        if require_economy:
+            ready_schemas = tuple(
+                (*schema, ECONOMY_VERSION) for schema in ready_schemas
+                if IRON_A1_DELEGATION_VERSION in schema
+            )
         if applied not in ready_schemas:
             raise PersistenceStateError(
                 "PostgreSQL schema is not at the certified migration version"
@@ -1060,6 +1157,35 @@ class PostgresFiscalDatabase:
                 raise
             except Exception as exc:
                 raise PersistenceStateError("A1 delegation schema is not ready") from exc
+        if require_economy:
+            try:
+                with self.connection() as connection:
+                    economy_rows = connection.execute(
+                        "SELECT relname, relrowsecurity, relforcerowsecurity "
+                        "FROM pg_class WHERE oid IN ("
+                        "SELECT to_regclass('public.' || name) FROM unnest(?::text[]) AS name)",
+                        (list(TABLES),),
+                    ).fetchall()
+                    policies = connection.execute(
+                        "SELECT tablename, policyname, cmd FROM pg_policies "
+                        "WHERE schemaname='public' AND tablename=ANY(?::text[])",
+                        (list(TABLES),),
+                    ).fetchall()
+                expected_policies = {
+                    (table, name, command) for table in TABLES
+                    for name, command in (("economy_select", "SELECT"),
+                                          ("economy_insert", "INSERT"))
+                }
+                if (
+                    {str(row[0]) for row in economy_rows if row[1] and row[2]} != set(TABLES)
+                    or {(str(row[0]), str(row[1]), str(row[2])) for row in policies}
+                    != expected_policies
+                ):
+                    raise PersistenceStateError("economy scope isolation schema is incomplete")
+            except PersistenceStateError:
+                raise
+            except Exception as exc:
+                raise PersistenceStateError("economy schema is not ready") from exc
         if not require_bling:
             return applied
         try:
@@ -1098,6 +1224,9 @@ class PostgresFiscalDatabase:
 
     def human_administration(self) -> PostgresHumanAdministrationStore:
         return PostgresHumanAdministrationStore(self)
+
+    def human_mfa(self) -> PostgresHumanMfaStore:
+        return PostgresHumanMfaStore(self.connection)
 
     def web_sessions(self) -> PostgresWebSessionRepository:
         return PostgresWebSessionRepository(self)

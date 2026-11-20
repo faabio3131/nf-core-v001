@@ -49,18 +49,29 @@ class EconomyStore:
     @staticmethod
     @contextmanager
     def transaction(
-        conn: Connection[Any], scope: ExecutionScope,
+        conn: Connection[Any], scope: ExecutionScope, *, runtime_role: str | None = None,
     ) -> Iterator[EconomyStore]:
         if not scope.host_namespace:
             raise FiscalValidationError("economy requires bound fiscal host scope")
         if conn.info.transaction_status.name != "IDLE":
             raise FiscalValidationError("economy transaction requires idle connection")
         with conn.transaction():
+            if runtime_role is not None:
+                EconomyStore._text(runtime_role, "runtime role")
+                conn.execute(sql.SQL("SET LOCAL ROLE {}").format(sql.Identifier(runtime_role)))
             privileged = conn.execute(
                 "SELECT rolsuper OR rolbypassrls FROM pg_roles WHERE rolname = current_user"
             ).fetchone()
             if privileged is None or privileged[0]:
                 raise FiscalValidationError("economy runtime role must not bypass RLS")
+            ownership = conn.execute(
+                "SELECT count(*) FROM pg_class WHERE oid = ANY("
+                "ARRAY(SELECT to_regclass(name)::oid FROM unnest(%s::text[]) AS name)) "
+                "AND pg_has_role(current_user, relowner, 'MEMBER')",
+                (list(TABLES),),
+            ).fetchone()
+            if ownership is None or ownership[0]:
+                raise FiscalValidationError("economy runtime role must not own fiscal tables")
             settings = tuple(zip(SCOPE_COLUMNS.split(", "), scope.identity_material, strict=True))
             for key, value in settings:
                 conn.execute("SELECT set_config(%s, %s, true)", ("nfcore.economy_" + key, value))

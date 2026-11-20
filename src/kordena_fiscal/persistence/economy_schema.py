@@ -1,11 +1,13 @@
 """T01 additive Central de Economia Fiscal foundation.
 
-Prepared for the canonical migration registry after the currently open MFA v24
-migration is reconciled. No DDL is executed on application startup.
+Registered as additive v25 after the MFA v24 reservation.
+No DDL is executed on application startup in staging or production.
 """
 
 from __future__ import annotations
 
+ECONOMY_VERSION = 25
+ECONOMY_NAME = "economy_t01_scoped_foundation"
 SCOPE_COLUMNS = "host_namespace, tenant_id, unit_id, environment"
 SCOPE_DDL = """
     host_namespace TEXT NOT NULL CHECK (length(host_namespace) > 0),

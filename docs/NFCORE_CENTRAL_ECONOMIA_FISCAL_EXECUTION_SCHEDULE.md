@@ -33,3 +33,6 @@ Base 52568a3df46dc6cf608a22c7b9971266ce71cbef; migração MFA v24 está em PR #5
 Persistência de inserção e leitura escopada acrescentada para as cinco entidades, com validação de referências, centavos e digest. Teste PostgreSQL ampliado para toda a cadeia e para referência cruzada impossível entre empresas. Execução não comprovada.
 
 Repositório endurecido: leitura e gravação exigem transação escopada ativa, reuso após encerramento e chamada direta recusados; projeções conferem digest, entradas passam pelas mesmas primitivas SQL e teste de rollback explícito adicionado. Estado continua EM EXECUÇÃO; teste PostgreSQL não executado.
+
+### Integração canônica T01
+Migração aditiva v25 na mesma autoridade PostgreSQL, opt-in por NFCORE_ECONOMY_ENABLED=true. Base de integração inclui a candidata MFA v24 (#586, SHA bc95d9460494958d091f7cee8afc1f3d7d768e57) sem alterar a branch do MFA nem promover produção. Papel restrito explicitamente configurado em NFCORE_ECONOMY_RUNTIME_ROLE, com SELECT/INSERT apenas; SET LOCAL ROLE e RLS FORCE por transação. Guardas de migração e readiness atualizados, preservando v23/v24 quando a Central estiver desabilitada. Teste usa PostgresFiscalDatabase.initialize() em schema isolado, aplica v25, exercita repositório canônico e isolamento. Execução e revisão ainda não comprovadas; T01 não entregue.

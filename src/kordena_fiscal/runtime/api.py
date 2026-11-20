@@ -1141,6 +1141,7 @@ def create_runtime_app(
             security=bridge_security,
             executor=bridge_executor,
             human_identity=human_identity,
+            human_mfa=None if composition is None else composition.human_mfa,
             human_login_completed=commercial_activation_completed,
             password_recovery=password_recovery,
             password_reset_delivery=password_reset_delivery,

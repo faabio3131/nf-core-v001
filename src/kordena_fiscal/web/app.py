@@ -30,6 +30,7 @@ from kordena_fiscal.runtime.observability import (
     TraceContext,
 )
 from kordena_fiscal.security.human_identity import HumanIdentityService
+from kordena_fiscal.security.human_mfa import HumanMfaService
 from kordena_fiscal.security.human_recovery import PasswordRecoveryService
 from kordena_fiscal.vault.encrypted_a1 import EncryptedA1Vault
 from kordena_fiscal.web.cakto_checkout import create_cakto_checkout_router
@@ -261,6 +262,7 @@ def create_app(
     security: BridgeSecurityBoundary | None = None,
     executor: BridgeRequestExecutor | None = None,
     human_identity: HumanIdentityService | None = None,
+    human_mfa: HumanMfaService | None = None,
     human_login_completed: Callable[[str, datetime], None] | None = None,
     password_recovery: PasswordRecoveryService | None = None,
     password_reset_delivery: PasswordResetDelivery | None = None,
@@ -392,6 +394,7 @@ def create_app(
             create_human_auth_router(
                 human_identity,
                 on_login=human_login_completed,
+                mfa=human_mfa,
             )
         )
         platform_surfaces = tuple(
@@ -415,6 +418,7 @@ def create_app(
                 portal_executor,
                 platform_surfaces=platform_surfaces,
                 certificate_vault=certificate_vault,
+                mfa=human_mfa,
             )
         )
         if pricing_administration is not None:
