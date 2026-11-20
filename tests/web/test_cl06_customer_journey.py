@@ -437,6 +437,22 @@ def test_owner_registers_initial_fiscal_profile_idempotently_via_canonical_porta
     )
     assert declared.status_code == 200, declared.text
     assert declared.json()["federal_income_tax_regime"] == "lucro_presumido"
+    assert declared.json()["version"] == 1
+    assert web.post(
+        regime_endpoint, json=regime,
+        headers={CSRF_HEADER: csrf, "Idempotency-Key": "regime-1"},
+    ).json()["replay"] is True
+    assert web.post(
+        regime_endpoint, json={**regime, "federal_income_tax_regime": "lucro_real"},
+        headers={CSRF_HEADER: csrf, "Idempotency-Key": "regime-1"},
+    ).status_code == 409
+    assert web.post(
+        regime_endpoint, json={**regime, "issuer_cnpj": "12345678000195"},
+        headers={CSRF_HEADER: csrf, "Idempotency-Key": "regime-issuer-spoof"},
+    ).status_code == 400
+    assert web.post(
+        regime_endpoint, json=regime, headers={"Idempotency-Key": "regime-no-csrf"},
+    ).status_code == 403
     row = web.get(
         "/v1/portal/surfaces/tax-reform?unit_id=matriz&environment=homologation"
     ).json()["rows"][0]
