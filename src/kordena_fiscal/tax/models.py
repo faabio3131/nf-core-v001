@@ -322,6 +322,24 @@ class TaxRule:
                 raise FiscalValidationError("rule effective_to must be after effective_from")
         if self.priority < 0:
             raise FiscalValidationError("rule priority must be >= 0")
+        rates = self.outcome.nfe_rates
+        if rates is not None and rates.icms_benefit is not None:
+            selector = self.selector
+            if (
+                self.effective_to is None
+                or selector.state_code is None
+                or selector.destination_state_code is None
+                or selector.ncm_prefix is None
+                or len(selector.ncm_prefix) != 8
+                or selector.recipient_profile is None
+                or selector.tax_regime is not TaxRegimeCode.NORMAL
+                or selector.document_kind is not FiscalDocumentKind.NFE
+                or selector.operation_type is not TaxOperationType.SALE
+                or not rates.icms_benefit.code.startswith(selector.state_code)
+            ):
+                raise FiscalValidationError(
+                    "ICMS benefit requires exact reviewed NF-e scope, NCM and expiry"
+                )
 
     def is_effective_at(self, instant: datetime) -> bool:
         if instant.tzinfo is None or instant.utcoffset() is None:

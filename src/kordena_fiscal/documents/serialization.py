@@ -120,6 +120,27 @@ def _tax_decision(decision: TaxDecision) -> dict[str, Any]:
             "pis_base": rates.pis_base,
             "cofins_base": rates.cofins_base,
         }
+        benefit = rates.icms_benefit
+        if benefit is not None:
+            payload["outcome"]["nfe_rates"]["icms_benefit"] = {
+                "code": benefit.code,
+                "reviewed_by": benefit.reviewed_by,
+                "approval_reference": benefit.approval_reference,
+                "deson_mode": benefit.deson_mode,
+                "deson_rate": (
+                    _decimal_text(benefit.deson_rate) if benefit.deson_rate is not None else None
+                ),
+                "deson_reason": benefit.deson_reason,
+                "deduct_deson": benefit.deduct_deson,
+                "deferral_rate": (
+                    _decimal_text(benefit.deferral_rate)
+                    if benefit.deferral_rate is not None else None
+                ),
+            }
+            if rates.icms_reduction_rate is not None:
+                payload["outcome"]["nfe_rates"]["icms_reduction_rate"] = _decimal_text(
+                    rates.icms_reduction_rate
+                )
         if rates.fcp_rate is not None:
             payload["outcome"]["nfe_rates"]["fcp_rate"] = _decimal_text(rates.fcp_rate)
         if rates.ipi_rate is not None:

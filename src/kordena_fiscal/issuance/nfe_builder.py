@@ -155,7 +155,10 @@ def build_nfe_sale(
         for line in document.items
     ]
     invoice_total = document.totals.net_amount.amount + sum(
-        (tax.ipi_amount + tax.st_amount + tax.fcp_st_amount for tax in taxes), Decimal(0)
+        (
+            tax.ipi_amount + tax.st_amount + tax.fcp_st_amount - tax.icms_deson_deduction
+            for tax in taxes
+        ), Decimal(0)
     )
     if (
         not document.payments
@@ -241,8 +244,16 @@ def build_nfe_sale(
             _element(dest, "IE", recipient.state_registration.number)
     for line, tax in zip(document.items, taxes, strict=True):
         product = line.product
+        rates = line.tax_decision.outcome.nfe_rates
+        benefit = rates.icms_benefit if rates is not None else None
+        if benefit is not None and (
+            nfce or not benefit.code.startswith(issuer.address.jurisdiction.state_code)
+        ):
+            raise FiscalValidationError("ICMS benefit differs from reviewed model or UF")
         if (
-            product.hints.fiscal_benefit_code is not None
+            (product.hints.fiscal_benefit_code is not None and (
+                benefit is None or product.hints.fiscal_benefit_code != benefit.code
+            ))
             or product.hints.ibs_cbs_classification_code is not None
             or line.restaurant_decision is not None
         ):
@@ -301,6 +312,8 @@ def build_nfe_sale(
             _element(prod, key, value)
         if product.cest is not None:
             _element(prod, "CEST", product.cest.value)
+        if benefit is not None:
+            _element(prod, "cBenef", benefit.code)
         for key, value in (
             ("CFOP", line.tax_decision.outcome.cfop),
             ("uCom", product.commercial_unit.value),
@@ -325,6 +338,7 @@ def build_nfe_sale(
     values = {
         "vBC": sum((t.icms_base for t in taxes), Decimal(0)),
         "vICMS": sum((t.icms_amount for t in taxes), Decimal(0)),
+        "vICMSDeson": sum((t.icms_deson_amount for t in taxes), Decimal(0)),
         "vFCP": sum((t.fcp_amount for t in taxes), Decimal(0)),
         "vFCPUFDest": sum((t.fcp_destination_amount for t in taxes), Decimal(0)),
         "vICMSUFDest": sum((t.difal_amount for t in taxes), Decimal(0)),
@@ -482,7 +496,7 @@ def _taxes(parent: etree._Element, outcome: object, origin: int, tax: NfeCalcula
     code = outcome.icms_code
     group = (
         "ICMS" + code
-        if code in {"00", "10", "20", "30", "70"}
+        if code in {"00", "10", "20", "30", "51", "70"}
         else "ICMSSN102"
         if len(code) == 3
         else "ICMS40"
@@ -508,6 +522,23 @@ def _taxes(parent: etree._Element, outcome: object, origin: int, tax: NfeCalcula
                 _element(icms, "vBCFCP", _money(tax.icms_base))
             _element(icms, "pFCP", format(rates.fcp_rate, ".4f"))
             _element(icms, "vFCP", _money(tax.fcp_amount))
+    benefit = rates.icms_benefit
+    if code == "51":
+        assert benefit is not None and benefit.deferral_rate is not None
+        for key, value in (
+            ("modBC", "3"),
+            ("vBC", _money(tax.icms_base)),
+            ("pICMS", format(rates.icms_rate, ".4f")),
+            ("vICMSOp", _money(tax.icms_operation_amount)),
+            ("pDif", format(benefit.deferral_rate, ".4f")),
+            ("vICMSDif", _money(tax.icms_deferred_amount)),
+            ("vICMS", _money(tax.icms_amount)),
+        ):
+            _element(icms, key, value)
+    if benefit is not None and benefit.deson_reason is not None:
+        _element(icms, "vICMSDeson", _money(tax.icms_deson_amount))
+        _element(icms, "motDesICMS", benefit.deson_reason)
+        _element(icms, "indDeduzDeson", "1" if benefit.deduct_deson else "0")
     if code in {"10", "30", "70"}:
         assert rates.st_mva_rate is not None and rates.st_rate is not None
         for key, value in (

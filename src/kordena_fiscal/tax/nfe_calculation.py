@@ -5,6 +5,7 @@ No statutory tax rates are embedded here. Unsupported regimes/groups fail closed
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from decimal import ROUND_HALF_UP, Decimal
 from typing import TYPE_CHECKING, Literal
@@ -19,6 +20,51 @@ if TYPE_CHECKING:
     from .models import TaxDecision
 
 _CENT = Decimal("0.01")
+
+
+@dataclass(frozen=True, slots=True)
+class ReviewedIcmsBenefit:
+    """Evidence in an existing checksum-pinned, operator-reviewed rule.
+
+    Not a catalogue or proof of statutory eligibility by itself.
+    """
+
+    code: str
+    reviewed_by: str
+    approval_reference: str
+    deson_mode: str | None = None
+    deson_rate: Decimal | None = None
+    deson_reason: int | None = None
+    deduct_deson: bool | None = None
+    deferral_rate: Decimal | None = None
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.code, str) or not re.fullmatch(
+            r"[A-Z]{2}[A-Z0-9]{6}(?:[A-Z0-9]{2})?", self.code
+        ):
+            raise FiscalValidationError("reviewed ICMS benefit requires a UF code")
+        for value in (self.reviewed_by, self.approval_reference):
+            if not isinstance(value, str) or not value.strip() or len(value) > 500:
+                raise FiscalValidationError("ICMS benefit requires explicit review evidence")
+        facts = (self.deson_mode, self.deson_rate, self.deson_reason, self.deduct_deson)
+        if any(v is not None for v in facts):
+            if (
+                self.deson_mode != "nominal_minus_due"
+                or self.deson_rate is None
+                or type(self.deson_reason) is not int
+                or type(self.deduct_deson) is not bool
+            ):
+                raise FiscalValidationError("ICMS desoneration requires explicit reviewed facts")
+        for rate in (self.deson_rate, self.deferral_rate):
+            if rate is not None and (
+                not isinstance(rate, Decimal)
+                or not rate.is_finite()
+                or not 0 < rate <= 100
+                or rate != rate.quantize(Decimal("0.0001"))
+            ):
+                raise FiscalValidationError("ICMS benefit percentage must be explicit and valid")
+        if self.deferral_rate is not None and any(v is not None for v in facts):
+            raise FiscalValidationError("combined deferral and desoneration not supported")
 
 
 @dataclass(frozen=True, slots=True)
@@ -55,8 +101,13 @@ class NfeRateParameters:
     rtc_cbs_reduction_rate: Decimal | None = None
     pis_other_mode: str | None = None
     cofins_other_mode: str | None = None
+    icms_benefit: ReviewedIcmsBenefit | None = None
 
     def __post_init__(self) -> None:
+        if self.icms_benefit is not None and not isinstance(
+            self.icms_benefit, ReviewedIcmsBenefit
+        ):
+            raise FiscalValidationError("ICMS benefit must be immutable reviewed evidence")
         rates: tuple[Decimal, ...] = (self.icms_rate, self.pis_rate, self.cofins_rate)
         for candidate in (
             self.fcp_rate,
@@ -229,6 +280,10 @@ class NfeCalculatedTaxes:
     rtc_ibs_municipal_amount: Decimal = Decimal("0.00")
     rtc_cbs_amount: Decimal = Decimal("0.00")
     contribution_taxable_quantity: Decimal = Decimal("0.0000")
+    icms_deson_amount: Decimal = Decimal("0.00")
+    icms_deson_deduction: Decimal = Decimal("0.00")
+    icms_operation_amount: Decimal = Decimal("0.00")
+    icms_deferred_amount: Decimal = Decimal("0.00")
 
 
 def calculate_nfe_line(
@@ -295,9 +350,30 @@ def calculate_nfe_line(
     simple = regime in {TaxRegimeCode.SIMPLES_NACIONAL, TaxRegimeCode.MEI}
     if simple and code not in {"102", "103", "300", "400"}:
         raise FiscalValidationError("unsupported Simples NF-e calculation group")
-    if not simple and code not in {"00", "10", "20", "30", "40", "41", "50", "70"}:
+    if not simple and code not in {"00", "10", "20", "30", "40", "41", "50", "51", "70"}:
         raise FiscalValidationError("unsupported regular NF-e calculation group")
-    taxable_icms = code in {"00", "10", "20", "70"}
+    benefit = policy.icms_benefit
+    if benefit is not None:
+        if regime is not TaxRegimeCode.NORMAL or code not in {"20", "40", "41", "51"}:
+            raise FiscalValidationError("ICMS benefit CST or regime not supported")
+        if (benefit.deferral_rate is not None) != (code == "51"):
+            raise FiscalValidationError("CST 51 requires reviewed deferral rate")
+        if any(v is not None for v in (
+            policy.st_rate, policy.fcp_rate, policy.difal_destination_rate,
+        )) or interstate_final_consumer:
+            raise FiscalValidationError("combined ICMS benefit requires dedicated reviewed policy")
+        if benefit.deson_reason is not None:
+            reasons = (
+                {3, 9, 10, 11, 12} if code == "20"
+                else {1, 3, 4, 5, 6, 7, 8, 9, 10, 11, 16, 90}
+            )
+            if code not in {"20", "40", "41"} or benefit.deson_reason not in reasons:
+                raise FiscalValidationError("ICMS desoneration reason incompatible with CST")
+            if code == "20" and benefit.deson_rate != policy.icms_rate:
+                raise FiscalValidationError("nominal desoneration requires the reviewed ICMS rate")
+    elif code == "51":
+        raise FiscalValidationError("CST 51 requires reviewed benefit evidence")
+    taxable_icms = code in {"00", "10", "20", "51", "70"}
     if policy.fcp_rate is not None and not taxable_icms:
         raise FiscalValidationError("FCP configuration requires taxable ICMS group")
     if code in {"20", "70"}:
@@ -320,7 +396,26 @@ def calculate_nfe_line(
         if taxable_icms
         else Decimal("0.00")
     )
-    icms = (icms_base * policy.icms_rate / 100).quantize(_CENT, rounding=ROUND_HALF_UP)
+    icms_operation = (icms_base * policy.icms_rate / 100).quantize(
+        _CENT, rounding=ROUND_HALF_UP
+    )
+    icms = icms_operation
+    deson = deduction = deferred = Decimal("0.00")
+    if benefit is not None:
+        if benefit.deferral_rate is not None:
+            deferred = (icms_operation * benefit.deferral_rate / 100).quantize(
+                _CENT, rounding=ROUND_HALF_UP
+            )
+            icms -= deferred
+        if benefit.deson_rate is not None:
+            nominal = (net_amount * benefit.deson_rate / 100).quantize(
+                _CENT, rounding=ROUND_HALF_UP
+            )
+            deson = nominal - icms
+            if deson <= 0 or deson > net_amount:
+                raise FiscalValidationError("reviewed ICMS desoneration is outside valid bounds")
+            if benefit.deduct_deson:
+                deduction = deson
 
     contribution_quantity = Decimal("0.0000")
     if (
@@ -483,4 +578,8 @@ def calculate_nfe_line(
         rtc_ibs_municipal_amount=rtc_ibs_mun,
         rtc_cbs_amount=rtc_cbs,
         contribution_taxable_quantity=contribution_quantity,
+        icms_deson_amount=deson,
+        icms_deson_deduction=deduction,
+        icms_operation_amount=icms_operation,
+        icms_deferred_amount=deferred,
     )
