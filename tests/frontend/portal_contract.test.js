@@ -331,3 +331,21 @@ test("portal never prints raw JSON objects and uses PT-BR choices for fixed tech
   assert.doesNotMatch(script, /"issued_at", "Data e hora da venda com fuso", new Date\(\)\.toISOString\(\)/);
   assert.match(script, /localIsoWithOffset\(new Date\(\)\)/);
 });
+
+
+test("RTC-02 federal regime is explicitly selected and submitted through the scoped API", () => {
+  const start = script.indexOf("function appendFederalRegimeDeclaration");
+  const end = script.indexOf("async function renderSurface", start);
+  assert.ok(start > 0 && end > start);
+  const form = script.slice(start, end);
+  assert.match(form, /regime\.required = true/);
+  assert.match(form, /placeholder\.value = ""; placeholder\.textContent = "Selecione o regime federal"/);
+  assert.match(form, /"lucro_presumido", "Lucro Presumido"/);
+  assert.match(form, /"lucro_real", "Lucro Real"/);
+  assert.match(form, /"simples_nacional", "Simples Nacional"/);
+  assert.match(form, /\/v1\/portal\/operations\/declareFederalRegime/);
+  assert.match(form, /"Idempotency-Key": attempt\.key/);
+  assert.match(form, /"X-CSRF-Token": csrfToken\(\)/);
+  assert.doesNotMatch(form, /tenant_id|host_namespace|issuer_cnpj:/);
+  assert.match(script, /configured && bootstrapState\?\.permissions\.includes\("configuration.write"\)/);
+});

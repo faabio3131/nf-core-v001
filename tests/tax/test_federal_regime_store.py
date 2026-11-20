@@ -167,3 +167,16 @@ def test_previous_issuer_regime_is_not_inherited_by_new_cnpj(db) -> None:
     assert federal_regime_status(db, SCOPE, replacement, NOW) == {
         "federal_regime_status": "declaration_inconsistent_with_profile",
     }
+
+
+def test_future_declaration_is_scheduled_not_current(db) -> None:
+    future = datetime(2027, 1, 1, tzinfo=UTC)
+    _declare(db, FederalIncomeTaxRegime.LUCRO_PRESUMIDO, future)
+    status = federal_regime_status(db, SCOPE, _profile(), NOW)
+    assert status == {
+        "federal_regime_status": "declaration_scheduled",
+        "federal_regime_effective_from": future.isoformat(),
+    }
+    assert federal_regime_status(db, SCOPE, _profile(), future)[
+        "federal_income_tax_regime"
+    ] == "lucro_presumido"
