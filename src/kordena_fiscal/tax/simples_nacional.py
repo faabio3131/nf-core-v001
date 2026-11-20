@@ -520,3 +520,83 @@ def assessment_partition(
                 federal_cap[tax] * federal_fraction
             )
     return normal, federal_fraction, local_fraction
+
+
+# LC 214/2025 annexes XVIII–XXII, consolidated by LC 227/2026.
+# Data for the 2027–2028 transition; not authorization to assess future PA.
+TRANSITION_TAXES = ("irpj", "csll", "cbs", "cpp", "ipi", "icms", "iss", "ibs")
+TRANSITION_SOURCE = (
+    "https://www2.camara.leg.br/legin/fed/leicom/2025/"
+    "leicomplementar-214-16-janeiro-2025-796905-normaatualizada-pl.html"
+)
+_TRANSITION_PARTITION = MappingProxyType({
+    Annex.ANNEX_I: (
+        (550, 350, 1533, 4150, 0, 3400, 0, 17),
+        (550, 350, 1533, 4150, 0, 3400, 0, 17),
+        (550, 350, 1533, 4200, 0, 3350, 0, 17),
+        (550, 350, 1533, 4200, 0, 3350, 0, 17),
+        (550, 350, 1533, 4200, 0, 3350, 0, 17),
+        (1358, 1006, 3402, 4234, 0, 0, 0, 0),
+    ),
+    Annex.ANNEX_II: (
+        (550, 350, 1385, 3750, 750, 3200, 0, 15),
+        (550, 350, 1385, 3750, 750, 3200, 0, 15),
+        (550, 350, 1385, 3750, 750, 3200, 0, 15),
+        (550, 350, 1385, 3750, 750, 3200, 0, 15),
+        (550, 350, 1385, 3750, 750, 3200, 0, 15),
+        (853, 753, 2522, 2359, 3513, 0, 0, 0),
+    ),
+    Annex.ANNEX_III: (
+        (400, 350, 1543, 4340, 0, 0, 3350, 17),
+        (400, 350, 1691, 4340, 0, 0, 3200, 19),
+        (400, 350, 1641, 4340, 0, 0, 3250, 19),
+        (400, 350, 1641, 4340, 0, 0, 3250, 19),
+        (400, 350, 1543, 4340, 0, 0, 3350, 17),
+        (3509, 1504, 1929, 3058, 0, 0, 0, 0),
+    ),
+    Annex.ANNEX_IV: (
+        (1880, 1520, 2126, 0, 0, 0, 4450, 24),
+        (1980, 1520, 2473, 0, 0, 0, 4000, 27),
+        (2080, 1520, 2374, 0, 0, 0, 4000, 26),
+        (1780, 1920, 2275, 0, 0, 0, 4000, 25),
+        (1880, 1920, 2176, 0, 0, 0, 4000, 24),
+        (5371, 2159, 2470, 0, 0, 0, 0, 0),
+    ),
+    Annex.ANNEX_V: (
+        (2500, 1500, 1696, 2885, 0, 0, 1400, 19),
+        (2300, 1500, 1696, 2785, 0, 0, 1700, 19),
+        (2400, 1500, 1795, 2385, 0, 0, 1900, 20),
+        (2100, 1500, 1894, 2385, 0, 0, 2100, 21),
+        (2300, 1250, 1696, 2385, 0, 0, 2350, 19),
+        (3510, 1554, 1978, 2958, 0, 0, 0, 0),
+    ),
+})
+_TRANSITION_ROWS = MappingProxyType({
+    annex: (*rows[:5], (rows[5][0] - 10, rows[5][1]))
+    for annex, rows in _ROWS.items()
+})
+_TRANSITION_ISS_CAP = MappingProxyType({
+    Annex.ANNEX_III: (602, 526, 2320, 6526, 0, 0, 0, 26),
+    Annex.ANNEX_IV: (3133, 3200, 3627, 0, 0, 0, 0, 40),
+})
+TRANSITION_TABLE_DIGEST = hashlib.sha256(json.dumps({
+    "version": "lc214-lc227-2027-2028/v1",
+    "source": TRANSITION_SOURCE, "valid_from": "2027-01-01",
+    "valid_until": "2029-01-01", "taxes": TRANSITION_TAXES,
+    "rows": dict(_TRANSITION_ROWS), "partition": dict(_TRANSITION_PARTITION),
+    "iss_cap": dict(_TRANSITION_ISS_CAP),
+}, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+
+
+def transition_band(
+    competence: date, annex: Annex, band: int,
+) -> tuple[int, int, dict[str, int]]:
+    """Versioned statutory lookup, before any regime, rate or basis decision."""
+    if _month(competence).year not in {2027, 2028}:
+        raise FiscalValidationError("transition table only valid in 2027–2028")
+    if not isinstance(annex, Annex) or type(band) is not int or not 1 <= band <= 6:
+        raise FiscalValidationError("explicit annex and band required")
+    nominal, deduction = _TRANSITION_ROWS[annex][band - 1]
+    return nominal, deduction, dict(zip(
+        TRANSITION_TAXES, _TRANSITION_PARTITION[annex][band - 1], strict=True,
+    ))
