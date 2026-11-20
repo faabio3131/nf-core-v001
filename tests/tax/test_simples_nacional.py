@@ -12,6 +12,7 @@ from kordena_fiscal.tax.simples_nacional import (
     LimitStatus,
     MonthFacts,
     SimplesFacts,
+    UF_CODES,
     calculate_simples,
 )
 
@@ -181,3 +182,82 @@ def test_replay_content_digest_and_input_change():
     assert a == calculate_simples(facts, ordinary_domestic_base_cents=100_000)
     assert a.calculation_digest != b.calculation_digest
     assert a.rule_digest == b.rule_digest
+
+
+def test_official_receita_question_5_3_reference_arithmetic():
+    # Receita's question 5.3: RBT12 220,000, base 25,000, DAS 1,150.
+    # Reproduce the arithmetic with the same annex table in the 2026 policy.
+    facts = established(rolling=22_000_000)
+    last = replace(facts.months[-1], domestic_cents=2_500_000)
+    result = calculate_simples(
+        replace(facts, months=(*facts.months[:-1], last)),
+        ordinary_domestic_base_cents=2_500_000,
+    )
+    assert result.domestic.effective_rate == Decimal("0.046")
+    assert result.ordinary_domestic_estimate_cents == 115_000
+
+
+@pytest.mark.parametrize("uf", sorted(UF_CODES))
+def test_2026_sublimit_in_all_27_ufs(uf):
+    result = calculate_simples(replace(established(), uf=uf), ordinary_domestic_base_cents=100)
+    assert result.sublimit_cents == 360_000_000
+
+
+@pytest.mark.parametrize("before,month,status", [
+    (350_000_000, 10_000_000, LimitStatus.WITHIN),
+    (350_000_000, 10_000_001, LimitStatus.NEXT_YEAR),
+    (350_000_000, 82_000_000, LimitStatus.NEXT_YEAR),
+    (350_000_000, 82_000_001, LimitStatus.NEXT_MONTH),
+    (432_000_001, 100, LimitStatus.OUTSIDE),
+])
+def test_current_year_sublimit_effect(before, month, status):
+    facts = established()
+    january = replace(facts.months[-1], domestic_cents=before)
+    february = MonthFacts(date(2026, 2, 1), month, 0, 0, "fixture")
+    result = calculate_simples(
+        replace(facts, competence=february.competence, months=(*facts.months[:-1],
+                january, february)), ordinary_domestic_base_cents=month,
+    )
+    assert result.sublimit_status is status
+
+
+@pytest.mark.parametrize("activity,expected", [
+    (Activity.SERVICE_III, Decimal("0.05")),
+    (Activity.SERVICE_IV, Decimal("0.05")),
+    (Activity.SERVICE_FACTOR_R, Decimal("0.05")),
+])
+def test_iss_cap_and_federal_redistribution(activity, expected):
+    result = calculate_simples(
+        established(activity, 360_000_000), ordinary_domestic_base_cents=100_000,
+    )
+    assert result.domestic.local_effective_rate == expected
+    assert result.domestic.federal_effective_rate + result.domestic.local_effective_rate == (
+        result.domestic.effective_rate
+    )
+
+
+def test_opening_factor_exact_current_month():
+    result = calculate_simples(
+        startup(100_000, 28_000, Activity.SERVICE_FACTOR_R),
+        ordinary_domestic_base_cents=100_000,
+    )
+    assert result.annex is Annex.III
+    assert result.factor_r == Decimal("0.28")
+
+
+def test_first_month_without_movement_is_not_fabricated_factor():
+    with pytest.raises(FiscalValidationError, match="factor undefined"):
+        calculate_simples(startup(0, 0, Activity.SERVICE_FACTOR_R), ordinary_domestic_base_cents=0)
+
+
+@pytest.mark.parametrize("activity,annex", [
+    (Activity.COMMERCE, Annex.I), (Activity.INDUSTRY, Annex.II),
+    (Activity.SERVICE_III, Annex.III), (Activity.SERVICE_IV, Annex.IV),
+    (Activity.SERVICE_FACTOR_R, Annex.V),
+])
+@pytest.mark.parametrize("ceiling", [18_000_000, 36_000_000, 72_000_000, 180_000_000, 360_000_000])
+def test_one_cent_transitions(activity, annex, ceiling):
+    a = calculate_simples(established(activity, ceiling), ordinary_domestic_base_cents=100)
+    b = calculate_simples(established(activity, ceiling + 1), ordinary_domestic_base_cents=100)
+    assert a.annex is b.annex is annex
+    assert b.domestic.bracket == a.domestic.bracket + 1
