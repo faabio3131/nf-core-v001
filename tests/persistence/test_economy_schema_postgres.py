@@ -56,6 +56,28 @@ def test_real_postgres_economy_schema_scope_and_immutability():
                     )
                     assert len(digest) == 64
                     assert store.snapshot("s", 1) == {"revenue_cents": 100}
+                    store.append_benefit(
+                        record_id="b", version=1, tax_code="ICMS", jurisdiction="SP",
+                        normative_reference="synthetic-only", valid_from=date(2026, 1, 1),
+                        valid_until=date(2027, 1, 1), content={"eligible": False},
+                    )
+                    store.append_opportunity(
+                        record_id="o", version=1, snapshot_id="s", snapshot_version=1,
+                        benefit_id="b", benefit_version=1, estimated_cents=10,
+                        content={"status": "potential"},
+                    )
+                    store.append_credit_entry(
+                        record_id="credit", opportunity_id="o", opportunity_version=1,
+                        tax_code="ICMS", competence=date(2026, 11, 1),
+                        movement="identified", amount_cents=10,
+                        evidence_reference="synthetic-only",
+                    )
+                    store.append_dossier(
+                        record_id="d", version=1, opportunity_id="o", opportunity_version=1,
+                        archive_reference="synthetic-only", digest=digest,
+                    )
+                    for table in TABLES:
+                        assert len(store.records(table)) == 1
                     assert runtime.execute("UPDATE fm_economy_snapshots SET version=2").rowcount == 0
                     assert runtime.execute("DELETE FROM fm_economy_snapshots").rowcount == 0
                 assert runtime.execute("SELECT count(*) FROM fm_economy_snapshots").fetchone() == (0,)
@@ -64,6 +86,8 @@ def test_real_postgres_economy_schema_scope_and_immutability():
                 ):
                     with EconomyStore.transaction(runtime, scope) as store:
                         assert store.snapshot("s", 1) is None
+                        for table in TABLES:
+                            assert store.records(table) == ()
                         assert runtime.execute(
                             "SELECT count(*) FROM fm_economy_snapshots"
                         ).fetchone() == (0,)
@@ -75,6 +99,12 @@ def test_real_postgres_economy_schema_scope_and_immutability():
                                 record_id="s", version=1, competence=date(2026, 11, 1),
                                 issuer=Cnpj("12345678000195"), content={"revenue_cents": 999},
                             )
+                with pytest.raises(psycopg.errors.ForeignKeyViolation):
+                    with EconomyStore.transaction(runtime, _scope(tenant="tenant-b")) as store:
+                        store.append_opportunity(
+                            record_id="foreign", version=1, snapshot_id="s", snapshot_version=1,
+                            benefit_id=None, benefit_version=None, estimated_cents=1, content={},
+                        )
                 with pytest.raises(psycopg.errors.InsufficientPrivilege):
                     with EconomyStore.transaction(runtime, _scope()):
                         runtime.execute(
