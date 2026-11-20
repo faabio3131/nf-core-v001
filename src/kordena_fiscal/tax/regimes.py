@@ -84,7 +84,10 @@ class FederalRegimeDeclaration:
 
     def assert_effective_in_scope(self, scope: ExecutionScope, instant: datetime) -> None:
         """Raise on scope/time mismatch instead of selecting an unsafe fallback."""
-        if not isinstance(scope, ExecutionScope) or scope.partition_key != self.scope.partition_key:
+        if (
+            not isinstance(scope, ExecutionScope)
+            or scope.identity_partition_key != self.scope.identity_partition_key
+        ):
             raise FiscalValidationError("federal regime scope mismatch")
         if instant.tzinfo is None or instant.utcoffset() is None:
             raise FiscalValidationError("instant must be timezone-aware")
@@ -136,7 +139,7 @@ def resolve_federal_regime_timeline(
     for declaration in items:
         if not isinstance(declaration, FederalRegimeDeclaration):
             raise FiscalValidationError("invalid federal regime declaration in timeline")
-        if declaration.scope.partition_key != profile.scope.partition_key:
+        if declaration.scope.identity_partition_key != profile.scope.identity_partition_key:
             raise FiscalValidationError("federal regime timeline scope mismatch")
     ordered = sorted(items, key=lambda item: item.effective_from)
     for previous, current in zip(ordered, ordered[1:], strict=False):
