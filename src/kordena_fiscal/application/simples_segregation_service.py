@@ -3,20 +3,21 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from datetime import date, datetime, time, timedelta
-from zoneinfo import ZoneInfo
 from typing import Any
+from zoneinfo import ZoneInfo
 
+from kordena_fiscal.application.simples_rtc_bridge import project_rtc_rates
 from kordena_fiscal.cognitive.economy_contract import LegalCitation
 from kordena_fiscal.domain import Cnpj, FiscalProfile, FiscalValidationError, TaxRegimeCode
 from kordena_fiscal.persistence.economy_store import EconomyStore, _digest
-from kordena_fiscal.tax.simples_cash import reconcile_cash_detail, verify_cash_continuity
-from kordena_fiscal.tax.simples_comparison import compare_assessment
 from kordena_fiscal.tax.regimes import (
     SimplesIbsCbsElection,
     SimplesIbsCbsMode,
     SimplesRegularOptionReceipt2027H1,
     resolve_simples_ibs_cbs_mode,
 )
+from kordena_fiscal.tax.simples_cash import reconcile_cash_detail, verify_cash_continuity
+from kordena_fiscal.tax.simples_comparison import compare_assessment
 from kordena_fiscal.tax.simples_nacional import (
     TRANSITION_PARTITION_DIGEST,
     Activity,
@@ -284,12 +285,17 @@ def _evaluate(
                 (local.get("status") == "outside_das") != (int(profile.tax_regime) == 2)
             ):
                 raise FiscalValidationError("reviewed sublimite conflicts with canonical CRT")
+        if assessment and transition and result.get("status") == "estimated":
+            if mode is None:
+                raise FiscalValidationError("reviewed IBS/CBS mode required")
+            result = {**result, "rtc_projection": project_rtc_rates(facts, lines, mode)}
         if assessment:
             # Bind even zero-activity/blocked assessments to the complete reviewed
             # inputs and canonical transaction scope, without a recursive digest.
             facts_payload = {k: v for k, v in content.items() if k != "pgdas_reference"}
             result = {**result, "digest": _digest({
                 "engine_digest": result["digest"],
+                "rtc_projection": result.get("rtc_projection"),
                 "scope": list(scope_identity),
                 "issuer": snapshot["issuer_cnpj"],
                 "competence": snapshot["competence"],

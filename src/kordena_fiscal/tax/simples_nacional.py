@@ -710,7 +710,7 @@ def transition_effective_rate(
     if result["iss"] > Fraction(5, 100):
         excess = result["iss"] - Fraction(5, 100)
         result["iss"] = Fraction(5, 100)
-        if redistribute_iss:
+        if redistribute_iss and not outside_local:
             if idx < 5 and annex in _TRANSITION_ISS_CAP:
                 cap_shares = dict(zip(
                     TRANSITION_TAXES, _TRANSITION_ISS_CAP[annex], strict=True,

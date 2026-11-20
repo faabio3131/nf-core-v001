@@ -118,7 +118,7 @@ def _nfse_request(**overrides):
         annexes={"III": AnnexRates("2.3874", "0.0263", "2.3591", "0.0260")}, factor_r=False,
     )
     item = overrides.pop("item", None) or NfseSimplesItem(
-        1, "12", "000001", "114051100", Decimal("10000.00"), "1", False,
+        1, "12", "000001", "114051100", Decimal("10000.00"), "1", False, "1",
     )
     args = dict(operation_id="ens-nfse-1", date="2027-03-15", simples_option="3",
                 ibs_cbs_regime="1", taxes_regime="1", rates=rates, item=item)
