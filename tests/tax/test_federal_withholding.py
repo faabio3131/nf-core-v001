@@ -1,13 +1,31 @@
 from __future__ import annotations
 
 from dataclasses import replace
+from datetime import UTC, datetime
 from decimal import Decimal
 
 import pytest
 from lxml import etree
 
-from kordena_fiscal.domain import FiscalValidationError, Money, TaxRegimeCode
-from kordena_fiscal.issuance.nfe_nfse import NfseAuthorizationRequest
+from kordena_fiscal.domain import (
+    BrazilianJurisdiction,
+    CnaeCode,
+    Cnpj,
+    ExecutionScope,
+    FiscalAddress,
+    FiscalEnvironment,
+    FiscalProfile,
+    FiscalValidationError,
+    Money,
+    SourceReference,
+    StateRegistration,
+    TaxRegimeCode,
+)
+from kordena_fiscal.issuance.nfe_nfse import (
+    NfseAuthorizationRequest,
+    NfseCanonicalDocument,
+    NfseServiceLine,
+)
 from kordena_fiscal.issuance.nfse_archive import decode_prepared_nfse, encode_prepared_nfse
 from kordena_fiscal.issuance.nfse_dps_builder import build_unsigned_dps
 from kordena_fiscal.tax.federal_withholding import (
@@ -16,9 +34,43 @@ from kordena_fiscal.tax.federal_withholding import (
     WithholdingCategory,
     propose_federal_withholding,
 )
-from tests.runtime.test_nfv1_nfse_dps_builder_and_preaudit_wiring import _request
 
 NS = "{http://www.sped.fazenda.gov.br/nfse}"
+_NOW = datetime(2026, 11, 6, 12, 0, tzinfo=UTC)
+
+
+def _request(**service_overrides) -> NfseAuthorizationRequest:
+    scope = ExecutionScope(
+        tenant_id="tenant-a", unit_id="unit-a", environment=FiscalEnvironment.HOMOLOGATION,
+        correlation_id="corr-withholding-1", host_namespace="host-a",
+    )
+    issuer = FiscalProfile(
+        profile_id="issuer-withholding-1", scope=scope, cnpj=Cnpj("11222333000181"),
+        legal_name="Empresa Sintetica de Servicos Ltda", tax_regime=TaxRegimeCode.NORMAL,
+        state_registration=StateRegistration("SP", "123456789"),
+        primary_cnae=CnaeCode("6201501"),
+        address=FiscalAddress(
+            street="Rua Sintetica", number="100", district="Centro",
+            municipality_name="Sao Paulo",
+            jurisdiction=BrazilianJurisdiction("SP", "3550308"), postal_code="01001000",
+        ),
+        effective_from=datetime(2026, 1, 1, tzinfo=UTC),
+    )
+    fields = dict(
+        line_number=1, municipal_service_code="0107", national_taxation_code="010701",
+        description="Servico sintetico de tecnologia", gross_amount=Money(Decimal("100.00")),
+        iss_amount=Money(Decimal("3.00")), iss_withheld=False,
+    )
+    fields.update(service_overrides)
+    document = NfseCanonicalDocument(
+        document_id="nfse-withholding-doc-1", scope=scope,
+        source=SourceReference("service-order", "order-withholding-1"),
+        issued_at=_NOW, competence_date=_NOW.date(), issuer=issuer,
+        service_jurisdiction=BrazilianJurisdiction("SP", "3550308"),
+        services=(NfseServiceLine(**fields),), service_taker_reference="taker-ref-1",
+        dps_number=1,
+    )
+    return NfseAuthorizationRequest.build(document)
 
 
 def _p(amount: str, **kw):
