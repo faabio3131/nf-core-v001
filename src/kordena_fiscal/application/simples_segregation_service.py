@@ -8,6 +8,7 @@ from typing import Any
 from kordena_fiscal.cognitive.economy_contract import LegalCitation
 from kordena_fiscal.domain import Cnpj, FiscalValidationError
 from kordena_fiscal.persistence.economy_store import EconomyStore, _digest
+from kordena_fiscal.tax.simples_cash import reconcile_cash
 from kordena_fiscal.tax.simples_nacional import Activity, MonthFacts, SimplesFacts
 from kordena_fiscal.tax.simples_segregation import (
     SOURCE,
@@ -86,8 +87,9 @@ def _evaluate(
             FederalTreatment(row["federal"]), LocalTreatment(row["local"]),
             row["evidence_reference"], row["treatment_reference"],
         ) for row in rows)
-        if content["basis"] != "accrual":
-            raise FiscalValidationError("cash basis reconciliation not yet certified")
+        cash = content["basis"] == "cash"
+        if content["basis"] not in {"cash", "accrual"}:
+            raise FiscalValidationError("unknown recognition basis")
         if (
             content["domestic_cents"] > facts.months[-1].domestic_cents
             or content["export_cents"] > facts.months[-1].export_cents
@@ -97,7 +99,18 @@ def _evaluate(
             competence, lines, domestic_cents=content["domestic_cents"],
             export_cents=content["export_cents"],
         )
-        if assessment:
+        if cash:
+            cash_lines, reconciliation = reconcile_cash(competence, content["cash_register"])
+            if reconciliation["accrued"] != content["domestic_cents"] + content["export_cents"]:
+                raise FiscalValidationError("cash accrual total does not reconcile")
+            domestic = sum(line.cents for line in cash_lines if line.market is Market.DOMESTIC)
+            exported = sum(line.cents for line in cash_lines if line.market is Market.EXPORT)
+            if assessment:
+                result = assess_segregated(
+                    facts, cash_lines, domestic_cents=domestic, export_cents=exported, cash=True,
+                )
+            result = {**result, "cash_reconciliation": reconciliation}
+        elif assessment:
             result = assess_segregated(
                 facts, lines, domestic_cents=content["domestic_cents"],
                 export_cents=content["export_cents"],
