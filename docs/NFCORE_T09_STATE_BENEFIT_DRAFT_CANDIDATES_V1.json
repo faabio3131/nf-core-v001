@@ -281,7 +281,12 @@
       "state_official_source_url": "https://goias.gov.br/industriaecomercio/lei-ordinaria-20-787-20-progoias/",
       "official_evidence_type": "official_statutory_text",
       "findings_verified_from_public_source": [
-        "A Lei exige Termo de Enquadramento, recolhimentos regulares e não inscrição impeditiva em dívida ativa"
+        "A Lei exige Termo de Enquadramento, recolhimentos regulares e não inscrição impeditiva em dívida ativa",
+        "A utilização do crédito outorgado depende da expedição do Termo de Enquadramento e somente vale a partir de seu período de apuração.",
+        "São previstas exigências de adimplência do ICMS próprio/ST e de contribuição aplicável ao PROTEGE GOIÁS.",
+        "Inadimplência no período pode ocasionar perda do benefício apenas naquele período; há possibilidades específicas de regularização antes da ação fiscal.",
+        "Inscrição em dívida ativa impede a utilização até o período anterior à regularização, ressalvadas hipóteses de exigibilidade suspensa ou penhora suficiente.",
+        "Exigências de investimento e regras do Programa permanecem cumulativas; apurar parâmetros e alterações de 2026."
       ],
       "eligibility_predicates_to_confirm": [
         "Prazo e percentuais são por enquadramento; checar PROTEGE GOIÁS e operações próprias"
@@ -300,7 +305,30 @@
       "legal_reviewer": null,
       "approved_for_eligibility": false,
       "import_authorized": false,
-      "eligibility_certified": false
+      "eligibility_certified": false,
+      "primary_source_review_20261121": {
+        "inspection_type": "official_statutory_text",
+        "legal_provision": "Lei GO 20.787/2020, art.11 e §4º — ProGoiás",
+        "sources": [
+          "https://goias.gov.br/industriaecomercio/lei-ordinaria-20-787-20-progoias/"
+        ],
+        "primary_findings": [
+          "A utilização do crédito outorgado depende da expedição do Termo de Enquadramento e somente vale a partir de seu período de apuração.",
+          "São previstas exigências de adimplência do ICMS próprio/ST e de contribuição aplicável ao PROTEGE GOIÁS.",
+          "Inadimplência no período pode ocasionar perda do benefício apenas naquele período; há possibilidades específicas de regularização antes da ação fiscal.",
+          "Inscrição em dívida ativa impede a utilização até o período anterior à regularização, ressalvadas hipóteses de exigibilidade suspensa ou penhora suficiente.",
+          "Exigências de investimento e regras do Programa permanecem cumulativas; apurar parâmetros e alterações de 2026."
+        ],
+        "red_flags": [
+          "sem_termo_de_enquadramento",
+          "icms_inadimplente",
+          "divida_ativa_impeditiva",
+          "investimento_nao_comprovado"
+        ],
+        "fully_consolidated_current_to_20261121": false,
+        "independent_accountant_opinion": false,
+        "publisher_bytes_sha256": null
+      }
     },
     {
       "candidate_id": "MA-MAIS-EMPRESAS-LEI10690-2017-V1",
@@ -316,7 +344,10 @@
         "Secretaria de Indústria e Comércio divulga o programa como fomento mediante redução de ICMS",
         "O benefício exige Carta Consulta e documentação de empresa e sócios",
         "Decisão de aprovação passa pelo Conselho de Políticas Fiscais — CONDEP",
-        "Não há concessão automática, taxa de redução universal nem prazo de análise garantido"
+        "Não há concessão automática, taxa de redução universal nem prazo de análise garantido",
+        "SEINC/MA identifica a Lei 10.690/2017 como fundamento e exige Carta Consulta e documentos empresariais.",
+        "A concessão fiscal depende de deliberação do Conselho de Políticas Fiscais — CONDEP; o procedimento não informa data garantida de reunião.",
+        "Protocolo, lei-base e documentos não equivalem ao ato concessivo e ao direito de uma empresa específica."
       ],
       "mandatory_missing": [
         "obter texto primário da Lei 10.690/2017, atos regulamentadores e RICMS/MA vigente",
@@ -337,7 +368,29 @@
       "legal_reviewer": null,
       "approved_for_eligibility": false,
       "import_authorized": false,
-      "eligibility_certified": false
+      "eligibility_certified": false,
+      "primary_source_review_20261121": {
+        "inspection_type": "official_individual_program_procedure",
+        "legal_provision": "Lei MA 10.690/2017 e procedimento de Carta Consulta — Programa Mais Empresas",
+        "sources": [
+          "https://seinc.ma.gov.br/servicos/solicitar-beneficios-do-programa-mais-empresas-emissao-de-carta-consulta",
+          "https://seinc.ma.gov.br/uploads/seinc/docs/Lei_N%C2%BA_1069026_Setembro_de_2017.pdf"
+        ],
+        "primary_findings": [
+          "SEINC/MA identifica a Lei 10.690/2017 como fundamento e exige Carta Consulta e documentos empresariais.",
+          "A concessão fiscal depende de deliberação do Conselho de Políticas Fiscais — CONDEP; o procedimento não informa data garantida de reunião.",
+          "Protocolo, lei-base e documentos não equivalem ao ato concessivo e ao direito de uma empresa específica."
+        ],
+        "red_flags": [
+          "sem_carta_consulta",
+          "nao_aprovado_pelo_condep",
+          "sem_ato_individual",
+          "prazo_nao_demonstrado"
+        ],
+        "fully_consolidated_current_to_20261121": false,
+        "independent_accountant_opinion": false,
+        "publisher_bytes_sha256": null
+      }
     },
     {
       "candidate_id": "MG-RICMS2023-ANII-ITEM26-COHAB-V1",
@@ -351,7 +404,11 @@
       "state_official_source_url": "https://www.fazenda.mg.gov.br/empresas/legislacao_tributaria/ricms_2023_seco/anexoii2023_3.html",
       "official_evidence_type": "official_consolidated_provision",
       "findings_verified_from_public_source": [
-        "Anexo II item 26 restringe benefício a materiais empregados exclusivamente em moradias para população de baixa renda coordenadas pela Cohab Minas"
+        "Anexo II item 26 restringe benefício a materiais empregados exclusivamente em moradias para população de baixa renda coordenadas pela Cohab Minas",
+        "O item 26 limita saída interna de materiais especificados à construção de moradias populares coordenada pela Cohab Minas.",
+        "Para operações sujeitas às alíquotas 18% e 12% aparecem percentuais de redução 61,11% e 41,66%, respectivamente, no dispositivo.",
+        "O subitem 26.1 exige desconto do imposto dispensado no preço e indicação expressa nas informações complementares do documento fiscal.",
+        "A página do regulamento informa vigência até 31/12/2026; há regulamentos e notas explicativas atualizados em outubro de 2026."
       ],
       "eligibility_predicates_to_confirm": [
         "Exige operação interna de produtos nominados, coordenação Cohab, desconto do imposto dispensado na nota"
@@ -370,7 +427,31 @@
       "legal_reviewer": null,
       "approved_for_eligibility": false,
       "import_authorized": false,
-      "eligibility_certified": false
+      "eligibility_certified": false,
+      "primary_source_review_20261121": {
+        "inspection_type": "official_current_ricms_item",
+        "legal_provision": "RICMS/MG 2023, Anexo II, Parte 1, item 26 e subitem 26.1",
+        "sources": [
+          "https://www.fazenda.mg.gov.br/empresas/legislacao_tributaria/ricms_2023_seco/anexoii2023_3.html",
+          "https://www.fazenda.mg.gov.br/empresas/legislacao_tributaria/ricms_2023_seco/sumario2023seco.html"
+        ],
+        "primary_findings": [
+          "O item 26 limita saída interna de materiais especificados à construção de moradias populares coordenada pela Cohab Minas.",
+          "Para operações sujeitas às alíquotas 18% e 12% aparecem percentuais de redução 61,11% e 41,66%, respectivamente, no dispositivo.",
+          "O subitem 26.1 exige desconto do imposto dispensado no preço e indicação expressa nas informações complementares do documento fiscal.",
+          "A página do regulamento informa vigência até 31/12/2026; há regulamentos e notas explicativas atualizados em outubro de 2026."
+        ],
+        "red_flags": [
+          "sem_coordenacao_cohab",
+          "mercadoria_nao_prevista",
+          "saida_interestadual",
+          "desconto_nao_repassado",
+          "documentacao_fiscal_insuficiente"
+        ],
+        "fully_consolidated_current_to_20261121": false,
+        "independent_accountant_opinion": false,
+        "publisher_bytes_sha256": null
+      }
     },
     {
       "candidate_id": "MS-EMPREENDEDOR-LC93-TERMO-V1",
@@ -516,7 +597,10 @@
       "state_official_source_url": "https://www.sefaz.pe.gov.br/Legislacao/Tributaria/Consolidada-Por-Assunto/Paginas/PRODEPE.aspx",
       "official_evidence_type": "official_consolidated_program_index",
       "findings_verified_from_public_source": [
-        "SEFAZ/PE reúne a legislação do PRODEPE por assunto e regras de escrituração"
+        "SEFAZ/PE reúne a legislação do PRODEPE por assunto e regras de escrituração",
+        "O Decreto 21.959/1999 regulamenta o Programa de Desenvolvimento do Estado de Pernambuco (PRODEPE) para indústria e comércio atacadista.",
+        "A versão publicada na SEFAZ lista o Decreto 61.000/2026 como ato alterador; não usar versão consolidada anterior sem revisão.",
+        "O regulamento geral não substitui ato de concessão individual do programa e condições do produto, CACEPE e competência."
       ],
       "eligibility_predicates_to_confirm": [
         "Exige ato individual, produtos habilitados, CACEPE, obrigações fiscais e prazo de fruição"
@@ -535,7 +619,28 @@
       "legal_reviewer": null,
       "approved_for_eligibility": false,
       "import_authorized": false,
-      "eligibility_certified": false
+      "eligibility_certified": false,
+      "primary_source_review_20261121": {
+        "inspection_type": "official_amended_regulation",
+        "legal_provision": "Decreto PE 21.959/1999 (PRODEPE) — alterações até Decreto 61.000/2026 indicadas pela SEFAZ",
+        "sources": [
+          "https://www.sefaz.pe.gov.br/Legislacao/Tributaria/Documents/legislacao/decretos/1999/Dec21959_99.htm"
+        ],
+        "primary_findings": [
+          "O Decreto 21.959/1999 regulamenta o Programa de Desenvolvimento do Estado de Pernambuco (PRODEPE) para indústria e comércio atacadista.",
+          "A versão publicada na SEFAZ lista o Decreto 61.000/2026 como ato alterador; não usar versão consolidada anterior sem revisão.",
+          "O regulamento geral não substitui ato de concessão individual do programa e condições do produto, CACEPE e competência."
+        ],
+        "red_flags": [
+          "ato_concessivo_ausente",
+          "vigencia_2026_nao_conciliada",
+          "produto_nao_habilitado",
+          "obrigacoes_fiscais_pendentes"
+        ],
+        "fully_consolidated_current_to_20261121": false,
+        "independent_accountant_opinion": false,
+        "publisher_bytes_sha256": null
+      }
     },
     {
       "candidate_id": "PI-RICMS2023-AN4-ART25A-BASIC-FOOD-V1",
@@ -552,7 +657,11 @@
         "Lista expressa inclui arroz, feijão, farinha de mandioca, ovos em dispositivo separado e diversas outras mercadorias, com características específicas",
         "Art.25-A do Anexo IV mencionado para conjunto específico; não generalizar isenção a toda cesta básica",
         "Art.58 RICMS exige verificar estorno de crédito",
-        "Convênio ICMS 224/2017 consta no comunicado; vigência 2026 exige reconciliação de alterações posteriores"
+        "Convênio ICMS 224/2017 consta no comunicado; vigência 2026 exige reconciliação de alterações posteriores",
+        "O comunicado de 27/03/2025 separa a isenção do art.25-A para uma lista específica de produtos internos, no contexto do Convênio ICMS 224/2017.",
+        "Redução de base para carga equivalente a 7% é descrita separadamente no art.178 XXXVIII, relacionada ao Convênio ICMS 128/94, com exclusões.",
+        "Ovos e caprinos/ovinos são mencionados pelo art.17 I e II do Anexo IV, e NÃO no rol do art.25-A.",
+        "Art.58 do RICMS exige atenção ao estorno de crédito; versões de 2026 do Decreto 21.866/2023 exigem nova conciliação."
       ],
       "mandatory_missing": [
         "revisão texto consolidado 2026 do RICMS/PI, Decreto 23.672/2025 e alterações posteriores",
@@ -568,12 +677,35 @@
         "verificação individual de produto/NCM/CFOP, operação interna e exclusões",
         "revisar Convênio ICMS 224/2017, adesão, condições, estorno e eventuais requisitos de contribuinte"
       ],
-      "negative_eligibility_scenario": "Produto não abrangido pelo art.25-A, venda interestadual ou sem conferência dos Convênios não autorizam isenção.",
+      "negative_eligibility_scenario": "Ovos (art.17), produto fora da lista do art.25-A, redução do art.178 XXXVIII ou operação interestadual não equivalem à isenção específica do art.25-A.",
       "source_sha256": null,
       "legal_reviewer": null,
       "approved_for_eligibility": false,
       "import_authorized": false,
-      "eligibility_certified": false
+      "eligibility_certified": false,
+      "primary_source_review_20261121": {
+        "inspection_type": "official_tax_authority_communication_2025",
+        "legal_provision": "Comunicado UNATRI 1/2025 — RICMS/PI Anexo IV art.25-A, art.178 XXXVIII, art.17",
+        "sources": [
+          "https://portal-admin.sefaz.pi.gov.br/wp-content/uploads/2025/03/SEI_GOV-PI-017374270-SEFAZ_-Comunicado-UNATRI.pdf"
+        ],
+        "primary_findings": [
+          "O comunicado de 27/03/2025 separa a isenção do art.25-A para uma lista específica de produtos internos, no contexto do Convênio ICMS 224/2017.",
+          "Redução de base para carga equivalente a 7% é descrita separadamente no art.178 XXXVIII, relacionada ao Convênio ICMS 128/94, com exclusões.",
+          "Ovos e caprinos/ovinos são mencionados pelo art.17 I e II do Anexo IV, e NÃO no rol do art.25-A.",
+          "Art.58 do RICMS exige atenção ao estorno de crédito; versões de 2026 do Decreto 21.866/2023 exigem nova conciliação."
+        ],
+        "red_flags": [
+          "isencao_generalizada_cesta_basica",
+          "produto_art17_confundido_art25a",
+          "reducao_confundida_isencao",
+          "operacao_interestadual",
+          "alteracao_posterior_2026"
+        ],
+        "fully_consolidated_current_to_20261121": false,
+        "independent_accountant_opinion": false,
+        "publisher_bytes_sha256": null
+      }
     },
     {
       "candidate_id": "PR-PARANA-COMPETITIVO-DEC7721-V1",
@@ -587,7 +719,11 @@
       "state_official_source_url": "https://www.fazenda.pr.gov.br/Pagina/Parana-Competitivo",
       "official_evidence_type": "official_current_program_regulatory_index",
       "findings_verified_from_public_source": [
-        "SEFA/PR identifica revogação do Decreto 6.434/2017 pelo 7.721/2024 e resoluções de 2026"
+        "SEFA/PR identifica revogação do Decreto 6.434/2017 pelo 7.721/2024 e resoluções de 2026",
+        "O Decreto 7.721/2024 substituiu o Decreto 6.434/2017, que consta expressamente como revogado no índice SEFA/PR.",
+        "Resolução SEFA 304/2025 republicou lista NCM impedidas no art.14 do Decreto 7.721/2024.",
+        "Resoluções 227, 228, 229 e 469/2026 disciplinam transferências de créditos para objetivos/setores específicos.",
+        "A NPF Conjunta REPR/CAET 002/2026 alterou procedimentos referentes ao Programa."
       ],
       "eligibility_predicates_to_confirm": [
         "Projeto e concessão SEFA; verificar lista de NCM impedidas, contrapartidas e prazo"
@@ -606,7 +742,29 @@
       "legal_reviewer": null,
       "approved_for_eligibility": false,
       "import_authorized": false,
-      "eligibility_certified": false
+      "eligibility_certified": false,
+      "primary_source_review_20261121": {
+        "inspection_type": "official_normative_index",
+        "legal_provision": "Decreto PR 7.721/2024 e Resoluções SEFA 227, 228, 229 e 469/2026",
+        "sources": [
+          "https://www.fazenda.pr.gov.br/Pagina/Parana-Competitivo"
+        ],
+        "primary_findings": [
+          "O Decreto 7.721/2024 substituiu o Decreto 6.434/2017, que consta expressamente como revogado no índice SEFA/PR.",
+          "Resolução SEFA 304/2025 republicou lista NCM impedidas no art.14 do Decreto 7.721/2024.",
+          "Resoluções 227, 228, 229 e 469/2026 disciplinam transferências de créditos para objetivos/setores específicos.",
+          "A NPF Conjunta REPR/CAET 002/2026 alterou procedimentos referentes ao Programa."
+        ],
+        "red_flags": [
+          "decreto_antigo_revogado",
+          "ncm_impedida",
+          "projeto_nao_aprovado",
+          "modalidade_transferencia_nao_aplicavel"
+        ],
+        "fully_consolidated_current_to_20261121": false,
+        "independent_accountant_opinion": false,
+        "publisher_bytes_sha256": null
+      }
     },
     {
       "candidate_id": "RJ-LEI6331-PORT345-ADESAO-V1",
@@ -755,7 +913,12 @@
         "NCMs indicados no procedimento: 94069020 e 73082000, para os produtos respectivos",
         "Exige protocolo eletrônico e análise de opção; deferimento não é automático",
         "Se deferido, efeitos a partir do primeiro dia do mês seguinte à formalização",
-        "Prazo mínimo de permanência na opção de seis meses, segundo orientação do serviço"
+        "Prazo mínimo de permanência na opção de seis meses, segundo orientação do serviço",
+        "A opção de fabricantes de sistemas construtivos NCM 9406.90.20 e estruturas metálicas NCM 7308.20.00 é apresentada por protocolo eletrônico.",
+        "Contribuinte precisa ser inscrito no CGC/TE do RS.",
+        "Só o pedido DEFERIDO produz efeitos a partir do primeiro dia do mês subsequente à formalização da opção.",
+        "O prazo mínimo de permanência na opção é seis meses, segundo orientação oficial.",
+        "Documentos incluem formulário com assinatura digital, contrato social, CRF/FGTS e regularidade da seguridade social."
       ],
       "mandatory_missing": [
         "confrontar redação atual integral do Livro I art. 32 CLXXXVI e IN 045/98",
@@ -776,7 +939,31 @@
       "legal_reviewer": null,
       "approved_for_eligibility": false,
       "import_authorized": false,
-      "eligibility_certified": false
+      "eligibility_certified": false,
+      "primary_source_review_20261121": {
+        "inspection_type": "official_option_service",
+        "legal_provision": "RICMS/RS Livro I art.32 CLXXXVI — procedimento de opção",
+        "sources": [
+          "https://receita.fazenda.rs.gov.br/servicos-a-empresas/servicos?servico=1946"
+        ],
+        "primary_findings": [
+          "A opção de fabricantes de sistemas construtivos NCM 9406.90.20 e estruturas metálicas NCM 7308.20.00 é apresentada por protocolo eletrônico.",
+          "Contribuinte precisa ser inscrito no CGC/TE do RS.",
+          "Só o pedido DEFERIDO produz efeitos a partir do primeiro dia do mês subsequente à formalização da opção.",
+          "O prazo mínimo de permanência na opção é seis meses, segundo orientação oficial.",
+          "Documentos incluem formulário com assinatura digital, contrato social, CRF/FGTS e regularidade da seguridade social."
+        ],
+        "red_flags": [
+          "opcao_indeferida_ou_pendente",
+          "efeito_antes_do_mes_subsequente",
+          "ncm_incompativel",
+          "registro_inexistente",
+          "fgts_irregular"
+        ],
+        "fully_consolidated_current_to_20261121": false,
+        "independent_accountant_opinion": false,
+        "publisher_bytes_sha256": null
+      }
     },
     {
       "candidate_id": "SC-PROEMPREGO-LEI13992-DEC105-V1",
@@ -860,7 +1047,13 @@
         "Percentual nominal do art. 41: 12% sobre o valor da saída, não redução automática de ICMS",
         "É condicionado à tributação da saída; saídas com posterior retorno real/simbólico excluídas",
         "A opção substitui o aproveitamento de outros créditos; escrituração em Outros Créditos",
-        "Prazo textual apontado na página: até 2026-12-31"
+        "Prazo textual apontado na página: até 2026-12-31",
+        "Crédito do art.41 nominal de 12% do valor da saída interna, desde que operação esteja beneficiada pela redução de base do art.52 do Anexo II.",
+        "Art.52 §4º exclui saídas internas destinadas a consumidor ou usuário final na redação em vigor.",
+        "Art.52 identifica posições e capítulos NCM com exclusões expressas e condição para terceirização da fabricação.",
+        "Art.41 §4º substitui aproveitamento de demais créditos e §3º exclui saída com retorno posterior real/simbólico.",
+        "Art.41 e art.52 §5º têm termo previsto 31/12/2026; verificar alterações futuras.",
+        "RC33644/2026 analisa opção RUDFTO e créditos extemporâneos em caso específico, não certifica a elegibilidade de qualquer empresa."
       ],
       "legal_temporal_notes": "Página contém redações históricas superadas. Não usar percentual sem competência e revisão posterior.",
       "mandatory_missing": [
@@ -877,12 +1070,40 @@
         "art. 52 Anexo II e Portaria CAT 35/2017, opção/estorno e eventual credenciamento",
         "NCM exato, CFOP, CNAE, regime ICMS e regime federal; não inferir listas"
       ],
-      "negative_eligibility_scenario": "Operação interestadual, sem aplicação do art.52 do Anexo II, sem opção e/ou sem estorno não gera o crédito.",
+      "negative_eligibility_scenario": "Saída interestadual, consumidor ou usuário final, produto excluído do art. 52 Anexo II, falta de opção RUDFTO ou acumulação indevida de créditos não autorizam crédito outorgado.",
       "source_sha256": null,
       "legal_reviewer": null,
       "approved_for_eligibility": false,
       "import_authorized": false,
-      "eligibility_certified": false
+      "eligibility_certified": false,
+      "primary_source_review_20261121": {
+        "inspection_type": "official_consolidated_provision",
+        "legal_provision": "RICMS/2000 Anexo III art.41 c/c Anexo II art.52 §§1º e 4º",
+        "sources": [
+          "https://legislacao.fazenda.sp.gov.br/Paginas/an3art041.aspx",
+          "https://legislacao.fazenda.sp.gov.br/Paginas/an2art052.aspx",
+          "https://legislacao.fazenda.sp.gov.br/Paginas/RC33644_2026.aspx"
+        ],
+        "primary_findings": [
+          "Crédito do art.41 nominal de 12% do valor da saída interna, desde que operação esteja beneficiada pela redução de base do art.52 do Anexo II.",
+          "Art.52 §4º exclui saídas internas destinadas a consumidor ou usuário final na redação em vigor.",
+          "Art.52 identifica posições e capítulos NCM com exclusões expressas e condição para terceirização da fabricação.",
+          "Art.41 §4º substitui aproveitamento de demais créditos e §3º exclui saída com retorno posterior real/simbólico.",
+          "Art.41 e art.52 §5º têm termo previsto 31/12/2026; verificar alterações futuras.",
+          "RC33644/2026 analisa opção RUDFTO e créditos extemporâneos em caso específico, não certifica a elegibilidade de qualquer empresa."
+        ],
+        "red_flags": [
+          "consumidor_final",
+          "ncm_excluido",
+          "operacao_interestadual",
+          "terceirizacao_sem_credenciamento_quando_exigido",
+          "sem_opcao_formal",
+          "cumulo_creditos_incompativel"
+        ],
+        "fully_consolidated_current_to_20261121": false,
+        "independent_accountant_opinion": false,
+        "publisher_bytes_sha256": null
+      }
     },
     {
       "candidate_id": "TO-PROINDUSTRIA-LEI1385-ART6-V1",
