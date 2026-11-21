@@ -12,7 +12,7 @@
       "review_status": "draft",
       "benefit_kind": "special_regime",
       "tax_code": "ICMS",
-      "normative_reference": "Lei 1.358/2000; Decreto 4.196/2001; Portaria SEFAZ 140/2025",
+      "normative_reference": "Lei 1.358/2000; Decreto 4.196/2001; Lei 3.460/2018; Decreto 11.618/2025",
       "legal_path_research": "unresolved_pending_confaz_and_reinstitution_review",
       "state_official_source_url": "https://www.legis.ac.gov.br/detalhar/1775",
       "official_evidence_type": "official_tax_compliance_guidance",
@@ -47,19 +47,23 @@
           "https://www.legis.ac.gov.br/detalhar/1775",
           "https://sefaz.ac.gov.br/2021/?p=21869",
           "https://sefaz.ac.gov.br/2021/?p=11726",
-          "https://sefaz.ac.gov.br/2021/?p=14786"
+          "https://sefaz.ac.gov.br/2021/?p=14786",
+          "https://legis.ac.gov.br/detalhar/2217",
+          "https://legis.ac.gov.br/detalhar/6259"
         ],
         "primary_findings": [
           "Lei 1.358/2000 define incentivo em modalidade de financiamento direto ao contribuinte, com dedução limitada ao investimento e teto de até 95% do ICMS próprio; NÃO é crédito presumido automático.",
           "Art.1º da lei prevê prazo textual até 31/12/2035, que não atesta duração da concessão individual.",
           "Decreto 4.196/2001 registra alteração 11.618/2025 com requisitos de ampliação/modernização e regularidade perante COPIAI.",
-          "Texto primário da Lei 1.358/2000 indexado no portal oficial LEGIS/AC; verificar versões, atos e outorgas individuais."
+          "Texto primário da Lei 1.358/2000 indexado no portal oficial LEGIS/AC; verificar versões, atos e outorgas individuais.",
+          "Portaria SEFAZ 140/2025 retirada da âncora material: o índice oficial aponta autorregularização fiscal; conferir texto principal de Lei 3.460/2018 e Decreto 11.618/2025."
         ],
         "red_flags": [
           "financiamento_nao_e_credito_presumido",
           "projeto_ou_aprovacao_ausente",
           "prazo_individual_nao_demonstrado",
-          "primary_source_capture_requires_sha_and_human_consolidation"
+          "primary_source_capture_requires_sha_and_human_consolidation",
+          "portaria_sefaz_140_2025_e_autorregularizacao_fiscal_nao_e_norma_material_do_incentivo"
         ],
         "fully_consolidated_current_to_20261121": false,
         "independent_accountant_opinion": false,
@@ -1086,7 +1090,7 @@
       "review_status": "draft",
       "benefit_kind": "presumed_credit",
       "tax_code": "ICMS",
-      "normative_reference": "Lei 6.331/2012; Portaria SSER 345/2023, alterada em 2024",
+      "normative_reference": "Lei 6.331/2012; Portaria SSER 345/2023; alterações 350/2024, 362/2024 e 431/2025",
       "legal_path_research": "unresolved_pending_confaz_and_reinstitution_review",
       "state_official_source_url": "https://www3.alerj.rj.gov.br/lotus_notes/default.asp?URL=L0NPTlRMRUkuTlNGL2M4YWEwOTAwMDI1ZmVlZjYwMzI1NjRlYzAwNjBkZmZmLzY4ZDI2ZWU1OThmMWFlNzI4MzI1N2E5OTAwNjNiMzcxP09wZW5Eb2N1bWVudA%3D%3D&id=2",
       "official_evidence_type": "official_benefit_procedure_guide",
@@ -1099,7 +1103,8 @@
         "Antes de elegibilidade real verificar adesão individual, eventual cancelamento, status fiscal, alterações futuras e regime por CNPJ."
       ],
       "eligibility_predicates_to_confirm": [
-        "Exigir comunicação/termo ao órgão competente, prazo de eficácia e enquadramento do benefício específico"
+        "Exigir comunicação/termo ao órgão competente, prazo de eficácia e enquadramento do benefício específico",
+        "Conferir Portaria SSER 431/2025 e redações vigentes em cada competência, inclusive comunicação no SEI-RJ e início no mês subsequente quando aplicável."
       ],
       "negative_eligibility_scenario": "A fonte orientativa não supre a Lei 6.331/2012 atualizada; não aplicar termo geral a qualquer benefício",
       "legal_temporal_notes": "Art.2 da Lei 6.331/2012 alterado pela Lei 10.983/2025: crédito presumido para carga efetiva de 2,5%, NÃO percentual de crédito de 2,5%. Aplicação somente com opt-in/regras e CNPJ elegível, sem aprovação deste catálogo.",
@@ -1130,7 +1135,8 @@
           "§1º art.2 veda aproveitamento de outros créditos ICMS; §4º limita operações consideradas e exclui saídas destinadas a consumidor final em certas hipóteses.",
           "§9º art.2 veda a microempresa/empresa de pequeno porte em Regime Simplificado de ICMS; §3º exige estabelecimento distinto ao exercer outra atividade.",
           "Antes de elegibilidade real verificar adesão individual, eventual cancelamento, status fiscal, alterações futuras e regime por CNPJ.",
-          "ALERJ publica Lei 6.331/2012, ementa, redações históricas, alterações e condições de adesão; observar dispositivos alterados antes de usar como norma vigente."
+          "ALERJ publica Lei 6.331/2012, ementa, redações históricas, alterações e condições de adesão; observar dispositivos alterados antes de usar como norma vigente.",
+          "Portaria SSER 345/2023 sofreu alterações em 2024 e em 2025 (Portaria SSER 431/2025); exigir texto oficial e vigência por competência antes da aplicação."
         ],
         "red_flags": [
           "produto_nao_textil",
@@ -1138,7 +1144,8 @@
           "regime_simplificado_excluido",
           "creditamento_cumulativo",
           "aplicacao_para_consumidor_final",
-          "primary_source_capture_requires_sha_and_human_consolidation"
+          "primary_source_capture_requires_sha_and_human_consolidation",
+          "alteracao_portaria_sser_431_2025_nao_consolidada"
         ],
         "fully_consolidated_current_to_20261121": false,
         "independent_accountant_opinion": false,
