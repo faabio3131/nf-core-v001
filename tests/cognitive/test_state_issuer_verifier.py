@@ -5,11 +5,15 @@ import pytest
 
 from kordena_fiscal.cognitive.state_benefits_api import build_state_issuer_verifier
 from kordena_fiscal.domain import FiscalValidationError, StateRegistration
-from kordena_fiscal.tax.regimes import FederalIncomeTaxRegime
 from kordena_fiscal.tax.federal_benefits import ReviewedFederalIssuer
+from kordena_fiscal.tax.regimes import FederalIncomeTaxRegime
 
 from .test_federal_issuer_verifier import (
-    ISSUER, MONTH, SCOPE, _factory, _profile,
+    ISSUER,
+    MONTH,
+    SCOPE,
+    _factory,
+    _profile,
 )
 
 

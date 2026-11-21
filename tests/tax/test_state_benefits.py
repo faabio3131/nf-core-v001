@@ -6,9 +6,18 @@ import pytest
 from kordena_fiscal.domain import FiscalValidationError
 from kordena_fiscal.tax.regimes import FederalIncomeTaxRegime
 from kordena_fiscal.tax.state_benefits import (
-    BENEFIT_KINDS, FACTS_SCHEMA, LEGAL_PATHS, RULE_SCHEMA, ReviewedStateIssuer,
-    _COMMON_EVIDENCE, _ROUTE_EVIDENCE, _UF_CODES, assess_state_rule,
-    decode_facts, decode_rule, state_index,
+    _COMMON_EVIDENCE,
+    _ROUTE_EVIDENCE,
+    _UF_CODES,
+    BENEFIT_KINDS,
+    FACTS_SCHEMA,
+    LEGAL_PATHS,
+    RULE_SCHEMA,
+    ReviewedStateIssuer,
+    assess_state_rule,
+    decode_facts,
+    decode_rule,
+    state_index,
 )
 
 MONTH = date(2026, 11, 1)

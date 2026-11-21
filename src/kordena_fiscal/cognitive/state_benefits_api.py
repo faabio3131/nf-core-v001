@@ -10,17 +10,22 @@ from zoneinfo import ZoneInfo
 from fastapi import HTTPException
 
 from kordena_fiscal.application.state_benefits_service import (
-    evaluate_state_benefit, search_state_benefits,
+    evaluate_state_benefit,
+    search_state_benefits,
 )
 from kordena_fiscal.domain import (
-    ExecutionScope, FiscalEnvironment, FiscalProfile, FiscalValidationError,
+    ExecutionScope,
+    FiscalEnvironment,
+    FiscalProfile,
+    FiscalValidationError,
 )
 from kordena_fiscal.persistence.economy_store import EconomyStore
 from kordena_fiscal.security.human_identity import AuthenticatedHuman
 from kordena_fiscal.tax.state_benefits import ReviewedStateIssuer
 
 from .federal_benefits_api import (
-    _authorized_federal_scope, build_federal_issuer_verifier,
+    _authorized_federal_scope,
+    build_federal_issuer_verifier,
 )
 from .portal_evidence import SurfaceReader
 

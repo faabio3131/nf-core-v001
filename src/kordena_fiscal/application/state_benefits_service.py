@@ -13,8 +13,13 @@ from kordena_fiscal.cognitive.economy_contract import LegalCitation
 from kordena_fiscal.domain import Cnpj, FiscalValidationError
 from kordena_fiscal.persistence.economy_store import EconomyStore, _digest
 from kordena_fiscal.tax.state_benefits import (
-    ENGINE_VERSION, RULE_SCHEMA, ReviewedStateIssuer, _next_month,
-    assess_state_rule, decode_facts, decode_rule,
+    ENGINE_VERSION,
+    RULE_SCHEMA,
+    ReviewedStateIssuer,
+    _next_month,
+    assess_state_rule,
+    decode_facts,
+    decode_rule,
 )
 
 IssuerVerifier = Callable[[str, date], ReviewedStateIssuer]

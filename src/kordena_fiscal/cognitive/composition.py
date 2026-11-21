@@ -30,9 +30,9 @@ from .portal_evidence import PortalSurfaceEvidenceProvider, SurfaceReader
 from .ports import AuditSinkPort
 from .quota_model import QuotaGovernedAdvisoryClient
 from .registry import default_baselines
-from .state_benefits_api import StateBenefitRunner, StateSearchRunner
 from .service import CognitiveAdviceService
 from .simples_diagnostic_api import DiagnosticRunner
+from .state_benefits_api import StateBenefitRunner, StateSearchRunner
 from .usage_aggregates import CognitiveUsageAggregates
 
 ENABLE_FLAG = "NFCORE_COGNITIVE_ENABLED"

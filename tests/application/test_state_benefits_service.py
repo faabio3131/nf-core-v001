@@ -4,15 +4,19 @@ from datetime import date
 import pytest
 
 from kordena_fiscal.application.state_benefits_service import (
-    evaluate_state_benefit, import_reviewed_state_benefit, search_state_benefits,
+    evaluate_state_benefit,
+    import_reviewed_state_benefit,
+    search_state_benefits,
 )
 from kordena_fiscal.domain import Cnpj, FiscalValidationError
 from kordena_fiscal.persistence.economy_store import _digest
 from kordena_fiscal.tax.regimes import FederalIncomeTaxRegime
-from kordena_fiscal.tax.state_benefits import ReviewedStateIssuer
-
 from kordena_fiscal.tax.state_benefits import (
-    FACTS_SCHEMA, RULE_SCHEMA, _COMMON_EVIDENCE, _ROUTE_EVIDENCE,
+    _COMMON_EVIDENCE,
+    _ROUTE_EVIDENCE,
+    FACTS_SCHEMA,
+    RULE_SCHEMA,
+    ReviewedStateIssuer,
 )
 
 MONTH = date(2026, 11, 1)

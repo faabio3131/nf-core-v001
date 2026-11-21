@@ -34,9 +34,9 @@ from kordena_fiscal.web.portal_api import (
 from .contracts import AdviceRequest, AdviceResult, AdviceStatus, Capability, Evidence, stable_hash
 from .economy_contract import CAPABILITIES, EconomyAdvice, project_economy
 from .federal_benefits_api import FederalBenefitRunner, FederalBenefitSearchRunner
-from .state_benefits_api import StateBenefitRunner, StateSearchRunner
 from .service import CognitiveAdviceService
 from .simples_diagnostic_api import DiagnosticRunner
+from .state_benefits_api import StateBenefitRunner, StateSearchRunner
 
 HOST_NAMESPACE = "fm-nfcore"
 

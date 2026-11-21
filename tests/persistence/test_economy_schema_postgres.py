@@ -738,11 +738,15 @@ def _certify_t08_federal(database):
 def _certify_t09_state(database):
     """T09 uses the exact same PostgreSQL v25 T01 store and FORCE RLS."""
     from kordena_fiscal.application.state_benefits_service import (
-        evaluate_state_benefit, import_reviewed_state_benefit, search_state_benefits,
+        evaluate_state_benefit,
+        import_reviewed_state_benefit,
+        search_state_benefits,
     )
     from kordena_fiscal.tax.regimes import FederalIncomeTaxRegime
     from kordena_fiscal.tax.state_benefits import (
-        FACTS_SCHEMA, RULE_SCHEMA, ReviewedStateIssuer,
+        FACTS_SCHEMA,
+        RULE_SCHEMA,
+        ReviewedStateIssuer,
     )
 
     scope = _scope(tenant="economy-t09", unit="unit-a")
