@@ -93,7 +93,27 @@
       "legal_reviewer": null,
       "approved_for_eligibility": false,
       "import_authorized": false,
-      "eligibility_certified": false
+      "eligibility_certified": false,
+      "primary_source_review_20261121": {
+        "inspection_type": "blocked_primary_source_research_only",
+        "legal_provision": "Lei estadual 5.671/1995; Decreto estadual 38.394/2000; alterações posteriores PRODESIN",
+        "sources": [
+          "https://www.sefaz.al.gov.br/nise/faq/",
+          "https://sapl.al.al.leg.br/norma/1189"
+        ],
+        "primary_findings": [
+          "Site de FAQ da SEFAZ/AL respondeu página de manutenção em acesso direto; esse HTML não é ato legal e não deve ser hashado como fonte.",
+          "ALE/AL mantém lei modificadora do PRODESIN e atos correlatos, porém este pacote não conseguiu obter texto original completo da Lei 5.671/1995 com todas as alterações, inclusive prorrogação discutida em 2026."
+        ],
+        "red_flags": [
+          "primary_original_law_unavailable_in_reliable_access",
+          "official_faq_maintenance_html",
+          "2026_prodesin_extension_unconsolidated"
+        ],
+        "fully_consolidated_current_to_20261121": false,
+        "independent_accountant_opinion": false,
+        "publisher_bytes_sha256": null
+      }
     },
     {
       "candidate_id": "AM-POLITICA-INDUSTRIAL-DEC47727-V1",
@@ -1258,7 +1278,26 @@
       "legal_reviewer": null,
       "approved_for_eligibility": false,
       "import_authorized": false,
-      "eligibility_certified": false
+      "eligibility_certified": false,
+      "primary_source_review_20261121": {
+        "inspection_type": "official_index_only_primary_source_not_captured",
+        "legal_provision": "Decreto 4.335-E/2001, Anexo I art. 1º inciso LXVII (insumos agropecuários)",
+        "sources": [
+          "https://www.sefaz.rr.gov.br/downloads/legislacao?dir=02+-+LEGISLACAO+ESTADUAL"
+        ],
+        "primary_findings": [
+          "SEFAZ/RR publica biblioteca de RICMS e Anexo I em downloads, mas o documento final do inciso LXVII não foi capturado em bytes verificáveis neste ambiente.",
+          "O arquivo de Regulamento encontrado por busca retornou falha no acesso direto à imagem/original; extratos indexados não permitem atribuir vigência ou elegibilidade."
+        ],
+        "red_flags": [
+          "official_pdf_download_not_captured",
+          "conv_100_1997_incorporation_not_confirmed",
+          "2026_eligibility_unconsolidated"
+        ],
+        "fully_consolidated_current_to_20261121": false,
+        "independent_accountant_opinion": false,
+        "publisher_bytes_sha256": null
+      }
     },
     {
       "candidate_id": "RS-RICMS1997-L1-ART32-CLXXXVI-METAL-V1",
