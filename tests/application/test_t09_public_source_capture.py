@@ -47,6 +47,9 @@ def test_capture_permits_official_domains(url):
     [
         "<html><body>Site em manutenção</body></html>".encode(),
         b"<html><body>403 Forbidden</body></html>",
+        ("<html><body>We're sorry but legisla_publico_vue doesn't work "
+         "properly without JavaScript enabled. Please enable it to continue."
+         "</body></html>").encode(),
         b"<html><body>Access denied</body></html>",
         "<html><body>Página temporariamente indisponível</body></html>".encode(),
         "<html><body>Se você recebeu mensagem de bloqueio de IP</body></html>".encode(),
