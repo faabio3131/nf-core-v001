@@ -775,7 +775,7 @@ def _certify_t09_state(database):
     }
     facts = {
         "schema_version": FACTS_SCHEMA, "review_status": "reviewed",
-        "review_reference": "reviewed-synthetic-facts-T09",
+        "review_reference": "reviewed-synthetic-T09",
         "uf": "SP", "activity_cnae": "6201501",
         "operation_ncm": "84713012", "operation_cfop": "5102",
         "operation": "domestic_sale",
@@ -798,7 +798,6 @@ def _certify_t09_state(database):
     import json
 
     key = "postgres-t09-synthetic-approval-key-xxxxxxxxxxxxxxxxxxxxxxxx"
-    previous = os.environ.get(REVIEW_KEY_ENV)
     os.environ[REVIEW_KEY_ENV] = key
     claims = review_claims(
         policy=policy, facts=facts, scope_identity=scope.identity_material,
