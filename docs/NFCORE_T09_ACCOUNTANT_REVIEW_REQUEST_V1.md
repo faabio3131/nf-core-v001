@@ -9,7 +9,7 @@ e sem criar autoridade fiscal paralela.
 ## Situação comprovada
 
 - 27/27 UFs com 1 candidata de estudo por estado no catálogo documental.
-- 19/27 UFs com cláusula, procedimento ou programa
+- 24/27 UFs com cláusula, procedimento ou programa
   **diretamente inspecionado em fonte oficial** nesta reconciliação.
 - 0/27 UFs com todo o material concessivo, suas alterações até a competência
   e condições por contribuinte legalmente consolidado e certificado.
@@ -32,7 +32,7 @@ e sem criar autoridade fiscal paralela.
 | MA | Mais Empresas, Lei 10.690/2017 | Carta Consulta e aprovação CONDEP; protocolo não é concessão nem define taxa universal. [Fonte](https://seinc.ma.gov.br/servicos/solicitar-beneficios-do-programa-mais-empresas-emissao-de-carta-consulta) |
 
 **Esses são apontamentos preliminares de fontes oficiais, não parecer ou
-confirmação de texto legal consolidado por competência.** Nas demais 8 UFs
+confirmação de texto legal consolidado por competência.** Nas demais 3 UFs
 a fonte indicada no dossiê anterior ainda é ponto de entrada, não
 dispositivo integral inspecionado nessa rodada.
 
@@ -95,6 +95,43 @@ uma resposta baseada apenas no CNAE juridicamente insuficiente.
 portal legal RJ retornou bloqueio de segurança; RN/TO não exibiram o
 texto integral, enquanto BA/RO/RR ainda requerem confrontar documentos
 primários, suas alterações e concessões. Não usar espelho privado como
-substituto de documento oficial. **8 UFs seguem sem inspeção direta
+substituto de documento oficial. **3 UFs seguem sem inspeção direta
 suficiente** neste pacote e, em todas as 27, falta a comprovação integral
 por competência e parecer do contador.
+
+## Consolidação documental complementar (21/11/2026)
+
+Inspecionadas diretamente fontes fiscais oficiais adicionais para BA, DF,
+RJ, RO e RN, elevando o conjunto a **24/27 com dispositivos/consultas
+pesquisados**. Não significa que 24 UFs estejam legalmente homologadas.
+
+- **BA, DESENVOLVE**: Regulamento Dec.8.205/2002, art.2 diferimento
+  condicionado a habilitação, art.3 dilação até 72 meses e até 90% do saldo
+  devedor próprio vinculado a investimento aprovado. O arquivo publicado
+  pela SEFAZ/BA já indica Decreto 24.401/2026 entre modificadores.
+  https://mbusca.sefaz.ba.gov.br/DITRI/normas_complementares/decretos/decreto_2002_8205_desenvolve.pdf
+- **DF, EMPREGA DF**: Decreto 39.803/2019 art.7 e art.8 — projetos e
+  aprovação; crédito presumido limitado a **até 67%**, não 67% automático.
+  Exceções e setores excluídos; alterações de 2026 requerem reconciliação.
+  https://www.sinj.df.gov.br/sinj/Norma/2257f831264c4e06850f0248431427df/Decreto_39803_02_05_2019.html
+- **RJ, têxtil**: Lei 6.331/2012, art.2, redação Lei 10.983/2025,
+  prevê crédito presumido para **carga tributária efetiva de 2,5%** em
+  operações específicas. Isso não corresponde a crédito de 2,5% e não
+  afasta vedações ao regime simplificado, cumulatividade e adesão.
+  https://www3.alerj.rj.gov.br/lotus_notes/default.asp?URL=L0NPTlRMRUkuTlNGL2M4YWEwOTAwMDI1ZmVlZjYwMzI1NjRlYzAwNjBkZmZmLzY4ZDI2ZWU1OThmMWFlNzI4MzI1N2E5OTAwNjNiMzcxP09wZW5Eb2N1bWVudA%3D%3D&amp=&id=2
+- **RO, CONDER**: Decreto 30.916/2025 altera Dec.12.988/2007 e
+  exige manifestação GITEC/CRE/SEFIN e CONSIC para rever enquadramento
+  em faixas superiores condicionado a empregos, além de restrições
+  industriais. Texto em repositório SEFIN adverte não substituir DOE.
+  https://www.sefin.ro.gov.br/portalsefin/anexos/D25-30916---Altera%2C-acresce-e-revoga-dispositivos-do-Regulamento-de-Incentivo-Tributario-aprovado-pelo-D07_-12.988.pdf
+- **RN**: consulta oficial 015/2023 da SEFAZ trata produtores de peixes
+  e camarões, crédito presumido sob Anexo 003, arts. 1,2,5 e 6; trata-se
+  de manifestação sobre caso de 2023, não prova de benefícios em 2026.
+  https://www.sefaz.rn.gov.br/postagem/respostas-de-consultas-2023/
+
+**3 UFs com análise do ato primário ainda insuficiente** neste pacote:
+AL (site de FAQ instável), RR (PDF legal retornado, leitura visual da
+página normativa falhou) e TO (fonte legal indicada no índice, leitura
+integral retornou erro). Mesmo nas 24 com trechos examinados,
+**27/27 carecem de reconciliação integral temporal, evidência SHA256
+oficial, direitos individuais e parecer jurídico-fiscal assinado**.

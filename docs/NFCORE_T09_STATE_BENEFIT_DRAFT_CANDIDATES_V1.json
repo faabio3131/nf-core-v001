@@ -219,7 +219,11 @@
       "state_official_source_url": "https://mbusca.sefaz.ba.gov.br/DITRI/normas_complementares/decretos/decreto_2002_8205_desenvolve.pdf",
       "official_evidence_type": "official_regulation_pdf_indexed",
       "findings_verified_from_public_source": [
-        "Regulamento do DESENVOLVE disciplina financiamento/diferimento fiscal condicionado a habilitação"
+        "Regulamento do DESENVOLVE disciplina financiamento/diferimento fiscal condicionado a habilitação",
+        "Art.2 autoriza diferimento de ICMS para contribuintes habilitados por resolução do Conselho DELIBERATIVO DESENVOLVE nas aquisições enumeradas, conforme origem, finalidade e demais exigências.",
+        "Art.3 autoriza dilação de até 72 meses para até 90% de saldo devedor mensal próprio relacionado a investimentos constantes de projetos aprovados — não se trata de crédito presumido universal.",
+        "Portal SEFAZ/Bahia apresenta Decreto 24.401/2026 na lista de atos alteradores; verificar efeitos exatos da modificação em 2026.",
+        "Concessão e período dependem do empreendimento e do conselho, e §6º art.3 ressalva adicional vinculado ao fundo social."
       ],
       "eligibility_predicates_to_confirm": [
         "Exigir ato individual e prazo, contrapartidas e condição FECEP quando aplicável"
@@ -238,7 +242,29 @@
       "legal_reviewer": null,
       "approved_for_eligibility": false,
       "import_authorized": false,
-      "eligibility_certified": false
+      "eligibility_certified": false,
+      "primary_source_review_20261121": {
+        "inspection_type": "official_current_decree_with_2026_amendment",
+        "legal_provision": "Decreto BA 8.205/2002 — DESENVOLVE art.2 e art.3, com alteração Decreto 24.401/2026 citada em texto oficial",
+        "sources": [
+          "https://mbusca.sefaz.ba.gov.br/DITRI/normas_complementares/decretos/decreto_2002_8205_desenvolve.pdf"
+        ],
+        "primary_findings": [
+          "Art.2 autoriza diferimento de ICMS para contribuintes habilitados por resolução do Conselho DELIBERATIVO DESENVOLVE nas aquisições enumeradas, conforme origem, finalidade e demais exigências.",
+          "Art.3 autoriza dilação de até 72 meses para até 90% de saldo devedor mensal próprio relacionado a investimentos constantes de projetos aprovados — não se trata de crédito presumido universal.",
+          "Portal SEFAZ/Bahia apresenta Decreto 24.401/2026 na lista de atos alteradores; verificar efeitos exatos da modificação em 2026.",
+          "Concessão e período dependem do empreendimento e do conselho, e §6º art.3 ressalva adicional vinculado ao fundo social."
+        ],
+        "red_flags": [
+          "concessao_do_conselho_ausente",
+          "operacao_nao_enumerada_no_art2",
+          "2026_decreto_24401_nao_conciliado",
+          "excecao_fecep_ignorada"
+        ],
+        "fully_consolidated_current_to_20261121": false,
+        "independent_accountant_opinion": false,
+        "publisher_bytes_sha256": null
+      }
     },
     {
       "candidate_id": "CE-FDI-LEI10367-DEC34508-V1",
@@ -298,20 +324,24 @@
       "candidate_version": 1,
       "uf": "DF",
       "review_status": "draft",
-      "benefit_kind": "special_regime",
+      "benefit_kind": "presumed_credit",
       "tax_code": "ICMS",
       "normative_reference": "Decreto 39.803/2019, arts. 16 a 23 para modalidades especiais",
       "legal_path_research": "unresolved_pending_confaz_and_reinstitution_review",
       "state_official_source_url": "https://economia.df.gov.br/emprega-df/",
       "official_evidence_type": "official_program_procedure",
       "findings_verified_from_public_source": [
-        "Programa condiciona incentivos a investimento, manutenção e geração de empregos no DF"
+        "Programa condiciona incentivos a investimento, manutenção e geração de empregos no DF",
+        "Art.7 condiciona a benefícios a projetos/atos nos termos do Decreto e sua aprovação; a negativa de requerimento não gera direito adquirido.",
+        "Art.8 prevê crédito presumido de até 67% (teto e não taxa automática) em saídas de fabricação própria, sujeito a enquadramento e cálculo pela legislação de ICMS.",
+        "§1º art.8 depende de critérios e ponderações para fixar percentual individual; há exceção de competência do Governador em modalidade art.23.",
+        "O decreto contempla adesão a normas do MS, LC 160/2017/Convênio 190/2017 e atos administrativos de 2026 que requerem compatibilidade."
       ],
       "eligibility_predicates_to_confirm": [
         "Exige projeto PVTEFS de categoria pertinente e aceitação formal de condições"
       ],
       "negative_eligibility_scenario": "Benefícios industriais gerais e especiais não se confundem; verificar vedações e migração",
-      "legal_temporal_notes": "Indicador jurídico para triagem; texto consolidado e alterações até a competência de 2026 não foram integralmente auditados neste pacote.",
+      "legal_temporal_notes": "Art.8 do Decreto 39.803/2019 prevê teto de até 67% para saídas da fabricação própria, depende de ato concessivo e pontuação individual. Não ativar taxa universal.",
       "mandatory_missing": [
         "conferir texto primário integral, dispositivo concessivo, redações, revogações e efeitos para cada competência",
         "verificar CONFAZ/LC160, lei estadual e ato individual quando aplicáveis",
@@ -324,7 +354,29 @@
       "legal_reviewer": null,
       "approved_for_eligibility": false,
       "import_authorized": false,
-      "eligibility_certified": false
+      "eligibility_certified": false,
+      "primary_source_review_20261121": {
+        "inspection_type": "official_compiled_state_decree",
+        "legal_provision": "Decreto DF 39.803/2019, EMPREGA DF art.7 e art.8, com alterações e atos correlatos 2026",
+        "sources": [
+          "https://www.sinj.df.gov.br/sinj/Norma/2257f831264c4e06850f0248431427df/Decreto_39803_02_05_2019.html"
+        ],
+        "primary_findings": [
+          "Art.7 condiciona a benefícios a projetos/atos nos termos do Decreto e sua aprovação; a negativa de requerimento não gera direito adquirido.",
+          "Art.8 prevê crédito presumido de até 67% (teto e não taxa automática) em saídas de fabricação própria, sujeito a enquadramento e cálculo pela legislação de ICMS.",
+          "§1º art.8 depende de critérios e ponderações para fixar percentual individual; há exceção de competência do Governador em modalidade art.23.",
+          "O decreto contempla adesão a normas do MS, LC 160/2017/Convênio 190/2017 e atos administrativos de 2026 que requerem compatibilidade."
+        ],
+        "red_flags": [
+          "pvtefs_nao_deferido",
+          "percentual_67_interpretado_como_fixo",
+          "atividade_industrial_excluida",
+          "fabricação_nao_propria"
+        ],
+        "fully_consolidated_current_to_20261121": false,
+        "independent_accountant_opinion": false,
+        "publisher_bytes_sha256": null
+      }
     },
     {
       "candidate_id": "ES-COMPETE-DEC6116R-V1",
@@ -971,20 +1023,25 @@
       "candidate_version": 1,
       "uf": "RJ",
       "review_status": "draft",
-      "benefit_kind": "special_regime",
+      "benefit_kind": "presumed_credit",
       "tax_code": "ICMS",
       "normative_reference": "Lei 6.331/2012; Portaria SSER 345/2023, alterada em 2024",
       "legal_path_research": "unresolved_pending_confaz_and_reinstitution_review",
       "state_official_source_url": "https://portal.fazenda.rj.gov.br/transparencia-da-receita-estadual/wp-content/uploads/sites/5/2025/04/PORTAL-DA-TRANSPARENCIA-ROTEIRO-BF.pdf",
       "official_evidence_type": "official_benefit_procedure_guide",
       "findings_verified_from_public_source": [
-        "Roteiro SEFAZ/RJ diferencia benefícios gerais, condicionados e por adesão sujeitos à portaria subsidiária"
+        "Roteiro SEFAZ/RJ diferencia benefícios gerais, condicionados e por adesão sujeitos à portaria subsidiária",
+        "A Lei 6.331/2012, art.1, é exclusivamente voltada à indústria têxtil, confecções e aviamentos; prazo textual de opção até 31/12/2032.",
+        "Art.2 na redação Lei 10.983/2025 é crédito presumido com carga efetiva de 2,5% sobre valor contábil de saídas definidas pela lei, NÃO crédito de 2,5% do valor da operação.",
+        "§1º art.2 veda aproveitamento de outros créditos ICMS; §4º limita operações consideradas e exclui saídas destinadas a consumidor final em certas hipóteses.",
+        "§9º art.2 veda a microempresa/empresa de pequeno porte em Regime Simplificado de ICMS; §3º exige estabelecimento distinto ao exercer outra atividade.",
+        "Antes de elegibilidade real verificar adesão individual, eventual cancelamento, status fiscal, alterações futuras e regime por CNPJ."
       ],
       "eligibility_predicates_to_confirm": [
         "Exigir comunicação/termo ao órgão competente, prazo de eficácia e enquadramento do benefício específico"
       ],
       "negative_eligibility_scenario": "A fonte orientativa não supre a Lei 6.331/2012 atualizada; não aplicar termo geral a qualquer benefício",
-      "legal_temporal_notes": "Indicador jurídico para triagem; texto consolidado e alterações até a competência de 2026 não foram integralmente auditados neste pacote.",
+      "legal_temporal_notes": "Art.2 da Lei 6.331/2012 alterado pela Lei 10.983/2025: crédito presumido para carga efetiva de 2,5%, NÃO percentual de crédito de 2,5%. Aplicação somente com opt-in/regras e CNPJ elegível, sem aprovação deste catálogo.",
       "mandatory_missing": [
         "conferir texto primário integral, dispositivo concessivo, redações, revogações e efeitos para cada competência",
         "verificar CONFAZ/LC160, lei estadual e ato individual quando aplicáveis",
@@ -997,7 +1054,31 @@
       "legal_reviewer": null,
       "approved_for_eligibility": false,
       "import_authorized": false,
-      "eligibility_certified": false
+      "eligibility_certified": false,
+      "primary_source_review_20261121": {
+        "inspection_type": "official_state_legislative_text_amended_2025",
+        "legal_provision": "Lei RJ 6.331/2012 arts.1 e 2, redação Lei 10.983/2025 — regime indústria têxtil",
+        "sources": [
+          "https://www3.alerj.rj.gov.br/lotus_notes/default.asp?URL=L0NPTlRMRUkuTlNGL2M4YWEwOTAwMDI1ZmVlZjYwMzI1NjRlYzAwNjBkZmZmLzY4ZDI2ZWU1OThmMWFlNzI4MzI1N2E5OTAwNjNiMzcxP09wZW5Eb2N1bWVudA%3D%3D&amp=&id=2"
+        ],
+        "primary_findings": [
+          "A Lei 6.331/2012, art.1, é exclusivamente voltada à indústria têxtil, confecções e aviamentos; prazo textual de opção até 31/12/2032.",
+          "Art.2 na redação Lei 10.983/2025 é crédito presumido com carga efetiva de 2,5% sobre valor contábil de saídas definidas pela lei, NÃO crédito de 2,5% do valor da operação.",
+          "§1º art.2 veda aproveitamento de outros créditos ICMS; §4º limita operações consideradas e exclui saídas destinadas a consumidor final em certas hipóteses.",
+          "§9º art.2 veda a microempresa/empresa de pequeno porte em Regime Simplificado de ICMS; §3º exige estabelecimento distinto ao exercer outra atividade.",
+          "Antes de elegibilidade real verificar adesão individual, eventual cancelamento, status fiscal, alterações futuras e regime por CNPJ."
+        ],
+        "red_flags": [
+          "produto_nao_textil",
+          "sem_adesao_individual",
+          "regime_simplificado_excluido",
+          "creditamento_cumulativo",
+          "aplicacao_para_consumidor_final"
+        ],
+        "fully_consolidated_current_to_20261121": false,
+        "independent_accountant_opinion": false,
+        "publisher_bytes_sha256": null
+      }
     },
     {
       "candidate_id": "RN-RICMS2022-AN003-REDUCAO-V1",
@@ -1011,7 +1092,10 @@
       "state_official_source_url": "https://diariooficial.rn.gov.br/dei/dorn3/documentos/00000001/20220819/783131.htm",
       "official_evidence_type": "official_original_regulation",
       "findings_verified_from_public_source": [
-        "Regulamento RICMS/RN disciplina efeitos de base reduzida, crédito presumido e limites de crédito de aquisição com benefício"
+        "Regulamento RICMS/RN disciplina efeitos de base reduzida, crédito presumido e limites de crédito de aquisição com benefício",
+        "SEFAZ/RN Consulta 015/2023 aborda benefício de crédito presumido de produtores de peixes e camarões no Anexo 003 arts.1,2,5 e 6.",
+        "Consultoria oficial reconhece exceções para nota de baixa de estoque por perda, vedação ao crédito fiscal e circunstâncias específicas de estorno.",
+        "É resposta a contribuinte/caso de 2023; não comprova redação consolidada até novembro 2026 nem enquadramento da empresa do NFCore."
       ],
       "eligibility_predicates_to_confirm": [
         "Exige apontar artigo/item exato e comprovar fruição conforme regime, período e FECOP quando incidente"
@@ -1030,7 +1114,28 @@
       "legal_reviewer": null,
       "approved_for_eligibility": false,
       "import_authorized": false,
-      "eligibility_certified": false
+      "eligibility_certified": false,
+      "primary_source_review_20261121": {
+        "inspection_type": "official_tax_authority_2023_consultation_index",
+        "legal_provision": "RICMS/RN Decreto 31.825/2022 Anexo 003 arts.1, 2, 5 e 6 — Consulta 015/2023 (peixes/camarões)",
+        "sources": [
+          "https://www.sefaz.rn.gov.br/postagem/respostas-de-consultas-2023/"
+        ],
+        "primary_findings": [
+          "SEFAZ/RN Consulta 015/2023 aborda benefício de crédito presumido de produtores de peixes e camarões no Anexo 003 arts.1,2,5 e 6.",
+          "Consultoria oficial reconhece exceções para nota de baixa de estoque por perda, vedação ao crédito fiscal e circunstâncias específicas de estorno.",
+          "É resposta a contribuinte/caso de 2023; não comprova redação consolidada até novembro 2026 nem enquadramento da empresa do NFCore."
+        ],
+        "red_flags": [
+          "atividade_nao_aquicultura",
+          "credito_vedado",
+          "operacao_nao_enquadrada",
+          "norma_2026_nao_consolidada"
+        ],
+        "fully_consolidated_current_to_20261121": false,
+        "independent_accountant_opinion": false,
+        "publisher_bytes_sha256": null
+      }
     },
     {
       "candidate_id": "RO-INDS-LEI1558-DEC12988-V1",
@@ -1044,7 +1149,11 @@
       "state_official_source_url": "https://www.sefin.ro.gov.br/lista.jsp?formato=166&page=9&tipo=lei",
       "official_evidence_type": "official_state_legislation_index",
       "findings_verified_from_public_source": [
-        "SEFIN/RO identifica regime de incentivo industrial por crédito presumido sob concessão do CONDER"
+        "SEFIN/RO identifica regime de incentivo industrial por crédito presumido sob concessão do CONDER",
+        "Decreto 30.916 de 18/11/2025 altera e revoga disposições do Regulamento de Incentivo Tributário Industrial do Decreto 12.988/2007.",
+        "Alteração do art.13 §2 impõe manifestação expressa da GITEC/CRE/SEFIN e CONSIC antes de o CONDER rever o enquadramento para faixas superiores, condicionada a geração de empregos.",
+        "Art.8 trata de atividades excluídas, cuja lista integral e alterações devem ser verificados no Decreto consolidado.",
+        "Texto publicado pela SEFIN declara que não substitui Diário Oficial e, sozinho, não prova vigência ou concessão individual."
       ],
       "eligibility_predicates_to_confirm": [
         "Exigir decisão CONDER, atividade e projeto, termos de concessão e normas atualizadas"
@@ -1063,7 +1172,29 @@
       "legal_reviewer": null,
       "approved_for_eligibility": false,
       "import_authorized": false,
-      "eligibility_certified": false
+      "eligibility_certified": false,
+      "primary_source_review_20261121": {
+        "inspection_type": "official_2025_amendment_to_industrial_incentive_decree",
+        "legal_provision": "Decreto RO 30.916/2025 — alterações ao 12.988/2007, arts.8 e 13, §2",
+        "sources": [
+          "https://www.sefin.ro.gov.br/portalsefin/anexos/D25-30916---Altera%2C-acresce-e-revoga-dispositivos-do-Regulamento-de-Incentivo-Tributario-aprovado-pelo-D07_-12.988.pdf"
+        ],
+        "primary_findings": [
+          "Decreto 30.916 de 18/11/2025 altera e revoga disposições do Regulamento de Incentivo Tributário Industrial do Decreto 12.988/2007.",
+          "Alteração do art.13 §2 impõe manifestação expressa da GITEC/CRE/SEFIN e CONSIC antes de o CONDER rever o enquadramento para faixas superiores, condicionada a geração de empregos.",
+          "Art.8 trata de atividades excluídas, cuja lista integral e alterações devem ser verificados no Decreto consolidado.",
+          "Texto publicado pela SEFIN declara que não substitui Diário Oficial e, sozinho, não prova vigência ou concessão individual."
+        ],
+        "red_flags": [
+          "sem_conder",
+          "sem_manifestacao_tecnica",
+          "geracao_emprego_nao_comprovada",
+          "atividade_excluida"
+        ],
+        "fully_consolidated_current_to_20261121": false,
+        "independent_accountant_opinion": false,
+        "publisher_bytes_sha256": null
+      }
     },
     {
       "candidate_id": "RR-RICMS2001-AN1-ART1-LXVII-V1",

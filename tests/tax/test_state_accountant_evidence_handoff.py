@@ -85,10 +85,24 @@ def test_ac_financing_is_not_misclassified_as_presumed_credit():
 
 def test_inspection_coverage_does_not_mask_unavailable_or_external_gates():
     h = _data("NFCORE_T09_ACCOUNTANT_EVIDENCE_HANDOFF_V1.json")
-    assert h["official_source_direct_inspection_count"] == 19
-    assert len(h["unavailable_or_incomplete_primary_source_ufs"]) == 8
+    assert h["official_source_direct_inspection_count"] == 24
+    assert len(h["unavailable_or_incomplete_primary_source_ufs"]) == 3
     assert h["acts_fully_consolidated_count"] == 0
     assert h["accountant_opinions_count"] == 0
-    assert "RJ" in h["unavailable_or_incomplete_primary_source_ufs"]
     assert "AL" in h["unavailable_or_incomplete_primary_source_ufs"]
+    assert "RR" in h["unavailable_or_incomplete_primary_source_ufs"]
+    assert "TO" in h["unavailable_or_incomplete_primary_source_ufs"]
     assert not h["independent_professional_approval_received"]
+
+
+def test_ba_df_rj_ro_rn_have_explicit_legal_barriers_not_wide_universal_tax_rates():
+    drafts = _data("NFCORE_T09_STATE_BENEFIT_DRAFT_CANDIDATES_V1.json")
+    by_uf = {r["uf"]: r for r in drafts["candidates"]}
+    assert "24.401/2026" in " ".join(by_uf["BA"]["findings_verified_from_public_source"])
+    assert "até 67%" in " ".join(by_uf["DF"]["findings_verified_from_public_source"])
+    assert by_uf["DF"]["benefit_kind"] == "presumed_credit"
+    assert by_uf["RJ"]["benefit_kind"] == "presumed_credit"
+    assert "10.983/2025" in by_uf["RJ"]["legal_temporal_notes"]
+    assert "GITEC/CRE/SEFIN" in " ".join(by_uf["RO"]["findings_verified_from_public_source"])
+    assert "Consulta 015/2023" in " ".join(by_uf["RN"]["findings_verified_from_public_source"])
+    assert all(by_uf[x]["review_status"] == "draft" for x in ["BA", "DF", "RJ", "RO", "RN"])

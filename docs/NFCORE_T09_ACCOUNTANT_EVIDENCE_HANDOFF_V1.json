@@ -36,7 +36,7 @@
     "date_of_review_and_revalidation_after_change"
   ],
   "state_count": 27,
-  "official_source_direct_inspection_count": 19,
+  "official_source_direct_inspection_count": 24,
   "acts_fully_consolidated_count": 0,
   "accountant_opinions_count": 0,
   "cases": [
@@ -171,13 +171,23 @@
       "candidate_version": 1,
       "state_normative_reference": "Lei 7.980/2001, Decreto 8.205/2002 e resoluções individualizadas de 2026",
       "research_source": "https://mbusca.sefaz.ba.gov.br/DITRI/normas_complementares/decretos/decreto_2002_8205_desenvolve.pdf",
-      "source_inspection_type": "official_pointer_identified_not_integrally_inspected",
-      "source_clause_inspected": false,
-      "identified_legal_provision": null,
-      "official_sources_inspected": [],
-      "legally_relevant_findings": [],
+      "source_inspection_type": "official_current_decree_with_2026_amendment",
+      "source_clause_inspected": true,
+      "identified_legal_provision": "Decreto BA 8.205/2002 — DESENVOLVE art.2 e art.3, com alteração Decreto 24.401/2026 citada em texto oficial",
+      "official_sources_inspected": [
+        "https://mbusca.sefaz.ba.gov.br/DITRI/normas_complementares/decretos/decreto_2002_8205_desenvolve.pdf"
+      ],
+      "legally_relevant_findings": [
+        "Art.2 autoriza diferimento de ICMS para contribuintes habilitados por resolução do Conselho DELIBERATIVO DESENVOLVE nas aquisições enumeradas, conforme origem, finalidade e demais exigências.",
+        "Art.3 autoriza dilação de até 72 meses para até 90% de saldo devedor mensal próprio relacionado a investimentos constantes de projetos aprovados — não se trata de crédito presumido universal.",
+        "Portal SEFAZ/Bahia apresenta Decreto 24.401/2026 na lista de atos alteradores; verificar efeitos exatos da modificação em 2026.",
+        "Concessão e período dependem do empreendimento e do conselho, e §6º art.3 ressalva adicional vinculado ao fundo social."
+      ],
       "exclusion_scenarios": [
-        "Decreto geral ou resolução de outra empresa não autoriza fruição do projeto"
+        "concessao_do_conselho_ausente",
+        "operacao_nao_enumerada_no_art2",
+        "2026_decreto_24401_nao_conciliado",
+        "excecao_fecep_ignorada"
       ],
       "source_content_sha256": null,
       "legal_temporal_consolidation_complete": false,
@@ -227,13 +237,23 @@
       "candidate_version": 1,
       "state_normative_reference": "Decreto 39.803/2019, arts. 16 a 23 para modalidades especiais",
       "research_source": "https://economia.df.gov.br/emprega-df/",
-      "source_inspection_type": "official_pointer_identified_not_integrally_inspected",
-      "source_clause_inspected": false,
-      "identified_legal_provision": null,
-      "official_sources_inspected": [],
-      "legally_relevant_findings": [],
+      "source_inspection_type": "official_compiled_state_decree",
+      "source_clause_inspected": true,
+      "identified_legal_provision": "Decreto DF 39.803/2019, EMPREGA DF art.7 e art.8, com alterações e atos correlatos 2026",
+      "official_sources_inspected": [
+        "https://www.sinj.df.gov.br/sinj/Norma/2257f831264c4e06850f0248431427df/Decreto_39803_02_05_2019.html"
+      ],
+      "legally_relevant_findings": [
+        "Art.7 condiciona a benefícios a projetos/atos nos termos do Decreto e sua aprovação; a negativa de requerimento não gera direito adquirido.",
+        "Art.8 prevê crédito presumido de até 67% (teto e não taxa automática) em saídas de fabricação própria, sujeito a enquadramento e cálculo pela legislação de ICMS.",
+        "§1º art.8 depende de critérios e ponderações para fixar percentual individual; há exceção de competência do Governador em modalidade art.23.",
+        "O decreto contempla adesão a normas do MS, LC 160/2017/Convênio 190/2017 e atos administrativos de 2026 que requerem compatibilidade."
+      ],
       "exclusion_scenarios": [
-        "Benefícios industriais gerais e especiais não se confundem; verificar vedações e migração"
+        "pvtefs_nao_deferido",
+        "percentual_67_interpretado_como_fixo",
+        "atividade_industrial_excluida",
+        "fabricação_nao_propria"
       ],
       "source_content_sha256": null,
       "legal_temporal_consolidation_complete": false,
@@ -628,13 +648,25 @@
       "candidate_version": 1,
       "state_normative_reference": "Lei 6.331/2012; Portaria SSER 345/2023, alterada em 2024",
       "research_source": "https://portal.fazenda.rj.gov.br/transparencia-da-receita-estadual/wp-content/uploads/sites/5/2025/04/PORTAL-DA-TRANSPARENCIA-ROTEIRO-BF.pdf",
-      "source_inspection_type": "official_pointer_identified_not_integrally_inspected",
-      "source_clause_inspected": false,
-      "identified_legal_provision": null,
-      "official_sources_inspected": [],
-      "legally_relevant_findings": [],
+      "source_inspection_type": "official_state_legislative_text_amended_2025",
+      "source_clause_inspected": true,
+      "identified_legal_provision": "Lei RJ 6.331/2012 arts.1 e 2, redação Lei 10.983/2025 — regime indústria têxtil",
+      "official_sources_inspected": [
+        "https://www3.alerj.rj.gov.br/lotus_notes/default.asp?URL=L0NPTlRMRUkuTlNGL2M4YWEwOTAwMDI1ZmVlZjYwMzI1NjRlYzAwNjBkZmZmLzY4ZDI2ZWU1OThmMWFlNzI4MzI1N2E5OTAwNjNiMzcxP09wZW5Eb2N1bWVudA%3D%3D&amp=&id=2"
+      ],
+      "legally_relevant_findings": [
+        "A Lei 6.331/2012, art.1, é exclusivamente voltada à indústria têxtil, confecções e aviamentos; prazo textual de opção até 31/12/2032.",
+        "Art.2 na redação Lei 10.983/2025 é crédito presumido com carga efetiva de 2,5% sobre valor contábil de saídas definidas pela lei, NÃO crédito de 2,5% do valor da operação.",
+        "§1º art.2 veda aproveitamento de outros créditos ICMS; §4º limita operações consideradas e exclui saídas destinadas a consumidor final em certas hipóteses.",
+        "§9º art.2 veda a microempresa/empresa de pequeno porte em Regime Simplificado de ICMS; §3º exige estabelecimento distinto ao exercer outra atividade.",
+        "Antes de elegibilidade real verificar adesão individual, eventual cancelamento, status fiscal, alterações futuras e regime por CNPJ."
+      ],
       "exclusion_scenarios": [
-        "A fonte orientativa não supre a Lei 6.331/2012 atualizada; não aplicar termo geral a qualquer benefício"
+        "produto_nao_textil",
+        "sem_adesao_individual",
+        "regime_simplificado_excluido",
+        "creditamento_cumulativo",
+        "aplicacao_para_consumidor_final"
       ],
       "source_content_sha256": null,
       "legal_temporal_consolidation_complete": false,
@@ -653,13 +685,22 @@
       "candidate_version": 1,
       "state_normative_reference": "Decreto 31.825/2022, Anexo 003, arts. 1 a 6",
       "research_source": "https://diariooficial.rn.gov.br/dei/dorn3/documentos/00000001/20220819/783131.htm",
-      "source_inspection_type": "official_pointer_identified_not_integrally_inspected",
-      "source_clause_inspected": false,
-      "identified_legal_provision": null,
-      "official_sources_inspected": [],
-      "legally_relevant_findings": [],
+      "source_inspection_type": "official_tax_authority_2023_consultation_index",
+      "source_clause_inspected": true,
+      "identified_legal_provision": "RICMS/RN Decreto 31.825/2022 Anexo 003 arts.1, 2, 5 e 6 — Consulta 015/2023 (peixes/camarões)",
+      "official_sources_inspected": [
+        "https://www.sefaz.rn.gov.br/postagem/respostas-de-consultas-2023/"
+      ],
+      "legally_relevant_findings": [
+        "SEFAZ/RN Consulta 015/2023 aborda benefício de crédito presumido de produtores de peixes e camarões no Anexo 003 arts.1,2,5 e 6.",
+        "Consultoria oficial reconhece exceções para nota de baixa de estoque por perda, vedação ao crédito fiscal e circunstâncias específicas de estorno.",
+        "É resposta a contribuinte/caso de 2023; não comprova redação consolidada até novembro 2026 nem enquadramento da empresa do NFCore."
+      ],
       "exclusion_scenarios": [
-        "Anexo e texto base não bastam para afirmar qual benefício específico está vigente em 2026"
+        "atividade_nao_aquicultura",
+        "credito_vedado",
+        "operacao_nao_enquadrada",
+        "norma_2026_nao_consolidada"
       ],
       "source_content_sha256": null,
       "legal_temporal_consolidation_complete": false,
@@ -678,13 +719,23 @@
       "candidate_version": 1,
       "state_normative_reference": "Lei 1.558/2005, Decreto 12.988/2007 e Decreto 28.386/2023",
       "research_source": "https://www.sefin.ro.gov.br/lista.jsp?formato=166&page=9&tipo=lei",
-      "source_inspection_type": "official_pointer_identified_not_integrally_inspected",
-      "source_clause_inspected": false,
-      "identified_legal_provision": null,
-      "official_sources_inspected": [],
-      "legally_relevant_findings": [],
+      "source_inspection_type": "official_2025_amendment_to_industrial_incentive_decree",
+      "source_clause_inspected": true,
+      "identified_legal_provision": "Decreto RO 30.916/2025 — alterações ao 12.988/2007, arts.8 e 13, §2",
+      "official_sources_inspected": [
+        "https://www.sefin.ro.gov.br/portalsefin/anexos/D25-30916---Altera%2C-acresce-e-revoga-dispositivos-do-Regulamento-de-Incentivo-Tributario-aprovado-pelo-D07_-12.988.pdf"
+      ],
+      "legally_relevant_findings": [
+        "Decreto 30.916 de 18/11/2025 altera e revoga disposições do Regulamento de Incentivo Tributário Industrial do Decreto 12.988/2007.",
+        "Alteração do art.13 §2 impõe manifestação expressa da GITEC/CRE/SEFIN e CONSIC antes de o CONDER rever o enquadramento para faixas superiores, condicionada a geração de empregos.",
+        "Art.8 trata de atividades excluídas, cuja lista integral e alterações devem ser verificados no Decreto consolidado.",
+        "Texto publicado pela SEFIN declara que não substitui Diário Oficial e, sozinho, não prova vigência ou concessão individual."
+      ],
       "exclusion_scenarios": [
-        "Decreto 28.386/2023 revogou dispositivo do Decreto 12.988/2007; não herdar condição revogada"
+        "sem_conder",
+        "sem_manifestacao_tecnica",
+        "geracao_emprego_nao_comprovada",
+        "atividade_excluida"
       ],
       "source_content_sha256": null,
       "legal_temporal_consolidation_complete": false,
@@ -896,13 +947,8 @@
   "warning": "Source inspection and candidate count cannot be substituted for a legally signed accountant opinion or 27 fully certified state benefit catalogs.",
   "unavailable_or_incomplete_primary_source_ufs": [
     "AL",
-    "BA",
-    "DF",
-    "RJ",
-    "RN",
-    "RO",
     "RR",
     "TO"
   ],
-  "blocker_note": "Site AL em manutenção; RJ rejeita consulta ao portal legal por bloqueio de segurança; RN/TO intermitência; outros apontadores sem texto completo e atos individuais. Nenhum ato tem bytes oficiais arquivados com hash para homologação."
+  "blocker_note": "AL consulta direta à fonte SEFAZ sujeita a indisponibilidade; RR RICMS PDF carregou texto, mas a inspeção de página por imagem falhou; TO Lei 1.385/2003 foi localizada em indexação oficial mas o conteúdo integral aberto retornou erro. Todos os 27 requerem consolidação, arquivos originais com SHA256 real, eventual concessão por contribuinte, casos reais e parecer do contador."
 }
