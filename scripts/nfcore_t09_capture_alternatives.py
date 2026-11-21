@@ -24,7 +24,9 @@ EXPECTED_UFS = frozenset({"AC", "AL", "AP", "PA", "PI", "RJ", "RN", "SE"})
 SOURCE_SCHEMA = "nfcore.t09.official-alternative-source-trial/v1"
 
 
-def verify_workset(catalog: dict[str, Any], data: dict[str, Any]) -> list[dict[str, Any]]:
+def verify_workset(
+    catalog: dict[str, Any], data: dict[str, Any],
+) -> list[dict[str, Any]]:
     """Ensure an alternate URL cannot become a new tax authority."""
     if data.get("schema_version") != SOURCE_SCHEMA:
         raise ValueError("unsupported alternative source schema")
@@ -55,7 +57,8 @@ def verify_workset(catalog: dict[str, Any], data: dict[str, Any]) -> list[dict[s
             raise ValueError("invalid alternate source")
         uf, url = source.get("uf"), source.get("source_url")
         if (
-            uf not in EXPECTED_UFS or source.get("candidate_id") != known[uf]["candidate_id"]
+            not isinstance(uf, str) or uf not in EXPECTED_UFS
+            or source.get("candidate_id") != known[uf]["candidate_id"]
             or not isinstance(url, str) or not official_url(url)
             or url in seen or source.get("review_status") != "unreviewed"
             or source.get("eligible_for_tax_calculation") is not False
