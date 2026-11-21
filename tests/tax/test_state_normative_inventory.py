@@ -41,13 +41,20 @@ def test_researched_candidates_are_versioned_and_fail_closed():
     drafts = _document("NFCORE_T09_STATE_BENEFIT_DRAFT_CANDIDATES_V1.json")
     assert drafts["advisory_only"] and not drafts["import_authorized"]
     candidates = drafts["candidates"]
-    assert len(candidates) == 4
-    assert {c["uf"] for c in candidates} == {"SP", "RS", "MA", "PI"}
+    assert len(candidates) == 27
+    assert {c["uf"] for c in candidates} == set(_UF_CODES)
     assert len({c["candidate_id"] for c in candidates}) == len(candidates)
     for item in candidates:
         assert item["candidate_version"] == 1
         assert item["review_status"] == "draft"
         assert item["mandatory_missing"]
+        assert item["source_sha256"] is None
+        assert item["legal_reviewer"] is None
+        assert item["approved_for_eligibility"] is False
+        assert item["import_authorized"] is False
+        assert item["eligibility_certified"] is False
+        assert item["eligibility_predicates_to_confirm"]
+        assert item["negative_eligibility_scenario"]
         assert item["state_official_source_url"].startswith("https://")
         assert not item.get("eligibility_certified", False)
         with pytest.raises(FiscalValidationError, match="not human reviewed"):

@@ -44,12 +44,16 @@ previstos; habilitação e vedações; arquivar conteúdo real e SHA-256 calcula
 sobre os bytes examinados; revisão jurídico-fiscal **independente**; casos
 positivos/negativos específicos antes de importar uma política `reviewed`.
 
-**Materialização de candidatas ainda não executáveis:** veja
-`NFCORE_T09_STATE_BENEFIT_DRAFT_CANDIDATES_V1.json`: SP Anexo III art. 41,
-RS Livro I art. 32 CLXXXVI, PI Anexo IV art. 25-A e programa MA Mais Empresas.
-O registro contém 4 candidatos **draft**,
-versão 1, escopo legal identificado e pendências precisas. **Nenhuma
-candidata foi promovida a `reviewed` ou inserida no EconomyStore.**
+**Curadoria normativa representativa, não executável:** arquivo
+`NFCORE_T09_STATE_BENEFIT_DRAFT_CANDIDATES_V1.json` reúne **27 candidatas
+distintas**, uma linha de estudo por UF, todas `draft`, versão 1, referência
+de fonte governamental, classificação preliminar do benefício, exigências de
+enquadramento, cenários de exclusão e lacunas de prova por competência.
+A expansão de 4 para 27 candidatas não equivale a compilação exaustiva de
+todos os benefícios estaduais, prova de vigência nem revisão jurídica.
+**Nenhuma candidata foi promovida a `reviewed`, importada ou autorizada
+para apuração.** O dossiê do contador deve utilizar essas fontes como
+roteiro de verificação, não como decisão de benefício.
 
 **27/27 fontes/pontos de pesquisa catalogados** ≠ 27/27 atos integralmente
 verificados ≠ 27/27 legislações de benefícios certificadas.
@@ -102,3 +106,39 @@ jurídico-tributária. A certificação independente continua obrigatória.
 0 políticas jurídicas independentes aprovadas/importadas, 0 direitos fiscais certificados.
 Os links são material para revisão; qualquer referência desatualizada, conflituosa
 ou não consolidada permanece como pendência explícita. Issue independente #593.
+
+## Curadoria representativa 27 UFs — materialização complementar (21/11/2026)
+
+As **27 UFs** agora possuem uma candidata `draft` explícita. O pacote
+distingue ato, programa ou orientação oficial e registra ressalvas por
+atividade, concessão individual, temporalidade e proibições. Exemplos:
+- **SP:** Anexo III art. 41 somente em saída interna abrangida pelo art. 52
+  do Anexo II e mediante opção; prazo 31/12/2026 conforme página do ato.
+- **RS:** opção de crédito presumido para NCM 9406.90.20/7308.20.00 depende
+  de deferimento e efeitos a partir do mês seguinte.
+- **GO:** ProGoiás exige Termo de Enquadramento, regularidade e análise de
+  hipóteses de suspensão segundo a Lei 20.787/2020, art. 24.
+- **PR:** Decreto 7.721/2024 substituiu o Decreto 6.434/2017; resoluções e
+  exclusões NCM de 2026 devem reger a seleção de políticas.
+- **MT:** pesquisa específica sobre Anexo V art. 31-A (fertilizantes);
+  consulta estadual 2026 menciona Convênio ICMS 100/97, Decreto 1.802/2025
+  e validade até 31/12/2027, com recorte de destinação e NCM.
+- **MG:** Anexo II item 26 da redação 2023, saída interna para construção
+  habitacional coordenada pela Cohab Minas; fonte aponta 31/12/2026.
+- **AC:** Decreto 4.196/2001 e Lei 1.358/2000 são distintos de Lei
+  1.258/1997, já revogada; não herdar regras do antigo regime.
+- **RO:** Lei 1.558/2005/Decreto 12.988/2007 com concessão CONDER;
+  Decreto 28.386/2023 revogou dispositivo, exigindo conciliação.
+- **PI:** comunicado UNATRI 1/2025 é insuficiente para demonstrar texto
+  consolidado 2026 do Anexo IV art. 25-A.
+- **RR:** indicação de Anexo I art. 1º LXVII e insumos agropecuários exige
+  conferência de vigência, produtos e Convênio aplicável.
+
+**Critério final para marcar 100% de curadoria normativa material**:
+um conjunto de dispositivos concessivos selecionados e explicitamente
+delimitados por UF, cada qual com texto integral e todas as alterações
+até a competência, atos concessivos e requisitos, fonte primária arquivada
+com SHA256 de bytes verdadeiros, reconciliação CONFAZ, NCM/CNAE/CFOP,
+casos de teste jurídico de elegibilidade positivos/negativos e parecer do
+contador. **Esse patamar não foi atingido nesta etapa; não há como
+afirmar 100% de todos os benefícios de ICMS estaduais com este recorte.**

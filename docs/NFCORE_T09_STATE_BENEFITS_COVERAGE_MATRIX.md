@@ -62,3 +62,14 @@ https://www2.camara.leg.br/legin/fed/leicom/2017/leicomplementar-160-7-agosto-20
 PR de implementação deve certificar o software e deixar explícito
 que a pesquisa só retorna regras humanas previamente carregadas; catálogo
 sem regras reais retorna no_reviewed_catalog, nunca "nenhum benefício existe".
+
+
+### Curadoria documental representativa publicada em 21/11/2026
+
+Foram versionadas **27 candidatas de estudo não executáveis**, uma por UF
+(`docs/NFCORE_T09_STATE_BENEFIT_DRAFT_CANDIDATES_V1.json`).
+Cada candidata identifica fonte, programa/dispositivo, requisitos e caso negativo,
+mas todas permanecem `draft` e sem SHA256 real do texto consolidado,
+parecer externo, direito fiscal ou importação. **A tabela anterior mantém 0/27
+benefícios homologados**; não alterar o significado das colunas ou confundir
+27 linhas documentadas com 27 benefícios juridicamente certificados.
