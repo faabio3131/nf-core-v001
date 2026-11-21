@@ -43,7 +43,8 @@ def _packet(tmp_path: Path, raw: bytes) -> tuple[dict[str, object], Path]:
         "<html><body>Manutenção em andamento — SEFAZ Alagoas</body></html>",
         "<html><body><h1>Site em manuten&ccedil;&atilde;o</h1></body></html>",
         "<html><body>Se você recebeu uma mensagem de bloqueio</body></html>",
-        "<html><body>Serviço de segurança bloqueia acessos provenientes desses endereços IP</body></html>",
+        ("<html><body>Serviço de segurança bloqueia acessos provenientes "
+         "desses endereços IP</body></html>"),
         "<html><body><h1>Página não encontrada</h1></body></html>",
     ],
 )
