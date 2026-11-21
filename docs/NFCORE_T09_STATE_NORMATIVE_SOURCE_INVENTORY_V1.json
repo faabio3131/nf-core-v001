@@ -40,9 +40,9 @@
     {
       "uf": "AP",
       "state": "Amapá",
-      "normative_anchor": "Decreto 2.269/1998 (RICMS/AP)",
-      "source_url": "https://sefaz.portal.ap.gov.br/",
-      "source_stage": "official_state_portal_only",
+      "normative_anchor": "Decreto 2.269/1998 (RICMS/AP); COTRI/SEFAZ, requisitos de regimes especiais",
+      "source_url": "https://sefaz.portal.ap.gov.br/conteudo/orientacoes/coordenadoria-de-tributacao-cotri",
+      "source_stage": "official_tax_authority_guidance",
       "official_full_consolidation_reviewed": false,
       "exact_benefit_provision_reviewed": false,
       "cross_state_adoption_reviewed": false,
@@ -50,7 +50,9 @@
       "benefit_eligibility_reviewed": false,
       "legal_reviewer": null,
       "source_sha256": null,
-      "import_authorized": false
+      "import_authorized": false,
+      "source_verification_note": "A orientação oficial COTRI cita art. 415 VII do RICMS/AP e Selo Sustentabilidade para regimes especiais aplicáveis; verificar redação e exceções vigentes.",
+      "additional_official_source_url": "https://sefaz.portal.ap.gov.br/conteudo/orientacoes/coordenadoria-de-tributacao-cotri"
     },
     {
       "uf": "AM",
@@ -145,9 +147,9 @@
     {
       "uf": "MA",
       "state": "Maranhão",
-      "normative_anchor": "Decreto 19.714/2003 (RICMS/MA)",
-      "source_url": "https://www.legisweb.com.br/legislacao/?id=249753",
-      "source_stage": "secondary_reference_only",
+      "normative_anchor": "Lei 10.690/2017 Programa Mais Empresas; RICMS Decreto 19.714/2003 pendente de consolidação",
+      "source_url": "https://seinc.ma.gov.br/servicos/solicitar-beneficios-do-programa-mais-empresas-emissao-de-carta-consulta",
+      "source_stage": "official_benefit_program_procedure",
       "official_full_consolidation_reviewed": false,
       "exact_benefit_provision_reviewed": false,
       "cross_state_adoption_reviewed": false,
@@ -155,14 +157,16 @@
       "benefit_eligibility_reviewed": false,
       "legal_reviewer": null,
       "source_sha256": null,
-      "import_authorized": false
+      "import_authorized": false,
+      "source_verification_note": "Serviço oficial exige Carta Consulta e aprovação do CONDEP; sem concessão individual não há benefício.",
+      "additional_official_source_url": "https://seinc.ma.gov.br/servicos/solicitar-beneficios-do-programa-mais-empresas-emissao-de-carta-consulta"
     },
     {
       "uf": "MT",
       "state": "Mato Grosso",
-      "normative_anchor": "Decreto 2.212/2014 (RICMS/MT) e alterações",
-      "source_url": "https://app1.sefaz.mt.gov.br/Sistema/Legislacao/legislacaotribut.nsf/173e6c0d2202fdcb03258b1700659f1e/fc0cab6c66d678ba03258e9f00524232",
-      "source_stage": "official_amending_act_only",
+      "normative_anchor": "RICMS Decreto 2.212/2014, compilação SEFAZ até julho/2025; alterações 2026 pendentes",
+      "source_url": "https://www.sefaz.mt.gov.br/legislacao/home.aspx",
+      "source_stage": "official_consolidation_with_2026_update_gap",
       "official_full_consolidation_reviewed": false,
       "exact_benefit_provision_reviewed": false,
       "cross_state_adoption_reviewed": false,
@@ -170,7 +174,9 @@
       "benefit_eligibility_reviewed": false,
       "legal_reviewer": null,
       "source_sha256": null,
-      "import_authorized": false
+      "import_authorized": false,
+      "source_verification_note": "Portal SEFAZ indica texto consolidado até Decreto 1.556/2025; atos de 2026, incluindo Decreto 2.310/2026 (Anexo VIII), impedem presumir vigência integral.",
+      "additional_official_source_url": "https://app1.sefaz.mt.gov.br/Sistema/Legislacao/legislacaotribut.nsf/173e6c0d2202fdcb03258b1700659f1e/3d72b4f04cd1fa7803258ea70052fa41"
     },
     {
       "uf": "MS",
@@ -265,9 +271,9 @@
     {
       "uf": "PI",
       "state": "Piauí",
-      "normative_anchor": "Decreto 21.866/2023 (RICMS/PI)",
-      "source_url": "https://dfe-portal.svrs.rs.gov.br/Difal/BaseLegal",
-      "source_stage": "official_interstate_pointer_only",
+      "normative_anchor": "Decreto 21.866/2023 (RICMS/PI), texto original Diário Oficial; alterações 2025/2026 pendentes",
+      "source_url": "https://www.diario.pi.gov.br/doe/files/diarios/anexo/5714d565-bd46-4f50-950d-7fa74dbdc549/DIARIO-OFICIAL-DO-ESTADO-DO-PIAUI-PUBLICACAO-N-47.pdf",
+      "source_stage": "official_original_decree_not_consolidated",
       "official_full_consolidation_reviewed": false,
       "exact_benefit_provision_reviewed": false,
       "cross_state_adoption_reviewed": false,
@@ -275,14 +281,16 @@
       "benefit_eligibility_reviewed": false,
       "legal_reviewer": null,
       "source_sha256": null,
-      "import_authorized": false
+      "import_authorized": false,
+      "source_verification_note": "Comunicado UNATRI 1/2025 identifica Anexo IV art.25-A, Convênio ICMS 224/2017, cesta básica e art.58 estorno, efeitos desde 01/04/2025. Deve reconciliar Decreto 23.672/2025 e atos posteriores.",
+      "additional_official_source_url": "https://portal-admin.sefaz.pi.gov.br/wp-content/uploads/2025/03/SEI_GOV-PI-017374270-SEFAZ_-Comunicado-UNATRI.pdf"
     },
     {
       "uf": "RJ",
       "state": "Rio de Janeiro",
-      "normative_anchor": "Decreto 27.427/2000 (RICMS/RJ); roteiro SEFAZ de benefícios",
-      "source_url": "https://portal.fazenda.rj.gov.br/transparencia-da-receita-estadual/wp-content/uploads/sites/5/2025/04/PORTAL-DA-TRANSPARENCIA-ROTEIRO-BF.pdf",
-      "source_stage": "official_government_guidance_only",
+      "normative_anchor": "Decreto 27.427/2000 (RICMS/RJ), texto original ALERJ; alterações a verificar",
+      "source_url": "https://www3.alerj.rj.gov.br/lotus_notes/default.asp?id=58&url=L3NjcHJvMDMwNy5uc2YvZjRiNDZiM2NkYmJhOTkwMDgzMjU2Y2M5MDA3NDZjZjYvYjZjZWU5YTEzMDZlYzU1ZDgzMjU2ZmNjMDA2MjFhNGI%2FT3BlbkRvY3VtZW50",
+      "source_stage": "official_original_decree_not_consolidated",
       "official_full_consolidation_reviewed": false,
       "exact_benefit_provision_reviewed": false,
       "cross_state_adoption_reviewed": false,
@@ -290,14 +298,16 @@
       "benefit_eligibility_reviewed": false,
       "legal_reviewer": null,
       "source_sha256": null,
-      "import_authorized": false
+      "import_authorized": false,
+      "source_verification_note": "Fonte ALERJ contém Decreto 27.427/2000, não prova alterações posteriores.",
+      "additional_official_source_url": "https://www3.alerj.rj.gov.br/lotus_notes/default.asp?id=58&url=L3NjcHJvMDMwNy5uc2YvZjRiNDZiM2NkYmJhOTkwMDgzMjU2Y2M5MDA3NDZjZjYvYjZjZWU5YTEzMDZlYzU1ZDgzMjU2ZmNjMDA2MjFhNGI%2FT3BlbkRvY3VtZW50"
     },
     {
       "uf": "RN",
       "state": "Rio Grande do Norte",
-      "normative_anchor": "Decreto 31.825/2022 (RICMS/RN)",
-      "source_url": "https://www.sefaz.rn.gov.br/postagem/respostas-de-consultas-2024/",
-      "source_stage": "official_government_guidance_only",
+      "normative_anchor": "Decreto 31.825/2022 (RICMS/RN), Diário Oficial; alterações 2026 pendentes",
+      "source_url": "https://diariooficial.rn.gov.br/dei/dorn3/documentos/00000001/20220819/783131.htm",
+      "source_stage": "official_original_decree_not_consolidated",
       "official_full_consolidation_reviewed": false,
       "exact_benefit_provision_reviewed": false,
       "cross_state_adoption_reviewed": false,
@@ -305,7 +315,9 @@
       "benefit_eligibility_reviewed": false,
       "legal_reviewer": null,
       "source_sha256": null,
-      "import_authorized": false
+      "import_authorized": false,
+      "source_verification_note": "Diário Oficial publica Decreto 31.825/2022; base do decreto, sem comprovação de consolidação até novembro de 2026.",
+      "additional_official_source_url": "https://diariooficial.rn.gov.br/dei/dorn3/documentos/00000001/20220819/783131.htm"
     },
     {
       "uf": "RS",

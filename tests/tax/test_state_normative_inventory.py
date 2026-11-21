@@ -1,6 +1,7 @@
 """T09 legal research: source anchors do not become approved fiscal policies."""
 import json
 from pathlib import Path
+from urllib.parse import urlsplit
 
 import pytest
 
@@ -23,7 +24,11 @@ def test_27_uf_normative_index_never_implies_approved_benefit():
     assert len(states) == 27
     assert {item["uf"] for item in states} == set(_UF_CODES)
     for row in states:
-        assert row["source_url"].startswith("https://")
+        parsed = urlsplit(row["source_url"])
+        assert parsed.scheme == "https"
+        assert parsed.hostname == "gov.br" or parsed.hostname.endswith(".gov.br")
+        assert parsed.username is None and parsed.password is None
+        assert row["source_stage"].startswith("official_")
         assert not row["official_full_consolidation_reviewed"]
         assert not row["exact_benefit_provision_reviewed"]
         assert not row["benefit_eligibility_reviewed"]
@@ -36,14 +41,15 @@ def test_researched_candidates_are_versioned_and_fail_closed():
     drafts = _document("NFCORE_T09_STATE_BENEFIT_DRAFT_CANDIDATES_V1.json")
     assert drafts["advisory_only"] and not drafts["import_authorized"]
     candidates = drafts["candidates"]
-    assert len(candidates) == 2
-    assert {c["uf"] for c in candidates} == {"SP", "RS"}
+    assert len(candidates) == 4
+    assert {c["uf"] for c in candidates} == {"SP", "RS", "MA", "PI"}
     assert len({c["candidate_id"] for c in candidates}) == len(candidates)
     for item in candidates:
         assert item["candidate_version"] == 1
         assert item["review_status"] == "draft"
         assert item["mandatory_missing"]
         assert item["state_official_source_url"].startswith("https://")
+        assert not item.get("eligibility_certified", False)
         with pytest.raises(FiscalValidationError, match="not human reviewed"):
             decode_rule(item)
 

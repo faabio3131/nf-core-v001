@@ -58,6 +58,57 @@
         "revisor jurídico-fiscal independente, assinatura humana, testes reais"
       ],
       "schema_version": "nfcore.state-icms-benefit-rule/v1"
+    },
+    {
+      "candidate_id": "PI-RICMS2023-AN4-ART25A-BASIC-FOOD-V1",
+      "candidate_version": 1,
+      "uf": "PI",
+      "review_status": "draft",
+      "benefit_kind": "exemption",
+      "tax_code": "ICMS",
+      "normative_reference": "Decreto 21.866/2023, Anexo IV art. 25-A, acrescido pelo Decreto 23.672/2025; Convênio ICMS 224/2017",
+      "legal_path_research": "confaz_convention",
+      "state_official_source_url": "https://portal-admin.sefaz.pi.gov.br/wp-content/uploads/2025/03/SEI_GOV-PI-017374270-SEFAZ_-Comunicado-UNATRI.pdf",
+      "findings_verified_from_public_source": [
+        "Comunicado UNATRI 1/2025 cita isenção de ICMS de saídas internas, desde 01/04/2025, de produtos listados da cesta básica",
+        "Lista expressa inclui arroz, feijão, farinha de mandioca, ovos em dispositivo separado e diversas outras mercadorias, com características específicas",
+        "Art.25-A do Anexo IV mencionado para conjunto específico; não generalizar isenção a toda cesta básica",
+        "Art.58 RICMS exige verificar estorno de crédito",
+        "Convênio ICMS 224/2017 consta no comunicado; vigência 2026 exige reconciliação de alterações posteriores"
+      ],
+      "mandatory_missing": [
+        "revisão texto consolidado 2026 do RICMS/PI, Decreto 23.672/2025 e alterações posteriores",
+        "verificação individual de produto/NCM/CFOP, operação interna e exclusões",
+        "revisar Convênio ICMS 224/2017, adesão, condições, estorno e eventuais requisitos de contribuinte",
+        "captura dos bytes oficiais com SHA-256; relatório independente por competência",
+        "casos positivos e negativos normativos sem criar elegibilidade automática"
+      ],
+      "schema_version": "nfcore.state-icms-benefit-rule/v1"
+    },
+    {
+      "candidate_id": "MA-MAIS-EMPRESAS-LEI10690-2017-V1",
+      "candidate_version": 1,
+      "uf": "MA",
+      "review_status": "draft",
+      "benefit_kind": "rate_reduction",
+      "tax_code": "ICMS",
+      "normative_reference": "Lei Estadual MA 10.690/2017 — Programa Mais Empresas (processo de concessão)",
+      "legal_path_research": "legal_route_unresolved",
+      "state_official_source_url": "https://seinc.ma.gov.br/servicos/solicitar-beneficios-do-programa-mais-empresas-emissao-de-carta-consulta",
+      "findings_verified_from_public_source": [
+        "Secretaria de Indústria e Comércio divulga o programa como fomento mediante redução de ICMS",
+        "O benefício exige Carta Consulta e documentação de empresa e sócios",
+        "Decisão de aprovação passa pelo Conselho de Políticas Fiscais — CONDEP",
+        "Não há concessão automática, taxa de redução universal nem prazo de análise garantido"
+      ],
+      "mandatory_missing": [
+        "obter texto primário da Lei 10.690/2017, atos regulamentadores e RICMS/MA vigente",
+        "identificar Convênio/LC160 aplicável ou outra rota jurídica, percentuais e prazo por ato individual",
+        "confirmar aprovação CONDEP e ato individual da empresa, CNAE/NCM/CFOP e regime",
+        "captura de bytes oficiais, hashes, revisão jurídico-fiscal independente",
+        "política por ato individual comprovado com ensaios de elegibilidade e vedação"
+      ],
+      "schema_version": "nfcore.state-icms-benefit-rule/v1"
     }
   ]
 }
