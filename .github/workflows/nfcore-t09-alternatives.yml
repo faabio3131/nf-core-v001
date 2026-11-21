@@ -1,0 +1,42 @@
+name: T09 Official Alternative Source Trial
+on:
+  pull_request:
+    branches:
+      - work/nfcore-closeout-20261119
+    paths:
+      - "docs/NFCORE_T09_OFFICIAL_ALTERNATIVE_SOURCE_TRIAL_V1.json"
+      - "scripts/nfcore_t09_capture_alternatives.py"
+      - "scripts/nfcore_t09_capture_public_evidence.py"
+      - "tests/tax/test_t09_alternate_official_sources.py"
+      - ".github/workflows/nfcore-t09-alternatives.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  source-trial:
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 9
+    steps:
+      - name: Checkout exact revision
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Trial official alternative URLs with no business effects
+        run: |
+          python scripts/nfcore_t09_capture_alternatives.py \
+            --catalog docs/NFCORE_T09_STATE_BENEFIT_DRAFT_CANDIDATES_V1.json \
+            --alternatives docs/NFCORE_T09_OFFICIAL_ALTERNATIVE_SOURCE_TRIAL_V1.json \
+            --output t09-alternative-evidence --timeout 20 --workers 5
+      - name: Preserve original bytes and hash manifest
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: t09-alternative-official-sources-unreviewed
+          path: |
+            t09-alternative-evidence/alternative_capture_manifest.json
+            t09-alternative-evidence/nfcore_t09_official_alternatives_unreviewed.zip
+          if-no-files-found: error
+          retention-days: 30
