@@ -38,6 +38,7 @@ from kordena_fiscal.gateway.nfse_national_receipt import (
     _verify_nfse_receipt_signature as _verify_nfse_receipt_signature,
 )
 from kordena_fiscal.gateway.provider import ProviderSelectionResolver
+from kordena_fiscal.issuance.nfse_dps_identity import national_dps_id
 from kordena_fiscal.issuance.nfe_nfse import (
     NfseAuthorizationRequest,
     NfseAuthorizationResult,
@@ -53,7 +54,14 @@ _MAX_RESPONSE = 4_194_304
 
 def _dps_id(request: NfseAuthorizationRequest) -> str:
     try:
-        return NationalReceiptIdentity.from_request(request).dps_id
+        document = request.document
+        municipality = document.issuer.address.jurisdiction.municipality_ibge_code
+        if municipality is None or document.dps_number is None:
+            raise FiscalValidationError("DPS serial unavailable")
+        return national_dps_id(
+            municipality, document.issuer.cnpj.value,
+            document.dps_series, document.dps_number,
+        )
     except FiscalValidationError:
         raise OfficialNfseTransportError(
             "Official DPS query requires a durably reserved legal issuer serial"

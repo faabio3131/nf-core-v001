@@ -13,6 +13,7 @@ from lxml import etree
 from kordena_fiscal.domain import ExecutionScope, FiscalEnvironment, FiscalValidationError
 from kordena_fiscal.gateway.authorization import AuthorizationStatus, GatewayProviderMetadata
 from kordena_fiscal.gateway.nfse_national_homologation import OfficialNfseTransportError
+from kordena_fiscal.gateway.nfse_national_query import _dps_id
 from kordena_fiscal.gateway.nfse_national_query import _validate_official_nfse as _query_validate
 from kordena_fiscal.gateway.nfse_national_receipt import NationalReceiptIdentity
 from kordena_fiscal.issuance.nfe_nfse import NfseAuthorizationResult
@@ -173,3 +174,20 @@ def test_query_rejects_resigned_receipt_with_same_identity_but_changed_fiscal_fa
                 json.dumps(payload).encode(), expected=expected,
                 schema_profile=NT009_RESTRICTED_PROFILE,
             )
+
+
+def test_query_dps_identity_does_not_rebuild_xml_or_select_current_release(monkeypatch) -> None:
+    from kordena_fiscal.issuance import nfse_dps_builder
+
+    request = _receipt_fixture.sample()[0]
+    monkeypatch.setattr(
+        nfse_dps_builder, "build_unsigned_dps",
+        lambda *args, **kwargs: (_ for _ in ()).throw(AssertionError("unexpected XML rebuild")),
+    )
+    document = request.document
+    from kordena_fiscal.issuance.nfse_dps_identity import national_dps_id
+
+    assert _dps_id(request) == national_dps_id(
+        document.issuer.address.jurisdiction.municipality_ibge_code,
+        document.issuer.cnpj.value, document.dps_series, document.dps_number,
+    )
