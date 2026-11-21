@@ -1,0 +1,61 @@
+{
+  "schema_version": "nfcore.t09.state-benefit-draft-candidates/v1",
+  "as_of": "2026-11-21",
+  "advisory_only": true,
+  "approved_for_eligibility": false,
+  "import_authorized": false,
+  "candidates": [
+    {
+      "candidate_id": "SP-RICMS2000-AN3-ART41-TEXTILE-V1",
+      "candidate_version": 1,
+      "uf": "SP",
+      "review_status": "draft",
+      "benefit_kind": "presumed_credit",
+      "tax_code": "ICMS",
+      "normative_reference": "Decreto 45.490/2000, Anexo III, art. 41 (redação Decreto 67.524/2023, prazo Decreto 69.292/2025)",
+      "legal_path_research": "lc160_reinstituted",
+      "state_official_source_url": "https://legislacao.fazenda.sp.gov.br/Paginas/an3art041.aspx",
+      "findings_verified_from_public_source": [
+        "Operação: saída INTERNA de produtos têxteis por estabelecimento localizado em SP",
+        "Dependência expressa: redução da base de cálculo do art. 52 do Anexo II",
+        "Percentual nominal do art. 41: 12% sobre o valor da saída, não redução automática de ICMS",
+        "É condicionado à tributação da saída; saídas com posterior retorno real/simbólico excluídas",
+        "A opção substitui o aproveitamento de outros créditos; escrituração em Outros Créditos",
+        "Prazo textual apontado na página: até 2026-12-31"
+      ],
+      "legal_temporal_notes": "Página contém redações históricas superadas. Não usar percentual sem competência e revisão posterior.",
+      "mandatory_missing": [
+        "revisão independente do texto consolidado e atos modificadores para cada competência",
+        "art. 52 Anexo II e Portaria CAT 35/2017, opção/estorno e eventual credenciamento",
+        "NCM exato, CFOP, CNAE, regime ICMS e regime federal; não inferir listas",
+        "documento fonte salvo e SHA256 de bytes reais, status CONFAZ/LC160 por ato",
+        "revisor jurídico-fiscal, assinatura humana, pacote de testes positivos/negativos de regra real"
+      ]
+    },
+    {
+      "candidate_id": "RS-RICMS1997-L1-ART32-CLXXXVI-METAL-V1",
+      "candidate_version": 1,
+      "uf": "RS",
+      "review_status": "draft",
+      "benefit_kind": "presumed_credit",
+      "tax_code": "ICMS",
+      "normative_reference": "Decreto 37.699/1997, Livro I, art. 32, inciso CLXXXVI",
+      "legal_path_research": "state_statute",
+      "state_official_source_url": "https://receita.fazenda.rs.gov.br/servicos-a-empresas/servicos?servico=1946",
+      "findings_verified_from_public_source": [
+        "Serviço oficial de opção de crédito presumido para fabricante de sistemas construtivos / estruturas metálicas",
+        "NCMs indicados no procedimento: 94069020 e 73082000, para os produtos respectivos",
+        "Exige protocolo eletrônico e análise de opção; deferimento não é automático",
+        "Se deferido, efeitos a partir do primeiro dia do mês seguinte à formalização",
+        "Prazo mínimo de permanência na opção de seis meses, segundo orientação do serviço"
+      ],
+      "mandatory_missing": [
+        "confrontar redação atual integral do Livro I art. 32 CLXXXVI e IN 045/98",
+        "classificação de CNAE, CFOP, operação, percentual, limites, competência e regime",
+        "verificar habilitação específica da empresa e documentos obrigatórios",
+        "documento fonte salvo e SHA256 dos bytes reais, eventual CONFAZ/LC160",
+        "revisor jurídico-fiscal independente, assinatura humana, testes reais"
+      ]
+    }
+  ]
+}
