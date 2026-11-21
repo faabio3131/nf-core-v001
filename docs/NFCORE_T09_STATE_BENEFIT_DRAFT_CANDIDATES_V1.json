@@ -328,8 +328,8 @@
       "tax_code": "ICMS",
       "normative_reference": "Decreto 39.803/2019, arts. 16 a 23 para modalidades especiais",
       "legal_path_research": "unresolved_pending_confaz_and_reinstitution_review",
-      "state_official_source_url": "https://economia.df.gov.br/emprega-df/",
-      "official_evidence_type": "official_program_procedure",
+      "state_official_source_url": "https://www.sinj.df.gov.br/sinj/Norma/2257f831264c4e06850f0248431427df/Decreto_39803_02_05_2019.html",
+      "official_evidence_type": "official_consolidated_state_decree",
       "findings_verified_from_public_source": [
         "Programa condiciona incentivos a investimento, manutenção e geração de empregos no DF",
         "Art.7 condiciona a benefícios a projetos/atos nos termos do Decreto e sua aprovação; a negativa de requerimento não gera direito adquirido.",
@@ -735,8 +735,8 @@
       "tax_code": "ICMS",
       "normative_reference": "Lei 6.913/2006, Decreto 2.490/2006 e Comissão de Política de Incentivos",
       "legal_path_research": "unresolved_pending_confaz_and_reinstitution_review",
-      "state_official_source_url": "https://www.sistemas.pa.gov.br/sisleis/legislacao/5840",
-      "official_evidence_type": "official_individual_resolution",
+      "state_official_source_url": "https://www.cge.pa.gov.br/sites/default/files/2023-03/decreto_estadual_n_2490_de_06_10_2006.pdf",
+      "official_evidence_type": "official_state_decree_archive_not_2026_consolidated",
       "findings_verified_from_public_source": [
         "LEGIS-PA publica resolução de incentivo individual com referência à Lei 6.913/2006 e ao Decreto 2.490/2006",
         "Resolução 21/2020 identifica exclusivamente ALUBAR METAIS E CABOS S/A em alteração da Resolução 020/2010.",
@@ -765,6 +765,7 @@
         "inspection_type": "official_individual_concession_resolution",
         "legal_provision": "Lei PA 6.913/2006 / Decreto 2.490/2006 — Resolução 21/2020 de destinatário específico",
         "sources": [
+          "https://www.cge.pa.gov.br/sites/default/files/2023-03/decreto_estadual_n_2490_de_06_10_2006.pdf",
           "https://www.sistemas.pa.gov.br/sisleis/legislacao/5840"
         ],
         "primary_findings": [
@@ -791,8 +792,8 @@
       "tax_code": "ICMS",
       "normative_reference": "Lei 6.000/1994; Decreto 17.252/1994, art. 3º; Decreto 47.898/2026",
       "legal_path_research": "unresolved_pending_confaz_and_reinstitution_review",
-      "state_official_source_url": "https://sefaz.pb.gov.br/legislacao/267-decretos-estaduais/icms/icms-1994/5391-decreto-n-17-252-de-27-de-dezembro-de-1994",
-      "official_evidence_type": "official_consolidated_regulation",
+      "state_official_source_url": "https://portal.sefaz.pb.gov.br/legislacao/35-decretos-estaduais/59-icms/267-icms-1994/5391-decreto-n-17-252-de-27-de-dezembro-de-1994",
+      "official_evidence_type": "official_amended_state_decree",
       "findings_verified_from_public_source": [
         "RICMS/FAIN traz decisão vinculada a parecer SEFAZ/PB e definição de novo produto por diferença nos primeiros quatro dígitos NCM em alterações de 2026",
         "Regulamento FAIN contempla estímulos e crédito presumido de ICMS condicionados a deliberação do Conselho Deliberativo.",
@@ -1492,8 +1493,8 @@
       "tax_code": "ICMS",
       "normative_reference": "Lei 1.385/2003, art. 6º e alterações",
       "legal_path_research": "unresolved_pending_confaz_and_reinstitution_review",
-      "state_official_source_url": "https://dtri.sefaz.to.gov.br/legislacao/ntributaria/Leis/Lei1.385-03.htm",
-      "official_evidence_type": "official_statutory_text",
+      "state_official_source_url": "https://www.al.to.leg.br/arquivo/65595",
+      "official_evidence_type": "official_state_assembly_law_document_not_2026_consolidated",
       "findings_verified_from_public_source": [
         "Art. 6º exige aprovação da carta-consulta pela Secretaria-Executiva do Conselho Estadual de Desenvolvimento Econômico"
       ],
@@ -1514,7 +1515,25 @@
       "legal_reviewer": null,
       "approved_for_eligibility": false,
       "import_authorized": false,
-      "eligibility_certified": false
+      "eligibility_certified": false,
+      "primary_source_review_20261121": {
+        "inspection_type": "official_legislative_publication_with_prior_amendment_annotations",
+        "legal_provision": "Lei TO 1.385/2003 arts. 3º e 4º (redações históricas)",
+        "sources": [
+          "https://www.al.to.leg.br/arquivo/65595"
+        ],
+        "primary_findings": [
+          "Art. 3º condiciona os incentivos à aprovação de projeto industrial de instalação ou expansão.",
+          "Art. 4º contém hipóteses condicionadas e redações anteriores revogadas; não autoriza crédito sem comprovação individual."
+        ],
+        "red_flags": [
+          "projeto_individual_nao_demonstrado",
+          "historico_e_redacoes_2026_nao_consolidados"
+        ],
+        "fully_consolidated_current_to_20261121": false,
+        "independent_accountant_opinion": false,
+        "publisher_bytes_sha256": null
+      }
     }
   ],
   "curation_scope": "one representative public ICMS benefit or program per UF; not all state tax benefits",
