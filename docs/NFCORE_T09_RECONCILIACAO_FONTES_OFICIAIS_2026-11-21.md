@@ -68,6 +68,14 @@ Nenhuma coluna equivale a aprovação fiscal.
 2. **Temporalidade:** SP art. 41 e MG Anexo II item 26 apresentam limites de
    31/12/2026 nos textos consultados. Não criar benefício aberto ou
    elegibilidade futura sem norma posterior específica vigente.
+   **Dependência SP comprovada:** Anexo III art. 41 do RICMS/SP remete
+   expressamente ao Anexo II art. 52, que restringe NCMs, saídas e
+   contribuintes e exclui consumidor final, além de condicionar a situação
+   fiscal. O art. 41 exige saída tributada e substituição de outros créditos.
+   Atribuir 12% somente após reconciliação do par de normas e da competência,
+   nunca apenas por CNAE ou localização.
+   Fonte primária complementar:
+   https://legislacao.fazenda.sp.gov.br/Paginas/an2art052.aspx
 3. **Concessão individual:** TO art. 3º, DF projeto PVTEFS, FAIN/PB e outros
    exigem critérios/atos de enquadramento; CNPJ, CNAE ou UF isolados não
    comprovam incentivo.
