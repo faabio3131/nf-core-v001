@@ -7,9 +7,11 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import html
 import json
 import os
 import re
+import unicodedata
 from datetime import date
 from pathlib import Path, PurePosixPath
 
@@ -114,11 +116,29 @@ def verify_reviewed_source_bytes(
         is_html = b"<html" in lowered[:2048] or b"<!doctype html" in lowered[:2048]
         if not is_pdf and not is_html:
             raise ValueError("unsupported official source format")
-        if is_html and any(marker in lowered for marker in (
-            b"captcha", b"access denied", b"bad gateway",
-            b"403 forbidden", b"502 bad gateway", b"service unavailable",
-        )):
-            raise ValueError("legal source is an HTML access/error page")
+        if is_html:
+            # Government portals may return HTTP 200 while showing maintenance
+            # or access-block pages. A matching hash proves only those bytes,
+            # never the legal text. Normalize Portuguese accents/entities.
+            normalized = html.unescape(
+                prefix.decode("utf-8", errors="ignore"),
+            ).casefold()
+            normalized = "".join(
+                char for char in unicodedata.normalize("NFKD", normalized)
+                if not unicodedata.combining(char)
+            )
+            normalized = " ".join(normalized.split())
+            access_error_markers = (
+                "captcha", "access denied", "bad gateway",
+                "403 forbidden", "404 not found", "502 bad gateway",
+                "service unavailable", "site em manutencao",
+                "manutencao em andamento", "pagina nao encontrada",
+                "pagina temporariamente indisponivel", "acesso negado",
+                "mensagem de bloqueio", "bloqueia acessos provenientes",
+                "the requested url was rejected", "website is under maintenance",
+            )
+            if any(marker in normalized for marker in access_error_markers):
+                raise ValueError("legal source is an HTML access/error page")
         supplied.add(url)
     if supplied != expected.keys():
         raise ValueError("reviewed legal source file coverage incomplete")
