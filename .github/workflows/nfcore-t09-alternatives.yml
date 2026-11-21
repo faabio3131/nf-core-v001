@@ -16,7 +16,7 @@ jobs:
   source-trial:
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
-    timeout-minutes: 9
+    timeout-minutes: 10
     steps:
       - name: Checkout exact revision
         uses: actions/checkout@v4
@@ -29,7 +29,7 @@ jobs:
           python scripts/nfcore_t09_capture_alternatives.py \
             --catalog docs/NFCORE_T09_STATE_BENEFIT_DRAFT_CANDIDATES_V1.json \
             --alternatives docs/NFCORE_T09_OFFICIAL_ALTERNATIVE_SOURCE_TRIAL_V1.json \
-            --output t09-alternative-evidence --timeout 20 --workers 5
+            --output t09-alternative-evidence --timeout 120 --workers 8
       - name: Preserve original bytes and hash manifest
         if: always()
         uses: actions/upload-artifact@v4
