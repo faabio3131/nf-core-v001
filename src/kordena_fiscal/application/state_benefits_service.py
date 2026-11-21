@@ -196,6 +196,8 @@ def search_state_benefits(
         cnpj = snapshot["issuer_cnpj"]
         if not isinstance(cnpj, str):
             raise FiscalValidationError("invalid scoped state issuer")
+    except FiscalValidationError:
+        raise
     except (KeyError, TypeError, ValueError, OverflowError) as exc:
         raise FiscalValidationError("invalid scoped state facts") from exc
     canonical = verify_issuer(cnpj, competence)
