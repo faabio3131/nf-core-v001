@@ -787,6 +787,40 @@ def _certify_t09_state(database):
         },
     }
 
+
+
+    # Synthetic local review receipt; no live legislation or accountant approval.
+    from kordena_fiscal.application.state_review_gate import (
+        REVIEW_KEY_ENV, review_claims,
+    )
+    import hashlib
+    import hmac
+    import json
+
+    key = "postgres-t09-synthetic-approval-key-xxxxxxxxxxxxxxxxxxxxxxxx"
+    previous = os.environ.get(REVIEW_KEY_ENV)
+    os.environ[REVIEW_KEY_ENV] = key
+    claims = review_claims(
+        policy=policy, facts=facts, scope_identity=scope.identity_material,
+        issuer_cnpj=issuer.value, competence=competence,
+        benefit_id="t09-sp-synthetic", benefit_version=1,
+    )
+    receipt = {
+        "claims": claims,
+        "reviewer_id": "synthetic-pg-reviewer",
+        "approved_at": "2026-11-20T09:00:00+00:00",
+        "decision": "internal_curatorial_accepted",
+    }
+    canonical = json.dumps(receipt, ensure_ascii=False, sort_keys=True,
+                           separators=(",", ":"))
+    receipt["signature_hmac_sha256"] = hmac.new(
+        key.encode(), canonical.encode(), hashlib.sha256,
+    ).hexdigest()
+    policy["internal_review_approval"] = receipt
+
+    def verified_source_bytes_for_test(p):
+        return len({x["source_url"] for x in p["legal_citations"]})
+
     def verify(cnpj, month):
         assert cnpj == issuer.value and month == competence
         return ReviewedStateIssuer(
@@ -799,6 +833,7 @@ def _certify_t09_state(database):
         competence=competence, issuer=issuer, content=facts,
         benefit_id="t09-sp-synthetic", benefit_version=1,
         benefit_content=policy, verify_issuer=verify,
+        verified_source_bytes=verified_source_bytes_for_test,
     )
     with database.economy(scope) as store:
         first = import_reviewed_state_benefit(store, **payload)
@@ -808,6 +843,19 @@ def _certify_t09_state(database):
         assert first["issuance_authorized"] is False
         assert import_reviewed_state_benefit(store, **payload) == first
         tampered = {**policy, "allowed_cfops": ["6102"]}
+        claims_tampered = review_claims(
+            policy=tampered, facts=facts, scope_identity=scope.identity_material,
+            issuer_cnpj=issuer.value, competence=competence,
+            benefit_id="t09-sp-synthetic", benefit_version=1,
+        )
+        signed_tampered = {**receipt, "claims": claims_tampered}
+        canonical = json.dumps({k: v for k, v in signed_tampered.items()
+                                if k != "signature_hmac_sha256"},
+                               ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+        signed_tampered["signature_hmac_sha256"] = hmac.new(
+            key.encode(), canonical.encode(), hashlib.sha256,
+        ).hexdigest()
+        tampered["internal_review_approval"] = signed_tampered
         with pytest.raises(FiscalValidationError, match="immutable"):
             import_reviewed_state_benefit(
                 store, **{**payload, "benefit_content": tampered},

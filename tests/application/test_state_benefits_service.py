@@ -46,7 +46,7 @@ def policy(uf="SP", *, path="state_statute"):
 def facts(uf="SP", *, path="state_statute"):
     return {
         "schema_version": FACTS_SCHEMA, "review_status": "reviewed",
-        "review_reference": "synthetic-facts-T09",
+        "review_reference": "synthetic-review-T09",
         "uf": uf, "activity_cnae": "6201501",
         "operation_ncm": "84713012", "operation_cfop": "5102",
         "operation": "domestic_sale", "evidence": {
@@ -56,6 +56,48 @@ def facts(uf="SP", *, path="state_statute"):
     }
 
 CNPJ = "12345678000195"
+
+import hashlib
+import hmac
+import json
+import os
+
+from kordena_fiscal.application.state_review_gate import REVIEW_KEY_ENV, review_claims
+
+KEY_T09 = "test-only-internal-review-hmac-key-xxxxxxxxxxxxxxxxxxxxxxxxxxx"
+os.environ[REVIEW_KEY_ENV] = KEY_T09
+
+
+def _sign_review(policy, case_facts, *, scope=SCOPE, cn=CNPJ, month=MONTH,
+                 benefit_id="t09-state-rule", version=1):
+    claims = review_claims(
+        policy=policy, facts=case_facts, scope_identity=scope,
+        issuer_cnpj=cn, competence=month, benefit_id=benefit_id,
+        benefit_version=version,
+    )
+    signed = {
+        "claims": claims,
+        "reviewer_id": "synthetic-authorized-reviewer",
+        "approved_at": "2026-11-20T10:00:00+00:00",
+        "decision": "internal_curatorial_accepted",
+    }
+    serialized = json.dumps(signed, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+    signed["signature_hmac_sha256"] = hmac.new(
+        KEY_T09.encode("utf-8"), serialized.encode("utf-8"), hashlib.sha256,
+    ).hexdigest()
+    policy["internal_review_approval"] = signed
+
+
+def _verified_bytes_for_synthetic_test(policy):
+    # Only in tests: actual CLI requires a manifest with matching original bytes.
+    return len({row["source_url"] for row in policy["legal_citations"]})
+
+
+def _import_test(store, **kwargs):
+    return import_reviewed_state_benefit(
+        store, **kwargs, verified_source_bytes=_verified_bytes_for_synthetic_test,
+    )
+
 
 
 def bundle(uf="SP", *, path="state_statute"):
@@ -72,7 +114,7 @@ def bundle(uf="SP", *, path="state_statute"):
     }]
     if path != "state_statute":
         p["legal_citations"].append({
-            "act": "Convênio ICMS 190/2017 (sintetico)",
+            "act": "Convênio ICMS 190/2017",
             "provision": "Teste sintético de rota CONFAZ",
             "source_url": "https://www.gov.br/confaz/legislacao/sintetica",
             "source_sha256": "b" * 64,
@@ -81,10 +123,12 @@ def bundle(uf="SP", *, path="state_statute"):
             "valid_until": "2027-01-01",
             "review_reference": p["review_reference"],
         })
+    case_facts = facts(uf, path=path)
+    _sign_review(p, case_facts)
     return {
         "snapshot_id": "t09-facts", "snapshot_version": 1,
         "competence": MONTH, "issuer": Cnpj(CNPJ),
-        "content": facts(uf, path=path),
+        "content": case_facts,
         "benefit_id": "t09-state-rule", "benefit_version": 1,
         "benefit_content": p,
     }
@@ -141,13 +185,13 @@ class FakeStore:
 
 def test_state_import_and_replay_are_immutable_and_advisory():
     store = FakeStore()
-    first = import_reviewed_state_benefit(store, **bundle(), verify_issuer=verifier)
+    first = _import_test(store, **bundle(), verify_issuer=verifier)
     assert first["status"] == "potential"
     assert first["approved_cents"] is None
     assert first["realized_cents"] is None
     assert first["issuance_authorized"] is False
     assert first["tax_reporting_authorized"] is False
-    assert first == import_reviewed_state_benefit(
+    assert first == _import_test(
         store, **bundle(), verify_issuer=verifier,
     )
     assert len(store.rows) == 2
@@ -157,8 +201,9 @@ def test_state_import_and_replay_are_immutable_and_advisory():
     )
     tampered = bundle()
     tampered["benefit_content"]["allowed_cfops"] = ["6102"]
+    _sign_review(tampered["benefit_content"], tampered["content"])
     with pytest.raises(FiscalValidationError, match="immutable"):
-        import_reviewed_state_benefit(store, **tampered, verify_issuer=verifier)
+        _import_test(store, **tampered, verify_issuer=verifier)
 
 
 def test_state_legislation_missing_or_invalid_never_creates_a_candidate():
@@ -171,7 +216,7 @@ def test_state_legislation_missing_or_invalid_never_creates_a_candidate():
         row["benefit_content"].update(corrupted)
         store = FakeStore()
         with pytest.raises(FiscalValidationError):
-            import_reviewed_state_benefit(
+            _import_test(
                 store, **row, verify_issuer=verifier,
             )
         assert not store.rows
@@ -181,16 +226,16 @@ def test_state_source_citations_must_cover_full_month_and_match_primary_act():
     row = bundle()
     row["benefit_content"]["legal_citations"][0]["valid_until"] = "2026-11-15"
     with pytest.raises(FiscalValidationError):
-        import_reviewed_state_benefit(FakeStore(), **row, verify_issuer=verifier)
+        _import_test(FakeStore(), **row, verify_issuer=verifier)
     row = bundle()
     row["benefit_content"]["legal_citations"][0]["act"] = "Other State Act"
     with pytest.raises(FiscalValidationError, match="primary"):
-        import_reviewed_state_benefit(FakeStore(), **row, verify_issuer=verifier)
+        _import_test(FakeStore(), **row, verify_issuer=verifier)
 
 
 def test_state_jurisdiction_mismatch_produces_no_fiscal_entitlement():
     store = FakeStore()
-    first = import_reviewed_state_benefit(store, **bundle(), verify_issuer=verifier)
+    first = _import_test(store, **bundle(), verify_issuer=verifier)
     assert first["status"] == "potential"
     store.scope_identity = ("fm-nfcore", "foreign", "unit-a", "homologation")
     with pytest.raises(FiscalValidationError, match="canonical"):
@@ -203,21 +248,22 @@ def test_state_jurisdiction_mismatch_produces_no_fiscal_entitlement():
 @pytest.mark.parametrize("path", ["confaz_convention", "lc160_reinstituted"])
 def test_state_confaz_paths_require_both_local_and_national_citations(path):
     store = FakeStore()
-    first = import_reviewed_state_benefit(
+    first = _import_test(
         store, **bundle(path=path), verify_issuer=verifier,
     )
     assert first["status"] == "potential"
     modified = bundle(path=path)
     modified["benefit_content"]["legal_citations"].pop()
+    _sign_review(modified["benefit_content"], modified["content"])
     with pytest.raises(FiscalValidationError, match="CONFAZ"):
-        import_reviewed_state_benefit(
+        _import_test(
             FakeStore(), **modified, verify_issuer=verifier,
         )
 
 
 def test_latest_revocation_cannot_reactivate_old_state_rule():
     store = FakeStore()
-    import_reviewed_state_benefit(store, **bundle(), verify_issuer=verifier)
+    _import_test(store, **bundle(), verify_issuer=verifier)
     store.append_benefit(
         record_id="t09-state-rule", version=2, tax_code="ICMS",
         jurisdiction="SP", normative_reference="Revogacao sintetica",
@@ -239,7 +285,7 @@ def test_latest_revocation_cannot_reactivate_old_state_rule():
 
 def test_uf_and_schema_filter_run_before_limit_and_exclude_other_tax_rules():
     store = FakeStore()
-    import_reviewed_state_benefit(store, **bundle(), verify_issuer=verifier)
+    _import_test(store, **bundle(), verify_issuer=verifier)
     for i in range(501):
         store.append_benefit(
             record_id=f"other-{i}", version=1, tax_code="ICMS",
@@ -349,3 +395,59 @@ def test_no_reviewed_state_rules_does_not_mean_no_benefits_exist():
     assert result["status"] == "no_reviewed_catalog"
     assert result["results"] == []
     assert result["complete_state_benefit_coverage"] is False
+
+
+def test_service_import_without_trusted_source_byte_verifier_fails_closed():
+    row = bundle()
+    with pytest.raises(FiscalValidationError, match="source byte verifier"):
+        import_reviewed_state_benefit(
+            FakeStore(), **row, verify_issuer=verifier,
+        )
+
+
+def test_service_rejects_unsigned_or_tampered_curatorial_approval():
+    row = bundle()
+    row["benefit_content"].pop("internal_review_approval")
+    with pytest.raises(FiscalValidationError, match="approval is absent"):
+        _import_test(FakeStore(), **row, verify_issuer=verifier)
+
+    row = bundle()
+    row["content"]["evidence"]["state_act_review"] = "invented-state-reference"
+    with pytest.raises(FiscalValidationError, match="approval claims mismatch"):
+        _import_test(FakeStore(), **row, verify_issuer=verifier)
+
+    row = bundle()
+    row["benefit_content"]["internal_review_approval"]["signature_hmac_sha256"] = "f" * 64
+    with pytest.raises(FiscalValidationError, match="signature mismatch"):
+        _import_test(FakeStore(), **row, verify_issuer=verifier)
+
+
+def test_review_receipt_is_tenant_and_competence_bound():
+    store = FakeStore()
+    _import_test(store, **bundle(), verify_issuer=verifier)
+    store.scope_identity = ("fm-nfcore", "tenant-b", "unit-a", "homologation")
+    with pytest.raises(FiscalValidationError):
+        evaluate_state_benefit(
+            store, snapshot_id="t09-facts", snapshot_version=1,
+            benefit_id="t09-state-rule", benefit_version=1,
+            verify_issuer=lambda c, d: ReviewedStateIssuer(
+                c, "SP", "6201501", FederalIncomeTaxRegime.LUCRO_REAL,
+                True, store.scope_identity,
+            ),
+        )
+
+
+def test_confaz_act_must_match_exact_rule_reference():
+    row = bundle(path="confaz_convention")
+    row["benefit_content"]["legal_citations"][1]["act"] = "Convênio ICMS 999/2026"
+    _sign_review(row["benefit_content"], row["content"])
+    with pytest.raises(FiscalValidationError, match="exact CONFAZ"):
+        _import_test(FakeStore(), **row, verify_issuer=verifier)
+
+
+def test_facts_must_share_review_reference_with_policy():
+    row = bundle()
+    row["content"]["review_reference"] = "different-review-reference"
+    _sign_review(row["benefit_content"], row["content"])
+    with pytest.raises(FiscalValidationError, match="review references mismatch"):
+        _import_test(FakeStore(), **row, verify_issuer=verifier)

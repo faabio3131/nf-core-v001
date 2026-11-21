@@ -114,6 +114,8 @@ def main() -> None:
     parser.add_argument("--tenant", required=True)
     parser.add_argument("--unit", required=True)
     parser.add_argument("--source-manifest", required=True, type=Path)
+    # A governed internal HMAC receipt must also be included in benefit_content.
+    # No signing action is exposed through this import script.
     args = parser.parse_args()
     if os.getenv("NFCORE_ENVIRONMENT") not in {"development", "test", "staging"}:
         parser.error("state ICMS benefit import requires a non-production environment")
@@ -158,6 +160,9 @@ def main() -> None:
                 benefit_version=bundle["benefit_version"],
                 benefit_content=bundle["benefit_content"],
                 verify_issuer=build_state_issuer_verifier(database, scope),
+                verified_source_bytes=lambda policy: verify_reviewed_source_bytes(
+                    policy, args.source_manifest,
+                ),
             )
         print(json.dumps({
             "snapshot_id": result["snapshot_id"],

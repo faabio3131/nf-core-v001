@@ -6,6 +6,8 @@ legislation, full-month validity and explicit evidence. No new fiscal authority.
 from __future__ import annotations
 
 from collections.abc import Callable
+
+from kordena_fiscal.application.state_review_gate import verify_internal_review_approval
 from datetime import date
 from typing import Any
 
@@ -60,17 +62,19 @@ def _evaluate(
         ):
             raise FiscalValidationError("verified primary state act citation required")
         if rule["legal_path"] != "state_statute" and not any(
-            "CONFAZ" in citation.act.upper() or "CONVÊNIO ICMS" in citation.act.upper()
-            or "LC 160" in citation.act.upper()
+            " ".join(citation.act.casefold().split())
+            == " ".join(rule["confaz_normative_reference"].casefold().split())
             for citation in legal
         ):
-            raise FiscalValidationError("national CONFAZ legal citation required")
+            raise FiscalValidationError("exact CONFAZ legal citation required")
         if any(
             citation.review_reference != rule["review_reference"]
             or not citation.covers(competence.isoformat())
             for citation in legal
         ):
             raise FiscalValidationError("legal citation review or period incompatible")
+        if facts["review_reference"] != rule["review_reference"]:
+            raise FiscalValidationError("state fact and policy review references mismatch")
         issuer = verify_issuer(snapshot["issuer_cnpj"], competence)
         if (
             not isinstance(issuer, ReviewedStateIssuer)
@@ -78,6 +82,12 @@ def _evaluate(
             or issuer.cnpj != snapshot["issuer_cnpj"]
         ):
             raise FiscalValidationError("canonical state issuer mismatch")
+        verify_internal_review_approval(
+            policy=benefit["content"], facts=snapshot["content"],
+            scope_identity=scope_identity, issuer_cnpj=issuer.cnpj,
+            competence=competence, benefit_id=benefit["record_id"],
+            benefit_version=benefit["version"],
+        )
         result = assess_state_rule(rule, facts, issuer, competence)
         return {
             **result,
@@ -128,13 +138,19 @@ def import_reviewed_state_benefit(
     competence: date, issuer: Cnpj, content: dict[str, Any],
     benefit_id: str, benefit_version: int, benefit_content: dict[str, Any],
     verify_issuer: IssuerVerifier,
+    verified_source_bytes: Callable[[dict[str, Any]], int] | None = None,
 ) -> dict[str, Any]:
-    """Validated operational import on trusted non-production T01 transactions."""
+    """Validated operational import: legal bytes and signed review are required."""
     if type(competence) is not date or competence.day != 1:
         raise FiscalValidationError("invalid reviewed state import competence")
     if not isinstance(issuer, Cnpj):
         raise FiscalValidationError("invalid state issuer CNPJ")
     rule = decode_rule(benefit_content)
+    if verified_source_bytes is None:
+        raise FiscalValidationError("state legal source byte verifier is required")
+    expected_sources = len({citation["source_url"] for citation in benefit_content.get("legal_citations", [])})
+    if verified_source_bytes(benefit_content) != expected_sources or expected_sources == 0:
+        raise FiscalValidationError("state legal source bytes are not all verified")
     snapshot = {
         "record_id": snapshot_id, "version": snapshot_version,
         "issuer_cnpj": issuer.value, "competence": competence.isoformat(),
