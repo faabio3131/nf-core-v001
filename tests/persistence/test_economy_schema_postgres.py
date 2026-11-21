@@ -862,6 +862,18 @@ def _certify_t09_state(database):
             import_reviewed_state_benefit(
                 store, **{**payload, "benefit_content": tampered},
             )
+    # Concurrent replays from separate connections must be serialized, never
+    # fail with a duplicate primary key after read-then-append.
+    from concurrent.futures import ThreadPoolExecutor
+
+    def replay_exact_same_scoped_case():
+        with database.economy(scope) as store:
+            return import_reviewed_state_benefit(store, **payload)
+
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        futures = [executor.submit(replay_exact_same_scoped_case) for _ in range(2)]
+        assert [f.result() for f in futures] == [first, first]
+
     # Same schema, other UF rules: SQL jurisdiction filtering precedes LIMIT.
     with database.economy(scope) as store:
         for index in range(501):
@@ -909,7 +921,7 @@ def _certify_t09_state(database):
             )
     with database.economy(scope, read_only=True) as store:
         rows, truncated = store.state_benefit_candidates(
-            jurisdiction="SP", competence=competence,
+            jurisdiction="SP", competence=competence, schema_version=RULE_SCHEMA,
         )
         assert not truncated
         assert len(rows) == 1

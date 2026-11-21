@@ -326,7 +326,8 @@ class EconomyStore:
         return int(row[0]) if row is not None else None
 
     def state_benefit_candidates(
-        self, *, jurisdiction: str, competence: date, limit: int = 500,
+        self, *, jurisdiction: str, competence: date, schema_version: str,
+        limit: int = 500,
     ) -> tuple[tuple[dict[str, Any], ...], bool]:
         """Select 1 effective candidate per T09 record before applying LIMIT.
 
@@ -338,6 +339,8 @@ class EconomyStore:
             type(competence) is not date or competence.day != 1
             or not isinstance(jurisdiction, str)
             or not re.fullmatch(r"[A-Z]{2}", jurisdiction)
+            or not isinstance(schema_version, str)
+            or not re.fullmatch(r"[a-zA-Z0-9./_-]{1,128}", schema_version)
             or type(limit) is not int or not 1 <= limit <= 500
         ):
             raise FiscalValidationError("invalid state benefit catalog projection")
@@ -370,7 +373,7 @@ class EconomyStore:
                  AND payload->>'tax_code'='ICMS'
                ORDER BY payload->>'record_id' LIMIT %s""",
             (*self._scope.identity_material, following, jurisdiction,
-             "nfcore.state-icms-benefit-rule/v1", jurisdiction, limit + 1),
+             schema_version, jurisdiction, limit + 1),
         ).fetchall()
         truncated = len(rows) > limit
         results = tuple(dict(r[0]) for r in rows[:limit])

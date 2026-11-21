@@ -175,7 +175,8 @@ class FakeStore:
         ]
         return max(versions) if versions else None
 
-    def state_benefit_candidates(self, *, jurisdiction, competence, limit=500):
+    def state_benefit_candidates(self, *, jurisdiction, competence,
+                                 schema_version, limit=500):
         following = date(
             competence.year + (competence.month == 12),
             competence.month % 12 + 1, 1,
@@ -184,7 +185,7 @@ class FakeStore:
             rid for (table, rid, _), row in self.rows.items()
             if table == "fm_economy_benefits"
             and row["jurisdiction"] == jurisdiction
-            and row["content"].get("schema_version") == RULE_SCHEMA
+            and row["content"].get("schema_version") == schema_version
         }
         latest = {}
         for (table, rid, _), row in self.rows.items():

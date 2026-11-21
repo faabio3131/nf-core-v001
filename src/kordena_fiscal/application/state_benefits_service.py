@@ -225,7 +225,8 @@ def search_state_benefits(
     ):
         raise FiscalValidationError("canonical state issuer mismatch")
     rows, truncated = store.state_benefit_candidates(
-        jurisdiction=facts["uf"], competence=competence, limit=limit,
+        jurisdiction=facts["uf"], competence=competence,
+        schema_version=RULE_SCHEMA, limit=limit,
     )
     results = []
     verified_cache: dict[tuple[str, date], ReviewedStateIssuer] = {
