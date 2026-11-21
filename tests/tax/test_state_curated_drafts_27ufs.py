@@ -50,7 +50,11 @@ def test_every_curated_draft_has_legal_negative_and_blocks_activation(uf):
     url = urlsplit(row["state_official_source_url"])
     assert url.scheme == "https"
     assert url.hostname is not None
-    assert url.hostname == "gov.br" or url.hostname.endswith(".gov.br")
+    # Official legislative sources may be served on the .leg.br domain.
+    # Match the full public-sector domain boundary, never an arbitrary host.
+    assert url.hostname == "gov.br" or url.hostname.endswith(
+        (".gov.br", ".leg.br"),
+    )
     assert url.username is None and url.password is None
     with pytest.raises(FiscalValidationError, match="not human reviewed"):
         decode_rule(row)
