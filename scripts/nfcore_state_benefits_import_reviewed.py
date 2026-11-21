@@ -105,7 +105,10 @@ def verify_reviewed_source_bytes(
         # Integrity alone is insufficient: a captured 403/captcha/error page
         # must never be accepted as an official legal act.
         with source.open("rb") as handle:
-            prefix = handle.read(8192).lstrip(b"\\xef\\xbb\\xbf \t\r\n")
+            prefix = handle.read(8192)
+            if prefix.startswith(bytes((239, 187, 191))):
+                prefix = prefix[3:]
+            prefix = prefix.lstrip()
         lowered = prefix.lower()
         is_pdf = prefix.startswith(b"%PDF-")
         is_html = b"<html" in lowered[:2048] or b"<!doctype html" in lowered[:2048]
