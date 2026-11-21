@@ -14,7 +14,7 @@
       "tax_code": "ICMS",
       "normative_reference": "Lei 1.358/2000; Decreto 4.196/2001; Portaria SEFAZ 140/2025",
       "legal_path_research": "unresolved_pending_confaz_and_reinstitution_review",
-      "state_official_source_url": "https://sefaz.ac.gov.br/2021/?p=21869",
+      "state_official_source_url": "https://www.legis.ac.gov.br/detalhar/1775",
       "official_evidence_type": "official_tax_compliance_guidance",
       "findings_verified_from_public_source": [
         "A SEFAZ/AC identifica código EFD AC040002 vinculado a indústrias incentivadas pela Lei 1.358/2000 e Decreto 4.196/2001",
@@ -44,18 +44,22 @@
         "inspection_type": "official_current_statutory_and_amended_regulation",
         "legal_provision": "Lei AC 1.358/2000 art.1º e Decreto 4.196/2001 arts.1º, 2º, 8º-A",
         "sources": [
+          "https://www.legis.ac.gov.br/detalhar/1775",
+          "https://sefaz.ac.gov.br/2021/?p=21869",
           "https://sefaz.ac.gov.br/2021/?p=11726",
           "https://sefaz.ac.gov.br/2021/?p=14786"
         ],
         "primary_findings": [
           "Lei 1.358/2000 define incentivo em modalidade de financiamento direto ao contribuinte, com dedução limitada ao investimento e teto de até 95% do ICMS próprio; NÃO é crédito presumido automático.",
           "Art.1º da lei prevê prazo textual até 31/12/2035, que não atesta duração da concessão individual.",
-          "Decreto 4.196/2001 registra alteração 11.618/2025 com requisitos de ampliação/modernização e regularidade perante COPIAI."
+          "Decreto 4.196/2001 registra alteração 11.618/2025 com requisitos de ampliação/modernização e regularidade perante COPIAI.",
+          "Texto primário da Lei 1.358/2000 indexado no portal oficial LEGIS/AC; verificar versões, atos e outorgas individuais."
         ],
         "red_flags": [
           "financiamento_nao_e_credito_presumido",
           "projeto_ou_aprovacao_ausente",
-          "prazo_individual_nao_demonstrado"
+          "prazo_individual_nao_demonstrado",
+          "primary_source_capture_requires_sha_and_human_consolidation"
         ],
         "fully_consolidated_current_to_20261121": false,
         "independent_accountant_opinion": false,
@@ -1072,7 +1076,7 @@
       "tax_code": "ICMS",
       "normative_reference": "Lei 6.331/2012; Portaria SSER 345/2023, alterada em 2024",
       "legal_path_research": "unresolved_pending_confaz_and_reinstitution_review",
-      "state_official_source_url": "https://portal.fazenda.rj.gov.br/transparencia-da-receita-estadual/wp-content/uploads/sites/5/2025/04/PORTAL-DA-TRANSPARENCIA-ROTEIRO-BF.pdf",
+      "state_official_source_url": "https://www3.alerj.rj.gov.br/lotus_notes/default.asp?URL=L0NPTlRMRUkuTlNGL2M4YWEwOTAwMDI1ZmVlZjYwMzI1NjRlYzAwNjBkZmZmLzY4ZDI2ZWU1OThmMWFlNzI4MzI1N2E5OTAwNjNiMzcxP09wZW5Eb2N1bWVudA%3D%3D&id=2",
       "official_evidence_type": "official_benefit_procedure_guide",
       "findings_verified_from_public_source": [
         "Roteiro SEFAZ/RJ diferencia benefícios gerais, condicionados e por adesão sujeitos à portaria subsidiária",
@@ -1104,6 +1108,8 @@
         "inspection_type": "official_state_legislative_text_amended_2025",
         "legal_provision": "Lei RJ 6.331/2012 arts.1 e 2, redação Lei 10.983/2025 — regime indústria têxtil",
         "sources": [
+          "https://www3.alerj.rj.gov.br/lotus_notes/default.asp?URL=L0NPTlRMRUkuTlNGL2M4YWEwOTAwMDI1ZmVlZjYwMzI1NjRlYzAwNjBkZmZmLzY4ZDI2ZWU1OThmMWFlNzI4MzI1N2E5OTAwNjNiMzcxP09wZW5Eb2N1bWVudA%3D%3D&id=2",
+          "https://portal.fazenda.rj.gov.br/transparencia-da-receita-estadual/wp-content/uploads/sites/5/2025/04/PORTAL-DA-TRANSPARENCIA-ROTEIRO-BF.pdf",
           "https://www3.alerj.rj.gov.br/lotus_notes/default.asp?URL=L0NPTlRMRUkuTlNGL2M4YWEwOTAwMDI1ZmVlZjYwMzI1NjRlYzAwNjBkZmZmLzY4ZDI2ZWU1OThmMWFlNzI4MzI1N2E5OTAwNjNiMzcxP09wZW5Eb2N1bWVudA%3D%3D&amp=&id=2"
         ],
         "primary_findings": [
@@ -1111,14 +1117,16 @@
           "Art.2 na redação Lei 10.983/2025 é crédito presumido com carga efetiva de 2,5% sobre valor contábil de saídas definidas pela lei, NÃO crédito de 2,5% do valor da operação.",
           "§1º art.2 veda aproveitamento de outros créditos ICMS; §4º limita operações consideradas e exclui saídas destinadas a consumidor final em certas hipóteses.",
           "§9º art.2 veda a microempresa/empresa de pequeno porte em Regime Simplificado de ICMS; §3º exige estabelecimento distinto ao exercer outra atividade.",
-          "Antes de elegibilidade real verificar adesão individual, eventual cancelamento, status fiscal, alterações futuras e regime por CNPJ."
+          "Antes de elegibilidade real verificar adesão individual, eventual cancelamento, status fiscal, alterações futuras e regime por CNPJ.",
+          "ALERJ publica Lei 6.331/2012, ementa, redações históricas, alterações e condições de adesão; observar dispositivos alterados antes de usar como norma vigente."
         ],
         "red_flags": [
           "produto_nao_textil",
           "sem_adesao_individual",
           "regime_simplificado_excluido",
           "creditamento_cumulativo",
-          "aplicacao_para_consumidor_final"
+          "aplicacao_para_consumidor_final",
+          "primary_source_capture_requires_sha_and_human_consolidation"
         ],
         "fully_consolidated_current_to_20261121": false,
         "independent_accountant_opinion": false,
@@ -1434,7 +1442,7 @@
       "tax_code": "ICMS",
       "normative_reference": "Lei 3.140/1991, Decreto 29.935/2014 e decisão CDI",
       "legal_path_research": "unresolved_pending_confaz_and_reinstitution_review",
-      "state_official_source_url": "https://sedetec.se.gov.br/wp-content/uploads/2019/09/1.-Lei-n.%C2%BA-3.140-de-23-de-dezembro-de-1991-Institui-o-Programa-Sergipano-de-Desenvolvimento-Industrial-PSDI-e-cria-o-FAI.pdf",
+      "state_official_source_url": "https://www.pge.se.gov.br/wp-content/uploads/2015/01/DECRETO-29-935.pdf",
       "official_evidence_type": "official_program_procedure",
       "findings_verified_from_public_source": [
         "Portal SE/PSDI exige projeto industrial com compromisso de emprego/renda e apreciação CDI",
@@ -1464,6 +1472,7 @@
         "inspection_type": "official_psdi_program_service",
         "legal_provision": "Lei SE 3.140/1991 e PSDI, processo CDI",
         "sources": [
+          "https://www.pge.se.gov.br/wp-content/uploads/2015/01/DECRETO-29-935.pdf",
           "https://sedetec.se.gov.br/wp-content/uploads/2019/09/1.-Lei-n.%C2%BA-3.140-de-23-de-dezembro-de-1991-Institui-o-Programa-Sergipano-de-Desenvolvimento-Industrial-PSDI-e-cria-o-FAI.pdf",
           "https://www.se.gov.br/servicos/623",
           "https://www.se.gov.br/servicos/658"
@@ -1472,13 +1481,15 @@
           "Requer projeto com compromisso formal de empregos e renda, análise pela Codise, deliberação do CDI e publicação no DOE.",
           "Serviço público informa não elegibilidade de MEI ou empresa optante do Simples Nacional.",
           "Orientação não substitui parecer independente sobre lei vigente e concessão individual.",
-          "SEDETEC arquiva cópia da Lei 3.140/1991 PSDI, com alterações; confirmar redação atual, Decreto 29.935/2014 e ato de aprovação do CDI."
+          "SEDETEC arquiva cópia da Lei 3.140/1991 PSDI, com alterações; confirmar redação atual, Decreto 29.935/2014 e ato de aprovação do CDI.",
+          "PGE/SE arquiva o Decreto 29.935/2014 que regulamenta PSDI/FAI; arquivo original de 2014 não constitui consolidação integral até 2026."
         ],
         "red_flags": [
           "mei_ou_simples",
           "sem_publicacao_decisao",
           "contrapartida_nao_comprovada",
-          "consolidacao_2026_e_deliberacao_cdi_ausentes"
+          "consolidacao_2026_e_deliberacao_cdi_ausentes",
+          "primary_source_capture_requires_sha_and_human_consolidation"
         ],
         "fully_consolidated_current_to_20261121": false,
         "independent_accountant_opinion": false,
