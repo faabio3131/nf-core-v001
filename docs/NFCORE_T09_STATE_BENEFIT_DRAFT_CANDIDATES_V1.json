@@ -921,7 +921,7 @@
       "tax_code": "ICMS",
       "normative_reference": "Decreto 21.866/2023, Anexo IV art. 25-A, acrescido pelo Decreto 23.672/2025; Convênio ICMS 224/2017",
       "legal_path_research": "confaz_convention",
-      "state_official_source_url": "https://portal-admin.sefaz.pi.gov.br/wp-content/uploads/2025/03/SEI_GOV-PI-017374270-SEFAZ_-Comunicado-UNATRI.pdf",
+      "state_official_source_url": "https://www.diario.pi.gov.br/doe/files/diarios/anexo/e1d8ee2a-5cf4-437f-93fa-393753b8574a/DOEPI_57_2025.pdf",
       "findings_verified_from_public_source": [
         "Comunicado UNATRI 1/2025 cita isenção de ICMS de saídas internas, desde 01/04/2025, de produtos listados da cesta básica",
         "Lista expressa inclui arroz, feijão, farinha de mandioca, ovos em dispositivo separado e diversas outras mercadorias, com características específicas",
@@ -941,7 +941,7 @@
         "casos positivos e negativos normativos sem criar elegibilidade automática"
       ],
       "schema_version": "nfcore.state-icms-benefit-rule/v1",
-      "official_evidence_type": "official_reference_not_fully_consolidated",
+      "official_evidence_type": "official_state_gazette_decree_23672_2025_not_consolidated_to_2026",
       "eligibility_predicates_to_confirm": [
         "revisão texto consolidado 2026 do RICMS/PI, Decreto 23.672/2025 e alterações posteriores",
         "verificação individual de produto/NCM/CFOP, operação interna e exclusões",
@@ -957,20 +957,24 @@
         "inspection_type": "official_tax_authority_communication_2025",
         "legal_provision": "Comunicado UNATRI 1/2025 — RICMS/PI Anexo IV art.25-A, art.178 XXXVIII, art.17",
         "sources": [
+          "https://www.diario.pi.gov.br/doe/files/diarios/anexo/e1d8ee2a-5cf4-437f-93fa-393753b8574a/DOEPI_57_2025.pdf",
           "https://portal-admin.sefaz.pi.gov.br/wp-content/uploads/2025/03/SEI_GOV-PI-017374270-SEFAZ_-Comunicado-UNATRI.pdf"
         ],
         "primary_findings": [
           "O comunicado de 27/03/2025 separa a isenção do art.25-A para uma lista específica de produtos internos, no contexto do Convênio ICMS 224/2017.",
           "Redução de base para carga equivalente a 7% é descrita separadamente no art.178 XXXVIII, relacionada ao Convênio ICMS 128/94, com exclusões.",
           "Ovos e caprinos/ovinos são mencionados pelo art.17 I e II do Anexo IV, e NÃO no rol do art.25-A.",
-          "Art.58 do RICMS exige atenção ao estorno de crédito; versões de 2026 do Decreto 21.866/2023 exigem nova conciliação."
+          "Art.58 do RICMS exige atenção ao estorno de crédito; versões de 2026 do Decreto 21.866/2023 exigem nova conciliação.",
+          "DOE-PI 57/2025 publicado em 27/03/2025 contém Decreto 23.672/2025, art.2º, inciso I, que introduziu o art.25-A no Anexo IV do RICMS/PI, com efeitos a partir de 01/04/2025 e restrito a produtos e operações internas do texto e à vigência do Convênio 224/2017."
         ],
         "red_flags": [
           "isencao_generalizada_cesta_basica",
           "produto_art17_confundido_art25a",
           "reducao_confundida_isencao",
           "operacao_interestadual",
-          "alteracao_posterior_2026"
+          "alteracao_posterior_2026",
+          "conv_224_2017_vigencia_2026_nao_verificada",
+          "produto_ou_operacao_nao_contemplados"
         ],
         "fully_consolidated_current_to_20261121": false,
         "independent_accountant_opinion": false,
