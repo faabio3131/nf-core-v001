@@ -76,6 +76,7 @@ def test_real_postgres_economy_schema_scope_and_immutability(monkeypatch):
             _certify_t06(database)
             _certify_t07_transition(database)
             _certify_t08_federal(database)
+            _certify_t09_state(database)
             admin.execute(sql.SQL("SET search_path TO {}").format(sql.Identifier(schema_name)))
             # Explicitly add DML permissions only in this sandbox to prove
             # that the RLS policies, not solely GRANTs, deny mutation.
@@ -731,3 +732,120 @@ def _certify_t08_federal(database):
     with database.economy(_scope(tenant="economy-t08-foreign"), read_only=True) as store:
         assert store.record("fm_economy_snapshots", "t08-snapshot", 1) is None
         assert store.record("fm_economy_benefits", "t08-benefit", 1) is None
+
+
+
+def _certify_t09_state(database):
+    """T09 uses the exact same PostgreSQL v25 T01 store and FORCE RLS."""
+    from kordena_fiscal.application.state_benefits_service import (
+        evaluate_state_benefit,
+        import_reviewed_state_benefit,
+        search_state_benefits,
+    )
+    from kordena_fiscal.tax.regimes import FederalIncomeTaxRegime
+    from kordena_fiscal.tax.state_benefits import (
+        FACTS_SCHEMA,
+        RULE_SCHEMA,
+        ReviewedStateIssuer,
+    )
+
+    scope = _scope(tenant="economy-t09", unit="unit-a")
+    competence = date(2026, 11, 1)
+    issuer = Cnpj("12345678000195")
+    norm = "Decreto Estadual Sintetico 123/2026"
+    url = "https://www.gov.br/testes/sintetico/ato-estadual"
+    policy = {
+        "schema_version": RULE_SCHEMA, "review_status": "reviewed",
+        "review_reference": "reviewed-synthetic-T09",
+        "uf": "SP", "benefit_kind": "base_reduction",
+        "legal_path": "state_statute", "state_normative_reference": norm,
+        "state_official_source_url": url,
+        "valid_from": "2026-01-01", "valid_until": "2027-01-01",
+        "allowed_regimes": ["lucro_real"],
+        "cnae_scope": "allowlist", "allowed_cnaes": ["6201501"],
+        "ncm_scope": "allowlist", "allowed_ncms": ["84713012"],
+        "allowed_cfops": ["5102"], "allowed_operations": ["domestic_sale"],
+        "required_evidence": [], "legal_citations": [{
+            "act": norm, "provision": "TESTE SINTETICO, NAO LEI",
+            "source_url": url, "source_sha256": "a" * 64,
+            "published_on": "2025-01-01", "valid_from": "2026-01-01",
+            "valid_until": "2027-01-01",
+            "review_reference": "reviewed-synthetic-T09",
+        }],
+    }
+    facts = {
+        "schema_version": FACTS_SCHEMA, "review_status": "reviewed",
+        "review_reference": "reviewed-synthetic-facts-T09",
+        "uf": "SP", "activity_cnae": "6201501",
+        "operation_ncm": "84713012", "operation_cfop": "5102",
+        "operation": "domestic_sale",
+        "evidence": {
+            key: "proof-" + key for key in (
+                "state_normative_review", "operation_classification_review",
+                "taxpayer_status_review", "competence_review", "state_act_review",
+            )
+        },
+    }
+
+    def verify(cnpj, month):
+        assert cnpj == issuer.value and month == competence
+        return ReviewedStateIssuer(
+            cnpj, "SP", "6201501", FederalIncomeTaxRegime.LUCRO_REAL,
+            True, scope.identity_material,
+        )
+
+    payload = dict(
+        snapshot_id="t09-state-facts", snapshot_version=1,
+        competence=competence, issuer=issuer, content=facts,
+        benefit_id="t09-sp-synthetic", benefit_version=1,
+        benefit_content=policy, verify_issuer=verify,
+    )
+    with database.economy(scope) as store:
+        first = import_reviewed_state_benefit(store, **payload)
+        assert first["status"] == "potential"
+        assert first["advisory_only"] is True
+        assert first["approved_cents"] is None
+        assert first["issuance_authorized"] is False
+        assert import_reviewed_state_benefit(store, **payload) == first
+        tampered = {**policy, "allowed_cfops": ["6102"]}
+        with pytest.raises(FiscalValidationError, match="immutable"):
+            import_reviewed_state_benefit(
+                store, **{**payload, "benefit_content": tampered},
+            )
+    # Same schema, other UF rules: SQL jurisdiction filtering precedes LIMIT.
+    with database.economy(scope) as store:
+        for index in range(501):
+            store.append_benefit(
+                record_id=f"t09-rj-synthetic-{index:04d}", version=1,
+                tax_code="ICMS", jurisdiction="RJ",
+                normative_reference="Decreto Teste Sintetico 1/2026",
+                valid_from=date(2026, 1, 1), valid_until=date(2027, 1, 1),
+                content={
+                    **policy, "uf": "RJ",
+                    "state_normative_reference": "Decreto Teste Sintetico 1/2026",
+                },
+            )
+    with database.economy(scope, read_only=True) as store:
+        assert len(store.records(
+            "fm_economy_benefits", schema_version=RULE_SCHEMA, jurisdiction="SP",
+        )) == 1
+        with pytest.raises(FiscalValidationError, match="jurisdiction filter"):
+            store.records("fm_economy_snapshots", jurisdiction="RJ")
+        with pytest.raises(FiscalValidationError, match="jurisdiction filter"):
+            store.records("fm_economy_benefits", jurisdiction="R' OR 1=1")
+        assert evaluate_state_benefit(
+            store, snapshot_id="t09-state-facts", snapshot_version=1,
+            benefit_id="t09-sp-synthetic", benefit_version=1,
+            verify_issuer=verify,
+        ) == first
+        result = search_state_benefits(
+            store, snapshot_id="t09-state-facts", snapshot_version=1,
+            verify_issuer=verify,
+        )
+        assert result["counts"]["potential"] == 1
+        assert len(result["results"]) == 1
+        assert result["results"][0] == first
+        assert result["coverage_truncated"] is False
+    with database.economy(_scope(tenant="economy-t09-foreign"), read_only=True) as store:
+        assert store.record("fm_economy_snapshots", "t09-state-facts", 1) is None
+        assert store.record("fm_economy_benefits", "t09-sp-synthetic", 1) is None

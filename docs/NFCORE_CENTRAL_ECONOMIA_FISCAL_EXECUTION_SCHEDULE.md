@@ -12,7 +12,7 @@ A folha T23–T33, a Trilha 2 H01–H06 e a reformulação Enterprise não integ
 | T06 | Classificador de receitas segregáveis | CERTIFICADO INTERNAMENTE no escopo implementado — CI integral SUCCESS (44747030794, 3c59ffb8); integração/revisão pendentes |
 | T07 | Apuração/PGDAS segregada | EM CERTIFICAÇÃO PARCIAL — apuração consultiva 2026; limites e caixa pendentes |
 | T08 | Catálogo federal | EM CONSTRUÇÃO — 8 programas indexados; certificação e revisão normativa pendentes |
-| T09 | Catálogo estadual 27 UFs | Bloqueado |
+| T09 | Catálogo estadual 27 UFs | EM CONSTRUÇÃO: 27 UFs indexadas; motor/API e PostgreSQL candidatos; atos estaduais homologados 0/27; CI pendente |
 | T10 | Benefícios municipais e radar unificado | Bloqueado |
 | T11 | Simulação Presumido/Real e IVA | Bloqueado |
 | T12 | Comparador multi-regime | Bloqueado |
@@ -262,3 +262,82 @@ explícitas secundários/IBS regular/UX. Sem fusão na main/production, deploy,
 liquidação, aplicação, emissão, ativação fiscal real ou avanço T09.
 
 A Lei 11.774/2008 foi publicada no DOU em 18/09/2008 e entrou em vigor na data de publicação; o piso conservador do registro SISPROM foi refinado para 18/09/2008 após revisão da Câmara e DOU. Não reconhecer direitos retroativos sem regra histórica revisada.
+
+
+## T09 — Catálogo Estadual de Benefícios de ICMS — candidata 21/11/2026
+
+**CURRENT confirmado:** candidata interna work/nfcore-closeout-20261119 HEAD
+39e64ea3772595691a1f50bbd8389f7b95f80709, pós-merge T08 CI
+44895173783 SUCCESS, 6.133 testes Python e 81 E2E PASS, 2 SKIP de ambiente.
+main e production inalteradas. T09 implementada em branch independente
+feat/nfcore-economy-t09-state-catalog-27ufs-20261121, sem merge, deploy
+ou homologação fiscal estadual.
+
+**Current → Target**: registrar as 27 unidades federativas de forma canônica,
+pesquisar regras estaduais de ICMS revisadas para um CNPJ escopado com
+filtragem por UF e schema ANTES do limite SQL, avaliar natureza do benefício,
+CFOP, NCM, CNAE, regime federal, operação, competência e condições
+normativas, exigindo referência oficial, hashes e revisão humana. Reutilizar
+sem duplicação: FiscalProfile, declarations do regime federal, T01 EconomyStore
+(RLS FORCE), LegalCitation T02, rotas de autenticação, CSRF, AUDIT_READ,
+Sentinela T03 como monitor de alteração — sem afirmar vigência automaticamente.
+
+**Implementação candidata:**
+- tax/state_benefits.py: 27 UF/IBGE indexadas sem fingir 27 benefícios;
+  tipos exemption, base_reduction, presumed_credit, deferral, rate_reduction,
+  special_regime. Rotas de fundamentação state_statute, confaz_convention e
+  lc160_reinstituted, com exigências de prova distintas.
+- application/state_benefits_service.py: importação revisada idempotente,
+  avaliação read-only e pesquisa consultiva, vigência de mês cheio, recusa
+  de versão substituída, citações oficiais e comparação de jurisdição do
+  ato com registro fiscal canônico. Nunca produz impostos, créditos,
+  homologação ou autorização de emissão.
+- persistence/economy_store.py: filtro aditivo parametrizado jurisdiction,
+  restrito a fm_economy_benefits; preserva filtros scope/tenant/schema e RLS.
+- cognitive/state_benefits_api.py: reutiliza verificador federal e FiscalProfile
+  para derivar UF e comprovação da inscrição estadual, sem aceitar UF do browser
+  como autoridade. Post /state-benefit e /state-benefit-search recebem somente
+  IDs/versionamento da mesma sessão e unidade ativa; GET /state-jurisdictions
+  informa cobertura geográfica real e cobertura fiscal incompleta.
+- CLI não produtiva scripts/nfcore_state_benefits_import_reviewed.py.
+- Testes domínio 27 UF, caminhos legais, negativa de CNAE/NCM/CFOP,
+  segurança API/RBAC/CSRF, fonte e vigência normativa, idempotência, RLS
+  PostgreSQL real, ruído de 501 regras RJ e isolamento cross-tenant.
+
+**Limites constitucionais e lacunas reais:**
+1. O índice contém **27 UFs**, mas **zero incentivos estaduais reais
+   verificados/incorporados nas 27 UFs**. Não equivale a cobertura fiscal
+   material de todos os estados. Matriz estadual detalhada em
+   docs/NFCORE_T09_STATE_BENEFITS_COVERAGE_MATRIX.md.
+2. Cada regra depende da leitura do ato estadual vigente, comparação de
+   alterações do RICMS, eventual convênio e ato estadual de adesão,
+   habilitação, condições de fruição, aplicação em operação, código de
+   incentivo quando previsto, publicação oficial, revalidação do CONFAZ e
+   revisão tributária humana. LC 160/2017 e Convênio 190/2017 não
+   comprovam concessão de benefícios para todos os atos.
+3. CNAE secundário não consta do FiscalProfile canônico (pendência T08-04).
+   Não criar segunda autoridade cadastral: recusar sem dados oficiais.
+4. Operações interestaduais em que o incentivo é atribuído ao destino,
+   cadeia de substituição tributária, DIFAL e transferência de crédito
+   não são inferidas da UF do emissor. Esses casos permanecem
+   insuficientes/requerem modelagem especializada. Simples e ICMS têm
+   dimensões tributárias independentes; política revisada deve definir
+   restrições legalmente justificadas para cada benefício.
+5. A revisão de Lei Complementar 214/2025 (IBS/CBS), LC 160/2017,
+   convênios e vigências atuais segue separada. O ICMS não é
+   automaticamente substituído no catálogo por IBS/CBS na transição.
+6. UI funcional pertence à T21, na MESMA aplicação, sem segundo frontend.
+   Radar estadual/municipal T10 não se presume pronto pela indexação.
+7. Fontes de referência e verificação: IBGE
+   https://www.ibge.gov.br/explica/codigos-dos-municipios.php ;
+   LC 160/2017
+   https://www2.camara.leg.br/legin/fed/leicom/2017/leicomplementar-160-7-agosto-2017-785276-normaatualizada-pl.html ;
+   Portal CONFAZ
+   https://www.confaz.fazenda.gov.br/legislacao/certificado-registro-deposito-cv-icms-190-17-1/minas-gerais/2018/certificado-de-registro-e-deposito-se-confaz-no-50-2018/certificado-de-registro-e-deposito-se-confaz-no-50-2018.pdf/@@download/file/CERTIFICADO%20DE%20REGISTRO%20E%20DEP%C3%93SITO%20-%20SE-CONFAZ%20N%C2%BA%2050-2018.pdf
+   é exemplo de certificado por ato, não fonte de habilitação geral.
+
+**Gates:** Ruff/Mypy, testes focais das 27 UF, PostgreSQL 16,
+segurança, CI integral e regressão T01–T08, revisão independente,
+normativa estado por estado e check-list do cronograma. T10 permanece
+BLOQUEADA até fechamento verdadeiro da T09. Nunca declarar T09
+"27 UFs homologadas" antes de obter o catálogo material com prova normativa.
