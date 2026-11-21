@@ -6,11 +6,10 @@ legislation, full-month validity and explicit evidence. No new fiscal authority.
 from __future__ import annotations
 
 from collections.abc import Callable
-
-from kordena_fiscal.application.state_review_gate import verify_internal_review_approval
 from datetime import date
 from typing import Any
 
+from kordena_fiscal.application.state_review_gate import verify_internal_review_approval
 from kordena_fiscal.cognitive.economy_contract import LegalCitation
 from kordena_fiscal.domain import Cnpj, FiscalValidationError
 from kordena_fiscal.persistence.economy_store import EconomyStore, _digest
@@ -148,7 +147,10 @@ def import_reviewed_state_benefit(
     rule = decode_rule(benefit_content)
     if verified_source_bytes is None:
         raise FiscalValidationError("state legal source byte verifier is required")
-    expected_sources = len({citation["source_url"] for citation in benefit_content.get("legal_citations", [])})
+    expected_sources = len({
+        citation["source_url"]
+        for citation in benefit_content.get("legal_citations", [])
+    })
     if verified_source_bytes(benefit_content) != expected_sources or expected_sources == 0:
         raise FiscalValidationError("state legal source bytes are not all verified")
     snapshot = {

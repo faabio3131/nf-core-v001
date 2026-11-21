@@ -1,4 +1,8 @@
 """T09 scoped reviewed state-benefit import/search and T01 invariants."""
+import hashlib
+import hmac
+import json
+import os
 from datetime import date
 
 import pytest
@@ -8,6 +12,7 @@ from kordena_fiscal.application.state_benefits_service import (
     import_reviewed_state_benefit,
     search_state_benefits,
 )
+from kordena_fiscal.application.state_review_gate import REVIEW_KEY_ENV, review_claims
 from kordena_fiscal.domain import Cnpj, FiscalValidationError
 from kordena_fiscal.persistence.economy_store import _digest
 from kordena_fiscal.tax.regimes import FederalIncomeTaxRegime
@@ -56,13 +61,6 @@ def facts(uf="SP", *, path="state_statute"):
     }
 
 CNPJ = "12345678000195"
-
-import hashlib
-import hmac
-import json
-import os
-
-from kordena_fiscal.application.state_review_gate import REVIEW_KEY_ENV, review_claims
 
 KEY_T09 = "test-only-internal-review-hmac-key-xxxxxxxxxxxxxxxxxxxxxxxxxxx"
 os.environ[REVIEW_KEY_ENV] = KEY_T09

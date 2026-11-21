@@ -790,12 +790,14 @@ def _certify_t09_state(database):
 
 
     # Synthetic local review receipt; no live legislation or accountant approval.
-    from kordena_fiscal.application.state_review_gate import (
-        REVIEW_KEY_ENV, review_claims,
-    )
     import hashlib
     import hmac
     import json
+
+    from kordena_fiscal.application.state_review_gate import (
+        REVIEW_KEY_ENV,
+        review_claims,
+    )
 
     key = "postgres-t09-synthetic-approval-key-xxxxxxxxxxxxxxxxxxxxxxxx"
     os.environ[REVIEW_KEY_ENV] = key
