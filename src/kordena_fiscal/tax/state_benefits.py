@@ -140,13 +140,16 @@ def decode_rule(payload: object) -> dict[str, Any]:
         raise FiscalValidationError("state benefit UF inconsistent with fiscal domain")
     kind = payload.get("benefit_kind")
     path = payload.get("legal_path")
-    if kind not in BENEFIT_KINDS or path not in LEGAL_PATHS:
+    if (not isinstance(kind, str) or kind not in BENEFIT_KINDS
+            or not isinstance(path, str) or path not in LEGAL_PATHS):
         raise FiscalValidationError("unknown state benefit kind or legal route")
     norm = payload.get("state_normative_reference")
     if not isinstance(norm, str) or not _NORM.fullmatch(norm):
         raise FiscalValidationError("state enactment identifier must be explicit")
     start = payload.get("valid_from")
     end = payload.get("valid_until")
+    if not isinstance(start, str) or (end is not None and not isinstance(end, str)):
+        raise FiscalValidationError("reviewed state benefit dates must be ISO strings")
     try:
         valid_from = date.fromisoformat(start)
         valid_until = date.fromisoformat(end) if end is not None else None
