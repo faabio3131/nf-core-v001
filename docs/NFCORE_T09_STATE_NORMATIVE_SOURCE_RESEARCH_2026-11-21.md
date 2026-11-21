@@ -65,3 +65,21 @@ consolidação e data de efeitos, classificação de operações interestaduais,
 ICMS-ST/DIFAL, fontes primárias de MA/PI e demais casos específicos,
 auditoria por estado, testes com políticas reais `reviewed`, e autorização
 humana. T10 segue bloqueada.
+
+## Gate de integridade física da fonte (incremento 21/11/2026)
+
+O importador `scripts/nfcore_state_benefits_import_reviewed.py` exige
+`--source-manifest /caminho/manifest.json` além do bundle revisado. O
+manifesto local (fora do Git) possui exatamente `schema_version =
+nfcore.t09.reviewed-legal-sources/v1` e `sources`, contendo para cada
+URL oficial citada um `relative_path` de arquivo local com os **bytes
+efetivamente examinados**. O importador calcula SHA-256 a partir do arquivo,
+recusa SHA divergente, caminhos absolutos/traversal, symlinks, arquivos
+ausentes, documentos acima de 32 MiB e URLs omitidas/duplicadas. A verificação
+acontece **antes** da conexão PostgreSQL. O manifesto de fontes e as cópias
+legais não são enviados ao Git; nenhum hash fictício é aceito como prova.
+
+Este gate comprova integridade byte-a-byte da evidência entregue ao
+importador, **NÃO** prova autenticidade editorial da origem, vigência do ato,
+correção da interpretação, habilitação do contribuinte ou aprovação
+jurídico-tributária. A certificação independente continua obrigatória.
