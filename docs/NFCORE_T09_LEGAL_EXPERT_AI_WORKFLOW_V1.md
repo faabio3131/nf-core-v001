@@ -44,3 +44,17 @@ Ver `docs/NFCORE_T09_NORMATIVE_CONSOLIDATION_WORK_QUEUE_V1.json` (27 filas). `AW
 **Definition of Done — prontidão fiscal e comercial:** parecer do contador e autoridade humana específica, validação do direito por contribuinte e testes de integração/homologação aplicáveis, gates técnicos e operacionais e Go/No-Go de produção. A falta do parecer **não impede continuar a pesquisa, o código e os testes internos**, mas impede declarar benefício juridicamente aprovado e aplicá-lo no mundo real.
 
 **Normas nacionais referenciais:** [LC 160/2017](https://www2.camara.leg.br/legin/fed/leicom/2017/leicomplementar-160-7-agosto-2017-785276-normaatualizada-pl.html) e [repositório de certificados CONFAZ](https://www.confaz.fazenda.gov.br/legislacao/certificado-registro-deposito-cv-icms-190-17-1). Sempre priorizar norma estadual aplicável a cada hipótese e suas alterações.
+
+
+## Predicados operacionais de ICMS acrescidos à triagem (21/11/2026)
+
+O motor consultivo T09 exige referência de revisão específica para **regularidade
+da inscrição estadual**, **ICMS-ST**, **DIFAL** e **necessidade/dispensa de ato
+concessivo individual** antes de apresentar status `potential`.
+Cada referência é vinculada ao digest dos fatos por atestação interna assinada,
+**não** equivale a uma prova automática de fruição. A revisão deve indicar
+expressamente 'não aplicável' quando apropriado, preservando a evidência.
+A autoridade `FiscalProfile` canônica expõe CNAE primário, não CNAEs
+secundários: o motor **não infere** CNAE secundário e normas que o exijam
+devem permanecer `insufficient_basis` até expansão aprovada da autoridade.
+ST/DIFAL não são calculados pela IA, nem por esse motor de triagem.

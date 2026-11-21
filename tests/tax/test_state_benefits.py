@@ -277,3 +277,19 @@ def test_exclusive_validity_requires_original_legal_deadline():
         decode_rule(policy() | {"legal_valid_until_inclusive": None})
     with pytest.raises(FiscalValidationError, match="validity conflict"):
         decode_rule(policy() | {"legal_valid_until_inclusive": "2026-11-30"})
+
+
+@pytest.mark.parametrize("missing", [
+    "state_registration_regular_review",
+    "icms_st_applicability_review",
+    "difal_applicability_review",
+    "individual_concession_review",
+])
+def test_state_specific_tax_treatment_is_never_assumed(missing):
+    f = facts()
+    f["evidence"].pop(missing)
+    result = evaluate(fact_changes={"evidence": f["evidence"]})
+    assert result["status"] == "insufficient_basis"
+    assert result["reason_codes"] == [f"missing:{missing}"]
+    assert result["eligibility_certified"] is False
+    assert result["tax_calculation_authorized"] is False

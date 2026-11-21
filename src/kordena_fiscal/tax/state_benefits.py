@@ -64,6 +64,10 @@ _NORM = re.compile(r"[^\s].{4,255}\Z")
 _COMMON_EVIDENCE = (
     "state_normative_review", "operation_classification_review",
     "taxpayer_status_review", "competence_review",
+    # No generic State ICMS, ST or DIFAL entitlement follows from CNAE/UF:
+    # these references must be reviewed for the exact fiscal operation.
+    "state_registration_regular_review", "icms_st_applicability_review",
+    "difal_applicability_review", "individual_concession_review",
 )
 _ROUTE_EVIDENCE = {
     "state_statute": ("state_act_review",),
@@ -293,6 +297,8 @@ def assess_state_rule(
         return _result("not_applicable", ("state_jurisdiction_mismatch",))
     if not issuer.state_registration_present:
         return _result("insufficient_basis", ("state_registration_unverified",))
+    # The existing canonical FiscalProfile only authorizes primary CNAE.
+    # Never infer a secondary activity not represented by that authority.
     if issuer.primary_cnae != facts["activity_cnae"]:
         return _result("insufficient_basis", ("canonical_cnae_mismatch",))
     if competence < rule["valid_from_date"] or (

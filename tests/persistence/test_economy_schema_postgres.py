@@ -784,6 +784,8 @@ def _certify_t09_state(database):
             key: "proof-" + key for key in (
                 "state_normative_review", "operation_classification_review",
                 "taxpayer_status_review", "competence_review", "state_act_review",
+                "state_registration_regular_review", "icms_st_applicability_review",
+                "difal_applicability_review", "individual_concession_review",
             )
         },
     }
