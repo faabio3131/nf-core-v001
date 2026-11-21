@@ -258,6 +258,83 @@ def test_uf_and_schema_filter_run_before_limit_and_exclude_other_tax_rules():
     assert search["complete_state_benefit_coverage"] is False
 
 
+def test_empty_state_catalog_validates_issuer_before_answering():
+    row = bundle()
+    store = FakeStore()
+    store.append_snapshot(
+        record_id=row["snapshot_id"], version=row["snapshot_version"],
+        issuer=row["issuer"], competence=row["competence"], content=row["content"],
+    )
+    calls = []
+
+    def tracked(cnpj, competence):
+        calls.append((cnpj, competence))
+        return verifier(cnpj, competence)
+
+    result = search_state_benefits(
+        store, snapshot_id=row["snapshot_id"], snapshot_version=1,
+        verify_issuer=tracked,
+    )
+    assert result["status"] == "no_reviewed_catalog"
+    assert calls == [(CNPJ, MONTH)]
+
+
+@pytest.mark.parametrize("changed_fact", [
+    {"uf": "RJ"},
+    {"activity_cnae": "1111111"},
+])
+def test_empty_state_catalog_rejects_snapshot_with_noncanonical_facts(changed_fact):
+    row = bundle()
+    row["content"].update(changed_fact)
+    store = FakeStore()
+    store.append_snapshot(
+        record_id=row["snapshot_id"], version=row["snapshot_version"],
+        issuer=row["issuer"], competence=row["competence"], content=row["content"],
+    )
+    with pytest.raises(FiscalValidationError, match="canonical state issuer mismatch"):
+        search_state_benefits(
+            store, snapshot_id=row["snapshot_id"], snapshot_version=1,
+            verify_issuer=verifier,
+        )
+
+
+def test_empty_state_catalog_rejects_untrusted_issuer_scope():
+    row = bundle()
+    store = FakeStore()
+    store.append_snapshot(
+        record_id=row["snapshot_id"], version=row["snapshot_version"],
+        issuer=row["issuer"], competence=row["competence"], content=row["content"],
+    )
+
+    def wrong_scope(cnpj, competence):
+        assert cnpj == CNPJ and competence == MONTH
+        return ReviewedStateIssuer(
+            cnpj, "SP", "6201501", FederalIncomeTaxRegime.LUCRO_REAL, True,
+            ("fm-nfcore", "other-tenant", "unit-a", "homologation"),
+        )
+
+    with pytest.raises(FiscalValidationError, match="canonical state issuer mismatch"):
+        search_state_benefits(
+            store, snapshot_id=row["snapshot_id"], snapshot_version=1,
+            verify_issuer=wrong_scope,
+        )
+
+
+def test_empty_state_catalog_rejects_nonmonthly_competence():
+    row = bundle()
+    store = FakeStore()
+    store.append_snapshot(
+        record_id=row["snapshot_id"], version=row["snapshot_version"],
+        issuer=row["issuer"], competence=date(2026, 11, 15),
+        content=row["content"],
+    )
+    with pytest.raises(FiscalValidationError, match="monthly state competence"):
+        search_state_benefits(
+            store, snapshot_id=row["snapshot_id"], snapshot_version=1,
+            verify_issuer=verifier,
+        )
+
+
 def test_no_reviewed_state_rules_does_not_mean_no_benefits_exist():
     row = bundle()
     store = FakeStore()

@@ -186,7 +186,27 @@ def search_state_benefits(
     snapshot = store.record("fm_economy_snapshots", snapshot_id, snapshot_version)
     if snapshot is None:
         raise FiscalValidationError("scoped state facts unavailable")
-    facts = decode_facts(snapshot["content"])
+    # Even an empty catalog requires canonical taxpayer authority. Otherwise a
+    # spoofed snapshot could yield a misleading no_reviewed_catalog response.
+    try:
+        competence = date.fromisoformat(snapshot["competence"])
+        if competence.day != 1:
+            raise FiscalValidationError("invalid monthly state competence")
+        facts = decode_facts(snapshot["content"])
+        cnpj = snapshot["issuer_cnpj"]
+        if not isinstance(cnpj, str):
+            raise FiscalValidationError("invalid scoped state issuer")
+    except (KeyError, TypeError, ValueError, OverflowError) as exc:
+        raise FiscalValidationError("invalid scoped state facts") from exc
+    canonical = verify_issuer(cnpj, competence)
+    if (
+        not isinstance(canonical, ReviewedStateIssuer)
+        or canonical.scope_identity != store.scope_identity
+        or canonical.cnpj != cnpj
+        or canonical.uf != facts["uf"]
+        or canonical.primary_cnae != facts["activity_cnae"]
+    ):
+        raise FiscalValidationError("canonical state issuer mismatch")
     rows = store.records(
         "fm_economy_benefits", limit=limit, schema_version=RULE_SCHEMA,
         jurisdiction=facts["uf"],
@@ -197,7 +217,9 @@ def search_state_benefits(
         if key not in latest or latest[key]["version"] < row["version"]:
             latest[key] = row
     results = []
-    verified_cache: dict[tuple[str, date], ReviewedStateIssuer] = {}
+    verified_cache: dict[tuple[str, date], ReviewedStateIssuer] = {
+        (cnpj, competence): canonical,
+    }
 
     def verified(cnpj: str, month: date) -> ReviewedStateIssuer:
         key = (cnpj, month)
