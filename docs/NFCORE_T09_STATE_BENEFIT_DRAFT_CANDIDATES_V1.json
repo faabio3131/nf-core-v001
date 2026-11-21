@@ -522,7 +522,7 @@
         "Exige ato individual, produtos habilitados, CACEPE, obrigações fiscais e prazo de fruição"
       ],
       "negative_eligibility_scenario": "A não utilização no período próprio e acúmulo proibido dependem do regime e da regra específica",
-      "legal_temporal_notes": "Indicador jurídico para triagem; texto consolidado e alterações até a competência de 2026 não foram integralmente auditados neste pacote.",
+      "legal_temporal_notes": "Decreto 21.959/1999 consolidado na SEFAZ/PE inclui alteração Decreto 61.000/2026; data de efeito e ato concessivo de cada empreendimento devem ser confirmados antes de qualquer revisão.",
       "mandatory_missing": [
         "conferir texto primário integral, dispositivo concessivo, redações, revogações e efeitos para cada competência",
         "verificar CONFAZ/LC160, lei estadual e ato individual quando aplicáveis",
@@ -592,7 +592,7 @@
       "eligibility_predicates_to_confirm": [
         "Projeto e concessão SEFA; verificar lista de NCM impedidas, contrapartidas e prazo"
       ],
-      "negative_eligibility_scenario": "Normas 2024 revogadas não podem ser usadas como vigência atual; NCM impedida exclui fruição",
+      "negative_eligibility_scenario": "Decreto 6.434/2017 revogado pelo Decreto 7.721/2024: normas antigas não podem ser usadas como vigência atual; NCM impedida exclui fruição.",
       "legal_temporal_notes": "Indicador jurídico para triagem; texto consolidado e alterações até a competência de 2026 não foram integralmente auditados neste pacote.",
       "mandatory_missing": [
         "conferir texto primário integral, dispositivo concessivo, redações, revogações e efeitos para cada competência",
