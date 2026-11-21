@@ -75,8 +75,8 @@
       "tax_code": "ICMS",
       "normative_reference": "Lei 5.671/1995, Decreto 38.394/2000",
       "legal_path_research": "unresolved_pending_confaz_and_reinstitution_review",
-      "state_official_source_url": "https://www.sefaz.al.gov.br/nise/faq/",
-      "official_evidence_type": "official_tax_authority_guidance",
+      "state_official_source_url": "https://sapl.al.al.leg.br/media/sapl/public/normajuridica/2015/1189/1189_texto_integral.pdf",
+      "official_evidence_type": "official_state_law_amendment_7770_2015_NOT_complete_PRODESIN_consolidation",
       "findings_verified_from_public_source": [
         "SEFAZ/AL identifica Lei 5.671/1995 e Decreto 38.394/2000 como base do PRODESIN"
       ],
@@ -102,17 +102,20 @@
         "inspection_type": "blocked_primary_source_research_only",
         "legal_provision": "Lei estadual 5.671/1995; Decreto estadual 38.394/2000; alterações posteriores PRODESIN",
         "sources": [
+          "https://sapl.al.al.leg.br/media/sapl/public/normajuridica/2015/1189/1189_texto_integral.pdf",
           "https://www.sefaz.al.gov.br/nise/faq/",
           "https://sapl.al.al.leg.br/norma/1189"
         ],
         "primary_findings": [
           "Site de FAQ da SEFAZ/AL respondeu página de manutenção em acesso direto; esse HTML não é ato legal e não deve ser hashado como fonte.",
-          "ALE/AL mantém lei modificadora do PRODESIN e atos correlatos, porém este pacote não conseguiu obter texto original completo da Lei 5.671/1995 com todas as alterações, inclusive prorrogação discutida em 2026."
+          "ALE/AL mantém lei modificadora do PRODESIN e atos correlatos, porém este pacote não conseguiu obter texto original completo da Lei 5.671/1995 com todas as alterações, inclusive prorrogação discutida em 2026.",
+          "ALE/AL disponibiliza a Lei 7.770/2015 modificadora da Lei 5.671/1995 do PRODESIN; este PDF não substitui a lei-base e decreto nem prova a redação vigente em 2026."
         ],
         "red_flags": [
           "primary_original_law_unavailable_in_reliable_access",
           "official_faq_maintenance_html",
-          "2026_prodesin_extension_unconsolidated"
+          "2026_prodesin_extension_unconsolidated",
+          "source_is_historical_or_amending_not_consolidated_2026"
         ],
         "fully_consolidated_current_to_20261121": false,
         "independent_accountant_opinion": false,
@@ -779,8 +782,8 @@
       "tax_code": "ICMS",
       "normative_reference": "Lei 6.913/2006, Decreto 2.490/2006 e Comissão de Política de Incentivos",
       "legal_path_research": "unresolved_pending_confaz_and_reinstitution_review",
-      "state_official_source_url": "https://www.cge.pa.gov.br/sites/default/files/2023-03/decreto_estadual_n_2490_de_06_10_2006.pdf",
-      "official_evidence_type": "official_state_decree_archive_not_2026_consolidated",
+      "state_official_source_url": "https://www.sistemas.pa.gov.br/sisleis/legislacao/5827",
+      "official_evidence_type": "official_2020_amending_decree_990_NOT_original_decree_2490",
       "findings_verified_from_public_source": [
         "LEGIS-PA publica resolução de incentivo individual com referência à Lei 6.913/2006 e ao Decreto 2.490/2006",
         "Resolução 21/2020 identifica exclusivamente ALUBAR METAIS E CABOS S/A em alteração da Resolução 020/2010.",
@@ -809,18 +812,21 @@
         "inspection_type": "official_individual_concession_resolution",
         "legal_provision": "Lei PA 6.913/2006 / Decreto 2.490/2006 — Resolução 21/2020 de destinatário específico",
         "sources": [
+          "https://www.sistemas.pa.gov.br/sisleis/legislacao/5827",
           "https://www.cge.pa.gov.br/sites/default/files/2023-03/decreto_estadual_n_2490_de_06_10_2006.pdf",
           "https://www.sistemas.pa.gov.br/sisleis/legislacao/5840"
         ],
         "primary_findings": [
           "Resolução 21/2020 identifica exclusivamente ALUBAR METAIS E CABOS S/A em alteração da Resolução 020/2010.",
           "A norma trata do diferimento na importação de vergalhão de alumínio condicionado ao desembaraço no Pará; nenhum direito geral a outra empresa.",
-          "Ato individual datado 2020 não comprova sua continuidade integral em 2026."
+          "Ato individual datado 2020 não comprova sua continuidade integral em 2026.",
+          "LEGIS-PA fornece Decreto 990/2020 modificador dos Decretos 2.489–2.492/2006 e critérios de projeto e declaração de empresa incentivada; NÃO é texto original consolidado Decreto 2490/2006."
         ],
         "red_flags": [
           "concessao_de_outro_cnpj",
           "operacao_importacao_nao_enquadrada",
-          "vigencia_2026_nao_consolidada"
+          "vigencia_2026_nao_consolidada",
+          "source_is_historical_or_amending_not_consolidated_2026"
         ],
         "fully_consolidated_current_to_20261121": false,
         "independent_accountant_opinion": false,
@@ -1148,8 +1154,8 @@
       "tax_code": "ICMS",
       "normative_reference": "Decreto 31.825/2022, Anexo 003, arts. 1 a 6",
       "legal_path_research": "unresolved_pending_confaz_and_reinstitution_review",
-      "state_official_source_url": "https://diariooficial.rn.gov.br/dei/dorn3/documentos/00000001/20220819/783131.htm",
-      "official_evidence_type": "official_original_regulation",
+      "state_official_source_url": "https://webdisk.diariooficial.rn.gov.br/Jornal/12022-08-19.pdf",
+      "official_evidence_type": "original_full_2022_doe_official_200_pages_NOT_2026_consolidated",
       "findings_verified_from_public_source": [
         "Regulamento RICMS/RN disciplina efeitos de base reduzida, crédito presumido e limites de crédito de aquisição com benefício",
         "SEFAZ/RN Consulta 015/2023 aborda benefício de crédito presumido de produtores de peixes e camarões no Anexo 003 arts.1,2,5 e 6.",
@@ -1178,6 +1184,7 @@
         "inspection_type": "official_tax_authority_2023_consultation_index",
         "legal_provision": "RICMS/RN Decreto 31.825/2022 Anexo 003 arts.1, 2, 5 e 6 — Consulta 015/2023 (peixes/camarões)",
         "sources": [
+          "https://webdisk.diariooficial.rn.gov.br/Jornal/12022-08-19.pdf",
           "https://diariooficial.rn.gov.br/dei/dorn3/documentos/00000001/20220819/783131.htm",
           "https://www.sefaz.rn.gov.br/postagem/respostas-de-consultas-2023/"
         ],
@@ -1185,14 +1192,16 @@
           "SEFAZ/RN Consulta 015/2023 aborda benefício de crédito presumido de produtores de peixes e camarões no Anexo 003 arts.1,2,5 e 6.",
           "Consultoria oficial reconhece exceções para nota de baixa de estoque por perda, vedação ao crédito fiscal e circunstâncias específicas de estorno.",
           "É resposta a contribuinte/caso de 2023; não comprova redação consolidada até novembro 2026 nem enquadramento da empresa do NFCore.",
-          "DOE-RN contém publicação originária do Decreto 31.825/2022 e exigência de opção/deferimento para situações do Anexo 003; texto de 2022 não é consolidação de 2026."
+          "DOE-RN contém publicação originária do Decreto 31.825/2022 e exigência de opção/deferimento para situações do Anexo 003; texto de 2022 não é consolidação de 2026.",
+          "DOE/RN Ano 89 edição 15.247, de 19/08/2022, contém na página inicial o Decreto 31.825/2022 e Anexo 003; publicação original de 200 páginas não é consolidação de 2026."
         ],
         "red_flags": [
           "atividade_nao_aquicultura",
           "credito_vedado",
           "operacao_nao_enquadrada",
           "norma_2026_nao_consolidada",
-          "anexo_003_2026_e_opcao_deferida_nao_verificados"
+          "anexo_003_2026_e_opcao_deferida_nao_verificados",
+          "source_is_historical_or_amending_not_consolidated_2026"
         ],
         "fully_consolidated_current_to_20261121": false,
         "independent_accountant_opinion": false,
@@ -1457,8 +1466,8 @@
       "tax_code": "ICMS",
       "normative_reference": "Lei 3.140/1991, Decreto 29.935/2014 e decisão CDI",
       "legal_path_research": "unresolved_pending_confaz_and_reinstitution_review",
-      "state_official_source_url": "https://www.pge.se.gov.br/wp-content/uploads/2015/01/DECRETO-29-935.pdf",
-      "official_evidence_type": "official_program_procedure",
+      "state_official_source_url": "https://pge.se.gov.br/wp-content/uploads/2025/02/DECRETO-29-935-1.pdf",
+      "official_evidence_type": "official_original_decree_29935_2014_NOT_2026_consolidated",
       "findings_verified_from_public_source": [
         "Portal SE/PSDI exige projeto industrial com compromisso de emprego/renda e apreciação CDI",
         "Requer projeto com compromisso formal de empregos e renda, análise pela Codise, deliberação do CDI e publicação no DOE.",
@@ -1487,6 +1496,7 @@
         "inspection_type": "official_psdi_program_service",
         "legal_provision": "Lei SE 3.140/1991 e PSDI, processo CDI",
         "sources": [
+          "https://pge.se.gov.br/wp-content/uploads/2025/02/DECRETO-29-935-1.pdf",
           "https://www.pge.se.gov.br/wp-content/uploads/2015/01/DECRETO-29-935.pdf",
           "https://sedetec.se.gov.br/wp-content/uploads/2019/09/1.-Lei-n.%C2%BA-3.140-de-23-de-dezembro-de-1991-Institui-o-Programa-Sergipano-de-Desenvolvimento-Industrial-PSDI-e-cria-o-FAI.pdf",
           "https://www.se.gov.br/servicos/623",
@@ -1497,14 +1507,16 @@
           "Serviço público informa não elegibilidade de MEI ou empresa optante do Simples Nacional.",
           "Orientação não substitui parecer independente sobre lei vigente e concessão individual.",
           "SEDETEC arquiva cópia da Lei 3.140/1991 PSDI, com alterações; confirmar redação atual, Decreto 29.935/2014 e ato de aprovação do CDI.",
-          "PGE/SE arquiva o Decreto 29.935/2014 que regulamenta PSDI/FAI; arquivo original de 2014 não constitui consolidação integral até 2026."
+          "PGE/SE arquiva o Decreto 29.935/2014 que regulamenta PSDI/FAI; arquivo original de 2014 não constitui consolidação integral até 2026.",
+          "PGE/SE publica Decreto 29.935/2014, consolidando regulamentação PSDI/FAI à data original; é necessária comparação dos decretos de alteração posteriores até a competência de 2026."
         ],
         "red_flags": [
           "mei_ou_simples",
           "sem_publicacao_decisao",
           "contrapartida_nao_comprovada",
           "consolidacao_2026_e_deliberacao_cdi_ausentes",
-          "primary_source_capture_requires_sha_and_human_consolidation"
+          "primary_source_capture_requires_sha_and_human_consolidation",
+          "source_is_historical_or_amending_not_consolidated_2026"
         ],
         "fully_consolidated_current_to_20261121": false,
         "independent_accountant_opinion": false,
