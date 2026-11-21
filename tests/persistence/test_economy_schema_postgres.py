@@ -75,6 +75,7 @@ def test_real_postgres_economy_schema_scope_and_immutability(monkeypatch):
             _certify_t05(database)
             _certify_t06(database)
             _certify_t07_transition(database)
+            _certify_t08_federal(database)
             admin.execute(sql.SQL("SET search_path TO {}").format(sql.Identifier(schema_name)))
             # Explicitly add DML permissions only in this sandbox to prove
             # that the RLS policies, not solely GRANTs, deny mutation.
@@ -616,3 +617,117 @@ def _certify_t07_transition(database):
     with database.economy(_scope(tenant="economy-t07-other"), read_only=True) as store:
         with pytest.raises(FiscalValidationError, match="unavailable"):
             evaluate_segregation(store, **refs, assessment=True)
+
+
+
+def _certify_t08_federal(database):
+    """One real PostgreSQL 16 transaction covers T08 immutable/RLS scope and replay."""
+    from kordena_fiscal.application.federal_benefits_service import (
+        evaluate_federal_benefit,
+        import_reviewed_federal_benefit,
+        search_federal_benefits,
+    )
+    from kordena_fiscal.tax.federal_benefits import (
+        FACTS_SCHEMA,
+        PROGRAMS,
+        RULE_SCHEMA,
+        ReviewedFederalIssuer,
+    )
+    from kordena_fiscal.tax.regimes import FederalIncomeTaxRegime
+
+    scope = _scope(tenant="economy-t08", unit="unit-a")
+    program = PROGRAMS["REIDI"]
+    facts = {
+        "schema_version": FACTS_SCHEMA, "review_status": "reviewed",
+        "review_reference": "t08-review-facts",
+        "activity_cnae": "6201501", "operation_ncm": None,
+        "operation": program.operation,
+        "evidence": {key: "evidence-" + key for key in program.minimum_evidence},
+    }
+    policy = {
+        "schema_version": RULE_SCHEMA, "review_status": "reviewed",
+        "review_reference": "t08-review-policy",
+        "program_code": program.code, "operation": program.operation,
+        "allowed_regimes": ["lucro_real"],
+        "cnae_scope": "reviewed_any", "allowed_cnaes": [],
+        "ncm_scope": "reviewed_any", "allowed_ncms": [],
+        "required_evidence": [], "valid_from": "2026-01-01",
+        "valid_until": "2027-01-01",
+        "legal_citations": [{
+            "act": program.legal_act, "provision": "reviewed-synthetic",
+            "source_url": program.official_url, "source_sha256": "b" * 64,
+            "published_on": "2025-01-01",
+            "valid_from": "2026-01-01", "valid_until": "2027-01-01",
+            "review_reference": "t08-review-policy",
+        }],
+    }
+
+    def verify(cnpj, competence):
+        assert cnpj == "12345678000195"
+        assert competence == date(2026, 11, 1)
+        return ReviewedFederalIssuer(
+            cnpj, "6201501", FederalIncomeTaxRegime.LUCRO_REAL,
+            scope.identity_material,
+        )
+
+    kwargs = dict(
+        snapshot_id="t08-snapshot", snapshot_version=1,
+        competence=date(2026, 11, 1), issuer=Cnpj("12345678000195"),
+        content=facts, benefit_id="t08-benefit",
+        benefit_version=1, benefit_content=policy, verify_issuer=verify,
+    )
+    with database.economy(scope) as store:
+        first = import_reviewed_federal_benefit(store, **kwargs)
+        assert first["status"] == "potential"
+        assert first["advisory_only"] is True
+        assert first["issuance_authorized"] is False
+        assert first["estimated_cents"] is None
+        assert first == import_reviewed_federal_benefit(store, **kwargs)
+        assert len(store.records("fm_economy_snapshots")) == 1
+        assert len(store.records("fm_economy_benefits")) == 1
+        assert not store.records("fm_economy_opportunities")
+        incompatible = {**facts, "activity_cnae": "1111111"}
+        with pytest.raises(FiscalValidationError, match="canonical"):
+            import_reviewed_federal_benefit(store, **{
+                **kwargs, "snapshot_id": "t08-forged", "content": incompatible,
+            })
+        assert store.record("fm_economy_snapshots", "t08-forged", 1) is None
+        conflict = {**facts, "evidence": {
+            **facts["evidence"], "reidi_habilitation": "replaced",
+        }}
+        with pytest.raises(FiscalValidationError, match="immutable"):
+            import_reviewed_federal_benefit(store, **{**kwargs, "content": conflict})
+    # The shared table may contain hundreds of unrelated T05–T07 rules.
+    # SQL must filter federal schema BEFORE applying the 500-row limit.
+    with database.economy(scope) as store:
+        for index in range(501):
+            store.append_benefit(
+                record_id=f"t08-other-rule-{index:04d}", version=1,
+                tax_code="SIMPLES", jurisdiction="BR",
+                normative_reference="CGSN-140-reviewed-synthetic",
+                valid_from=date(2026, 1, 1), valid_until=date(2027, 1, 1),
+                content={"schema_version": "nfcore.simples-other/v1"},
+            )
+    with database.economy(scope, read_only=True) as store:
+        assert len(store.records("fm_economy_benefits", limit=500)) == 500
+        filtered = store.records(
+            "fm_economy_benefits", limit=500, schema_version=RULE_SCHEMA,
+        )
+        assert len(filtered) == 1 and filtered[0]["record_id"] == "t08-benefit"
+        with pytest.raises(FiscalValidationError, match="schema filter"):
+            store.records("fm_economy_snapshots", schema_version=RULE_SCHEMA)
+        assert evaluate_federal_benefit(
+            store, snapshot_id="t08-snapshot", snapshot_version=1,
+            benefit_id="t08-benefit", benefit_version=1, verify_issuer=verify,
+        ) == first
+        search = search_federal_benefits(
+            store, snapshot_id="t08-snapshot", snapshot_version=1,
+            verify_issuer=verify,
+        )
+        assert search["counts"]["potential"] == 1
+        assert search["results"][0] == first
+        assert search["coverage_truncated"] is False
+        assert search["complete_national_coverage"] is False
+    with database.economy(_scope(tenant="economy-t08-foreign"), read_only=True) as store:
+        assert store.record("fm_economy_snapshots", "t08-snapshot", 1) is None
+        assert store.record("fm_economy_benefits", "t08-benefit", 1) is None
