@@ -48,8 +48,8 @@
       "uf": "AC",
       "candidate_id": "AC-INDUSTRIA-LEI1358-DEC4196-V1",
       "candidate_version": 1,
-      "normative_anchor": "Lei 1.358/2000; Decreto 4.196/2001; Portaria SEFAZ 140/2025",
-      "primary_source_pointer": "https://sefaz.ac.gov.br/2021/?p=21869",
+      "normative_anchor": "Lei 1.358/2000; Decreto 4.196/2001; Lei 3.460/2018; Decreto 11.618/2025",
+      "primary_source_pointer": "https://www.legis.ac.gov.br/detalhar/1775",
       "already_examined_government_excerpt": true,
       "current_state": "AWAITING_COMPLETE_NORMATIVE_CONSOLIDATION",
       "internal_ai_legal_owner": "AI_LEGAL_TAX_RESEARCH_SPECIALIST",
@@ -71,7 +71,7 @@
       "candidate_id": "AL-PRODESIN-LEI5671-DEC38394-V1",
       "candidate_version": 1,
       "normative_anchor": "Lei 5.671/1995, Decreto 38.394/2000",
-      "primary_source_pointer": "https://www.sefaz.al.gov.br/nise/faq/",
+      "primary_source_pointer": "https://diario.imprensaoficial.al.gov.br/apinova/api/editions/viewPdf/51478",
       "already_examined_government_excerpt": false,
       "current_state": "AWAITING_COMPLETE_NORMATIVE_CONSOLIDATION",
       "internal_ai_legal_owner": "AI_LEGAL_TAX_RESEARCH_SPECIALIST",
@@ -335,7 +335,7 @@
       "candidate_id": "PA-POLITICA-LEI6913-DEC2490-V1",
       "candidate_version": 1,
       "normative_anchor": "Lei 6.913/2006, Decreto 2.490/2006 e Comissão de Política de Incentivos",
-      "primary_source_pointer": "https://www.sistemas.pa.gov.br/sisleis/legislacao/5840",
+      "primary_source_pointer": "https://bancodeleis.alepa.pa.gov.br/arquivos/lei2490_2006_53513.pdf",
       "already_examined_government_excerpt": true,
       "current_state": "AWAITING_COMPLETE_NORMATIVE_CONSOLIDATION",
       "internal_ai_legal_owner": "AI_LEGAL_TAX_RESEARCH_SPECIALIST",
@@ -401,7 +401,7 @@
       "candidate_id": "PI-RICMS2023-AN4-ART25A-BASIC-FOOD-V1",
       "candidate_version": 1,
       "normative_anchor": "Decreto 21.866/2023, Anexo IV art. 25-A, acrescido pelo Decreto 23.672/2025; Convênio ICMS 224/2017",
-      "primary_source_pointer": "https://portal-admin.sefaz.pi.gov.br/wp-content/uploads/2025/03/SEI_GOV-PI-017374270-SEFAZ_-Comunicado-UNATRI.pdf",
+      "primary_source_pointer": "https://www.diario.pi.gov.br/doe/files/diarios/anexo/e1d8ee2a-5cf4-437f-93fa-393753b8574a/DOEPI_57_2025.pdf",
       "already_examined_government_excerpt": true,
       "current_state": "AWAITING_COMPLETE_NORMATIVE_CONSOLIDATION",
       "internal_ai_legal_owner": "AI_LEGAL_TAX_RESEARCH_SPECIALIST",
@@ -444,8 +444,8 @@
       "uf": "RJ",
       "candidate_id": "RJ-LEI6331-PORT345-ADESAO-V1",
       "candidate_version": 1,
-      "normative_anchor": "Lei 6.331/2012; Portaria SSER 345/2023, alterada em 2024",
-      "primary_source_pointer": "https://portal.fazenda.rj.gov.br/transparencia-da-receita-estadual/wp-content/uploads/sites/5/2025/04/PORTAL-DA-TRANSPARENCIA-ROTEIRO-BF.pdf",
+      "normative_anchor": "Lei 6.331/2012; Portaria SSER 345/2023 e alterações 350/2024, 362/2024, 431/2025",
+      "primary_source_pointer": "https://www3.alerj.rj.gov.br/lotus_notes/default.asp?URL=L0NPTlRMRUkuTlNGL2M4YWEwOTAwMDI1ZmVlZjYwMzI1NjRlYzAwNjBkZmZmLzY4ZDI2ZWU1OThmMWFlNzI4MzI1N2E5OTAwNjNiMzcxP09wZW5Eb2N1bWVudA%3D%3D&id=2",
       "already_examined_government_excerpt": true,
       "current_state": "AWAITING_COMPLETE_NORMATIVE_CONSOLIDATION",
       "internal_ai_legal_owner": "AI_LEGAL_TAX_RESEARCH_SPECIALIST",
@@ -577,7 +577,7 @@
       "candidate_id": "SE-PSDI-LEI3140-DEC29935-V1",
       "candidate_version": 1,
       "normative_anchor": "Lei 3.140/1991, Decreto 29.935/2014 e decisão CDI",
-      "primary_source_pointer": "https://www.se.gov.br/servicos/623",
+      "primary_source_pointer": "https://pge.se.gov.br/wp-content/uploads/2025/02/DECRETO-29-935-1.pdf",
       "already_examined_government_excerpt": true,
       "current_state": "AWAITING_COMPLETE_NORMATIVE_CONSOLIDATION",
       "internal_ai_legal_owner": "AI_LEGAL_TAX_RESEARCH_SPECIALIST",
@@ -641,5 +641,31 @@
   ],
   "initial_research_commit": "917cf3ac428b682c6d575aba3e8f18d4f316d4d5",
   "audited_snapshot_commit": "30742c0b248796d2374ab35349a9bdd1fc630551",
-  "source_capture_status": "NOT_VERIFIED_FULL_PRIMARY_BYTES"
+  "source_capture_status": "NOT_VERIFIED_FULL_PRIMARY_BYTES",
+  "local_windows_evidence_kit": {
+    "schema_version": "nfcore.t09.windows-local-source-kit/v1",
+    "queue_path": "docs/NFCORE_T09_WINDOWS_LOCAL_SOURCE_QUEUE_V1.json",
+    "entry_count": 22,
+    "lots": {
+      "A": [
+        "AC",
+        "PA",
+        "PI"
+      ],
+      "B": [
+        "AL",
+        "AP",
+        "RJ",
+        "RN",
+        "SE"
+      ]
+    },
+    "status": "AWAITING_LOCAL_ORIGINAL_BYTES_AND_PROVENANCE_REVIEW",
+    "local_sha256_source_identity_approved": false,
+    "ac_portaria_sefaz_140_2025": "EXCLUDED_AS_INCENTIVE_NORM_UNRELATED_AUTORREGULARIZACAO",
+    "rj_news_alerj": "EXCLUDED_FROM_MANDATORY_ORIGINALS",
+    "external_accountant_review": "PENDING_NOT_RECEIVED",
+    "individual_grant": "PER_TAXPAYER_AT_RUNTIME_WHEN_REQUIRED",
+    "internal_curatorial_signoff": "PENDING_NOT_GRANTED"
+  }
 }
