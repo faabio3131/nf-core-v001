@@ -76,7 +76,7 @@ def test_real_postgres_economy_schema_scope_and_immutability(monkeypatch):
             _certify_t06(database)
             _certify_t07_transition(database)
             _certify_t08_federal(database)
-            _certify_t09_state(database)
+            _certify_t09_state(database, monkeypatch)
             admin.execute(sql.SQL("SET search_path TO {}").format(sql.Identifier(schema_name)))
             # Explicitly add DML permissions only in this sandbox to prove
             # that the RLS policies, not solely GRANTs, deny mutation.
@@ -735,7 +735,7 @@ def _certify_t08_federal(database):
 
 
 
-def _certify_t09_state(database):
+def _certify_t09_state(database, monkeypatch):
     """T09 uses the exact same PostgreSQL v25 T01 store and FORCE RLS."""
     from kordena_fiscal.application.state_benefits_service import (
         evaluate_state_benefit,
@@ -803,7 +803,7 @@ def _certify_t09_state(database):
     )
 
     key = "postgres-t09-synthetic-approval-key-xxxxxxxxxxxxxxxxxxxxxxxx"
-    os.environ[REVIEW_KEY_ENV] = key
+    monkeypatch.setenv(REVIEW_KEY_ENV, key)
     claims = review_claims(
         policy=policy, facts=facts, scope_identity=scope.identity_material,
         issuer_cnpj=issuer.value, competence=competence,

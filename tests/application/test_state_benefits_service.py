@@ -2,7 +2,6 @@
 import hashlib
 import hmac
 import json
-import os
 from datetime import date
 
 import pytest
@@ -64,7 +63,11 @@ def facts(uf="SP", *, path="state_statute"):
 CNPJ = "12345678000195"
 
 KEY_T09 = "test-only-internal-review-hmac-key-xxxxxxxxxxxxxxxxxxxxxxxxxxx"
-os.environ[REVIEW_KEY_ENV] = KEY_T09
+
+
+@pytest.fixture(autouse=True)
+def _isolated_state_review_test_key(monkeypatch):
+    monkeypatch.setenv(REVIEW_KEY_ENV, KEY_T09)
 
 
 def _sign_review(policy, case_facts, *, scope=SCOPE, cn=CNPJ, month=MONTH,
