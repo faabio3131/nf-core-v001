@@ -260,3 +260,5 @@ PostgreSQL e testes regressivos T01–T07. Revisão jurídico-fiscal independent
 final de atos, regimes e requisitos continua obrigatória, bem como as lacunas
 explícitas secundários/IBS regular/UX. Sem fusão na main/production, deploy,
 liquidação, aplicação, emissão, ativação fiscal real ou avanço T09.
+
+A Lei 11.774/2008 foi publicada no DOU em 18/09/2008 e entrou em vigor na data de publicação; o piso conservador do registro SISPROM foi refinado para 18/09/2008 após revisão da Câmara e DOU. Não reconhecer direitos retroativos sem regra histórica revisada.

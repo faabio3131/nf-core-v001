@@ -111,7 +111,7 @@ PROGRAMS: dict[str, FederalProgram] = {
         "export_promotion",
         ("sisprom_registration", "reviewed_foreign_payment",
          "promotion_scope_review", "registration_channel_at_competence_review"),
-        date(2008, 9, 17),
+        date(2008, 9, 18),
         _ALL_INCOME_REGIMES,
     ),
     "IPI_EXPORTADOR": FederalProgram(

@@ -206,7 +206,7 @@ def test_all_federal_programs_have_explicit_statutory_income_regime_guards():
 
 def test_sisprom_and_ipi_exportador_historical_normative_references_are_explicit():
     assert PROGRAMS["SISPROM"].legal_act.startswith("Lei 9.481/1997, art. 1º, III")
-    assert PROGRAMS["SISPROM"].earliest_competence < date(2026, 1, 1)
+    assert PROGRAMS["SISPROM"].earliest_competence == date(2008, 9, 18)
     assert PROGRAMS["IPI_EXPORTADOR"].legal_act.startswith(
         "Lei 10.637/2002, art. 29"
     )
