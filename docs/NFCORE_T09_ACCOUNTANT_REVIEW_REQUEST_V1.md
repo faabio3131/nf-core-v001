@@ -9,7 +9,7 @@ e sem criar autoridade fiscal paralela.
 ## Situação comprovada
 
 - 27/27 UFs com 1 candidata de estudo por estado no catálogo documental.
-- 8/27 UFs com cláusula, procedimento ou programa
+- 19/27 UFs com cláusula, procedimento ou programa
   **diretamente inspecionado em fonte oficial** nesta reconciliação.
 - 0/27 UFs com todo o material concessivo, suas alterações até a competência
   e condições por contribuinte legalmente consolidado e certificado.
@@ -32,7 +32,7 @@ e sem criar autoridade fiscal paralela.
 | MA | Mais Empresas, Lei 10.690/2017 | Carta Consulta e aprovação CONDEP; protocolo não é concessão nem define taxa universal. [Fonte](https://seinc.ma.gov.br/servicos/solicitar-beneficios-do-programa-mais-empresas-emissao-de-carta-consulta) |
 
 **Esses são apontamentos preliminares de fontes oficiais, não parecer ou
-confirmação de texto legal consolidado por competência.** Nas demais 19 UFs
+confirmação de texto legal consolidado por competência.** Nas demais 8 UFs
 a fonte indicada no dossiê anterior ainda é ponto de entrada, não
 dispositivo integral inspecionado nessa rodada.
 
@@ -61,3 +61,40 @@ posteriores, não atalhos para emissão ou crédito nesta T09.
 **TRAVAS:** 0 de 27 políticas fiscalmente homologadas, 0 assinaturas
 independentes, 0 fontes oficiais consolidadas com digest verificável,
 0 integrações fiscais autorizadas; PR Draft, T10 bloqueada.
+
+## Revisão complementar oficial e correção de domínio (21/11/2026)
+
+A pesquisa revisou diretamente mais 11 fontes públicas: AC (Lei 1.358/2000
++ Decreto 4.196/2001), AP (COTRI), AM (Decreto 47.727/2023 e alterações 2026),
+CE (ADECE/FDI), ES (SEFAZ/COMPETE), MT (Informação 124/2026), MS (LC 93/2001),
+PA (Resolução 21/2020 individual), PB (FAIN e alteração 2026), SC (Pró-Emprego)
+e SE (PSDI). `official_source_direct_inspection_count=19` significa
+inspeção de **fontes governamentais com recortes**, NÃO auditoria da versão
+integral de todas as normas, nem certificação do direito tributário.
+
+**Correção AC:** Lei 1.358/2000 institui incentivo tributário na modalidade
+de **financiamento direto**, associado ao ICMS próprio e investimento fixo,
+não um crédito presumido genérico. A candidata foi reclassificada como
+`special_regime` **provisória** até tipagem financeira/fiscal independente.
+Fonte: https://sefaz.ac.gov.br/2021/?p=11726 ;
+https://sefaz.ac.gov.br/2021/?p=14786 .
+
+**MT:** Informação SEFAZ 124/2026 confirma redução de base do art.31-A Anexo V
+prorrogada até 31/12/2027 pelo Decreto 1.802/2025. Diferimento interno
+é regra distinta; jamais converter isenção, redução e diferimento entre si.
+Fonte: https://app1.sefaz.mt.gov.br/sistema/legislacao/respostaconsulta.nsf/766feae0478e62780325673c0049468e/dfdffa903c8253dd03258e28005313b4 .
+
+**PA:** Resolução 21/2020 é expressamente individual a uma empresa, não
+concessão genérica. Fonte: https://www.sistemas.pa.gov.br/sisleis/legislacao/5840 .
+
+**PB, SC e SE:** atos de conselho, TTD, habilitações específicas,
+obrigações de emprego/escrituração ou vedação de enquadramento tornam
+uma resposta baseada apenas no CNAE juridicamente insuficiente.
+
+**Gates de acesso:** fontes de AL estavam em manutenção no acesso realizado;
+portal legal RJ retornou bloqueio de segurança; RN/TO não exibiram o
+texto integral, enquanto BA/RO/RR ainda requerem confrontar documentos
+primários, suas alterações e concessões. Não usar espelho privado como
+substituto de documento oficial. **8 UFs seguem sem inspeção direta
+suficiente** neste pacote e, em todas as 27, falta a comprovação integral
+por competência e parecer do contador.

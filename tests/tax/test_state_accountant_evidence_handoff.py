@@ -73,3 +73,22 @@ def test_every_inspected_clause_has_official_readable_evidence():
             assert item["source_inspection_type"] != (
                 "official_pointer_identified_not_integrally_inspected"
             )
+
+
+def test_ac_financing_is_not_misclassified_as_presumed_credit():
+    drafts = _data("NFCORE_T09_STATE_BENEFIT_DRAFT_CANDIDATES_V1.json")
+    row = next(r for r in drafts["candidates"] if r["uf"] == "AC")
+    assert row["benefit_kind"] == "special_regime"
+    assert "financiamento" in row["legal_temporal_notes"].lower()
+    assert row["review_status"] == "draft"
+
+
+def test_inspection_coverage_does_not_mask_unavailable_or_external_gates():
+    h = _data("NFCORE_T09_ACCOUNTANT_EVIDENCE_HANDOFF_V1.json")
+    assert h["official_source_direct_inspection_count"] == 19
+    assert len(h["unavailable_or_incomplete_primary_source_ufs"]) == 8
+    assert h["acts_fully_consolidated_count"] == 0
+    assert h["accountant_opinions_count"] == 0
+    assert "RJ" in h["unavailable_or_incomplete_primary_source_ufs"]
+    assert "AL" in h["unavailable_or_incomplete_primary_source_ufs"]
+    assert not h["independent_professional_approval_received"]
