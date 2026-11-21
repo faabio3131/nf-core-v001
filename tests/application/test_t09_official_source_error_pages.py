@@ -59,7 +59,7 @@ def test_normal_html_still_requires_exact_digest(tmp_path):
         "<!doctype html><html><body>"
         "<h1>Decreto nº 123, de 2026</h1><p>Art. 1º</p>"
         "</body></html>"
-    ).encode("utf-8")
+    ).encode()
     policy, manifest = _packet(tmp_path, page)
     assert verify_reviewed_source_bytes(policy, manifest) == 1
     policy["legal_citations"][0]["source_sha256"] = "0" * 64
