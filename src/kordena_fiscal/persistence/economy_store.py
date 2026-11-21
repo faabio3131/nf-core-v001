@@ -301,6 +301,95 @@ class EconomyStore:
                 raise FiscalValidationError("economy record integrity mismatch")
         return record
 
+
+    def benefit_version_at(self, record_id: str, competence: date) -> int | None:
+        """The latest amendment effective before the end of this competence.
+
+        An amendment beginning next month must not invalidate this month.
+        A mid-month revocation DOES supersede a monthly candidate.
+        """
+        self._require_active()
+        self._identity(record_id, 1)
+        if type(competence) is not date or competence.day != 1:
+            raise FiscalValidationError("invalid monthly state competence")
+        following = date(
+            competence.year + (competence.month == 12),
+            competence.month % 12 + 1, 1,
+        )
+        row = self._conn.execute(
+            """SELECT version FROM fm_economy_benefits
+               WHERE host_namespace=%s AND tenant_id=%s AND unit_id=%s
+                 AND environment=%s AND record_id=%s AND valid_from < %s
+               ORDER BY version DESC LIMIT 1""",
+            (*self._scope.identity_material, record_id, following),
+        ).fetchone()
+        return int(row[0]) if row is not None else None
+
+    def state_benefit_candidates(
+        self, *, jurisdiction: str, competence: date, limit: int = 500,
+    ) -> tuple[tuple[dict[str, Any], ...], bool]:
+        """Select 1 effective candidate per T09 record before applying LIMIT.
+
+        The latest version effective before next month wins, including revoked
+        schemas. Later amendments do not erase historical opportunities.
+        """
+        self._require_active()
+        if (
+            type(competence) is not date or competence.day != 1
+            or not isinstance(jurisdiction, str)
+            or not re.fullmatch(r"[A-Z]{2}", jurisdiction)
+            or type(limit) is not int or not 1 <= limit <= 500
+        ):
+            raise FiscalValidationError("invalid state benefit catalog projection")
+        following = date(
+            competence.year + (competence.month == 12),
+            competence.month % 12 + 1, 1,
+        )
+        rows = self._conn.execute(
+            """WITH ranked AS (
+                 SELECT to_jsonb(r) AS payload,
+                        ROW_NUMBER() OVER (
+                            PARTITION BY r.record_id ORDER BY r.version DESC
+                        ) AS rank_version
+                   FROM fm_economy_benefits AS r
+                  WHERE r.host_namespace=%s AND r.tenant_id=%s AND r.unit_id=%s
+                    AND r.environment=%s AND r.valid_from < %s
+                    AND EXISTS (
+                        SELECT 1 FROM fm_economy_benefits AS anchor
+                         WHERE anchor.host_namespace=r.host_namespace
+                           AND anchor.tenant_id=r.tenant_id
+                           AND anchor.unit_id=r.unit_id
+                           AND anchor.environment=r.environment
+                           AND anchor.record_id=r.record_id
+                           AND anchor.jurisdiction=%s
+                           AND anchor.content->>'schema_version'=%s
+                    )
+               )
+               SELECT payload FROM ranked WHERE rank_version=1
+                 AND payload->>'jurisdiction'=%s
+                 AND payload->>'tax_code'='ICMS'
+               ORDER BY payload->>'record_id' LIMIT %s""",
+            (*self._scope.identity_material, following, jurisdiction,
+             "nfcore.state-icms-benefit-rule/v1", jurisdiction, limit + 1),
+        ).fetchall()
+        truncated = len(rows) > limit
+        results = tuple(dict(r[0]) for r in rows[:limit])
+        for record in results:
+            content = record.get("content")
+            if not isinstance(content, dict) or _digest(content)[1] != record["digest"]:
+                raise FiscalValidationError("state candidate record integrity mismatch")
+        return results, truncated
+
+    def lock_state_review_import(self, snapshot_id: str, benefit_id: str) -> None:
+        """Serialize same-scope imports across PostgreSQL transactions."""
+        self._require_active()
+        self._identity(snapshot_id, 1)
+        self._identity(benefit_id, 1)
+        key = "|".join((*self._scope.identity_material, snapshot_id, benefit_id))
+        self._conn.execute(
+            "SELECT pg_advisory_xact_lock(hashtextextended(%s, 0))", (key,),
+        )
+
     def records(
         self, table: str, *, limit: int = 100, schema_version: str | None = None,
         jurisdiction: str | None = None,

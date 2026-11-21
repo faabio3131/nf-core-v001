@@ -162,6 +162,48 @@ class FakeStore:
             and (jurisdiction is None or row.get("jurisdiction") == jurisdiction)
         )[:limit]
 
+    def benefit_version_at(self, record_id, competence):
+        following = date(
+            competence.year + (competence.month == 12),
+            competence.month % 12 + 1, 1,
+        )
+        versions = [
+            row["version"] for (table, rid, _), row in self.rows.items()
+            if table == "fm_economy_benefits" and rid == record_id
+            and date.fromisoformat(row["valid_from"]) < following
+        ]
+        return max(versions) if versions else None
+
+    def state_benefit_candidates(self, *, jurisdiction, competence, limit=500):
+        following = date(
+            competence.year + (competence.month == 12),
+            competence.month % 12 + 1, 1,
+        )
+        eligible_ids = {
+            rid for (table, rid, _), row in self.rows.items()
+            if table == "fm_economy_benefits"
+            and row["jurisdiction"] == jurisdiction
+            and row["content"].get("schema_version") == RULE_SCHEMA
+        }
+        latest = {}
+        for (table, rid, _), row in self.rows.items():
+            if (
+                table != "fm_economy_benefits" or rid not in eligible_ids
+                or date.fromisoformat(row["valid_from"]) >= following
+            ):
+                continue
+            if rid not in latest or latest[rid]["version"] < row["version"]:
+                latest[rid] = row
+        candidates = sorted(
+            (r for r in latest.values()
+             if r["jurisdiction"] == jurisdiction and r["tax_code"] == "ICMS"),
+            key=lambda r: r["record_id"],
+        )
+        return tuple(candidates[:limit]), len(candidates) > limit
+
+    def lock_state_review_import(self, snapshot_id, benefit_id):
+        return None
+
     def append_snapshot(self, *, record_id, version, competence, issuer, content):
         self.rows[("fm_economy_snapshots", record_id, version)] = {
             "record_id": record_id, "version": version,
@@ -449,3 +491,93 @@ def test_facts_must_share_review_reference_with_policy():
     _sign_review(row["benefit_content"], row["content"])
     with pytest.raises(FiscalValidationError, match="review references mismatch"):
         _import_test(FakeStore(), **row, verify_issuer=verifier)
+
+
+def test_future_version_does_not_suppress_historical_month():
+    store = FakeStore()
+    _import_test(store, **bundle(), verify_issuer=verifier)
+    store.append_benefit(
+        record_id="t09-state-rule", version=2, tax_code="ICMS",
+        jurisdiction="SP", normative_reference="Future synthetic adjustment",
+        valid_from=date(2026, 12, 1), valid_until=date(2027, 12, 1),
+        content={"schema_version": "nfcore.revoked/v1", "review_status": "revoked"},
+    )
+    assert evaluate_state_benefit(
+        store, snapshot_id="t09-facts", snapshot_version=1,
+        benefit_id="t09-state-rule", benefit_version=1, verify_issuer=verifier,
+    )["status"] == "potential"
+    search = search_state_benefits(
+        store, snapshot_id="t09-facts", snapshot_version=1,
+        verify_issuer=verifier,
+    )
+    assert search["counts"]["potential"] == 1
+    assert search["coverage_truncated"] is False
+
+
+def test_intermediate_amendment_blocks_old_version_even_with_future_revision():
+    store = FakeStore()
+    _import_test(store, **bundle(), verify_issuer=verifier)
+    for version, first in ((2, date(2026, 11, 15)), (3, date(2027, 1, 1))):
+        store.append_benefit(
+            record_id="t09-state-rule", version=version, tax_code="ICMS",
+            jurisdiction="SP", normative_reference="Synthetic amendment",
+            valid_from=first, valid_until=date(2028, 1, 1),
+            content={"schema_version": "nfcore.revoked/v1", "review_status": "revoked"},
+        )
+    with pytest.raises(FiscalValidationError, match="replaced"):
+        evaluate_state_benefit(
+            store, snapshot_id="t09-facts", snapshot_version=1,
+            benefit_id="t09-state-rule", benefit_version=1, verify_issuer=verifier,
+        )
+    search = search_state_benefits(
+        store, snapshot_id="t09-facts", snapshot_version=1,
+        verify_issuer=verifier,
+    )
+    assert search["counts"]["potential"] == 0
+    assert search["counts"]["review_required"] == 1
+
+
+def test_over_500_versions_in_same_uf_do_not_truncate_one_candidate():
+    store = FakeStore()
+    _import_test(store, **bundle(), verify_issuer=verifier)
+    for version in range(2, 503):
+        store.append_benefit(
+            record_id="t09-state-rule", version=version, tax_code="ICMS",
+            jurisdiction="SP", normative_reference="Future synthetic amendment",
+            valid_from=date(2027, 1, 1), valid_until=date(2028, 1, 1),
+            content={"schema_version": "nfcore.revoked/v1", "review_status": "revoked"},
+        )
+    result = search_state_benefits(
+        store, snapshot_id="t09-facts", snapshot_version=1,
+        verify_issuer=verifier,
+    )
+    assert result["counts"]["potential"] == 1
+    assert len(result["results"]) == 1
+    assert result["coverage_truncated"] is False
+
+
+def test_501_distinct_current_candidates_produce_explicit_truncation():
+    store = FakeStore()
+    row = bundle()
+    store.append_snapshot(
+        record_id=row["snapshot_id"], version=row["snapshot_version"],
+        competence=row["competence"], issuer=row["issuer"], content=row["content"],
+    )
+    for index in range(501):
+        other = f"t09-state-{index:04d}"
+        store.append_benefit(
+            record_id=other, version=1, tax_code="ICMS", jurisdiction="SP",
+            normative_reference="Synthetic non approved",
+            valid_from=date(2026, 1, 1), valid_until=date(2027, 1, 1),
+            content={
+                "schema_version": RULE_SCHEMA, "review_status": "draft",
+            },
+        )
+    result = search_state_benefits(
+        store, snapshot_id="t09-facts", snapshot_version=1,
+        verify_issuer=verifier,
+    )
+    assert result["coverage_truncated"] is True
+    assert result["status"] == "review_required"
+    assert len(result["results"]) == 500
+    assert result["counts"]["potential"] == 0

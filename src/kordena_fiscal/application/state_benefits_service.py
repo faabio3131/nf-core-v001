@@ -121,14 +121,9 @@ def evaluate_state_benefit(
     benefit = store.record("fm_economy_benefits", benefit_id, benefit_version)
     if snapshot is None or benefit is None:
         raise FiscalValidationError("state benefit or scoped facts unavailable")
-    latest = store.record("fm_economy_benefits", benefit_id)
-    if latest is not None and latest["version"] > benefit_version:
-        month = date.fromisoformat(snapshot["competence"])
-        if date.fromisoformat(latest["valid_from"]) < _next_month(month) and (
-            latest["valid_until"] is None
-            or date.fromisoformat(latest["valid_until"]) >= month
-        ):
-            raise FiscalValidationError("state benefit replaced by newer version")
+    month = date.fromisoformat(snapshot["competence"])
+    if store.benefit_version_at(benefit_id, month) != benefit_version:
+        raise FiscalValidationError("state benefit replaced by newer version")
     return _evaluate(snapshot, benefit, store.scope_identity, verify_issuer)
 
 
@@ -170,6 +165,9 @@ def import_reviewed_state_benefit(
         "content": benefit_content, "digest": _digest(benefit_content)[1],
     }
     result = _evaluate(snapshot, benefit, store.scope_identity, verify_issuer)
+    # Advisory transaction lock is acquired before read/append to prevent
+    # competing imports from failing with a duplicate-key race.
+    store.lock_state_review_import(snapshot_id, benefit_id)
     for existing, proposed in (
         (store.record("fm_economy_snapshots", snapshot_id, snapshot_version), snapshot),
         (store.record("fm_economy_benefits", benefit_id, benefit_version), benefit),
@@ -227,15 +225,9 @@ def search_state_benefits(
         or canonical.primary_cnae != facts["activity_cnae"]
     ):
         raise FiscalValidationError("canonical state issuer mismatch")
-    rows = store.records(
-        "fm_economy_benefits", limit=limit, schema_version=RULE_SCHEMA,
-        jurisdiction=facts["uf"],
+    rows, truncated = store.state_benefit_candidates(
+        jurisdiction=facts["uf"], competence=competence, limit=limit,
     )
-    latest: dict[str, dict[str, Any]] = {}
-    for row in rows:
-        key = str(row["record_id"])
-        if key not in latest or latest[key]["version"] < row["version"]:
-            latest[key] = row
     results = []
     verified_cache: dict[tuple[str, date], ReviewedStateIssuer] = {
         (cnpj, competence): canonical,
@@ -247,9 +239,9 @@ def search_state_benefits(
             verified_cache[key] = verify_issuer(cnpj, month)
         return verified_cache[key]
 
-    for row in sorted(latest.values(), key=lambda item: str(item["record_id"])):
-        newer = store.record("fm_economy_benefits", row["record_id"])
-        if newer is None or newer["version"] != row["version"]:
+    for row in rows:
+        policy = row.get("content")
+        if not isinstance(policy, dict) or policy.get("schema_version") != RULE_SCHEMA:
             results.append({
                 "benefit_id": row["record_id"], "benefit_version": row["version"],
                 "status": "review_required", "reason_codes": ["superseded_policy"],
@@ -267,7 +259,6 @@ def search_state_benefits(
     statuses = ("potential", "not_applicable", "insufficient_basis", "review_required")
     counts = {status: sum(x["status"] == status for x in results)
               for status in statuses}
-    truncated = len(rows) == limit
     return {
         "schema_version": "nfcore.state-icms-search/v1",
         "uf": facts["uf"], "snapshot_id": snapshot_id,

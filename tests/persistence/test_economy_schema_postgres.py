@@ -895,6 +895,30 @@ def _certify_t09_state(database):
         assert len(result["results"]) == 1
         assert result["results"][0] == first
         assert result["coverage_truncated"] is False
+
+    # Same-UF future amendments do not displace the selected monthly rule.
+    with database.economy(scope) as store:
+        for version in range(2, 503):
+            store.append_benefit(
+                record_id="t09-sp-synthetic", version=version,
+                tax_code="ICMS", jurisdiction="SP",
+                normative_reference="Future synthetic ICMS amendment",
+                valid_from=date(2027, 1, 1), valid_until=date(2028, 1, 1),
+                content={"schema_version": "nfcore.revoked/v1", "review_status": "revoked"},
+            )
+    with database.economy(scope, read_only=True) as store:
+        rows, truncated = store.state_benefit_candidates(
+            jurisdiction="SP", competence=competence,
+        )
+        assert not truncated
+        assert len(rows) == 1
+        assert rows[0]["version"] == 1
+        assert store.benefit_version_at("t09-sp-synthetic", competence) == 1
+        assert evaluate_state_benefit(
+            store, snapshot_id="t09-state-facts", snapshot_version=1,
+            benefit_id="t09-sp-synthetic", benefit_version=1,
+            verify_issuer=verify,
+        )["status"] == "potential"
     with database.economy(_scope(tenant="economy-t09-foreign"), read_only=True) as store:
         assert store.record("fm_economy_snapshots", "t09-state-facts", 1) is None
         assert store.record("fm_economy_benefits", "t09-sp-synthetic", 1) is None
