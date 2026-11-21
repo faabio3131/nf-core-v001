@@ -45,11 +45,11 @@ def test_capture_permits_official_domains(url):
 @pytest.mark.parametrize(
     "page",
     [
-        b"<html><body>Site em manutenÃ§Ã£o</body></html>",
+        "<html><body>Site em manutenção</body></html>".encode(),
         b"<html><body>403 Forbidden</body></html>",
         b"<html><body>Access denied</body></html>",
-        b"<html><body>PÃ¡gina temporariamente indisponÃ­vel</body></html>",
-        b"<html><body>Se vocÃª recebeu mensagem de bloqueio de IP</body></html>",
+        "<html><body>Página temporariamente indisponível</body></html>".encode(),
+        "<html><body>Se você recebeu mensagem de bloqueio de IP</body></html>".encode(),
     ],
 )
 def test_capture_rejects_invalid_official_html(page):
