@@ -1469,7 +1469,8 @@
           "Art.52 identifica posições e capítulos NCM com exclusões expressas e condição para terceirização da fabricação.",
           "Art.41 §4º substitui aproveitamento de demais créditos e §3º exclui saída com retorno posterior real/simbólico.",
           "Art.41 e art.52 §5º têm termo previsto 31/12/2026; verificar alterações futuras.",
-          "RC33644/2026 analisa opção RUDFTO e créditos extemporâneos em caso específico, não certifica a elegibilidade de qualquer empresa."
+          "RC33644/2026 analisa opção RUDFTO e créditos extemporâneos em caso específico, não certifica a elegibilidade de qualquer empresa.",
+          "O art.41 Anexo III depende expressamente do art.52 Anexo II: observar fabricante/saída interna, NCM têxtil, regularidade tributária e exclusão de consumidor final; a hipótese de 12% não autoriza crédito automaticamente."
         ],
         "red_flags": [
           "consumidor_final",
@@ -1477,7 +1478,9 @@
           "operacao_interestadual",
           "terceirizacao_sem_credenciamento_quando_exigido",
           "sem_opcao_formal",
-          "cumulo_creditos_incompativel"
+          "cumulo_creditos_incompativel",
+          "anexo_ii_art52_nao_comprovado",
+          "consumidor_final_ou_ncm_excluido"
         ],
         "fully_consolidated_current_to_20261121": false,
         "independent_accountant_opinion": false,
