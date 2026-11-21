@@ -303,6 +303,7 @@ class EconomyStore:
 
     def records(
         self, table: str, *, limit: int = 100, schema_version: str | None = None,
+        jurisdiction: str | None = None,
     ) -> tuple[dict[str, Any], ...]:
         """Read-only bounded scope projection; filter reviewed schema before LIMIT.
 
@@ -319,18 +320,30 @@ class EconomyStore:
             or not re.fullmatch(r"[a-zA-Z0-9./_-]+", schema_version)
         ):
             raise FiscalValidationError("invalid economy benefit schema filter")
+        if jurisdiction is not None and (
+            table != "fm_economy_benefits"
+            or not isinstance(jurisdiction, str)
+            or not re.fullmatch(r"[A-Z]{2}", jurisdiction)
+        ):
+            raise FiscalValidationError("invalid economy benefit jurisdiction filter")
         condition = (
             sql.SQL(" AND r.content->>'schema_version' = %s")
             if schema_version is not None else sql.SQL("")
         )
+        state_condition = (
+            sql.SQL(" AND r.jurisdiction = %s")
+            if jurisdiction is not None else sql.SQL("")
+        )
         statement = sql.SQL(
             "SELECT to_jsonb(r) FROM {} AS r WHERE host_namespace=%s AND tenant_id=%s "
-            "AND unit_id=%s AND environment=%s{} "
+            "AND unit_id=%s AND environment=%s{}{} "
             "ORDER BY created_at DESC, record_id LIMIT %s"
-        ).format(sql.Identifier(table), condition)
+        ).format(sql.Identifier(table), condition, state_condition)
         params: tuple[Any, ...] = (*self._scope.identity_material,)
         if schema_version is not None:
             params = (*params, schema_version)
+        if jurisdiction is not None:
+            params = (*params, jurisdiction)
         rows = self._conn.execute(statement, (*params, limit)).fetchall()
         result = tuple(dict(row[0]) for row in rows)
         for record in result:
