@@ -301,16 +301,37 @@ class EconomyStore:
                 raise FiscalValidationError("economy record integrity mismatch")
         return record
 
-    def records(self, table: str, *, limit: int = 100) -> tuple[dict[str, Any], ...]:
-        """Read-only bounded scope projection; public API must enforce its own RBAC."""
+    def records(
+        self, table: str, *, limit: int = 100, schema_version: str | None = None,
+    ) -> tuple[dict[str, Any], ...]:
+        """Read-only bounded scope projection; filter reviewed schema before LIMIT.
+
+        The optional filter is only valid on canonical benefit JSON; other economy
+        tables must not have their projections or security semantics changed.
+        """
         self._require_active()
         if table not in TABLES or type(limit) is not int or not 1 <= limit <= 500:
             raise FiscalValidationError("invalid economy projection")
+        if schema_version is not None and (
+            table != "fm_economy_benefits"
+            or not isinstance(schema_version, str)
+            or not 1 <= len(schema_version) <= 128
+            or not re.fullmatch(r"[a-zA-Z0-9./_-]+", schema_version)
+        ):
+            raise FiscalValidationError("invalid economy benefit schema filter")
+        condition = (
+            sql.SQL(" AND r.content->>'schema_version' = %s")
+            if schema_version is not None else sql.SQL("")
+        )
         statement = sql.SQL(
             "SELECT to_jsonb(r) FROM {} AS r WHERE host_namespace=%s AND tenant_id=%s "
-            "AND unit_id=%s AND environment=%s ORDER BY created_at DESC, record_id LIMIT %s"
-        ).format(sql.Identifier(table))
-        rows = self._conn.execute(statement, (*self._scope.identity_material, limit)).fetchall()
+            "AND unit_id=%s AND environment=%s{} "
+            "ORDER BY created_at DESC, record_id LIMIT %s"
+        ).format(sql.Identifier(table), condition)
+        params: tuple[Any, ...] = (*self._scope.identity_material,)
+        if schema_version is not None:
+            params = (*params, schema_version)
+        rows = self._conn.execute(statement, (*params, limit)).fetchall()
         result = tuple(dict(row[0]) for row in rows)
         for record in result:
             if "content" in record:

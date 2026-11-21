@@ -30,6 +30,14 @@ class FederalProgram:
     operation: str
     minimum_evidence: tuple[str, ...]
     earliest_competence: date
+    eligible_regimes: frozenset[FederalIncomeTaxRegime]
+
+
+_NON_SIMPLES = frozenset({
+    FederalIncomeTaxRegime.LUCRO_REAL,
+    FederalIncomeTaxRegime.LUCRO_PRESUMIDO,
+})
+_ALL_INCOME_REGIMES = frozenset(FederalIncomeTaxRegime)
 
 
 # A source registry is an index to official material, NOT a reviewed rule.
@@ -42,6 +50,7 @@ PROGRAMS: dict[str, FederalProgram] = {
         ("reviewed_rd_project", "reviewed_eligible_expenditure",
          "fiscal_regular_status", "profitability_review"),
         date(2006, 1, 1),
+        frozenset({FederalIncomeTaxRegime.LUCRO_REAL}),
     ),
     "REIDI": FederalProgram(
         "REIDI", "PIS_COFINS", "Lei 11.488/2007",
@@ -51,6 +60,7 @@ PROGRAMS: dict[str, FederalProgram] = {
         ("approved_infrastructure_project", "reidi_habilitation",
          "reviewed_acquisition_link"),
         date(2007, 6, 15),
+        _NON_SIMPLES,
     ),
     "IBS_CBS_RURAL": FederalProgram(
         "IBS_CBS_RURAL", "IBS_CBS", "LC 214/2025, arts. 164 e 168",
@@ -60,6 +70,7 @@ PROGRAMS: dict[str, FederalProgram] = {
         ("supplier_non_contributor_status", "regular_ibs_cbs_status",
          "reviewed_purchase", "current_rate_source"),
         date(2027, 1, 1),
+        _ALL_INCOME_REGIMES,
     ),
     "IBS_CBS_RECICLAGEM": FederalProgram(
         "IBS_CBS_RECICLAGEM", "IBS_CBS", "LC 214/2025, art. 170",
@@ -69,6 +80,7 @@ PROGRAMS: dict[str, FederalProgram] = {
         ("eligible_material_classification", "eligible_supplier_status",
          "regular_ibs_cbs_status", "reviewed_purchase", "current_rate_source"),
         date(2027, 1, 1),
+        _ALL_INCOME_REGIMES,
     ),
     "RECAP": FederalProgram(
         "RECAP", "PIS_COFINS", "Lei 11.196/2005, arts. 12 a 16",
@@ -77,6 +89,7 @@ PROGRAMS: dict[str, FederalProgram] = {
         ("recap_habilitation", "export_revenue_review", "capital_acquisition_review",
          "current_regime_conditions"),
         date(2005, 11, 21),
+        _NON_SIMPLES,
     ),
     "REINTEGRA": FederalProgram(
         "REINTEGRA", "PIS_COFINS", "Lei 13.043/2014, arts. 21 e seguintes",
@@ -89,24 +102,28 @@ PROGRAMS: dict[str, FederalProgram] = {
          "imported_inputs_condition", "current_regime_conditions",
          "current_rate_source"),
         date(2014, 11, 13),
+        _NON_SIMPLES,
     ),
     "SISPROM": FederalProgram(
-        "SISPROM", "IRRF", "SISPROM — redução IR sobre promoção no exterior",
+        "SISPROM", "IRRF", "Lei 9.481/1997, art. 1º, III, a, com Lei 11.774/2008",
         "https://www.gov.br/pt-br/servicos/informar-operacoes-de-promocoes-"
         "de-produtos-e-servicos-no-exterior-com-reducao-do-ir",
         "export_promotion",
         ("sisprom_registration", "reviewed_foreign_payment",
-         "promotion_scope_review"),
-        date(2026, 1, 1),
+         "promotion_scope_review", "registration_channel_at_competence_review"),
+        date(2008, 9, 17),
+        _ALL_INCOME_REGIMES,
     ),
     "IPI_EXPORTADOR": FederalProgram(
-        "IPI_EXPORTADOR", "IPI", "Suspensão IPI — exportador habilitado",
+        "IPI_EXPORTADOR", "IPI", "Lei 10.637/2002, art. 29, § 1º, II",
         "https://www.gov.br/pt-br/servicos/habilitar-empresa-no-regime-especial-"
         "de-suspensao-do-ipi-imposto-sobre-produtos-industrializados",
         "ipi_export_acquisition",
         ("ipi_contributor_status", "export_revenue_review",
-         "ipi_suspension_habilitation", "reviewed_purchase"),
-        date(2026, 1, 1),
+         "ipi_suspension_habilitation", "reviewed_purchase",
+         "eligible_material_review", "prior_year_export_share_review"),
+        date(2002, 10, 1),
+        _NON_SIMPLES,
     ),
 }
 
@@ -119,6 +136,8 @@ class ReviewedFederalIssuer:
     cnae: str
     regime: FederalIncomeTaxRegime
     scope_identity: tuple[str, ...]
+    # Must come from a separate authoritative IBS/CBS option/status, never CRT.
+    ibs_cbs_regular_authorized: bool | None = None
 
 
 def _reference(value: object) -> bool:
@@ -151,8 +170,12 @@ def assess_federal_program(
     """
     if competence < program.earliest_competence:
         return _outcome("not_applicable", ("program_not_effective",))
+    if issuer.regime not in program.eligible_regimes:
+        return _outcome("not_applicable", ("statutory_regime_excluded",))
     if issuer.regime.value not in allowed_regimes:
         return _outcome("not_applicable", ("federal_regime_excluded",))
+    if program.tax_code == "IBS_CBS" and issuer.ibs_cbs_regular_authorized is not True:
+        return _outcome("insufficient_basis", ("regular_ibs_cbs_authority_missing",))
     if program.code == "LEI_DO_BEM" and (
         issuer.regime is not FederalIncomeTaxRegime.LUCRO_REAL
     ):
@@ -212,6 +235,8 @@ def decode_policy(payload: object) -> tuple[
     # Never allow rule metadata to weaken program-specific legal conditions.
     if program.code == "LEI_DO_BEM" and allowed != ["lucro_real"]:
         raise FiscalValidationError("Lei do Bem requires Lucro Real")
+    if not set(allowed) <= {regime.value for regime in program.eligible_regimes}:
+        raise FiscalValidationError("federal program forbids a policy income-tax regime")
     cnae_scope = payload.get("cnae_scope")
     ncm_scope = payload.get("ncm_scope")
     if cnae_scope not in {"reviewed_any", "allowlist"} or ncm_scope not in {

@@ -196,3 +196,67 @@ Pacote federal inicial:
 Reutilização canônica: tax/federal_benefits.py apenas triagem; application/federal_benefits_service.py usa fm_economy_snapshots/fm_economy_benefits do T01, digests, controle de versão e RLS. O avaliador de emissor usa perfil e declaração de regime federal existentes. POST /v1/portal/cognitive/economy/federal-benefit exige sessão, CSRF, AUDIT_READ e referências escopadas; navegador não envia regras, CNAE, NCM ou valores. O POST /v1/portal/cognitive/economy/federal-benefit-search pesquisa as regras federais revisadas da própria unidade, usando somente snapshot_id/version; a última versão de cada regra prevalece, mesmo revogada, com limites de varredura e coverage_truncated explícito. GET /v1/portal/cognitive/economy/federal-programs exibe o índice público de fontes, nunca elegibilidade ou aplicação. Importador é operacional, somente em ambiente não produtivo. Resultados são potential, insufficient_basis ou not_applicable; nenhum significa direito tributário aprovado. Valores aprovados, realizados e estimados continuam nulos; emissão e pedidos são proibidos.
 
 Aceite: testes fiscais/HTTP/isolamento PostgreSQL real, imutabilidade e replay, governança, regressão T01–T07, Ruff, Mypy, frontend, E2E, Docker, CI cumulativa e revisão jurídico-fiscal independente. Cobertura dos programas é explícita, NÃO é o cadastro exaustivo de todos os benefícios federais: faltam expansão e revisão dos atos e condições de programas não inventariados. Não marcar T08 ENTREGUE sem critérios e provas no HEAD real. T09 bloqueada até certificação.
+
+## T08 — reconciliação dos achados da auditoria independente Gemini (20/11/2026)
+
+Origem: parecer Gemini fornecido pelo proprietário sobre PR #590, HEAD 8f8ea1c4.
+Veredito externo: APROVADA COM RESSALVAS para a candidata interna, NÃO APROVADA
+para certificação final/produção; execução local no Gemini NÃO REPRODUZIDA.
+CI deste mesmo HEAD 44835437469 SUCCESS (6.124 PASS, 2 SKIP, 0 FAIL)
+é evidência de software, não homologação jurídico-tributária.
+
+Correções de engenharia na mesma PR, sem novos serviços e sem novas tabelas:
+- T08-01 (ALTO): identificar Lei 9.481/1997 art.1 III-a com redação da Lei
+  11.774/2008 para promoções no exterior; referência do IPI suspenso à Lei
+  10.637/2002 art.29 §1 II e efeito previsto no art.68 I desde 01/10/2002.
+  Indexação histórica depende de política/revisão eficaz em cada competência,
+  e não significa reconhecimento retroativo. SISPROM passou do sistema MDIC
+  para os requerimentos RFB em 14/07/2025; evidência de canal correta por PA
+  permanece obrigatória.
+- T08-02 (ALTO): conjunto estrutural de regimes por programa, sempre validado
+  pelo motor e também no bundle importado; vedar Simples para REIDI, RECAP e
+  IPI, e Lei do Bem restringir Lucro Real. Fonte Siscomex expressamente admite
+  Simples para promoções no exterior (SISPROM), portanto não vetá-lo de forma
+  genérica. REINTEGRA base dos arts.21+ da Lei 13.043/2014 é distinto das
+  condições do Acredita Exportação pela LC 216/2025; esta extensão exige
+  modelagem e revisão próprias, e não é silenciosamente concedida.
+  IBS/CBS regular é DIMENSÃO SEPARADA do regime de IRPJ: ainda sem
+  comprovação de opção regular do emissor a triagem devolve
+  insufficient_basis/regular_ibs_cbs_authority_missing, inclusive para
+  optantes Simples com opção potencialmente possível. A futura ligação deve
+  usar eleição/autoridade fiscal canônica (T07), jamais CNAE, CRT ou JSON
+  informado pelo browser como prova dessa opção.
+- T08-03 (MÉDIO): EconomyStore.records existente recebe filtro opcional por
+  schema_version somente para fm_economy_benefits, aplicado parametrizado
+  pelo PostgreSQL ANTES de ORDER BY/LIMIT; nenhum filtro para outras tabelas.
+  Busca federal jamais deve usar as 500 primeiras regras de todos os módulos.
+  Validar 501 registros de outros programas + federal antigo no PostgreSQL,
+  sem migração ou RLS relaxada. Volume >500 do MESMO schema continua
+  explicitamente sinalizado como coverage_truncated e review_required;
+  paginação/índice dedicados exigem análise de escala futura.
+- T08-05 (MÉDIO): versão superior que sobreponha QUALQUER parte do mês
+  bloqueia triagem da anterior; versão apenas parcialmente válida não aprova
+  competência cheia. Testar início/fim internos ao mês e fim inclusivo.
+- T08-04 (MÉDIO): FiscalProfile CURRENT tem somente primary_cnae.
+  CNAE secundário só pode ser admitido após inclusão efetivamente aprovada na
+  autoridade canônica de cadastro/registro de CNPJ, com prova de vigência,
+  sem cadastro paralelo na T08. Até lá é recusado em fail-closed e permanece
+  lacuna de abrangência expressamente classificada.
+- T08-06 (BAIXO): a jornada visual para contador/cliente segue prevista na
+  T21 sobre a MESMA aplicação Web; API não equivale a experiência Web completa.
+  Não se declara a paridade comercial concluída com o catálogo atual.
+
+Fontes oficiais verificadas para esta reconciliação:
+- SISPROM: https://www2.camara.leg.br/legin/fed/lei/1997/lei-9481-13-agosto-1997-365403-normaatualizada-pl.html
+- Canal RFB: https://www.gov.br/siscomex/pt-br/servicos/sisprom/aviso-importante
+- Simples no SISPROM: https://www.gov.br/siscomex/pt-br/servicos/aprendendo-a-exportar/5-formacao-do-preco-de-exportacao/incentivos-as-exportacoes-brasileiras-1
+- IPI: https://www2.camara.leg.br/legin/fed/lei/2002/lei-10637-30-dezembro-2002-491384-normaatualizada-pl.html
+- REIDI: https://www2.camara.leg.br/legin/fed/lei/2007/lei-11488-15-junho-2007-555352-normaatualizada-pl.html
+- Acredita Exportação/Simples: https://www.gov.br/mdic/pt-br/assuntos/comercio-exterior/operacoes-de-comercio-exterior/acredita-exportacao
+- IBS/CBS: https://www2.camara.leg.br/legin/fed/leicom/2025/leicomplementar-214-16-janeiro-2025-796905-normaatualizada-pl.html
+
+Gates: revisão de código alterado e CI integral do NOVO SHA, incluindo
+PostgreSQL e testes regressivos T01–T07. Revisão jurídico-fiscal independente
+final de atos, regimes e requisitos continua obrigatória, bem como as lacunas
+explícitas secundários/IBS regular/UX. Sem fusão na main/production, deploy,
+liquidação, aplicação, emissão, ativação fiscal real ou avanço T09.

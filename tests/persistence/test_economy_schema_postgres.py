@@ -697,7 +697,25 @@ def _certify_t08_federal(database):
         }}
         with pytest.raises(FiscalValidationError, match="immutable"):
             import_reviewed_federal_benefit(store, **{**kwargs, "content": conflict})
+    # The shared table may contain hundreds of unrelated T05–T07 rules.
+    # SQL must filter federal schema BEFORE applying the 500-row limit.
+    with database.economy(scope) as store:
+        for index in range(501):
+            store.append_benefit(
+                record_id=f"t08-other-rule-{index:04d}", version=1,
+                tax_code="SIMPLES", jurisdiction="BR",
+                normative_reference="CGSN-140-reviewed-synthetic",
+                valid_from=date(2026, 1, 1), valid_until=date(2027, 1, 1),
+                content={"schema_version": "nfcore.simples-other/v1"},
+            )
     with database.economy(scope, read_only=True) as store:
+        assert len(store.records("fm_economy_benefits", limit=500)) == 500
+        filtered = store.records(
+            "fm_economy_benefits", limit=500, schema_version=RULE_SCHEMA,
+        )
+        assert len(filtered) == 1 and filtered[0]["record_id"] == "t08-benefit"
+        with pytest.raises(FiscalValidationError, match="schema filter"):
+            store.records("fm_economy_snapshots", schema_version=RULE_SCHEMA)
         assert evaluate_federal_benefit(
             store, snapshot_id="t08-snapshot", snapshot_version=1,
             benefit_id="t08-benefit", benefit_version=1, verify_issuer=verify,

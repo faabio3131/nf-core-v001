@@ -81,9 +81,14 @@ class FakeStore:
             return max(matches, key=lambda row: row["version"]) if matches else None
         return self.rows.get((table, record_id, version))
 
-    def records(self, table, *, limit=100):
-        return tuple(row for (name, _, _), row in self.rows.items()
-                     if name == table)[:limit]
+    def records(self, table, *, limit=100, schema_version=None):
+        return tuple(
+            row for (name, _, _), row in self.rows.items()
+            if name == table and (
+                schema_version is None or row.get("content", {}).get("schema_version")
+                == schema_version
+            )
+        )[:limit]
 
     def append_snapshot(self, *, record_id, version, competence, issuer, content):
         self.rows[("fm_economy_snapshots", record_id, version)] = {
@@ -306,3 +311,67 @@ def test_federal_search_distinguishes_absent_reviewed_catalog_from_no_eligibilit
     assert result["results"] == []
     assert result["complete_national_coverage"] is False
     assert result["review_required"] is True
+
+
+@pytest.mark.parametrize("valid_from, valid_until", [
+    (date(2026, 11, 15), date(2026, 11, 22)),
+    (date(2026, 10, 1), date(2026, 11, 1)),
+    (date(2026, 11, 1), date(2026, 11, 30)),
+])
+def test_new_version_overlapping_any_part_of_month_blocks_old_version(
+    valid_from, valid_until,
+):
+    store = FakeStore()
+    import_reviewed_federal_benefit(store, **bundle(), verify_issuer=verify)
+    store.append_benefit(
+        record_id="lei-do-bem", version=2, tax_code="IRPJ_CSLL",
+        jurisdiction="BR", normative_reference=PROGRAMS["LEI_DO_BEM"].legal_act,
+        valid_from=valid_from, valid_until=valid_until,
+        content=bundle()["benefit_content"] | {"review_status": "revoked"},
+    )
+    with pytest.raises(FiscalValidationError, match="superseded"):
+        evaluate_federal_benefit(
+            store, snapshot_id="federal-snapshot", snapshot_version=1,
+            benefit_id="lei-do-bem", benefit_version=1, verify_issuer=verify,
+        )
+
+
+def test_new_policy_with_changed_schema_does_not_reactivate_old_benefit():
+    from kordena_fiscal.application.federal_benefits_service import search_federal_benefits
+
+    store = FakeStore()
+    import_reviewed_federal_benefit(store, **bundle(), verify_issuer=verify)
+    store.append_benefit(
+        record_id="lei-do-bem", version=2, tax_code="IRPJ_CSLL",
+        jurisdiction="BR", normative_reference=PROGRAMS["LEI_DO_BEM"].legal_act,
+        valid_from=date(2026, 1, 1), valid_until=date(2027, 1, 1),
+        content={"schema_version": "nfcore.revoked/v1", "review_status": "revoked"},
+    )
+    result = search_federal_benefits(
+        store, snapshot_id="federal-snapshot", snapshot_version=1,
+        verify_issuer=verify,
+    )
+    assert result["counts"]["potential"] == 0
+    assert result["counts"]["review_required"] == 1
+    assert result["results"][0]["reason_codes"] == ["newer_policy_not_reviewed"]
+
+
+def test_non_federal_noise_does_not_consume_federal_search_limit():
+    from kordena_fiscal.application.federal_benefits_service import search_federal_benefits
+
+    store = FakeStore()
+    import_reviewed_federal_benefit(store, **bundle(), verify_issuer=verify)
+    for index in range(501):
+        store.append_benefit(
+            record_id=f"unrelated-{index}", version=1, tax_code="SIMPLES",
+            jurisdiction="BR", normative_reference="CGSN-140",
+            valid_from=date(2026, 1, 1), valid_until=date(2027, 1, 1),
+            content={"schema_version": "nfcore.simples-unrelated/v1"},
+        )
+    result = search_federal_benefits(
+        store, snapshot_id="federal-snapshot", snapshot_version=1,
+        verify_issuer=verify,
+    )
+    assert result["counts"]["potential"] == 1
+    assert result["coverage_truncated"] is False
+    assert result["results"][0]["benefit_id"] == "lei-do-bem"

@@ -42,10 +42,11 @@ def facts(code="LEI_DO_BEM"):
     }
 
 
-def issuer(regime=FederalIncomeTaxRegime.LUCRO_REAL):
+def issuer(regime=FederalIncomeTaxRegime.LUCRO_REAL, *, ibs_regular=True):
     return ReviewedFederalIssuer(
         "12345678000195", "6201501", regime,
         ("fm-nfcore", "tenant-a", "unit-a", "homologation"),
+        ibs_cbs_regular_authorized=ibs_regular,
     )
 
 
@@ -186,3 +187,75 @@ def test_all_registered_federal_programs_require_advisory_human_review(code):
     assert PROGRAMS[code].official_url.startswith((
         "https://www.gov.br/", "https://www2.camara.leg.br/",
     ))
+
+
+def test_all_federal_programs_have_explicit_statutory_income_regime_guards():
+    for code, program in PROGRAMS.items():
+        assert program.legal_act.startswith(("Lei ", "LC ")), code
+        assert program.eligible_regimes
+        assert all(isinstance(r, FederalIncomeTaxRegime) for r in program.eligible_regimes)
+    for code in (
+        "LEI_DO_BEM", "REIDI", "RECAP", "REINTEGRA", "IPI_EXPORTADOR",
+    ):
+        assert FederalIncomeTaxRegime.SIMPLES_NACIONAL not in PROGRAMS[
+            code
+        ].eligible_regimes
+        with pytest.raises(FiscalValidationError):
+            decode_policy(policy(code) | {"allowed_regimes": ["simples_nacional"]})
+
+
+def test_sisprom_and_ipi_exportador_historical_normative_references_are_explicit():
+    assert PROGRAMS["SISPROM"].legal_act.startswith("Lei 9.481/1997, art. 1º, III")
+    assert PROGRAMS["SISPROM"].earliest_competence < date(2026, 1, 1)
+    assert PROGRAMS["IPI_EXPORTADOR"].legal_act.startswith(
+        "Lei 10.637/2002, art. 29"
+    )
+    assert PROGRAMS["IPI_EXPORTADOR"].earliest_competence == date(2002, 10, 1)
+
+
+def test_ibs_cbs_regular_option_is_independent_of_income_tax_regime():
+    for code in ("IBS_CBS_RURAL", "IBS_CBS_RECICLAGEM"):
+        program, allowed, cs, cnaes, ns, ncms, required = decode_policy(
+            policy(code) | {"allowed_regimes": ["simples_nacional"]}
+        )
+        cnae, ncm, operation, evidence = decode_facts(facts(code))
+        for valid_mode in (None, False):
+            result = assess_federal_program(
+                program=program, competence=date(2027, 1, 1),
+                issuer=issuer(FederalIncomeTaxRegime.SIMPLES_NACIONAL,
+                              ibs_regular=valid_mode),
+                activity_cnae=cnae, operation_ncm=ncm, operation=operation,
+                allowed_regimes=allowed, cnae_scope=cs, allowed_cnaes=cnaes,
+                ncm_scope=ns, allowed_ncms=ncms,
+                required_evidence=required, evidence=evidence,
+            )
+            assert result["status"] == "insufficient_basis"
+            assert result["reason_codes"] == ["regular_ibs_cbs_authority_missing"]
+            assert result["issuance_authorized"] is False
+        # A separate authoritative REGULAR election, when available,
+        # must not be confused with CRT or federal income-tax regime.
+        result = assess_federal_program(
+            program=program, competence=date(2027, 1, 1),
+            issuer=issuer(FederalIncomeTaxRegime.SIMPLES_NACIONAL,
+                          ibs_regular=True),
+            activity_cnae=cnae, operation_ncm=ncm, operation=operation,
+            allowed_regimes=allowed, cnae_scope=cs, allowed_cnaes=cnaes,
+            ncm_scope=ns, allowed_ncms=ncms,
+            required_evidence=required, evidence=evidence,
+        )
+        assert result["status"] == "potential"
+        assert result["eligibility_certified"] is False
+
+
+def test_sisprom_remains_accessible_to_simples_with_reviewed_evidence():
+    # Siscomex explicitly lists Simples Nacional among possible beneficiaries.
+    source = PROGRAMS["SISPROM"]
+    assert FederalIncomeTaxRegime.SIMPLES_NACIONAL in source.eligible_regimes
+    result = evaluate(
+        "SISPROM", period=date(2026, 11, 1),
+        regime=FederalIncomeTaxRegime.SIMPLES_NACIONAL,
+        policy_override={"allowed_regimes": ["simples_nacional"]},
+    )
+    assert result["status"] == "potential"
+    assert result["requires_human_approval"] is True
+    assert result["eligibility_certified"] is False

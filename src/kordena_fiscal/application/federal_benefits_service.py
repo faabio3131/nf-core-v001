@@ -117,9 +117,11 @@ def evaluate_federal_benefit(
     latest = store.record("fm_economy_benefits", benefit_id)
     if latest is not None and latest["version"] > benefit_version:
         month = date.fromisoformat(snapshot["competence"])
-        if date.fromisoformat(latest["valid_from"]) <= month and (
+        # A newer policy overlapping ANY part of this competence supersedes
+        # the old version for triage; partial-month revisions require review.
+        if date.fromisoformat(latest["valid_from"]) < _month_end(month) and (
             latest["valid_until"] is None
-            or date.fromisoformat(latest["valid_until"]) > month
+            or date.fromisoformat(latest["valid_until"]) >= month
         ):
             raise FiscalValidationError("federal benefit version superseded for competence")
     return _evaluate(snapshot, benefit, store.scope_identity, verify_issuer)
@@ -198,7 +200,9 @@ def search_federal_benefits(
     snapshot = store.record("fm_economy_snapshots", snapshot_id, snapshot_version)
     if snapshot is None:
         raise FiscalValidationError("scoped federal facts unavailable")
-    rows = store.records("fm_economy_benefits", limit=limit)
+    rows = store.records(
+        "fm_economy_benefits", limit=limit, schema_version=RULE_SCHEMA,
+    )
     latest: dict[str, dict[str, Any]] = {}
     for row in rows:
         policy = row.get("content")
@@ -218,6 +222,15 @@ def search_federal_benefits(
 
     for benefit in sorted(latest.values(), key=lambda b: str(b["record_id"])):
         policy = benefit["content"]
+        newest = store.record("fm_economy_benefits", benefit["record_id"])
+        # Do not resurrect an older rule if a newer version changed schema,
+        # was revoked, or is otherwise outside the filtered search page.
+        if newest is None or newest["version"] != benefit["version"]:
+            outcomes.append({
+                "benefit_id": benefit["record_id"], "benefit_version": benefit["version"],
+                "status": "review_required", "reason_codes": ["newer_policy_not_reviewed"],
+            })
+            continue
         if policy.get("review_status") != "reviewed":
             outcomes.append({
                 "benefit_id": benefit["record_id"], "benefit_version": benefit["version"],
