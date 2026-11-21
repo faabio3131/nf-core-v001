@@ -21,7 +21,6 @@ from kordena_fiscal.domain import Cnpj, ExecutionScope, FiscalEnvironment
 from kordena_fiscal.persistence.postgres import PostgresFiscalDatabase
 
 
-
 SOURCE_MANIFEST_SCHEMA = "nfcore.t09.reviewed-legal-sources/v1"
 MAX_SOURCE_BYTES = 32 * 1024 * 1024
 

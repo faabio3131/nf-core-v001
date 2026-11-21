@@ -55,7 +55,9 @@ def test_unlisted_or_duplicate_legal_source_rejected(tmp_path):
         verify_reviewed_source_bytes(policy, manifest)
 
 
-@pytest.mark.parametrize("unsafe_path", ["../out.html", "/etc/passwd", "a/../../b", "C:\\temp\\doc"])
+@pytest.mark.parametrize(
+    "unsafe_path", ["../out.html", "/etc/passwd", "a/../../b", "C:\\temp\\doc"],
+)
 def test_legal_source_path_traversal_rejected(tmp_path, unsafe_path):
     policy, manifest, _ = packet(tmp_path)
     data = json.loads(manifest.read_text())
