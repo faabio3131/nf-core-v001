@@ -1,0 +1,172 @@
+{
+  "schema_version": "nfcore.t09.official-alternative-source-trial/v1",
+  "as_of": "2026-11-21",
+  "authorized_for_import": false,
+  "legal_validity_certified": false,
+  "independent_approval_received": false,
+  "scope": "8 UFs originally identified as blocked; trial capture of primary and related official sources, NOT proof of 8 state benefits",
+  "entries": [
+    {
+      "uf": "AC",
+      "candidate_id": "AC-INDUSTRIA-LEI1358-DEC4196-V1",
+      "source_url": "https://www.legis.ac.gov.br/detalhar/1775",
+      "source_kind": "primary_state_statute",
+      "verification_note": "Lei 1358/2000; base da candidata, exige alterações vigentes",
+      "review_status": "unreviewed",
+      "eligible_for_tax_calculation": false
+    },
+    {
+      "uf": "AC",
+      "candidate_id": "AC-INDUSTRIA-LEI1358-DEC4196-V1",
+      "source_url": "https://www.legis.ac.gov.br/detalhar/4541",
+      "source_kind": "related_norm_unverified",
+      "verification_note": "Referência adicional do usuário; conferir ato exato antes de vincular",
+      "review_status": "unreviewed",
+      "eligible_for_tax_calculation": false
+    },
+    {
+      "uf": "AL",
+      "candidate_id": "AL-PRODESIN-LEI5671-DEC38394-V1",
+      "source_url": "https://diario.imprensaoficial.al.gov.br/apinova/api/editions/viewPdf/51478",
+      "source_kind": "primary_amending_decree",
+      "verification_note": "DOE 06/04/2026 pág.4: Dec 107816/2026; prorrogação condicionada a resolução CONEDES e projeto",
+      "review_status": "unreviewed",
+      "eligible_for_tax_calculation": false
+    },
+    {
+      "uf": "AL",
+      "candidate_id": "AL-PRODESIN-LEI5671-DEC38394-V1",
+      "source_url": "https://diario.imprensaoficial.al.gov.br/apinova/api/editions/downloadPdf/51935",
+      "source_kind": "official_edition_identity_unverified",
+      "verification_note": "Segunda edição oficial proposta; conferir conteúdo e vinculação ao PRODESIN",
+      "review_status": "unreviewed",
+      "eligible_for_tax_calculation": false
+    },
+    {
+      "uf": "AP",
+      "candidate_id": "AP-REGIME-ESPECIAL-RICMS-ART415-V1",
+      "source_url": "https://diofe.portal.ap.gov.br/apifront/portal/edicoes/imprimir_materia/36326/1785",
+      "source_kind": "related_nonmatching_act",
+      "verification_note": "Decreto 8243/2023 altera cadastro do RICMS (art.67), NÃO o art.415",
+      "review_status": "unreviewed",
+      "eligible_for_tax_calculation": false
+    },
+    {
+      "uf": "AP",
+      "candidate_id": "AP-REGIME-ESPECIAL-RICMS-ART415-V1",
+      "source_url": "https://diofe.portal.ap.gov.br/portal/edicoes/download/9910",
+      "source_kind": "individual_grant_example",
+      "verification_note": "DOE abril 2026 menciona ato declaratório específico com art.415 II; não prova incisos VI/VII gerais",
+      "review_status": "unreviewed",
+      "eligible_for_tax_calculation": false
+    },
+    {
+      "uf": "PA",
+      "candidate_id": "PA-POLITICA-LEI6913-DEC2490-V1",
+      "source_url": "https://bancodeleis.alepa.pa.gov.br/arquivos/lei2490_2006_53513.pdf",
+      "source_kind": "primary_state_regulation",
+      "verification_note": "Decreto 2490/2006 regula Lei 6913/2006; confirmar consolidação e modificações",
+      "review_status": "unreviewed",
+      "eligible_for_tax_calculation": false
+    },
+    {
+      "uf": "PA",
+      "candidate_id": "PA-POLITICA-LEI6913-DEC2490-V1",
+      "source_url": "https://www.sistemas.pa.gov.br/sisleis/legislacao/1390",
+      "source_kind": "primary_amending_statute",
+      "verification_note": "Lei 7485/2010 modifica Lei 6913/2006",
+      "review_status": "unreviewed",
+      "eligible_for_tax_calculation": false
+    },
+    {
+      "uf": "PI",
+      "candidate_id": "PI-RICMS2023-AN4-ART25A-BASIC-FOOD-V1",
+      "source_url": "https://www.diario.pi.gov.br/doe/files/diarios/anexo/e1d8ee2a-5cf4-437f-93fa-393753b8574a/DOEPI_57_2025.pdf",
+      "source_kind": "primary_state_gazette",
+      "verification_note": "DOE original do Dec 23672/2025 art.25-A",
+      "review_status": "unreviewed",
+      "eligible_for_tax_calculation": false
+    },
+    {
+      "uf": "PI",
+      "candidate_id": "PI-RICMS2023-AN4-ART25A-BASIC-FOOD-V1",
+      "source_url": "https://www.pi.gov.br/isencao-de-impostos-em-produtos-da-cesta-basica-ja-esta-em-vigor-no-piaui/",
+      "source_kind": "secondary_official_news",
+      "verification_note": "Notícia confirma referência ao decreto, NÃO sua redação integral",
+      "review_status": "unreviewed",
+      "eligible_for_tax_calculation": false
+    },
+    {
+      "uf": "PI",
+      "candidate_id": "PI-RICMS2023-AN4-ART25A-BASIC-FOOD-V1",
+      "source_url": "https://dfe-portal.svrs.rs.gov.br/Difal/Beneficios",
+      "source_kind": "secondary_interstate_portal",
+      "verification_note": "Portal SVRS é referência de benefícios DIFAL, não substitui RICMS/PI",
+      "review_status": "unreviewed",
+      "eligible_for_tax_calculation": false
+    },
+    {
+      "uf": "RJ",
+      "candidate_id": "RJ-LEI6331-PORT345-ADESAO-V1",
+      "source_url": "https://www.alerj.rj.gov.br/Visualizar/Noticia/53774",
+      "source_kind": "secondary_legislative_news",
+      "verification_note": "Notícia de alteração/2032, não texto normativo integral",
+      "review_status": "unreviewed",
+      "eligible_for_tax_calculation": false
+    },
+    {
+      "uf": "RJ",
+      "candidate_id": "RJ-LEI6331-PORT345-ADESAO-V1",
+      "source_url": "https://www3.alerj.rj.gov.br/lotus_notes/default.asp?URL=L0NPTlRMRUkuTlNGL2M4YWEwOTAwMDI1ZmVlZjYwMzI1NjRlYzAwNjBkZmZmLzY4ZDI2ZWU1OThmMWFlNzI4MzI1N2E5OTAwNjNiMzcxP09wZW5Eb2N1bWVudA%3D%3D&id=2",
+      "source_kind": "primary_state_statute",
+      "verification_note": "Lei 6331/2012 na ALERJ; cotejar alterações e portaria SSER 345/2023",
+      "review_status": "unreviewed",
+      "eligible_for_tax_calculation": false
+    },
+    {
+      "uf": "RN",
+      "candidate_id": "RN-RICMS2022-AN003-REDUCAO-V1",
+      "source_url": "https://webdisk.diariooficial.rn.gov.br/Jornal/12026-02-04.pdf",
+      "source_kind": "later_official_gazette_secondary",
+      "verification_note": "DOE de fev/2026 cita RICMS e benefícios, não consolida Anexo 003 arts 1-6",
+      "review_status": "unreviewed",
+      "eligible_for_tax_calculation": false
+    },
+    {
+      "uf": "RN",
+      "candidate_id": "RN-RICMS2022-AN003-REDUCAO-V1",
+      "source_url": "https://webdisk.diariooficial.rn.gov.br/Jornal/12022-08-19.pdf",
+      "source_kind": "primary_original_ricms_publication",
+      "verification_note": "Publicação original de RICMS 31.825/2022; texto 2026 pendente",
+      "review_status": "unreviewed",
+      "eligible_for_tax_calculation": false
+    },
+    {
+      "uf": "SE",
+      "candidate_id": "SE-PSDI-LEI3140-DEC29935-V1",
+      "source_url": "https://pge.se.gov.br/wp-content/uploads/2025/09/Parecer-Referencial-no-4063.2025-CEDEC.pdf",
+      "source_kind": "official_government_legal_opinion",
+      "verification_note": "PGE 4063/2025 sobre concessão PSDI, não é parecer individual do cliente",
+      "review_status": "unreviewed",
+      "eligible_for_tax_calculation": false
+    },
+    {
+      "uf": "SE",
+      "candidate_id": "SE-PSDI-LEI3140-DEC29935-V1",
+      "source_url": "https://sedetec.se.gov.br/wp-content/uploads/2025/02/Res-24-DGF-SOLUCOES-TEXTEIS-LTDA.pdf",
+      "source_kind": "individual_other_taxpayer_grant",
+      "verification_note": "Ato referente a pessoa jurídica específica; nunca generalizar ou atribuir a outro CNPJ",
+      "review_status": "unreviewed",
+      "eligible_for_tax_calculation": false
+    },
+    {
+      "uf": "SE",
+      "candidate_id": "SE-PSDI-LEI3140-DEC29935-V1",
+      "source_url": "https://pge.se.gov.br/wp-content/uploads/2025/09/Ata-da-250a-Reuniao-Ordinaria-do-Conselho-Superior.pdf",
+      "source_kind": "official_opinion_adoption",
+      "verification_note": "Ata do Conselho Superior da PGE sobre 4063/2025; não é parecer externo NFCore",
+      "review_status": "unreviewed",
+      "eligible_for_tax_calculation": false
+    }
+  ]
+}
