@@ -44,6 +44,18 @@ _OPERATIONS = frozenset({
     "interstate_purchase", "import", "transport_service",
     "asset_acquisition",
 })
+# CFOP leading digit encodes direction/destination. This is a necessary
+# sanity check, not a complete semantic verification of the four-digit CFOP.
+# Transport can be incoming or outgoing; no safe inference from operation alone.
+_CFOP_PREFIXES_BY_OPERATION = {
+    "domestic_sale": "5",
+    "interstate_sale": "6",
+    "domestic_purchase": "1",
+    "interstate_purchase": "2",
+    "import": "3",
+    "asset_acquisition": "123",
+}
+
 _CNAE = re.compile(r"[0-9]{7}\Z")
 _NCM = re.compile(r"[0-9]{8}\Z")
 _CFOP = re.compile(r"[1-7][0-9]{3}\Z")
@@ -278,6 +290,9 @@ def assess_state_rule(
         return _result("not_applicable", ("operation_excluded",))
     if facts["operation_cfop"] not in rule["allowed_cfops"]:
         return _result("not_applicable", ("cfop_excluded",))
+    prefixes = _CFOP_PREFIXES_BY_OPERATION.get(facts["operation"])
+    if prefixes is not None and facts["operation_cfop"][0] not in prefixes:
+        return _result("insufficient_basis", ("cfop_operation_mismatch",))
     if rule["cnae_scope"] == "allowlist" and (
         facts["activity_cnae"] not in rule["allowed_cnaes"]
     ):

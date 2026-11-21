@@ -192,3 +192,62 @@ def test_confaz_route_without_normative_reference_is_rejected():
         decode_rule(policy(path="lc160_reinstituted") | {
             "confaz_normative_reference": None,
         })
+
+
+@pytest.mark.parametrize("operation,wrong_cfop", [
+    ("domestic_sale", "6102"),
+    ("interstate_sale", "5102"),
+    ("domestic_purchase", "2102"),
+    ("interstate_purchase", "1102"),
+    ("import", "1102"),
+    ("asset_acquisition", "5551"),
+])
+def test_cfop_direction_conflict_never_gives_potential(operation, wrong_cfop):
+    result = evaluate(
+        policy_changes={
+            "allowed_operations": [operation],
+            "allowed_cfops": [wrong_cfop],
+        },
+        fact_changes={"operation": operation, "operation_cfop": wrong_cfop},
+    )
+    assert result["status"] == "insufficient_basis"
+    assert result["reason_codes"] == ["cfop_operation_mismatch"]
+    assert result["eligibility_certified"] is False
+    assert result["approved_cents"] is None
+
+
+@pytest.mark.parametrize("operation,correct_cfop", [
+    ("domestic_sale", "5102"),
+    ("interstate_sale", "6102"),
+    ("domestic_purchase", "1102"),
+    ("interstate_purchase", "2102"),
+    ("import", "3101"),
+    ("asset_acquisition", "1551"),
+])
+def test_matching_cfop_prefix_only_allows_advisory_potential(
+    operation, correct_cfop,
+):
+    result = evaluate(
+        policy_changes={
+            "allowed_operations": [operation],
+            "allowed_cfops": [correct_cfop],
+        },
+        fact_changes={"operation": operation, "operation_cfop": correct_cfop},
+    )
+    assert result["status"] == "potential"
+    assert result["eligibility_certified"] is False
+    assert result["tax_calculation_authorized"] is False
+
+
+def test_transport_cfop_requires_document_specific_legal_review():
+    result = evaluate(
+        policy_changes={
+            "allowed_operations": ["transport_service"],
+            "allowed_cfops": ["1352"],
+            "required_evidence": ["transport-document-review"],
+        },
+        fact_changes={"operation": "transport_service", "operation_cfop": "1352"},
+    )
+    assert result["status"] == "insufficient_basis"
+    assert result["reason_codes"] == ["missing:transport-document-review"]
+
