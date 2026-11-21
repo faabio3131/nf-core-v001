@@ -1,13 +1,22 @@
 """T09 importer binds legal source SHA256 to locally read bytes before DB writes."""
 import hashlib
 import json
+from pathlib import Path
+from runpy import run_path
 
 import pytest
 
-from scripts.nfcore_state_benefits_import_reviewed import (
-    SOURCE_MANIFEST_SCHEMA,
-    verify_reviewed_source_bytes,
+# The project intentionally treats scripts as CLI entrypoints, not an importable
+# package. Load the actual checked-in script without changing package layout.
+_SCRIPT = run_path(
+    str(
+        Path(__file__).resolve().parents[2]
+        / "scripts"
+        / "nfcore_state_benefits_import_reviewed.py"
+    ),
 )
+SOURCE_MANIFEST_SCHEMA = _SCRIPT["SOURCE_MANIFEST_SCHEMA"]
+verify_reviewed_source_bytes = _SCRIPT["verify_reviewed_source_bytes"]
 
 URL = "https://legislacao.fazenda.sp.gov.br/Paginas/an3art041.aspx"
 
