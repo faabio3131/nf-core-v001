@@ -141,11 +141,22 @@ def import_reviewed_state_benefit(
     rule = decode_rule(benefit_content)
     if verified_source_bytes is None:
         raise FiscalValidationError("state legal source byte verifier is required")
-    expected_sources = len({
-        citation["source_url"]
-        for citation in benefit_content.get("legal_citations", [])
-    })
-    if verified_source_bytes(benefit_content) != expected_sources or expected_sources == 0:
+    citations = benefit_content.get("legal_citations")
+    if (
+        not isinstance(citations, list) or not 1 <= len(citations) <= 10
+        or not all(
+            isinstance(citation, dict)
+            and isinstance(citation.get("source_url"), str)
+            for citation in citations
+        )
+    ):
+        raise FiscalValidationError("invalid reviewed state source citations")
+    expected_sources = len({citation["source_url"] for citation in citations})
+    try:
+        verified_sources = verified_source_bytes(benefit_content)
+    except (OSError, ValueError, TypeError) as exc:
+        raise FiscalValidationError("state legal source verification failed") from exc
+    if type(verified_sources) is not int or verified_sources != expected_sources:
         raise FiscalValidationError("state legal source bytes are not all verified")
     snapshot = {
         "record_id": snapshot_id, "version": snapshot_version,

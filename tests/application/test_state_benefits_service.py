@@ -583,3 +583,21 @@ def test_501_distinct_current_candidates_produce_explicit_truncation():
     assert result["status"] == "review_required"
     assert len(result["results"]) == 500
     assert result["counts"]["potential"] == 0
+
+
+def test_service_rejects_fake_boolean_or_failed_source_byte_verification():
+    row = bundle()
+    with pytest.raises(FiscalValidationError, match="source bytes are not all verified"):
+        import_reviewed_state_benefit(
+            FakeStore(), **row, verify_issuer=verifier,
+            verified_source_bytes=lambda _: True,
+        )
+
+    def failed_source_read(_):
+        raise ValueError("private path details must not escape validation")
+
+    with pytest.raises(FiscalValidationError, match="source verification failed"):
+        import_reviewed_state_benefit(
+            FakeStore(), **row, verify_issuer=verifier,
+            verified_source_bytes=failed_source_read,
+        )
