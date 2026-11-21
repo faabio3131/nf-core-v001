@@ -22,7 +22,7 @@ URL = "https://legislacao.fazenda.sp.gov.br/Paginas/an3art041.aspx"
 
 
 def packet(tmp_path):
-    data = b"fake law for SOURCE-INTEGRITY UNIT TEST only"
+    data = b"<!doctype html><html>fake law for SOURCE-INTEGRITY UNIT TEST only</html>"
     source = tmp_path / "decreto.html"
     source.write_bytes(data)
     policy = {"legal_citations": [{
@@ -91,4 +91,23 @@ def test_missing_source_file_rejected(tmp_path):
     policy, manifest, source = packet(tmp_path)
     source.unlink()
     with pytest.raises(FileNotFoundError):
+        verify_reviewed_source_bytes(policy, manifest)
+
+
+
+def test_hash_matching_a_bogus_html_error_page_is_still_rejected(tmp_path):
+    policy, manifest, source = packet(tmp_path)
+    body = b"<html><body>Access Denied: CAPTCHA</body></html>"
+    source.write_bytes(body)
+    policy["legal_citations"][0]["source_sha256"] = hashlib.sha256(body).hexdigest()
+    with pytest.raises(ValueError, match="access/error"):
+        verify_reviewed_source_bytes(policy, manifest)
+
+
+def test_hash_matching_arbitrary_text_is_not_a_verified_legal_act(tmp_path):
+    policy, manifest, source = packet(tmp_path)
+    body = b"not a government HTML or PDF document"
+    source.write_bytes(body)
+    policy["legal_citations"][0]["source_sha256"] = hashlib.sha256(body).hexdigest()
+    with pytest.raises(ValueError, match="unsupported official source format"):
         verify_reviewed_source_bytes(policy, manifest)

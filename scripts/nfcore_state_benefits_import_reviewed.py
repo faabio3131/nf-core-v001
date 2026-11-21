@@ -102,6 +102,20 @@ def verify_reviewed_source_bytes(
                 digest_actual.update(chunk)
         if digest_actual.hexdigest() != expected[url]:
             raise ValueError("legal source bytes do not match cited SHA-256")
+        # Integrity alone is insufficient: a captured 403/captcha/error page
+        # must never be accepted as an official legal act.
+        with source.open("rb") as handle:
+            prefix = handle.read(8192).lstrip(b"\\xef\\xbb\\xbf \t\r\n")
+        lowered = prefix.lower()
+        is_pdf = prefix.startswith(b"%PDF-")
+        is_html = b"<html" in lowered[:2048] or b"<!doctype html" in lowered[:2048]
+        if not is_pdf and not is_html:
+            raise ValueError("unsupported official source format")
+        if is_html and any(marker in lowered for marker in (
+            b"captcha", b"access denied", b"bad gateway",
+            b"403 forbidden", b"502 bad gateway", b"service unavailable",
+        )):
+            raise ValueError("legal source is an HTML access/error page")
         supplied.add(url)
     if supplied != expected.keys():
         raise ValueError("reviewed legal source file coverage incomplete")
