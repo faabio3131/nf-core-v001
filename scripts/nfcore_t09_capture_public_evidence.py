@@ -29,6 +29,8 @@ ERROR_MARKERS = (
     "acesso negado", "mensagem de bloqueio",
     "bloqueia acessos provenientes", "the requested url was rejected",
     "website is under maintenance",
+    "doesn't work properly without javascript enabled",
+    "please enable it to continue",
 )
 
 
