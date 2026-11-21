@@ -17,7 +17,6 @@ from kordena_fiscal.tax.state_benefits import (
     ENGINE_VERSION,
     RULE_SCHEMA,
     ReviewedStateIssuer,
-    _next_month,
     assess_state_rule,
     decode_facts,
     decode_rule,

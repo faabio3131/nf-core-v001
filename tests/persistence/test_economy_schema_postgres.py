@@ -761,6 +761,7 @@ def _certify_t09_state(database):
         "legal_path": "state_statute", "state_normative_reference": norm,
         "state_official_source_url": url,
         "valid_from": "2026-01-01", "valid_until": "2027-01-01",
+        "legal_valid_until_inclusive": "2026-12-31",
         "allowed_regimes": ["lucro_real"],
         "cnae_scope": "allowlist", "allowed_cnaes": ["6201501"],
         "ncm_scope": "allowlist", "allowed_ncms": ["84713012"],

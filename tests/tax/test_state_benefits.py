@@ -17,6 +17,7 @@ from kordena_fiscal.tax.state_benefits import (
     assess_state_rule,
     decode_facts,
     decode_rule,
+    state_exclusive_after_legal_end,
     state_index,
 )
 
@@ -32,6 +33,7 @@ def policy(uf="SP", *, path="state_statute"):
         "state_normative_reference": "Decreto Estadual Sintetico 123/2026",
         "state_official_source_url": "https://www.gov.br/testes/sintetico/ato-estadual",
         "valid_from": "2026-01-01", "valid_until": "2027-01-01",
+        "legal_valid_until_inclusive": "2026-12-31",
         "allowed_regimes": ["lucro_real"],
         "cnae_scope": "allowlist", "allowed_cnaes": ["6201501"],
         "ncm_scope": "allowlist", "allowed_ncms": ["84713012"],
@@ -144,7 +146,10 @@ def test_cnae_ncm_cfop_operation_are_never_assumed(fact_changes, expect):
 
 def test_monthly_validity_and_regime_restrict_state_candidate():
     assert assess_state_rule(
-        decode_rule(policy() | {"valid_until": "2026-11-15"}),
+        decode_rule(policy() | {
+            "valid_until": "2026-11-16",
+            "legal_valid_until_inclusive": "2026-11-15",
+        }),
         decode_facts(facts()), issuer(), MONTH,
     )["status"] == "not_applicable"
     assert evaluate(policy_changes={"allowed_regimes": ["simples_nacional"]})[
@@ -251,3 +256,24 @@ def test_transport_cfop_requires_document_specific_legal_review():
     assert result["status"] == "insufficient_basis"
     assert result["reason_codes"] == ["missing:transport-document-review"]
 
+
+
+def test_end_of_legal_month_is_normalized_without_extending_rights():
+    assert state_exclusive_after_legal_end(date(2026, 11, 30)) == date(2026, 12, 1)
+    policy_nov = policy() | {
+        "valid_until": "2026-12-01",
+        "legal_valid_until_inclusive": "2026-11-30",
+    }
+    assert evaluate(policy_changes=policy_nov)["status"] == "potential"
+    with pytest.raises(FiscalValidationError, match="validity conflict"):
+        decode_rule(policy() | {
+            "valid_until": "2026-11-30",
+            "legal_valid_until_inclusive": "2026-11-30",
+        })
+
+
+def test_exclusive_validity_requires_original_legal_deadline():
+    with pytest.raises(FiscalValidationError, match="inclusive end"):
+        decode_rule(policy() | {"legal_valid_until_inclusive": None})
+    with pytest.raises(FiscalValidationError, match="validity conflict"):
+        decode_rule(policy() | {"legal_valid_until_inclusive": "2026-11-30"})

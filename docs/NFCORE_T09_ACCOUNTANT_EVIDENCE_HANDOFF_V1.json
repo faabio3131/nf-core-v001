@@ -950,5 +950,10 @@
     "RR",
     "TO"
   ],
-  "blocker_note": "AL consulta direta à fonte SEFAZ sujeita a indisponibilidade; RR RICMS PDF carregou texto, mas a inspeção de página por imagem falhou; TO Lei 1.385/2003 foi localizada em indexação oficial mas o conteúdo integral aberto retornou erro. Todos os 27 requerem consolidação, arquivos originais com SHA256 real, eventual concessão por contribuinte, casos reais e parecer do contador."
+  "blocker_note": "AL consulta direta à fonte SEFAZ sujeita a indisponibilidade; RR RICMS PDF carregou texto, mas a inspeção de página por imagem falhou; TO Lei 1.385/2003 foi localizada em indexação oficial mas o conteúdo integral aberto retornou erro. Todos os 27 requerem consolidação, arquivos originais com SHA256 real, eventual concessão por contribuinte, casos reais e parecer do contador.",
+  "initial_research_commit": "189deb39125c1c62b9614a546a21e9270cfbd028",
+  "audited_snapshot_commit": "30742c0b248796d2374ab35349a9bdd1fc630551",
+  "source_capture_status": "NOT_VERIFIED_FULL_PRIMARY_BYTES",
+  "normative_validation_status": "INTERNAL_CURATORIAL_REVIEW_IN_PROGRESS",
+  "accountant_opinion_classification": "EXTERNAL_DEPENDENCY"
 }

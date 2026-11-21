@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, timedelta
 from typing import Any
 
 from kordena_fiscal.domain import BrazilianJurisdiction, FiscalValidationError
@@ -167,6 +167,22 @@ def decode_rule(payload: object) -> dict[str, Any]:
         valid_until = date.fromisoformat(end) if end is not None else None
     except (TypeError, ValueError) as exc:
         raise FiscalValidationError("invalid reviewed state benefit validity") from exc
+    # A fiscal legal deadline is inclusive, while T09 stores an exclusive
+    # upper bound. Require both values to prevent accidental loss of a month.
+    legal_last_day = payload.get("legal_valid_until_inclusive")
+    if end is not None:
+        if not isinstance(legal_last_day, str):
+            raise FiscalValidationError("legal inclusive end must be declared")
+        try:
+            expected_end = state_exclusive_after_legal_end(
+                date.fromisoformat(legal_last_day),
+            )
+        except ValueError as exc:
+            raise FiscalValidationError("invalid state inclusive legal end") from exc
+        if valid_until != expected_end:
+            raise FiscalValidationError("state inclusive/exclusive validity conflict")
+    elif legal_last_day is not None:
+        raise FiscalValidationError("open state benefit must not have legal end date")
     if valid_until is not None and valid_until <= valid_from:
         raise FiscalValidationError("invalid state benefit validity interval")
     regime_raw = payload.get("allowed_regimes")
@@ -315,3 +331,13 @@ def assess_state_rule(
 
 def _next_month(month: date) -> date:
     return date(month.year + (month.month == 12), month.month % 12 + 1, 1)
+
+
+def state_exclusive_after_legal_end(inclusive_last_day: date) -> date:
+    """Normalize published legal end dates into T09's exclusive validity."""
+    if type(inclusive_last_day) is not date:
+        raise FiscalValidationError("state legal end must be a date")
+    try:
+        return inclusive_last_day + timedelta(days=1)
+    except OverflowError as exc:
+        raise FiscalValidationError("state legal end cannot exceed date bounds") from exc

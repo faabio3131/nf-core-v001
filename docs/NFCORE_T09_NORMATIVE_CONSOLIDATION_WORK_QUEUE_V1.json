@@ -638,5 +638,8 @@
       "legally_importable": false,
       "eligible_for_fiscal_application": false
     }
-  ]
+  ],
+  "initial_research_commit": "917cf3ac428b682c6d575aba3e8f18d4f316d4d5",
+  "audited_snapshot_commit": "30742c0b248796d2374ab35349a9bdd1fc630551",
+  "source_capture_status": "NOT_VERIFIED_FULL_PRIMARY_BYTES"
 }
