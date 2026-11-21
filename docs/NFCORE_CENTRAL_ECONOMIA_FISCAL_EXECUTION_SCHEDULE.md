@@ -12,7 +12,7 @@ A folha T23–T33, a Trilha 2 H01–H06 e a reformulação Enterprise não integ
 | T06 | Classificador de receitas segregáveis | CERTIFICADO INTERNAMENTE no escopo implementado — CI integral SUCCESS (44747030794, 3c59ffb8); integração/revisão pendentes |
 | T07 | Apuração/PGDAS segregada | EM CERTIFICAÇÃO PARCIAL — apuração consultiva 2026; limites e caixa pendentes |
 | T08 | Catálogo federal | EM CONSTRUÇÃO — 8 programas indexados; certificação e revisão normativa pendentes |
-| T09 | Catálogo estadual 27 UFs | EM CONSTRUÇÃO: 27 UFs indexadas; motor/API e PostgreSQL candidatos; atos estaduais homologados 0/27; CI pendente |
+| T09 | Catálogo estadual 27 UFs | ENGENHARIA DE TRIAGEM IMPLEMENTADA; 27 candidatas draft; consolidação normativa integral INTERNA designada a IA especialista (pendente); parecer contador EXTERNO pendente; homologação real 0/27 |
 | T10 | Benefícios municipais e radar unificado | Bloqueado |
 | T11 | Simulação Presumido/Real e IVA | Bloqueado |
 | T12 | Comparador multi-regime | Bloqueado |
@@ -341,3 +341,15 @@ segurança, CI integral e regressão T01–T08, revisão independente,
 normativa estado por estado e check-list do cronograma. T10 permanece
 BLOQUEADA até fechamento verdadeiro da T09. Nunca declarar T09
 "27 UFs homologadas" antes de obter o catálogo material com prova normativa.
+
+
+### T09 — decisão sobre IA jurídica especialista e dependência externa (21/11/2026)
+
+**DECISÃO APROVADA pelo proprietário:** curadoria normativa por benefício e competência é **EXECUÇÃO INTERNA da T09**, atribuída ao papel de agente `AI_LEGAL_TAX_RESEARCH_SPECIALIST` sob governança humana, com método e filas em
+`docs/NFCORE_T09_LEGAL_EXPERT_AI_WORKFLOW_V1.md` e
+`docs/NFCORE_T09_NORMATIVE_CONSOLIDATION_WORK_QUEUE_V1.json`.
+A criação do runbook **não significa que o agente foi implantado ou que as 27 verificações já foram executadas**. Nenhum registro documental deve ser promovido sem fontes originais e hashes reais, conciliação de versões/competências, atos individuais, provas negativas/positivas e revisão contraditória.
+
+**DEPENDÊNCIA EXTERNA:** parecer jurídico-fiscal assinado do **contador indicado pelo proprietário**, `EXTERNAL_DEPENDENCY/PENDING_NOT_RECEIVED`. Não classificar sua ausência como defeito de código ou trabalho de engenharia faltante; ao mesmo tempo **não ignorá-la** para aprovação de benefício real, homologação e operação comercial. A pesquisa técnica e testes podem continuar em paralelo sem o parecer, mas ativação fiscal não.
+
+**CURRENT nesta decisão:** PR #592 HEAD `917cf3ac428b682c6d575aba3e8f18d4f316d4d5` antes da atualização documental; candidato técnico com governança já aprovada e CI integral #44934576426 ainda em execução na última verificação; 27 pesquisas draft, 24/27 com trechos oficiais examinados e nenhum ato integralmente consolidado/assinado. `main` e `production` sem merge/deploy; T10 não liberada por esse registro de planejamento.

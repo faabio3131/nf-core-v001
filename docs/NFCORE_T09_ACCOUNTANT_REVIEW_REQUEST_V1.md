@@ -135,3 +135,12 @@ página normativa falhou) e TO (fonte legal indicada no índice, leitura
 integral retornou erro). Mesmo nas 24 com trechos examinados,
 **27/27 carecem de reconciliação integral temporal, evidência SHA256
 oficial, direitos individuais e parecer jurídico-fiscal assinado**.
+
+
+## Classificação formal de responsabilidade (decisão do proprietário em 21/11/2026)
+
+A **consolidação jurídica normativa** de cada ato, alteração, exceção e competência é trabalho **INTERNO executável por agente IA especialista em direito tributário**: ver
+`docs/NFCORE_T09_LEGAL_EXPERT_AI_WORKFLOW_V1.md` e fila de 27 recortes
+`docs/NFCORE_T09_NORMATIVE_CONSOLIDATION_WORK_QUEUE_V1.json`.
+
+O **parecer jurídico-fiscal independente** do contador é **DEPENDÊNCIA EXTERNA**. Ele **NÃO** é motivo para deixar paralisadas a pesquisa e a engenharia de curadoria, mas permanece **PENDENTE NÃO RECEBIDO** e é obrigatório para confirmar legalmente cada benefício antes de ativação/apuração/emissão. Documento e testes da IA não constituem parecer do contador.
