@@ -470,7 +470,7 @@
       "tax_code": "ICMS",
       "normative_reference": "Lei 20.787/2020, arts. 5, 13, 14 e 24",
       "legal_path_research": "unresolved_pending_confaz_and_reinstitution_review",
-      "state_official_source_url": "https://legisla.casacivil.go.gov.br/pesquisa_legislacao/103201",
+      "state_official_source_url": "https://appasp.economia.go.gov.br/legislacao/arquivos/Leis/L_20787.htm",
       "official_evidence_type": "official_statutory_text",
       "findings_verified_from_public_source": [
         "A Lei exige Termo de Enquadramento, recolhimentos regulares e não inscrição impeditiva em dívida ativa",
@@ -502,6 +502,7 @@
         "inspection_type": "official_statutory_text",
         "legal_provision": "Lei GO 20.787/2020, art.11 e §4º — ProGoiás",
         "sources": [
+          "https://appasp.economia.go.gov.br/legislacao/arquivos/Leis/L_20787.htm",
           "https://legisla.casacivil.go.gov.br/pesquisa_legislacao/103201",
           "https://goias.gov.br/industriaecomercio/lei-ordinaria-20-787-20-progoias/"
         ],
@@ -511,14 +512,16 @@
           "Inadimplência no período pode ocasionar perda do benefício apenas naquele período; há possibilidades específicas de regularização antes da ação fiscal.",
           "Inscrição em dívida ativa impede a utilização até o período anterior à regularização, ressalvadas hipóteses de exigibilidade suspensa ou penhora suficiente.",
           "Exigências de investimento e regras do Programa permanecem cumulativas; apurar parâmetros e alterações de 2026.",
-          "Casa Civil publica texto da Lei 20.787/2020 PROGOIÁS e relaciona alterações em 2026; arts. 4º e seguintes condicionam empreendimento e projeto."
+          "Casa Civil publica texto da Lei 20.787/2020 PROGOIÁS e relaciona alterações em 2026; arts. 4º e seguintes condicionam empreendimento e projeto.",
+          "SEFAZ/GO publica o texto primário da Lei 20.787/2020, com alterações históricas e remissão à LC 160/2017; portal anterior retornava somente shell JavaScript, sem norma legível."
         ],
         "red_flags": [
           "sem_termo_de_enquadramento",
           "icms_inadimplente",
           "divida_ativa_impeditiva",
           "investimento_nao_comprovado",
-          "alteracoes_2026_e_aprovacao_de_projeto_pendentes"
+          "alteracoes_2026_e_aprovacao_de_projeto_pendentes",
+          "state_consolidated_text_requires_article_specific_review"
         ],
         "fully_consolidated_current_to_20261121": false,
         "independent_accountant_opinion": false,
@@ -888,7 +891,7 @@
       "tax_code": "ICMS",
       "normative_reference": "Lei 11.675/1999, Decreto 21.959/1999, Portaria SF 239/2001",
       "legal_path_research": "unresolved_pending_confaz_and_reinstitution_review",
-      "state_official_source_url": "https://www.sefaz.pe.gov.br/Legislacao/Tributaria/Consolidada-Por-Assunto/Paginas/PRODEPE.aspx",
+      "state_official_source_url": "https://www.sefaz.pe.gov.br/Legislacao/Tributaria/Documents/legislacao/decretos/1999/Dec21959_99.htm",
       "official_evidence_type": "official_consolidated_program_index",
       "findings_verified_from_public_source": [
         "SEFAZ/PE reúne a legislação do PRODEPE por assunto e regras de escrituração",
@@ -918,18 +921,21 @@
         "inspection_type": "official_amended_regulation",
         "legal_provision": "Decreto PE 21.959/1999 (PRODEPE) — alterações até Decreto 61.000/2026 indicadas pela SEFAZ",
         "sources": [
-          "https://www.sefaz.pe.gov.br/Legislacao/Tributaria/Documents/legislacao/decretos/1999/Dec21959_99.htm"
+          "https://www.sefaz.pe.gov.br/Legislacao/Tributaria/Documents/legislacao/decretos/1999/Dec21959_99.htm",
+          "https://www.sefaz.pe.gov.br/Legislacao/Tributaria/Consolidada-Por-Assunto/Paginas/PRODEPE.aspx"
         ],
         "primary_findings": [
           "O Decreto 21.959/1999 regulamenta o Programa de Desenvolvimento do Estado de Pernambuco (PRODEPE) para indústria e comércio atacadista.",
           "A versão publicada na SEFAZ lista o Decreto 61.000/2026 como ato alterador; não usar versão consolidada anterior sem revisão.",
-          "O regulamento geral não substitui ato de concessão individual do programa e condições do produto, CACEPE e competência."
+          "O regulamento geral não substitui ato de concessão individual do programa e condições do produto, CACEPE e competência.",
+          "SEFAZ/PE disponibiliza texto oficial do Decreto 21.959/1999 que regulamenta o PRODEPE, com notas de alterações e requisitos de concessão individual; índice anterior não era norma primária."
         ],
         "red_flags": [
           "ato_concessivo_ausente",
           "vigencia_2026_nao_conciliada",
           "produto_nao_habilitado",
-          "obrigacoes_fiscais_pendentes"
+          "obrigacoes_fiscais_pendentes",
+          "prodepe_issuer_concession_and_temporal_amendments"
         ],
         "fully_consolidated_current_to_20261121": false,
         "independent_accountant_opinion": false,
@@ -1202,7 +1208,7 @@
       "tax_code": "ICMS",
       "normative_reference": "Lei 1.558/2005, Decreto 12.988/2007 e Decreto 28.386/2023",
       "legal_path_research": "unresolved_pending_confaz_and_reinstitution_review",
-      "state_official_source_url": "https://www.sefin.ro.gov.br/lista.jsp?formato=166&page=9&tipo=lei",
+      "state_official_source_url": "https://sapl.al.ro.leg.br/media/sapl/public/normajuridica/2005/3535/3535_texto_integral.pdf",
       "official_evidence_type": "official_state_legislation_index",
       "findings_verified_from_public_source": [
         "SEFIN/RO identifica regime de incentivo industrial por crédito presumido sob concessão do CONDER",
@@ -1233,6 +1239,8 @@
         "inspection_type": "official_2025_amendment_to_industrial_incentive_decree",
         "legal_provision": "Decreto RO 30.916/2025 — alterações ao 12.988/2007, arts.8 e 13, §2",
         "sources": [
+          "https://sapl.al.ro.leg.br/media/sapl/public/normajuridica/2005/3535/3535_texto_integral.pdf",
+          "https://www.sefin.ro.gov.br/lista.jsp?formato=166&page=9&tipo=lei",
           "https://sapl.al.ro.leg.br/norma/3535",
           "https://www.sefin.ro.gov.br/portalsefin/anexos/D25-30916---Altera%2C-acresce-e-revoga-dispositivos-do-Regulamento-de-Incentivo-Tributario-aprovado-pelo-D07_-12.988.pdf"
         ],
@@ -1241,14 +1249,16 @@
           "Alteração do art.13 §2 impõe manifestação expressa da GITEC/CRE/SEFIN e CONSIC antes de o CONDER rever o enquadramento para faixas superiores, condicionada a geração de empregos.",
           "Art.8 trata de atividades excluídas, cuja lista integral e alterações devem ser verificados no Decreto consolidado.",
           "Texto publicado pela SEFIN declara que não substitui Diário Oficial e, sozinho, não prova vigência ou concessão individual.",
-          "SAPL ALE/RO identifica Lei 1.558/2005 e registra 'Data Fim Vigência' de 17/12/2018, mesma data de norma 4.435/2018 que altera a lei. É preciso conciliar a aparente divergência do registro antes de qualquer alegação de vigência de benefício em 2026."
+          "SAPL ALE/RO identifica Lei 1.558/2005 e registra 'Data Fim Vigência' de 17/12/2018, mesma data de norma 4.435/2018 que altera a lei. É preciso conciliar a aparente divergência do registro antes de qualquer alegação de vigência de benefício em 2026.",
+          "ALE/RO disponibiliza PDF de três páginas da Lei 1.558/2005, texto original; registro legislativo indica fim de vigência 17/12/2018 e histórico de alterações que impedem afirmar vigência de 2026."
         ],
         "red_flags": [
           "sem_conder",
           "sem_manifestacao_tecnica",
           "geracao_emprego_nao_comprovada",
           "atividade_excluida",
-          "data_fim_vigencia_sapl_2018_vs_lei_alteradora"
+          "data_fim_vigencia_sapl_2018_vs_lei_alteradora",
+          "original_law_may_be_expired_do_not_apply_2026"
         ],
         "fully_consolidated_current_to_20261121": false,
         "independent_accountant_opinion": false,
@@ -1264,7 +1274,7 @@
       "tax_code": "ICMS",
       "normative_reference": "Decreto 4.335-E/2001, Anexo I art. 1º inciso LXVII",
       "legal_path_research": "unresolved_pending_confaz_and_reinstitution_review",
-      "state_official_source_url": "https://www.sefaz.rr.gov.br/downloads/legislacao?dir=02+-+LEGISLACAO+ESTADUAL",
+      "state_official_source_url": "https://www.sefaz.rr.gov.br/cidadao/downloads?catid=494&id=25462&m=0&task=download.send",
       "official_evidence_type": "official_regulation_repository",
       "findings_verified_from_public_source": [
         "Repositório SEFAZ/RR disponibiliza Anexo I; consulta oficial menciona inciso LXVII de insumos agropecuários"
@@ -1291,16 +1301,19 @@
         "inspection_type": "official_index_only_primary_source_not_captured",
         "legal_provision": "Decreto 4.335-E/2001, Anexo I art. 1º inciso LXVII (insumos agropecuários)",
         "sources": [
+          "https://www.sefaz.rr.gov.br/cidadao/downloads?catid=494&id=25462&m=0&task=download.send",
           "https://www.sefaz.rr.gov.br/downloads/legislacao?dir=02+-+LEGISLACAO+ESTADUAL"
         ],
         "primary_findings": [
           "SEFAZ/RR publica biblioteca de RICMS e Anexo I em downloads, mas o documento final do inciso LXVII não foi capturado em bytes verificáveis neste ambiente.",
-          "O arquivo de Regulamento encontrado por busca retornou falha no acesso direto à imagem/original; extratos indexados não permitem atribuir vigência ou elegibilidade."
+          "O arquivo de Regulamento encontrado por busca retornou falha no acesso direto à imagem/original; extratos indexados não permitem atribuir vigência ou elegibilidade.",
+          "SEFAZ/RR oferece PDF governamental do Decreto 4.335-E/2001 (RICMS) consolidado até Decreto 39.825-E de 13/01/2026; recorte do Anexo I e alterações pós-janeiro ainda exigem revisão."
         ],
         "red_flags": [
           "official_pdf_download_not_captured",
           "conv_100_1997_incorporation_not_confirmed",
-          "2026_eligibility_unconsolidated"
+          "2026_eligibility_unconsolidated",
+          "partial_temporal_consolidation_to_2026_01_13"
         ],
         "fully_consolidated_current_to_20261121": false,
         "independent_accountant_opinion": false,
@@ -1383,7 +1396,7 @@
       "tax_code": "ICMS",
       "normative_reference": "Lei 13.992/2007, Decreto 105/2007 e Resolução de Enquadramento",
       "legal_path_research": "unresolved_pending_confaz_and_reinstitution_review",
-      "state_official_source_url": "https://www.sef.sc.gov.br/saiba-mais/programa-pro-emprego",
+      "state_official_source_url": "https://legislacao.sef.sc.gov.br/html/leis/2007/lei_07_13992.htm",
       "official_evidence_type": "official_tax_authority_procedure",
       "findings_verified_from_public_source": [
         "SEF/SC informa que enquadramento exige TTD, parecer do grupo gestor e decisão expressa por resolução",
@@ -1420,13 +1433,15 @@
           "Enquadramento exige pedido pelo módulo TTD e resolução expedida pelo Secretário de Fazenda após parecer de Grupo Gestor.",
           "O serviço menciona inadimplência e falta de EFD/Sintegra como impedimentos, e a resolução define tratamento e duração.",
           "Cumulação de tratamentos na mesma operação depende de regra específica.",
-          "SEF/SC mantém a Lei 13.992/2007 em página identificada como 'Redação Passada'; não usar como redação vigente sem reconstrução de todos os atos e termos individuais."
+          "SEF/SC mantém a Lei 13.992/2007 em página identificada como 'Redação Passada'; não usar como redação vigente sem reconstrução de todos os atos e termos individuais.",
+          "SEF/SC publica Lei 13.992/2007 Pró-Emprego em acervo marcado REDAÇÃO PASSADA; conservar como texto histórico e não como norma vigente sem reconciliação da Lei 17.763/2019 e atos posteriores."
         ],
         "red_flags": [
           "ttd_sem_resolucao",
           "efds_omissas",
           "empresa_inadimplente",
-          "pagina_redacao_passada_nao_vigente"
+          "pagina_redacao_passada_nao_vigente",
+          "historical_law_not_current_without_consolidation"
         ],
         "fully_consolidated_current_to_20261121": false,
         "independent_accountant_opinion": false,
