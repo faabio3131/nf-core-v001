@@ -11,13 +11,12 @@ import concurrent.futures
 import hashlib
 import html
 import json
-import re
 import unicodedata
 import urllib.error
 import urllib.parse
 import urllib.request
 import zipfile
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -131,7 +130,7 @@ def capture_one(row: dict[str, Any], out: Path, timeout: int) -> dict[str, Any]:
                 "source_sha256": digest,
                 "size_bytes": len(data),
                 "relative_path": f"sources/{filename}",
-                "captured_at_utc": datetime.now(timezone.utc).isoformat(),
+                "captured_at_utc": datetime.now(UTC).isoformat(),
             })
     except (ValueError, OSError, urllib.error.URLError, TimeoutError) as exc:
         evidence["error"] = str(exc)[:250]
@@ -168,7 +167,7 @@ def main() -> None:
     manifest = {
         "schema_version": "nfcore.t09.public-source-capture/v1",
         "purpose": "Technical byte preservation only: no fiscal or legal approval",
-        "captured_at_utc": datetime.now(timezone.utc).isoformat(),
+        "captured_at_utc": datetime.now(UTC).isoformat(),
         "catalog_schema": catalog.get("schema_version"),
         "complete_state_benefit_coverage": False,
         "import_authorized": False,
