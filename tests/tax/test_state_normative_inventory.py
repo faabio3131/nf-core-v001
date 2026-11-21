@@ -44,7 +44,7 @@ def test_researched_candidates_are_versioned_and_fail_closed():
         assert item["review_status"] == "draft"
         assert item["mandatory_missing"]
         assert item["state_official_source_url"].startswith("https://")
-        with pytest.raises(FiscalValidationError):
+        with pytest.raises(FiscalValidationError, match="not human reviewed"):
             decode_rule(item)
 
 
