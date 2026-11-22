@@ -68,3 +68,16 @@ def test_prevent_three_known_false_legal_positives():
     assert "mês subsequente" in rows["RS"]["negative_eligibility_scenario"]
     assert "Decreto 6.434/2017" in rows["PR"]["negative_eligibility_scenario"]
     assert "revo" in rows["RO"]["negative_eligibility_scenario"].lower()
+
+
+
+def test_para_adi_3779_blocks_normative_approval_without_court_reconciliation():
+    row = next(x for x in curated()["candidates"] if x["uf"] == "PA")
+    judicial = row["constitutional_review_20261121"]
+    assert judicial["status"] == "UNRESOLVED_STF_ADI_3779"
+    assert "numProcesso=3779" in judicial["primary_court_source_url"]
+    assert judicial["authorization_for_eligibility"] is False
+    assert "ADI 3779" in row["legal_temporal_notes"]
+    assert row["review_status"] == "draft"
+    assert row["source_sha256"] is None
+    assert row["import_authorized"] is False

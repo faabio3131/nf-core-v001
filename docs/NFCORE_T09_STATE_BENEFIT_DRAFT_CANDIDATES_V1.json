@@ -798,13 +798,14 @@
         "Exige resolução concedente por estabelecimento, projeto, prazo, obrigações e DEI quando cabível"
       ],
       "negative_eligibility_scenario": "Resolução de empresa terceira e decreto-base não conferem crédito a outro CNPJ",
-      "legal_temporal_notes": "Indicador jurídico para triagem; texto consolidado e alterações até a competência de 2026 não foram integralmente auditados neste pacote.",
+      "legal_temporal_notes": "Indicador jurídico para triagem; texto consolidado e alterações até a competência de 2026 não foram integralmente auditados neste pacote. ALERTA CONSTITUCIONAL: STF na ADI 3779 declarou inconstitucional a Lei 6.913/2006 (julgamento agosto/2019); efeitos temporais e eventual base superveniente/reinstituída exigem revisão específica antes de qualquer elegibilidade.",
       "mandatory_missing": [
         "conferir texto primário integral, dispositivo concessivo, redações, revogações e efeitos para cada competência",
         "verificar CONFAZ/LC160, lei estadual e ato individual quando aplicáveis",
         "determinar operações elegíveis, contribuintes, NCM/CNAE/CFOP, ST/DIFAL, escrituração e condições de manutenção",
         "capturar bytes originais da publicação oficial e calcular SHA256 real",
-        "obter teste positivo/negativo jurídico específico e aprovação independente do contador"
+        "obter teste positivo/negativo jurídico específico e aprovação independente do contador",
+        "reconciliar efeitos e trânsito da ADI 3779/STF sobre Lei 6.913/2006, embargos, reinstituição e legislação superveniente por competência"
       ],
       "schema_version": "nfcore.state-icms-benefit-rule/v1",
       "source_sha256": null,
@@ -835,6 +836,15 @@
         "fully_consolidated_current_to_20261121": false,
         "independent_accountant_opinion": false,
         "publisher_bytes_sha256": null
+      },
+      "constitutional_review_20261121": {
+        "status": "UNRESOLVED_STF_ADI_3779",
+        "classification": "binding_constitutional_decision_requires_full_temporal_reconciliation",
+        "primary_court_source_url": "https://portal.stf.jus.br/peticaoInicial/verPeticaoInicial.asp?base=ADI&numProcesso=3779",
+        "judgment_session": "2019-08-23/2019-08-29",
+        "verified_dispositive_summary": "STF decidiu pela inconstitucionalidade das Leis do PA 6.912/2006, 6.913/2006, 6.914/2006 e 6.915/2006. Ministro Barroso vencido quanto à modulação.",
+        "remaining_review": "Verificar acórdão, embargos/trânsito, eficácia temporal, eventuais regimes estaduais supervenientes e via específica de reinstituição LC 160/2017/Convênio 190/2017; não presumir manutenção do incentivo em 2026.",
+        "authorization_for_eligibility": false
       }
     },
     {

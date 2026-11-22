@@ -37,3 +37,7 @@
 EXT-01 parecer jurídico-contábil assinado; EXT-02 concessões e adesões reais; EXT-03 certificados/credenciais; EXT-04 testes fiscais com clientes; EXT-05 publicações futuras de autoridade estadual. Cada uma bloqueia **somente** a operação real dependente, nunca a compilação, a curadoria documental ou os testes internos.
 
 **T10, merge, deploy e utilização fiscal real permanecem sem autorização nesta rodada.**
+
+## Novo achado crítico PA: ADI 3779 / STF
+
+O dispositivo da Lei 6.913/2006 **não pode ser promovido** sem resolver o acórdão STF ADI 3779 (julgamento de agosto de 2019), incluindo seus efeitos, eventual reinstituição/LC 160 e normas supervenientes. Dossiê individual: `NFCORE_T09_PA_ADI3779_JUDICIAL_RISK_20261121.md`. Este é um risco **interno de pesquisa**, não falta de parecer externo.
