@@ -41,6 +41,7 @@ def policy(uf="SP", *, path="state_statute"):
         "ncm_scope": "allowlist", "allowed_ncms": ["84713012"],
         "allowed_cfops": ["5102"], "allowed_operations": ["domestic_sale"],
         "required_evidence": [],
+        "individual_concession_required": True,
         "confaz_normative_reference": (
             "Convênio ICMS 190/2017" if path != "state_statute" else None
         ),
@@ -57,6 +58,13 @@ def facts(uf="SP", *, path="state_statute"):
         "operation": "domestic_sale", "evidence": {
             key: "reviewed-synthetic-" + key
             for key in (*_COMMON_EVIDENCE, *_ROUTE_EVIDENCE[path])
+        },
+        "individual_concession": {
+            "status": "active", "competence": MONTH.isoformat(),
+            "review_reference": "synthetic-review-T09",
+            "document_reference": "synthetic-individual-grant",
+            "issuer_cnpj": CNPJ, "uf": uf,
+            "valid_from": "2026-01-01", "valid_until": "2027-01-01",
         },
     }
 
@@ -604,3 +612,26 @@ def test_service_rejects_fake_boolean_or_failed_source_byte_verification():
             FakeStore(), **row, verify_issuer=verifier,
             verified_source_bytes=failed_source_read,
         )
+
+
+@pytest.mark.parametrize("changes", [
+    {"status": "revoked"}, {"status": "expired"},
+    {"issuer_cnpj": "99999999000199"}, {"valid_until": "2026-11-15"},
+])
+def test_signed_individual_concession_changes_do_not_elevate_case(changes):
+    row = bundle()
+    claim = row["content"]["individual_concession"]
+    row["content"]["individual_concession"] = {**claim, **changes}
+    # The signed receipt is now stale and must be rejected, even when the
+    # replacement value is a syntactically valid date or a different CNPJ.
+    with pytest.raises(FiscalValidationError, match="approval claims mismatch"):
+        _import_test(FakeStore(), **row, verify_issuer=verifier)
+
+
+def test_signed_revoked_concession_stays_insufficient_even_with_valid_receipt():
+    row = bundle()
+    row["content"]["individual_concession"]["status"] = "revoked"
+    _sign_review(row["benefit_content"], row["content"])
+    result = _import_test(FakeStore(), **row, verify_issuer=verifier)
+    assert result["status"] == "insufficient_basis"
+    assert result["reason_codes"] == ["individual_concession_revoked"]

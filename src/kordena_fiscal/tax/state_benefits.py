@@ -222,6 +222,8 @@ def decode_rule(payload: object) -> dict[str, Any]:
         or len(set(operations)) != len(operations)
     ):
         raise FiscalValidationError("state benefit must restrict operations")
+    if type(payload.get("individual_concession_required")) is not bool:
+        raise FiscalValidationError("state concession requirement must be reviewed")
     evidence = payload.get("required_evidence")
     if (
         not isinstance(evidence, list) or len(evidence) > 32
@@ -273,6 +275,7 @@ def decode_facts(payload: object) -> dict[str, Any]:
         "uf": uf, "activity_cnae": cnae, "operation_ncm": ncm,
         "operation_cfop": cfop, "operation": operation,
         "evidence": _evidence(payload.get("evidence")),
+        "individual_concession": payload.get("individual_concession"),
         "review_reference": ref,
     }
 
@@ -332,7 +335,53 @@ def assess_state_rule(
     missing = sorted({k for k in mandatory if k not in facts["evidence"]})
     if missing:
         return _result("insufficient_basis", tuple(f"missing:{key}" for key in missing))
+    concession_gate = _assess_individual_concession(rule, facts, issuer, competence)
+    if concession_gate is not None:
+        return concession_gate
     return _result("potential", ("state_tax_expert_approval_required",))
+
+
+def _assess_individual_concession(
+    rule: dict[str, Any], facts: dict[str, Any],
+    issuer: ReviewedStateIssuer, competence: date,
+) -> dict[str, Any] | None:
+    """Fail closed on individual grants, including monthly freshness and revocation.
+
+    Facts are part of the signed review receipt. This is a deterministic check,
+    not an online state-authority query or evidence of an actual concession.
+    """
+    grant = facts.get("individual_concession")
+    if not isinstance(grant, dict):
+        return _result("insufficient_basis", ("individual_concession_missing",))
+    status = grant.get("status")
+    if status in ("revoked", "expired", "suspended", "denied"):
+        return _result("insufficient_basis", (f"individual_concession_{status}",))
+    if (
+        grant.get("competence") != competence.isoformat()
+        or grant.get("review_reference") != rule["review_reference"]
+    ):
+        return _result("insufficient_basis", ("individual_concession_review_mismatch",))
+    doc = grant.get("document_reference")
+    if not isinstance(doc, str) or _REF.fullmatch(doc) is None:
+        return _result("insufficient_basis", ("individual_concession_document_missing",))
+    if status == "not_required":
+        if rule["individual_concession_required"]:
+            return _result("insufficient_basis", ("individual_concession_required",))
+        return None
+    if status != "active":
+        return _result("insufficient_basis", ("individual_concession_unverified",))
+    if not rule["individual_concession_required"]:
+        return _result("insufficient_basis", ("individual_concession_rule_conflict",))
+    if grant.get("issuer_cnpj") != issuer.cnpj or grant.get("uf") != issuer.uf:
+        return _result("insufficient_basis", ("individual_concession_taxpayer_mismatch",))
+    try:
+        valid_from = date.fromisoformat(grant["valid_from"])
+        valid_until = date.fromisoformat(grant["valid_until"])
+    except (KeyError, TypeError, ValueError):
+        return _result("insufficient_basis", ("individual_concession_dates_unverified",))
+    if valid_from > competence or valid_until < _next_month(competence):
+        return _result("insufficient_basis", ("individual_concession_not_valid_entire_month",))
+    return None
 
 
 def _next_month(month: date) -> date:

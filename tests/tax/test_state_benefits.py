@@ -39,6 +39,7 @@ def policy(uf="SP", *, path="state_statute"):
         "ncm_scope": "allowlist", "allowed_ncms": ["84713012"],
         "allowed_cfops": ["5102"], "allowed_operations": ["domestic_sale"],
         "required_evidence": [],
+        "individual_concession_required": True,
         "confaz_normative_reference": (
             "Convênio ICMS 190/2017" if path != "state_statute" else None
         ),
@@ -55,6 +56,13 @@ def facts(uf="SP", *, path="state_statute"):
         "operation": "domestic_sale", "evidence": {
             key: "reviewed-synthetic-" + key
             for key in (*_COMMON_EVIDENCE, *_ROUTE_EVIDENCE[path])
+        },
+        "individual_concession": {
+            "status": "active", "competence": MONTH.isoformat(),
+            "review_reference": "synthetic-review-T09",
+            "document_reference": "synthetic-individual-grant",
+            "issuer_cnpj": "12345678000195", "uf": uf,
+            "valid_from": "2026-01-01", "valid_until": "2027-01-01",
         },
     }
 
@@ -293,3 +301,55 @@ def test_state_specific_tax_treatment_is_never_assumed(missing):
     assert result["reason_codes"] == [f"missing:{missing}"]
     assert result["eligibility_certified"] is False
     assert result["tax_calculation_authorized"] is False
+
+
+@pytest.mark.parametrize("status", ["revoked", "expired", "suspended", "denied"])
+def test_individual_grant_negative_status_blocks_potential(status):
+    claim = {**facts()["individual_concession"], "status": status}
+    result = evaluate(fact_changes={"individual_concession": claim})
+    assert result["status"] == "insufficient_basis"
+    assert result["reason_codes"] == [f"individual_concession_{status}"]
+
+
+@pytest.mark.parametrize("change,reason", [
+    (None, "individual_concession_missing"),
+    ({"status": "pending"}, "individual_concession_unverified"),
+    ({"issuer_cnpj": "99999999000199"}, "individual_concession_taxpayer_mismatch"),
+    ({"uf": "RJ"}, "individual_concession_taxpayer_mismatch"),
+    ({"competence": "2026-10-01"}, "individual_concession_review_mismatch"),
+    ({"review_reference": "outdated-review"}, "individual_concession_review_mismatch"),
+    ({"document_reference": ""}, "individual_concession_document_missing"),
+    ({"valid_from": "2026-11-15"}, "individual_concession_not_valid_entire_month"),
+    ({"valid_until": "2026-11-15"}, "individual_concession_not_valid_entire_month"),
+    ({"valid_until": None}, "individual_concession_dates_unverified"),
+])
+def test_individual_grant_missing_stale_or_mismatched_blocks_potential(change, reason):
+    original = facts()["individual_concession"]
+    claim = None if change is None else {**original, **change}
+    result = evaluate(fact_changes={"individual_concession": claim})
+    assert result["status"] == "insufficient_basis"
+    assert result["reason_codes"] == [reason]
+
+
+def test_grant_not_required_needs_explicit_signed_normative_decision():
+    f = facts()
+    f["individual_concession"] = {
+        "status": "not_required", "competence": MONTH.isoformat(),
+        "review_reference": "synthetic-review-T09",
+        "document_reference": "synthetic-waiver-review",
+    }
+    assert assess_state_rule(
+        decode_rule(policy() | {"individual_concession_required": False}),
+        decode_facts(f), issuer(), MONTH,
+    )["status"] == "potential"
+    assert assess_state_rule(
+        decode_rule(policy()),
+        decode_facts(f), issuer(), MONTH,
+    )["reason_codes"] == ["individual_concession_required"]
+
+
+def test_legacy_unreviewed_grant_requirement_is_rejected():
+    p = policy()
+    p.pop("individual_concession_required")
+    with pytest.raises(FiscalValidationError, match="concession requirement"):
+        decode_rule(p)
