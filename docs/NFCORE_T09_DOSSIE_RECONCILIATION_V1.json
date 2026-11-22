@@ -1347,7 +1347,7 @@
       ],
       "conditional_positive": "Concessão CONDER e atividade não excluída, faixa juridicamente suportada.",
       "negative": "Critério revogado ou faixa superior sem manifestações exigidas.",
-      "remaining_temporal_and_route_review": "Decretos 28.386/2023 e 30.916/2025; atos CONFAZ e vigência",
+      "remaining_temporal_and_route_review": "Compilações oficiais Lei 1.558/2005 até LC 1.283/2025 e Decreto 12.988/2007 até 30.916/2025. Pesquisar 2026, alterações temporais, reinstituição 23.438/2018/Convênio190, resolução CONDER e requisitos específicos.",
       "required_review_evidence": "ro_conder_current_class",
       "evidence_status": "PARTIAL_RESEARCH_NOT_ACCEPTED",
       "positive_expected": "potential_only_if_all_reviewed",
@@ -1365,6 +1365,21 @@
         ],
         "manifest": "docs/NFCORE_T09_RECEBIMENTO_FINAL_50_DOCUMENTOS_20261122.json",
         "not_a_legal_approval": true
+      },
+      "official_compiled_text_chain_20261122": {
+        "law": "Lei 1.558/2005 atualizada até LC 1.283/2025",
+        "official_law_pdf": "https://ditel.casacivil.ro.gov.br/COTEL/Livros/Files/L1558%20-%20COMPILADA.pdf",
+        "regulation": "Decreto 12.988/2007 compilado até Decreto 30.916/2025",
+        "official_regulation_pdf": "https://www.sefin.ro.gov.br/portalsefin/anexos/D07-12988-REGULAMENTO-L1558-Consol.ate-Dec.-30916_25.pdf",
+        "reinstitution_reference": "Decreto 23.438/2018 e Convênio ICMS 190/2017 citados na capa do regulamento",
+        "findings": "Compilações governamentais com alterações em 2025 contradizem inferência de revogação total em 2018. Regulamento arts.8-9 contém exclusões; art.11 prevê percentual por resolução CONDER.",
+        "dec30916_art8_effective_from": "2025-12-02",
+        "grant_condition": "Projeto e deliberação CONDER individual; não usar percentual de redação original como universal",
+        "source_bytes_sha256": null,
+        "original_doe_chain_archived": false,
+        "full_2026_legality_consolidated": false,
+        "independent_review": false,
+        "approved": false
       }
     },
     {
@@ -1407,6 +1422,14 @@
         "formal_status": "RESEARCH_ONLY_FAIL_CLOSED",
         "state_authority_and_federal_convention_not_interchangeable": true,
         "full_temporal_chain_verified": false
+      },
+      "official_2026_compilation_locator": {
+        "official_url": "https://www.sefaz.rr.gov.br/component/jdownloads/?Itemid=402&catid=494&id=26478&m=0&task=download.send",
+        "normative_description": "Decreto 4.335-E/2001, consolidação informa Decreto 39.893-E de fevereiro/2026",
+        "limitation": "Redação do Anexo I art.1º LXVII e prorrogação específica estadual em 2026 não confirmadas pelo documento consultado",
+        "source_sha256": null,
+        "extension_2026_verified": false,
+        "approved": false
       }
     },
     {
