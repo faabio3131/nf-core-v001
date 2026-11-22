@@ -26,6 +26,6 @@ Este checkpoint é pesquisa jurídica assistida, **não liberação de benefíci
 
 ## PA — decisão constitucional com bloqueio jurídico
 - STF ADI 3779 https://portal.stf.jus.br/peticaoInicial/verPeticaoInicial.asp?base=ADI&numProcesso=3779
-- Leis 6.912 a 6.915/2006, entre elas 6.913/2006, declaradas inconstitucionais em julgamento de 2019; efeitos, acórdão íntegro, eventual modulação/embargos, reinstituição e atos específicos ainda não reconciliados. Manter bloqueio.
+- Leis 6.912 a 6.915/2006, entre elas 6.913/2006, declaradas inconstitucionais em julgamento de 2019; em 2019 a divergência de Barroso para modular efeitos foi vencida; permanecem pendentes eventual decisão posterior sobre os efeitos, reinstituição específica, depósito e atos particulares. Manter bloqueio.
 
 **DoD:** Os cinco pontos estão ancorados em publicações/consultas governamentais, mas ainda são PARCIAIS; **0/27 aceites**, **0/27 importações**, revisão adversarial independente e aprovação humana não realizadas. Não criar autoridade fiscal paralela.
