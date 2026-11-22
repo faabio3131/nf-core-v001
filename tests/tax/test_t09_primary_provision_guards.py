@@ -292,7 +292,7 @@ def test_sp_art41_new_2023_rate_cannot_backdate_january_month():
 def test_rr_federal_extension_is_not_automatic_state_2026_authorization():
     case = _temporal_case("RR")
     assert not case["state_extension_2026_found"]
-    outcome = _evaluate("RR", date(2026, 1, 1),
+    outcome = _evaluate("RR", date(2026, 1, 1), start="2025-01-01",
                         legal_last_day=case["state_end_inclusive_last_text"])
     assert outcome["status"] == "not_applicable"
     assert outcome["reason_codes"] == ["state_rule_not_effective_entire_month"]
