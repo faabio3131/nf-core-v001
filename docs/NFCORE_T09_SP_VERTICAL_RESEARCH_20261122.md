@@ -62,3 +62,16 @@ O módulo `tests/tax/test_t09_sp_textile_vertical.py` executa hipóteses de fáb
 - [Decreto estadual 64.118/2019](https://legislacao.fazenda.sp.gov.br/Paginas/dec64118.aspx): **reinstitui os benefícios relacionados no anexo do 63.320/2018** sob LC160/17 e Convênio 190/17; mantém condições e limites de atos concessivos; admite revogação ou redução futura.
 
 **GATE LC160/CONFAZ:** o vínculo histórico específico dos arts. 41/52 foi identificado oficialmente, mas a cadeia completa de modificações 2018-2026 e atos/certificados posteriores, além da auditabilidade de originais do DOE, ainda são pendências. Portanto `confaz_legal_route_verified` permanece `false`; nenhuma aprovação prematura.
+
+
+## Gate legal SP — necessidade de outorga individual: CONFERIDO nos dispositivos oficiais
+
+**Classificação interna:** o requisito normativo de concessão individual foi revisado por cenário e está **verificado** (`individual_concession_normative_requirement_verified=true`), sem prometer direito ou outorga real.
+
+- [CAT-35/2017, art. 2º](https://legislacao.fazenda.sp.gov.br/Paginas/pcat352017.aspx): crédito outorgado é **opcional**, exige termo RUDFTO por todos os estabelecimentos no Estado, com efeitos no primeiro dia do mês subsequente por período mínimo de 12 meses. O termo é uma **opção formal** e **não equivale** a concessão discricionária ou a fato de que um contribuinte real tenha optado.
+- [Anexo II, art. 52, § 1º, item 2, alíneas a–c](https://legislacao.fazenda.sp.gov.br/Paginas/an2art052.aspx): indústria por encomenda pode ter regime se forneceu insumos ou detém marca; caso contrário, **credenciamento prévio perante SEFAZ/SP** é requisito específico da terceira hipótese. A condição deve mudar a configuração revisada da operação, não ser ignorada em uma regra universal.
+- [Art. 41, §§ 1º–4º](https://legislacao.fazenda.sp.gov.br/Paginas/an3art041.aspx): saída tributada, nota/apuração, retorno, substituição de outros créditos; não cria outorga individual para a fábrica típica.
+
+**Externo:** documentos RUDFTO reais, credenciamento de terceirização quando cabível, regularidade fiscal e conformidade do CNPJ permanecem dependências de cada contribuinte para aplicação; não bloqueiam concluir este *estudo normativo*.
+
+**Outros gates SP seguem pendentes:** alterações/CONFAZ ainda não reconciliados inteiramente, enquadramento NCM/CFOP e regimes na competência, teste jurídico completo, revisão independente. 0 aceitações fiscais.

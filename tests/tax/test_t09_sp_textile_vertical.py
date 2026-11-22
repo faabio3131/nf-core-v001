@@ -196,7 +196,12 @@ def test_sp_formal_rudfto_option_is_not_a_taxpayer_grant():
     row = next(item for item in dossiers["dossiers"] if item["uf"] == "SP")
     scope = row["sp_vertical_checkpoint_20261122"]
     assert "RUDFTO" in scope["normative_individual_requirement"]
-    assert scope["normative_grant_requirement_verified"] is False
+    assert scope["normative_grant_requirement_verified"] is True
+    rule = scope["normative_individual_concession_basis"]
+    assert rule["grant_requirement_normatively_verified"] is True
+    assert rule["authorizes_actual_grant"] is False
+    assert rule["needs_actual_taxpayer_proof"] == "EXTERNAL_AT_APPLICATION"
+    assert "CAT35 art2" in rule["base"][-1]
     assert scope["fiscal_activation_authorized"] is False
 
 
@@ -246,3 +251,14 @@ def test_sp_confaz_2018_decree_annex_anchors_precise_textile_benefit():
     assert route["complete_legal_route_verified"] is False
     assert route["current_taxpayer_entitlement"] is False
     assert state["internal_acceptance"] is False
+
+
+def test_sp_outsourced_manufacture_requires_specific_state_credential_when_applicable():
+    row = _documents()[0]
+    sp = next(item for item in row["dossiers"] if item["uf"] == "SP")
+    rule = sp["sp_vertical_checkpoint_20261122"][
+        "normative_individual_concession_basis"
+    ]
+    assert "item2(c)" in rule["for_outsourced_case_no_inputs_no_brand"]
+    assert rule["legal_full_chain_still_pending"] is True
+    assert rule["authorizes_actual_grant"] is False

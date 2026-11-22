@@ -1426,7 +1426,7 @@
         "required_review_evidence": "sp_textile_art52_option",
         "source_capture_records": [],
         "case_design": "CONDITIONAL_POSITIVE_AND_NEGATIVE_PREPARED_NOT_CERTIFIED",
-        "internal_grant_requirement_review": "PENDING_NORMATIVE_DETERMINATION",
+        "internal_grant_requirement_review": "VERIFIED_FROM_SP_ART41_ART52_CAT35_BUT_ACTUAL_GRANT_EXTERNAL",
         "actual_taxpayer_grant": "EXTERNAL_PER_TAXPAYER_WHEN_REQUIRED",
         "actual_taxpayer_grant_not_required_to_finish_internal_curation": true,
         "package_status": "PARTIAL_RESEARCH_NOT_APPROVED",
@@ -1463,9 +1463,11 @@
           "art41_gazette_original_verified": false,
           "art41_capture_artifact_id": 14766917663,
           "confaz_route_identified": true,
-          "confaz_route_complete": false
+          "confaz_route_complete": false,
+          "normative_individual_concession_verified": true
         }
-      }
+      },
+      "individual_concession_normative_requirement_verified": true
     },
     {
       "uf": "TO",

@@ -1592,7 +1592,7 @@
           "Independent third-party technical/legal counterreview with auditable review identity"
         ],
         "normative_individual_requirement": "Option RUDFTO per CAT35 art2; not universal individual project granting. Art52 §1 may require prior tax authority credenciamento for specific outsourced manufacturing. Do not confuse option with approved individual concession.",
-        "normative_grant_requirement_verified": false,
+        "normative_grant_requirement_verified": true,
         "original_source_digest_gate_verified": true,
         "full_amendment_chain_verified": false,
         "independent_review_passed": false,
@@ -1683,6 +1683,32 @@
           "legal_route_identified": true,
           "complete_legal_route_verified": false,
           "current_taxpayer_entitlement": false
+        },
+        "normative_individual_concession_basis": {
+          "status": "VERIFIED_NORMATIVE_REQUIREMENT_ONLY_NOT_ACTUAL_GRANT",
+          "base": [
+            "RICMS SP Anexo III art41",
+            "RICMS SP Anexo II art52 §1 item2(a,b,c)",
+            "Portaria CAT35/2017 art2"
+          ],
+          "legal_sources": [
+            "https://legislacao.fazenda.sp.gov.br/Paginas/an3art041.aspx",
+            "https://legislacao.fazenda.sp.gov.br/Paginas/an2art052.aspx",
+            "https://legislacao.fazenda.sp.gov.br/Paginas/pcat352017.aspx"
+          ],
+          "decisions": [
+            "Art41 credito outorgado option is formal election by all SP establishments in RUDFTO per CAT35 art2, effective first day next month and minimum 12 months, not individual discretionary grant for an own manufacturer satisfying Art52.",
+            "Art52 §1 item2 provides outsourced manufacturing eligibility if principal supplies inputs, or owns the brand; otherwise item2(c) requires specific State Tax Authority credentialing.",
+            "Art52 §1 item1 covers transfer to another establishment of the same proprietor, subject to remaining legal conditions.",
+            "RUDTFO election and evidence of current fiscal regularity are individual operational fact checks, not approval of any actual taxpayer by this review.",
+            "Conditional outsourcing credential does not prove universal taxpayer approval or exemption from other requirements."
+          ],
+          "for_reviewed_own_manufacturer_scenario": "No individual discretionary project approval identified in art41/art52; formal RUDFTO option required and must be evidenced; do not assume any taxpayer actually opted.",
+          "for_outsourced_case_no_inputs_no_brand": "SEFAZ/SP accreditation specifically required under Art52 §1 item2(c); do not use no-grant default in this route.",
+          "needs_actual_taxpayer_proof": "EXTERNAL_AT_APPLICATION",
+          "grant_requirement_normatively_verified": true,
+          "legal_full_chain_still_pending": true,
+          "authorizes_actual_grant": false
         }
       }
     },
