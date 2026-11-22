@@ -33,3 +33,17 @@
 | TO | PROINDÚSTRIA, Lei 3.577/2019 item 9 e planilha depositada, modalidade, carta-consulta, contrato/TARE e prazo. |
 
 Critérios cumulativos: original e SHA arquivado; norma/alterações/competência; NCM/CNAE/CFOP/ICMS-ST/DIFAL/regime e exceções; rota específica CONFAZ/LC160 ou fundamento alternativo; concessão/adesão exigida ou dispensada; caso positivo/negativo executado; revisão independente; aceite humano por candidata e CI integral exata. O próprio ZIP NÃO está neste repositório: ver `NFCORE_T09_RESEARCH_PACKAGE_CHECKPOINT_20261122.md` e `NFCORE_T09_RESEARCH_PACKAGE_MANIFEST_20261122.json`.
+
+
+### Correções de identidade identificadas no encerramento da coleta (22/11/2026)
+
+- **PB:** Decreto **47.898/2026** existe e altera FAIN; anexo 38.179/2018 apenas inventaria atos de 2017, não substitui a alteração. Corrigir notas de pesquisa que aleguem inexistência do 47.898.
+- **PE:** Decreto **61.000/2026** é de EFD/regularidade/Programa Coopera; não lhe atribuir alteração específica do PRODEPE.
+- **PA:** ADI **3779** existe; ADIs 3246/3796 são processos diferentes. Lei 7.485/2010 não supre análise de efeitos.
+- **CE:** Decreto 29.183/2008 revogado pelo 32.438/2017; Resolução CEDIN 131/2019 é PROAPI; conservar como contexto, não regra vigente de FDI.
+- **SP:** Portaria CAT **35/2010** não é a **35/2017**. RS: incisos **CXCIII/CXCIV** não são o **CLXXXVI** selecionado.
+- **GO:** PDF intitulado adesao611 corresponde a Certificado de Registro e Depósito **SE/CONFAZ 20/2021**, com limites de objeto e período.
+- **RN:** Decreto 33.005/2023 modifica outros anexos, não comprova regra material de peixe do Anexo 003; manter Decreto 34.390/2025 na cadeia.
+- **MG:** Convênio 131/2026 é norma federal; pesquisar seus efeitos específicos sem usar o padrão de decretos estaduais como critério de inexistência.
+
+As correções são parte da pesquisa; **nenhum documento foi promovido a fonte jurídica integralmente certificada**, e a ausência de novos arquivos do proprietário não é impeditivo para a continuidade interna. Detalhamento: [coleta encerrada](NFCORE_T09_COLETA_ENCERRADA_20261122.md).

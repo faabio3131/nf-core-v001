@@ -80,7 +80,14 @@
         "actual_taxpayer_grant": "EXTERNAL_PER_TAXPAYER_WHEN_REQUIRED",
         "actual_taxpayer_grant_not_required_to_finish_internal_curation": true,
         "package_status": "PARTIAL_RESEARCH_NOT_APPROVED",
-        "package_residual_register": "docs/NFCORE_T09_RESEARCH_RESIDUAL_27UFS_20261122.md"
+        "package_residual_register": "docs/NFCORE_T09_RESEARCH_RESIDUAL_27UFS_20261122.md",
+        "final_receipt": {
+          "intake_status": "CLOSED",
+          "new_capture_count": 2,
+          "source_manifest": "docs/NFCORE_T09_RECEBIMENTO_FINAL_50_DOCUMENTOS_20261122.json",
+          "not_normative_approval": true,
+          "remaining_normative_work": "INTERNAL"
+        }
       }
     },
     {
@@ -119,7 +126,14 @@
         "actual_taxpayer_grant_not_required_to_finish_internal_curation": true,
         "additional_primary_text_review": "CONTENT_IDENTIFIED_NOT_BYTES_ARCHIVED",
         "package_status": "PARTIAL_RESEARCH_NOT_APPROVED",
-        "package_residual_register": "docs/NFCORE_T09_RESEARCH_RESIDUAL_27UFS_20261122.md"
+        "package_residual_register": "docs/NFCORE_T09_RESEARCH_RESIDUAL_27UFS_20261122.md",
+        "final_receipt": {
+          "intake_status": "CLOSED",
+          "new_capture_count": 3,
+          "source_manifest": "docs/NFCORE_T09_RECEBIMENTO_FINAL_50_DOCUMENTOS_20261122.json",
+          "not_normative_approval": true,
+          "remaining_normative_work": "INTERNAL"
+        }
       }
     },
     {
@@ -153,7 +167,14 @@
         "actual_taxpayer_grant": "EXTERNAL_PER_TAXPAYER_WHEN_REQUIRED",
         "actual_taxpayer_grant_not_required_to_finish_internal_curation": true,
         "package_status": "PARTIAL_RESEARCH_NOT_APPROVED",
-        "package_residual_register": "docs/NFCORE_T09_RESEARCH_RESIDUAL_27UFS_20261122.md"
+        "package_residual_register": "docs/NFCORE_T09_RESEARCH_RESIDUAL_27UFS_20261122.md",
+        "final_receipt": {
+          "intake_status": "CLOSED",
+          "new_capture_count": 1,
+          "source_manifest": "docs/NFCORE_T09_RECEBIMENTO_FINAL_50_DOCUMENTOS_20261122.json",
+          "not_normative_approval": true,
+          "remaining_normative_work": "INTERNAL"
+        }
       }
     },
     {
@@ -189,7 +210,14 @@
         "actual_taxpayer_grant": "EXTERNAL_PER_TAXPAYER_WHEN_REQUIRED",
         "actual_taxpayer_grant_not_required_to_finish_internal_curation": true,
         "package_status": "PARTIAL_RESEARCH_NOT_APPROVED",
-        "package_residual_register": "docs/NFCORE_T09_RESEARCH_RESIDUAL_27UFS_20261122.md"
+        "package_residual_register": "docs/NFCORE_T09_RESEARCH_RESIDUAL_27UFS_20261122.md",
+        "final_receipt": {
+          "intake_status": "CLOSED",
+          "new_capture_count": 1,
+          "source_manifest": "docs/NFCORE_T09_RECEBIMENTO_FINAL_50_DOCUMENTOS_20261122.json",
+          "not_normative_approval": true,
+          "remaining_normative_work": "INTERNAL"
+        }
       }
     },
     {
@@ -223,7 +251,14 @@
         "actual_taxpayer_grant": "EXTERNAL_PER_TAXPAYER_WHEN_REQUIRED",
         "actual_taxpayer_grant_not_required_to_finish_internal_curation": true,
         "package_status": "PARTIAL_RESEARCH_NOT_APPROVED",
-        "package_residual_register": "docs/NFCORE_T09_RESEARCH_RESIDUAL_27UFS_20261122.md"
+        "package_residual_register": "docs/NFCORE_T09_RESEARCH_RESIDUAL_27UFS_20261122.md",
+        "final_receipt": {
+          "intake_status": "CLOSED",
+          "new_capture_count": 4,
+          "source_manifest": "docs/NFCORE_T09_RECEBIMENTO_FINAL_50_DOCUMENTOS_20261122.json",
+          "not_normative_approval": true,
+          "remaining_normative_work": "INTERNAL"
+        }
       }
     },
     {
@@ -257,7 +292,14 @@
         "actual_taxpayer_grant": "EXTERNAL_PER_TAXPAYER_WHEN_REQUIRED",
         "actual_taxpayer_grant_not_required_to_finish_internal_curation": true,
         "package_status": "PARTIAL_RESEARCH_NOT_APPROVED",
-        "package_residual_register": "docs/NFCORE_T09_RESEARCH_RESIDUAL_27UFS_20261122.md"
+        "package_residual_register": "docs/NFCORE_T09_RESEARCH_RESIDUAL_27UFS_20261122.md",
+        "final_receipt": {
+          "intake_status": "CLOSED",
+          "new_capture_count": 3,
+          "source_manifest": "docs/NFCORE_T09_RECEBIMENTO_FINAL_50_DOCUMENTOS_20261122.json",
+          "not_normative_approval": true,
+          "remaining_normative_work": "INTERNAL"
+        }
       }
     },
     {
@@ -291,7 +333,14 @@
         "actual_taxpayer_grant": "EXTERNAL_PER_TAXPAYER_WHEN_REQUIRED",
         "actual_taxpayer_grant_not_required_to_finish_internal_curation": true,
         "package_status": "PARTIAL_RESEARCH_NOT_APPROVED",
-        "package_residual_register": "docs/NFCORE_T09_RESEARCH_RESIDUAL_27UFS_20261122.md"
+        "package_residual_register": "docs/NFCORE_T09_RESEARCH_RESIDUAL_27UFS_20261122.md",
+        "final_receipt": {
+          "intake_status": "CLOSED",
+          "new_capture_count": 3,
+          "source_manifest": "docs/NFCORE_T09_RECEBIMENTO_FINAL_50_DOCUMENTOS_20261122.json",
+          "not_normative_approval": true,
+          "remaining_normative_work": "INTERNAL"
+        }
       }
     },
     {
@@ -325,7 +374,14 @@
         "actual_taxpayer_grant": "EXTERNAL_PER_TAXPAYER_WHEN_REQUIRED",
         "actual_taxpayer_grant_not_required_to_finish_internal_curation": true,
         "package_status": "PARTIAL_RESEARCH_NOT_APPROVED",
-        "package_residual_register": "docs/NFCORE_T09_RESEARCH_RESIDUAL_27UFS_20261122.md"
+        "package_residual_register": "docs/NFCORE_T09_RESEARCH_RESIDUAL_27UFS_20261122.md",
+        "final_receipt": {
+          "intake_status": "CLOSED",
+          "new_capture_count": 2,
+          "source_manifest": "docs/NFCORE_T09_RECEBIMENTO_FINAL_50_DOCUMENTOS_20261122.json",
+          "not_normative_approval": true,
+          "remaining_normative_work": "INTERNAL"
+        }
       }
     },
     {
@@ -359,7 +415,14 @@
         "actual_taxpayer_grant": "EXTERNAL_PER_TAXPAYER_WHEN_REQUIRED",
         "actual_taxpayer_grant_not_required_to_finish_internal_curation": true,
         "package_status": "PARTIAL_RESEARCH_NOT_APPROVED",
-        "package_residual_register": "docs/NFCORE_T09_RESEARCH_RESIDUAL_27UFS_20261122.md"
+        "package_residual_register": "docs/NFCORE_T09_RESEARCH_RESIDUAL_27UFS_20261122.md",
+        "final_receipt": {
+          "intake_status": "CLOSED",
+          "new_capture_count": 3,
+          "source_manifest": "docs/NFCORE_T09_RECEBIMENTO_FINAL_50_DOCUMENTOS_20261122.json",
+          "not_normative_approval": true,
+          "remaining_normative_work": "INTERNAL"
+        }
       }
     },
     {
@@ -393,7 +456,14 @@
         "actual_taxpayer_grant": "EXTERNAL_PER_TAXPAYER_WHEN_REQUIRED",
         "actual_taxpayer_grant_not_required_to_finish_internal_curation": true,
         "package_status": "PARTIAL_RESEARCH_NOT_APPROVED",
-        "package_residual_register": "docs/NFCORE_T09_RESEARCH_RESIDUAL_27UFS_20261122.md"
+        "package_residual_register": "docs/NFCORE_T09_RESEARCH_RESIDUAL_27UFS_20261122.md",
+        "final_receipt": {
+          "intake_status": "CLOSED",
+          "new_capture_count": 2,
+          "source_manifest": "docs/NFCORE_T09_RECEBIMENTO_FINAL_50_DOCUMENTOS_20261122.json",
+          "not_normative_approval": true,
+          "remaining_normative_work": "INTERNAL"
+        }
       }
     },
     {
@@ -427,7 +497,14 @@
         "actual_taxpayer_grant": "EXTERNAL_PER_TAXPAYER_WHEN_REQUIRED",
         "actual_taxpayer_grant_not_required_to_finish_internal_curation": true,
         "package_status": "PARTIAL_RESEARCH_NOT_APPROVED",
-        "package_residual_register": "docs/NFCORE_T09_RESEARCH_RESIDUAL_27UFS_20261122.md"
+        "package_residual_register": "docs/NFCORE_T09_RESEARCH_RESIDUAL_27UFS_20261122.md",
+        "final_receipt": {
+          "intake_status": "CLOSED",
+          "new_capture_count": 3,
+          "source_manifest": "docs/NFCORE_T09_RECEBIMENTO_FINAL_50_DOCUMENTOS_20261122.json",
+          "not_normative_approval": true,
+          "remaining_normative_work": "INTERNAL"
+        }
       }
     },
     {
@@ -461,7 +538,14 @@
         "actual_taxpayer_grant": "EXTERNAL_PER_TAXPAYER_WHEN_REQUIRED",
         "actual_taxpayer_grant_not_required_to_finish_internal_curation": true,
         "package_status": "PARTIAL_RESEARCH_NOT_APPROVED",
-        "package_residual_register": "docs/NFCORE_T09_RESEARCH_RESIDUAL_27UFS_20261122.md"
+        "package_residual_register": "docs/NFCORE_T09_RESEARCH_RESIDUAL_27UFS_20261122.md",
+        "final_receipt": {
+          "intake_status": "CLOSED",
+          "new_capture_count": 3,
+          "source_manifest": "docs/NFCORE_T09_RECEBIMENTO_FINAL_50_DOCUMENTOS_20261122.json",
+          "not_normative_approval": true,
+          "remaining_normative_work": "INTERNAL"
+        }
       }
     },
     {
@@ -495,7 +579,14 @@
         "actual_taxpayer_grant": "EXTERNAL_PER_TAXPAYER_WHEN_REQUIRED",
         "actual_taxpayer_grant_not_required_to_finish_internal_curation": true,
         "package_status": "PARTIAL_RESEARCH_NOT_APPROVED",
-        "package_residual_register": "docs/NFCORE_T09_RESEARCH_RESIDUAL_27UFS_20261122.md"
+        "package_residual_register": "docs/NFCORE_T09_RESEARCH_RESIDUAL_27UFS_20261122.md",
+        "final_receipt": {
+          "intake_status": "CLOSED",
+          "new_capture_count": 1,
+          "source_manifest": "docs/NFCORE_T09_RECEBIMENTO_FINAL_50_DOCUMENTOS_20261122.json",
+          "not_normative_approval": true,
+          "remaining_normative_work": "INTERNAL"
+        }
       }
     },
     {
@@ -535,7 +626,14 @@
         "actual_taxpayer_grant_not_required_to_finish_internal_curation": true,
         "additional_primary_text_review": "CONTENT_IDENTIFIED_NOT_BYTES_ARCHIVED",
         "package_status": "PARTIAL_RESEARCH_NOT_APPROVED",
-        "package_residual_register": "docs/NFCORE_T09_RESEARCH_RESIDUAL_27UFS_20261122.md"
+        "package_residual_register": "docs/NFCORE_T09_RESEARCH_RESIDUAL_27UFS_20261122.md",
+        "final_receipt": {
+          "intake_status": "CLOSED",
+          "new_capture_count": 4,
+          "source_manifest": "docs/NFCORE_T09_RECEBIMENTO_FINAL_50_DOCUMENTOS_20261122.json",
+          "not_normative_approval": true,
+          "remaining_normative_work": "INTERNAL"
+        }
       }
     },
     {
@@ -569,7 +667,14 @@
         "actual_taxpayer_grant": "EXTERNAL_PER_TAXPAYER_WHEN_REQUIRED",
         "actual_taxpayer_grant_not_required_to_finish_internal_curation": true,
         "package_status": "PARTIAL_RESEARCH_NOT_APPROVED",
-        "package_residual_register": "docs/NFCORE_T09_RESEARCH_RESIDUAL_27UFS_20261122.md"
+        "package_residual_register": "docs/NFCORE_T09_RESEARCH_RESIDUAL_27UFS_20261122.md",
+        "final_receipt": {
+          "intake_status": "CLOSED",
+          "new_capture_count": 2,
+          "source_manifest": "docs/NFCORE_T09_RECEBIMENTO_FINAL_50_DOCUMENTOS_20261122.json",
+          "not_normative_approval": true,
+          "remaining_normative_work": "INTERNAL"
+        }
       }
     },
     {
@@ -603,7 +708,14 @@
         "actual_taxpayer_grant": "EXTERNAL_PER_TAXPAYER_WHEN_REQUIRED",
         "actual_taxpayer_grant_not_required_to_finish_internal_curation": true,
         "package_status": "PARTIAL_RESEARCH_NOT_APPROVED",
-        "package_residual_register": "docs/NFCORE_T09_RESEARCH_RESIDUAL_27UFS_20261122.md"
+        "package_residual_register": "docs/NFCORE_T09_RESEARCH_RESIDUAL_27UFS_20261122.md",
+        "final_receipt": {
+          "intake_status": "CLOSED",
+          "new_capture_count": 0,
+          "source_manifest": "docs/NFCORE_T09_RECEBIMENTO_FINAL_50_DOCUMENTOS_20261122.json",
+          "not_normative_approval": true,
+          "remaining_normative_work": "INTERNAL"
+        }
       }
     },
     {
@@ -640,7 +752,14 @@
         "actual_taxpayer_grant": "EXTERNAL_PER_TAXPAYER_WHEN_REQUIRED",
         "actual_taxpayer_grant_not_required_to_finish_internal_curation": true,
         "package_status": "PARTIAL_RESEARCH_NOT_APPROVED",
-        "package_residual_register": "docs/NFCORE_T09_RESEARCH_RESIDUAL_27UFS_20261122.md"
+        "package_residual_register": "docs/NFCORE_T09_RESEARCH_RESIDUAL_27UFS_20261122.md",
+        "final_receipt": {
+          "intake_status": "CLOSED",
+          "new_capture_count": 0,
+          "source_manifest": "docs/NFCORE_T09_RECEBIMENTO_FINAL_50_DOCUMENTOS_20261122.json",
+          "not_normative_approval": true,
+          "remaining_normative_work": "INTERNAL"
+        }
       }
     },
     {
@@ -674,7 +793,14 @@
         "actual_taxpayer_grant": "EXTERNAL_PER_TAXPAYER_WHEN_REQUIRED",
         "actual_taxpayer_grant_not_required_to_finish_internal_curation": true,
         "package_status": "PARTIAL_RESEARCH_NOT_APPROVED",
-        "package_residual_register": "docs/NFCORE_T09_RESEARCH_RESIDUAL_27UFS_20261122.md"
+        "package_residual_register": "docs/NFCORE_T09_RESEARCH_RESIDUAL_27UFS_20261122.md",
+        "final_receipt": {
+          "intake_status": "CLOSED",
+          "new_capture_count": 2,
+          "source_manifest": "docs/NFCORE_T09_RECEBIMENTO_FINAL_50_DOCUMENTOS_20261122.json",
+          "not_normative_approval": true,
+          "remaining_normative_work": "INTERNAL"
+        }
       }
     },
     {
@@ -715,7 +841,14 @@
         "actual_taxpayer_grant_not_required_to_finish_internal_curation": true,
         "additional_primary_text_review": "CONTENT_IDENTIFIED_NOT_BYTES_ARCHIVED",
         "package_status": "PARTIAL_RESEARCH_NOT_APPROVED",
-        "package_residual_register": "docs/NFCORE_T09_RESEARCH_RESIDUAL_27UFS_20261122.md"
+        "package_residual_register": "docs/NFCORE_T09_RESEARCH_RESIDUAL_27UFS_20261122.md",
+        "final_receipt": {
+          "intake_status": "CLOSED",
+          "new_capture_count": 1,
+          "source_manifest": "docs/NFCORE_T09_RECEBIMENTO_FINAL_50_DOCUMENTOS_20261122.json",
+          "not_normative_approval": true,
+          "remaining_normative_work": "INTERNAL"
+        }
       }
     },
     {
@@ -751,7 +884,14 @@
         "actual_taxpayer_grant": "EXTERNAL_PER_TAXPAYER_WHEN_REQUIRED",
         "actual_taxpayer_grant_not_required_to_finish_internal_curation": true,
         "package_status": "PARTIAL_RESEARCH_NOT_APPROVED",
-        "package_residual_register": "docs/NFCORE_T09_RESEARCH_RESIDUAL_27UFS_20261122.md"
+        "package_residual_register": "docs/NFCORE_T09_RESEARCH_RESIDUAL_27UFS_20261122.md",
+        "final_receipt": {
+          "intake_status": "CLOSED",
+          "new_capture_count": 2,
+          "source_manifest": "docs/NFCORE_T09_RECEBIMENTO_FINAL_50_DOCUMENTOS_20261122.json",
+          "not_normative_approval": true,
+          "remaining_normative_work": "INTERNAL"
+        }
       }
     },
     {
@@ -785,7 +925,14 @@
         "actual_taxpayer_grant": "EXTERNAL_PER_TAXPAYER_WHEN_REQUIRED",
         "actual_taxpayer_grant_not_required_to_finish_internal_curation": true,
         "package_status": "PARTIAL_RESEARCH_NOT_APPROVED",
-        "package_residual_register": "docs/NFCORE_T09_RESEARCH_RESIDUAL_27UFS_20261122.md"
+        "package_residual_register": "docs/NFCORE_T09_RESEARCH_RESIDUAL_27UFS_20261122.md",
+        "final_receipt": {
+          "intake_status": "CLOSED",
+          "new_capture_count": 2,
+          "source_manifest": "docs/NFCORE_T09_RECEBIMENTO_FINAL_50_DOCUMENTOS_20261122.json",
+          "not_normative_approval": true,
+          "remaining_normative_work": "INTERNAL"
+        }
       }
     },
     {
@@ -819,7 +966,14 @@
         "actual_taxpayer_grant": "EXTERNAL_PER_TAXPAYER_WHEN_REQUIRED",
         "actual_taxpayer_grant_not_required_to_finish_internal_curation": true,
         "package_status": "PARTIAL_RESEARCH_NOT_APPROVED",
-        "package_residual_register": "docs/NFCORE_T09_RESEARCH_RESIDUAL_27UFS_20261122.md"
+        "package_residual_register": "docs/NFCORE_T09_RESEARCH_RESIDUAL_27UFS_20261122.md",
+        "final_receipt": {
+          "intake_status": "CLOSED",
+          "new_capture_count": 1,
+          "source_manifest": "docs/NFCORE_T09_RECEBIMENTO_FINAL_50_DOCUMENTOS_20261122.json",
+          "not_normative_approval": true,
+          "remaining_normative_work": "INTERNAL"
+        }
       }
     },
     {
@@ -853,7 +1007,14 @@
         "actual_taxpayer_grant": "EXTERNAL_PER_TAXPAYER_WHEN_REQUIRED",
         "actual_taxpayer_grant_not_required_to_finish_internal_curation": true,
         "package_status": "PARTIAL_RESEARCH_NOT_APPROVED",
-        "package_residual_register": "docs/NFCORE_T09_RESEARCH_RESIDUAL_27UFS_20261122.md"
+        "package_residual_register": "docs/NFCORE_T09_RESEARCH_RESIDUAL_27UFS_20261122.md",
+        "final_receipt": {
+          "intake_status": "CLOSED",
+          "new_capture_count": 2,
+          "source_manifest": "docs/NFCORE_T09_RECEBIMENTO_FINAL_50_DOCUMENTOS_20261122.json",
+          "not_normative_approval": true,
+          "remaining_normative_work": "INTERNAL"
+        }
       }
     },
     {
@@ -887,7 +1048,14 @@
         "actual_taxpayer_grant": "EXTERNAL_PER_TAXPAYER_WHEN_REQUIRED",
         "actual_taxpayer_grant_not_required_to_finish_internal_curation": true,
         "package_status": "PARTIAL_RESEARCH_NOT_APPROVED",
-        "package_residual_register": "docs/NFCORE_T09_RESEARCH_RESIDUAL_27UFS_20261122.md"
+        "package_residual_register": "docs/NFCORE_T09_RESEARCH_RESIDUAL_27UFS_20261122.md",
+        "final_receipt": {
+          "intake_status": "CLOSED",
+          "new_capture_count": 0,
+          "source_manifest": "docs/NFCORE_T09_RECEBIMENTO_FINAL_50_DOCUMENTOS_20261122.json",
+          "not_normative_approval": true,
+          "remaining_normative_work": "INTERNAL"
+        }
       }
     },
     {
@@ -924,7 +1092,14 @@
         "actual_taxpayer_grant": "EXTERNAL_PER_TAXPAYER_WHEN_REQUIRED",
         "actual_taxpayer_grant_not_required_to_finish_internal_curation": true,
         "package_status": "PARTIAL_RESEARCH_NOT_APPROVED",
-        "package_residual_register": "docs/NFCORE_T09_RESEARCH_RESIDUAL_27UFS_20261122.md"
+        "package_residual_register": "docs/NFCORE_T09_RESEARCH_RESIDUAL_27UFS_20261122.md",
+        "final_receipt": {
+          "intake_status": "CLOSED",
+          "new_capture_count": 0,
+          "source_manifest": "docs/NFCORE_T09_RECEBIMENTO_FINAL_50_DOCUMENTOS_20261122.json",
+          "not_normative_approval": true,
+          "remaining_normative_work": "INTERNAL"
+        }
       }
     },
     {
@@ -958,7 +1133,14 @@
         "actual_taxpayer_grant": "EXTERNAL_PER_TAXPAYER_WHEN_REQUIRED",
         "actual_taxpayer_grant_not_required_to_finish_internal_curation": true,
         "package_status": "PARTIAL_RESEARCH_NOT_APPROVED",
-        "package_residual_register": "docs/NFCORE_T09_RESEARCH_RESIDUAL_27UFS_20261122.md"
+        "package_residual_register": "docs/NFCORE_T09_RESEARCH_RESIDUAL_27UFS_20261122.md",
+        "final_receipt": {
+          "intake_status": "CLOSED",
+          "new_capture_count": 3,
+          "source_manifest": "docs/NFCORE_T09_RECEBIMENTO_FINAL_50_DOCUMENTOS_20261122.json",
+          "not_normative_approval": true,
+          "remaining_normative_work": "INTERNAL"
+        }
       }
     },
     {
@@ -992,7 +1174,14 @@
         "actual_taxpayer_grant": "EXTERNAL_PER_TAXPAYER_WHEN_REQUIRED",
         "actual_taxpayer_grant_not_required_to_finish_internal_curation": true,
         "package_status": "PARTIAL_RESEARCH_NOT_APPROVED",
-        "package_residual_register": "docs/NFCORE_T09_RESEARCH_RESIDUAL_27UFS_20261122.md"
+        "package_residual_register": "docs/NFCORE_T09_RESEARCH_RESIDUAL_27UFS_20261122.md",
+        "final_receipt": {
+          "intake_status": "CLOSED",
+          "new_capture_count": 0,
+          "source_manifest": "docs/NFCORE_T09_RECEBIMENTO_FINAL_50_DOCUMENTOS_20261122.json",
+          "not_normative_approval": true,
+          "remaining_normative_work": "INTERNAL"
+        }
       }
     }
   ],
@@ -1047,5 +1236,22 @@
     "source_ci_commit": "c6008bb7bb0e3c2ec5e52c693f2384e6969a5fc4",
     "source_ci_run": 44986673875,
     "new_head_ci": "REQUIRED"
+  },
+  "final_user_document_receipt_20261122": {
+    "status": "CLOSED_USER_HAS_NO_MORE_FILES",
+    "index_path": "docs/NFCORE_T09_RECEBIMENTO_FINAL_50_DOCUMENTOS_20261122.json",
+    "closeout_path": "docs/NFCORE_T09_COLETA_ENCERRADA_20261122.md",
+    "local_archive_name": "NFCORE_T09_COLETA_CONSOLIDADA_50_ARQUIVOS_20261122.zip",
+    "local_archive_sha256": "584a0cd1458619b7033d39e95a7ee4cbe31558cba90cf0ee1cdab00e1f4cd547",
+    "local_archive_bytes": 20785123,
+    "remote_archive_verified": false,
+    "capture_count_new": 50,
+    "new_capture_uf_count": 22,
+    "prior_capture_record_count": 29,
+    "not_additive_with_old_collections": true,
+    "curatorial_acceptances": 0,
+    "policy_imports": 0,
+    "research_followup": "INTERNAL_NOT_REQUEST_MORE_FILES_FROM_USER",
+    "ci_of_new_commit": "REQUIRED"
   }
 }

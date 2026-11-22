@@ -358,3 +358,8 @@ A criação do runbook **não significa que o agente foi implantado ou que as 27
 ### Pesquisa complementar registrada em 22/11/2026 — CURRENT documental
 
 Pacote ZIP SHA-256 `001f7e85c84e35914931218a8b5c4d492cd65d7332e847c3f36167d66e5cc12b` conferido: 64 entradas, 29 capturas com integridade local 29/29, 27 dossiês preliminares, 58 casos propostos **não executados**. O ZIP e suas fontes originais não foram enviados ao GitHub, somente seu índice/rastreabilidade. **0/27 curadorias aceitas/importadas.** Fonte da verdade: [`NFCORE_T09_RESEARCH_PACKAGE_CHECKPOINT_20261122.md`](NFCORE_T09_RESEARCH_PACKAGE_CHECKPOINT_20261122.md); [manifesto](NFCORE_T09_RESEARCH_PACKAGE_MANIFEST_20261122.json); [pendências UF](NFCORE_T09_RESEARCH_RESIDUAL_27UFS_20261122.md). A engenharia anterior tinha 6/6 workflows verdes no commit `c6008bb7`, mas nova CI deve ser verificada no novo HEAD. INT-03–06/08/09 pendentes; dependências externas separadas; T10 bloqueada.
+
+
+### T09 — Coleta documental encerrada em 22/11/2026
+
+O proprietário declarou que não possui mais arquivos para enviar. Cinco lotes novos, **50/50 hashes locais verificados**, 22 UFs representadas nesses lotes; pacote unificado `NFCORE_T09_COLETA_CONSOLIDADA_50_ARQUIVOS_20261122.zip` SHA256 `584a0cd1458619b7033d39e95a7ee4cbe31558cba90cf0ee1cdab00e1f4cd547`, **não arquivado em Git**. Registro detalhado [fechamento](NFCORE_T09_COLETA_ENCERRADA_20261122.md) e [índice das capturas](NFCORE_T09_RECEBIMENTO_FINAL_50_DOCUMENTOS_20261122.json). Esse marco encerra **recebimento**, não a T09: 0/27 curadorias aceitas e importações, pesquisa de fontes primárias, CONFAZ, temporalidade, testes reais e revisão independente ainda internas. T10 mantém trava. CI do novo HEAD exigida após alteração documental.
