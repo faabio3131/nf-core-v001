@@ -52,3 +52,8 @@ As correções são parte da pesquisa; **nenhum documento foi promovido a fonte 
 ### Cotejo adicional de 6 UFs (22/11)
 
 SP/MG/RN/PB/PE/PI tiveram trechos primários examinados e pendências especificadas em `NFCORE_T09_DISPOSITIVOS_VERIFICADOS_20261122.md`. A menção a Decreto 61.000/2026 em PE como modificador do PRODEPE é histórica e **foi corrigida**: norma pertence a EFD/Coopera. Nenhuma cadeia legal foi integralmente aceita, nem os requisitos das outras 21 UFs foram dispensados.
+
+
+### Lacuna temporal cruzada identificada em 22/11/2026
+
+Seis hipóteses com risco de prorrogação/fusão indevida de períodos (MG, SP, RN, AP, RR e MT) foram formalizadas em [matriz temporal](NFCORE_T09_TEMPORAL_AUTHORITY_20261122.json) e [nota de fundamento](NFCORE_T09_TEMPORAL_AUTHORITY_BLOCK_20261122.md). Em MG, página oficial ainda encerra item 26 em 31/12/2026; a comunicação do COMSEFAZ de prorrogações federais em 2028 não prova em si adoção estadual específica. **Nenhuma candidata foi aceita ou importada**. São guardas de pesquisa e testes negativos, não certificação legal ou mudança do cálculo.

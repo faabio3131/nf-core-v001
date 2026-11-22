@@ -4,7 +4,7 @@ CNAE, NCM, review references and individual dispensation here are synthetic.
 No legal source hash is fabricated and no policy is imported by these tests.
 """
 import json
-from datetime import date
+from datetime import date, timedelta
 from pathlib import Path
 
 import pytest
@@ -36,7 +36,8 @@ def _dossier(uf):
 
 
 def _evaluate(uf, month, *, start="2026-01-01", omitted=(),
-              operation="domestic_sale", cfop="5102"):
+              operation="domestic_sale", cfop="5102",
+              legal_last_day="2026-12-31"):
     row = _dossier(uf)
     inspected = row.get("primary_provision_checkpoint_20261122")
     if inspected is None and uf == "AP":
@@ -44,6 +45,13 @@ def _evaluate(uf, month, *, start="2026-01-01", omitted=(),
         inspected = {
             "articles": "Decreto 2.656/2026 art. 9",
             "evidence": ap["required_review_keys"],
+        }
+    if inspected is None and uf in ("RR", "MT"):
+        # Primary official consultation indicates a specific term, not a
+        # completed state benefit review or authorization.
+        inspected = {
+            "articles": row["reference"],
+            "evidence": ("state_uf_statute_scope_review",),
         }
     if inspected is None:
         raise KeyError("source-specific test case not defined")
@@ -57,8 +65,8 @@ def _evaluate(uf, month, *, start="2026-01-01", omitted=(),
         "legal_path": "state_statute",
         "state_normative_reference": inspected["articles"],
         "valid_from": start,
-        "valid_until": "2027-01-01",
-        "legal_valid_until_inclusive": "2026-12-31",
+        "valid_until": (date.fromisoformat(legal_last_day) + timedelta(days=1)).isoformat(),
+        "legal_valid_until_inclusive": legal_last_day,
         "allowed_regimes": ["lucro_real"],
         "cnae_scope": "reviewed_any",
         "allowed_cnaes": [],
@@ -239,3 +247,81 @@ def test_pa_and_rr_unresolved_judicial_and_state_extension_never_approved():
     assert "2026" in rr["unresolved"]
     assert not _dossier("PA")["import_authorized"]
     assert not _dossier("RR")["import_authorized"]
+
+
+
+# T09 temporal authority cases bind specific official research to the canonical
+# monthly validity checker. The synthetic policy cannot grant real tax relief.
+TEMPORAL_DOC = DOSSIERS.with_name("NFCORE_T09_TEMPORAL_AUTHORITY_20261122.json")
+
+
+def _temporal_case(uf):
+    data = json.loads(TEMPORAL_DOC.read_text(encoding="utf-8"))
+    return next(case for case in data["cases"] if case["uf"] == uf)
+
+
+def test_mg_federal_renewal_cannot_overrule_earlier_state_legal_end():
+    case = _temporal_case("MG")
+    assert case["state_end_inclusive_observed"] == "2026-12-31"
+    assert case["federal_end_reported"] == "2028-12-31"
+    assert case["federal_2028_extension_identified_for_exact_convention"] is False
+    # Even if a federal convention has later dates, state authorization cannot
+    # be extended without the applicable state act being effective.
+    outcome = _evaluate("MG", date(2027, 1, 1),
+                        legal_last_day=case["state_end_inclusive_observed"])
+    assert outcome["status"] == "not_applicable"
+    assert outcome["tax_calculation_authorized"] is False
+    assert case["approved"] is False
+
+
+def test_sp_art41_new_2023_rate_cannot_backdate_january_month():
+    case = _temporal_case("SP")
+    assert len(case["periods_observed"]) == 3
+    assert [p["credit_percent_of_eligible_sale"] for p in case["periods_observed"]] == [
+        "9.7", "9", "12",
+    ]
+    latest = case["periods_observed"][-1]
+    outcome = _evaluate("SP", date(2023, 1, 1),
+                        start=latest["from"],
+                        legal_last_day=latest["to_inclusive"])
+    assert outcome["status"] == "not_applicable"
+    assert outcome["reason_codes"] == ["state_rule_not_effective_entire_month"]
+    assert not outcome["tax_calculation_authorized"]
+
+
+def test_rr_federal_extension_is_not_automatic_state_2026_authorization():
+    case = _temporal_case("RR")
+    assert not case["state_extension_2026_found"]
+    outcome = _evaluate("RR", date(2026, 1, 1),
+                        legal_last_day=case["state_end_inclusive_last_text"])
+    assert outcome["status"] == "not_applicable"
+    assert outcome["reason_codes"] == ["state_rule_not_effective_entire_month"]
+    assert not outcome["eligibility_certified"]
+
+
+def test_mt_last_day_december_2027_excludes_january_2028():
+    case = _temporal_case("MT")
+    outcome = _evaluate("MT", date(2028, 1, 1),
+                        legal_last_day=case["state_end_inclusive_observed"])
+    assert outcome["status"] == "not_applicable"
+    assert outcome["reason_codes"] == ["state_rule_not_effective_entire_month"]
+
+
+@pytest.mark.parametrize("uf", ["MG", "SP", "RN", "AP", "RR", "MT"])
+def test_temporal_research_stays_uncertified_and_cannot_import(uf):
+    case = _temporal_case(uf)
+    assert case["verified"]
+    assert case["approved"] is False
+    assert _dossier(uf)["internal_acceptance"] is False
+    assert _dossier(uf)["import_authorized"] is False
+
+
+def test_temporal_matrix_does_not_replace_27uf_legal_curation():
+    data = json.loads(TEMPORAL_DOC.read_text(encoding="utf-8"))
+    assert data["schema_version"] == "nfcore.t09.temporal-authority-review/v1"
+    assert len(data["cases"]) == 6
+    assert len({x["uf"] for x in data["cases"]}) == 6
+    assert data["accepted_count"] == 0
+    assert not data["import_authorized"]
+    assert not data["source_originals_archived"]
+    assert not data["independent_review_passed"]

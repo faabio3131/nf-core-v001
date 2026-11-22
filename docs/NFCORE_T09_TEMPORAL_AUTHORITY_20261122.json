@@ -1,0 +1,151 @@
+{
+  "schema_version": "nfcore.t09.temporal-authority-review/v1",
+  "as_of": "2026-11-22",
+  "baseline_head": "66456984ec6838935e3935dd92cb7a30081156b6",
+  "scope": "Non-executable legal research: no automatic extension or fiscal authorization",
+  "state_authority_rule": "Reviewed state statute, exact operation, the adopted convention when applicable and human acceptance must all be effective; the longest single timeline does NOT automatically authorize the benefit.",
+  "cases": [
+    {
+      "uf": "MG",
+      "id": "MG-COHAB-ITEM26-STATE-VS-CONFAZ",
+      "normative_act": "RICMS/2023 Anexo II Parte 1 item 26",
+      "operation": "domestic_sale_cohab_construction_materials",
+      "state_primary": "https://www.fazenda.mg.gov.br/empresas/legislacao_tributaria/ricms_2023_seco/anexoii2023_3.html",
+      "federal_primary": "https://www.confaz.fazenda.gov.br/legislacao/convenios/1997/CV136_97",
+      "federal_renewal_report": "https://comsefaz.org.br/novo/confaz-prorroga-ate-2028-convenios-de-icms-sobre-beneficios-fiscais/",
+      "state_end_inclusive_observed": "2026-12-31",
+      "federal_end_reported": "2028-12-31",
+      "federal_2028_extension_identified_for_exact_convention": false,
+      "blocked_2027_without_state_change": true,
+      "notable_requirements": [
+        "material and COHAB eligible project",
+        "discount on sale price",
+        "NF complementary notice",
+        "61.11% base reduction at 18% state rate or 41.66% at 12%"
+      ],
+      "pending": [
+        "validate Convênio 131/26 exact item and federal effect",
+        "state incorporation after 2026 if any",
+        "resolve operation and actual eligible material"
+      ],
+      "verified": "STATE_OFFICIAL_TEXT_COMPLETE_FOR_ITEM26_ONLY",
+      "approved": false
+    },
+    {
+      "uf": "SP",
+      "id": "SP-TEXTILE-ART41-INTRA-MONTH",
+      "normative_act": "RICMS Anexo III art41; Anexo II art52; Portaria CAT35/2017",
+      "operation": "eligible_internal_taxed_sale",
+      "state_primary": "https://legislacao.fazenda.sp.gov.br/Paginas/an3art041.aspx",
+      "procedure_primary": "https://legislacao.fazenda.sp.gov.br/Paginas/pcat352017.aspx",
+      "periods_observed": [
+        {
+          "from": "2021-01-15",
+          "to_inclusive": "2021-03-31",
+          "credit_percent_of_eligible_sale": "9.7"
+        },
+        {
+          "from": "2021-04-01",
+          "to_inclusive": "2023-01-14",
+          "credit_percent_of_eligible_sale": "9"
+        },
+        {
+          "from": "2023-01-15",
+          "to_inclusive": "2026-12-31",
+          "credit_percent_of_eligible_sale": "12"
+        }
+      ],
+      "state_end_inclusive_observed": "2026-12-31",
+      "block_before_2023_january_full_month": true,
+      "notable_requirements": [
+        "formal option under Portaria CAT35/17",
+        "term effective first day of following month",
+        "minimum option period 12 months",
+        "non-return",
+        "other input-credit substitution",
+        "Art52 reduction concurrently conditioned"
+      ],
+      "pending": [
+        "verify source of full chronology through official state consultation",
+        "exact NCM / product scope",
+        "CONFAZ deposit specificity and future state amendments"
+      ],
+      "verified": "OFFICIAL_STATE_ART41_AND_CAT35_TEXT_PARTIAL_CHAIN",
+      "approved": false
+    },
+    {
+      "uf": "RN",
+      "id": "RN-FISH-2025-MIDMONTH",
+      "normative_act": "RICMS RN Anexo003 art1 I a; Decreto 34.390/2025",
+      "state_primary": "https://www.diariooficial.rn.gov.br/dei/dorn3/documentos/00000001/20220819/783139.htm",
+      "amendment_primary": "https://webdisk.diariooficial.rn.gov.br/Jornal/12025-03-08.pdf",
+      "historical_original_percent_of_icms": "60",
+      "amended_reported_percent_of_icms": "64",
+      "amendment_effects_reported": "2025-03-20",
+      "full_march_2025_not_certifiable_from_amendment_alone": true,
+      "pending": [
+        "confirm precise publication/effects and prior chain",
+        "EFD and term of option",
+        "CONFAZ and source bytes archive"
+      ],
+      "verified": "ORIGINAL_TEXT_AND_AMENDMENT_PARTIALLY_COTEJADO",
+      "approved": false
+    },
+    {
+      "uf": "AP",
+      "id": "AP-APRIL2026-SUPERSEDED-REGULATION",
+      "normative_act": "Lei 3.395/2025; Decretos 2.349 e 2.656/2026",
+      "original_regulation_primary": "https://diofe.portal.ap.gov.br/portal/edicoes/download/9901",
+      "successor_primary": "https://diofe.portal.ap.gov.br/portal/edicoes/visualizar_pdf/9915/",
+      "decree_original_published": "2026-04-07",
+      "decree_successor_published": "2026-04-17",
+      "original_revoked_on": "2026-04-17",
+      "april_2026_full_month_not_certifiable_from_successor_alone": true,
+      "pending": [
+        "exact applicability to candidate art415 special regime",
+        "Selo Sustentabilidade status",
+        "CONFAZ specific annex"
+      ],
+      "verified": "PRIMARY_DOE_SUPERSESSION_NOT_CONCESSION",
+      "approved": false
+    },
+    {
+      "uf": "RR",
+      "id": "RR-AGRI-2026-FEDERAL-VS-STATE",
+      "normative_act": "RICMS RR Decreto 4.335-E/2001 Anexo I art1 LXVII",
+      "state_consultation": "https://www.sefaz.rr.gov.br/downloads?catid=1404&id=25395&m=0&task=download.send",
+      "federal_convention": "https://www.confaz.fazenda.gov.br/legislacao/convenios/1997/CV100_97",
+      "state_end_inclusive_last_text": "2025-12-31",
+      "federal_extension_indicated_through": "2027-12-31",
+      "state_extension_2026_found": false,
+      "block_2026_without_proven_state_extension": true,
+      "pending": [
+        "locate 2026 act for LXVII",
+        "check actual products and operations",
+        "internalization and exceptions"
+      ],
+      "verified": "STATE_PRIOR_TEXT_ONLY_2026_NOT_PROVEN",
+      "approved": false
+    },
+    {
+      "uf": "MT",
+      "id": "MT-FERTILIZER-2027-EXCLUSIVE-END",
+      "normative_act": "RICMS MT Anexo V art31-A §6; Decreto 1.802/2025",
+      "state_consultation": "https://app1.sefaz.mt.gov.br/sistema/legislacao/respostaconsulta.nsf/766feae0478e62780325673c0049468e/dfdffa903c8253dd03258e28005313b4",
+      "federal_convention": "https://www.confaz.fazenda.gov.br/legislacao/convenios/2025/CV079_25",
+      "state_end_inclusive_observed": "2027-12-31",
+      "first_excluded_month": "2028-01-01",
+      "pending": [
+        "NCM, product, use and operation scope",
+        "ICMS ST and DIFAL",
+        "DOE original and entire 2026 amendments"
+      ],
+      "verified": "OFFICIAL_STATE_CONSULTATION_PARTIAL_SCOPE",
+      "approved": false
+    }
+  ],
+  "accepted_count": 0,
+  "import_authorized": false,
+  "source_originals_archived": false,
+  "independent_review_passed": false
+}

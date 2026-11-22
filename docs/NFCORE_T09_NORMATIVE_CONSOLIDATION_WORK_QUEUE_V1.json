@@ -226,7 +226,12 @@
         },
         "latest_receipt_manifest": "docs/NFCORE_T09_RECEBIMENTO_FINAL_50_DOCUMENTOS_20261122.json",
         "latest_receipt_count": 1,
-        "supervening_official_review_status": "MORE_PRIMARY_WORK_DONE_NOT_LEGALLY_ACCEPTED"
+        "supervening_official_review_status": "MORE_PRIMARY_WORK_DONE_NOT_LEGALLY_ACCEPTED",
+        "temporal_gate": {
+          "case_id": "AP-APRIL2026-SUPERSEDED-REGULATION",
+          "status": "NECESSARY_NEGATIVE_GUARD_TEST_DESIGNED_NOT_ALL_LEGAL_TESTS",
+          "full_legal_chain_verified": false
+        }
       }
     },
     {
@@ -528,7 +533,12 @@
         },
         "latest_receipt_manifest": "docs/NFCORE_T09_RECEBIMENTO_FINAL_50_DOCUMENTOS_20261122.json",
         "latest_receipt_count": 3,
-        "primary_provision_checkpoint": "PARTIAL_TEXT_CHECKED_NOT_CURATED"
+        "primary_provision_checkpoint": "PARTIAL_TEXT_CHECKED_NOT_CURATED",
+        "temporal_gate": {
+          "case_id": "MG-COHAB-ITEM26-STATE-VS-CONFAZ",
+          "status": "NECESSARY_NEGATIVE_GUARD_TEST_DESIGNED_NOT_ALL_LEGAL_TESTS",
+          "full_legal_chain_verified": false
+        }
       }
     },
     {
@@ -615,7 +625,12 @@
         },
         "latest_receipt_manifest": "docs/NFCORE_T09_RECEBIMENTO_FINAL_50_DOCUMENTOS_20261122.json",
         "latest_receipt_count": 1,
-        "supervening_official_review_status": "MORE_PRIMARY_WORK_DONE_NOT_LEGALLY_ACCEPTED"
+        "supervening_official_review_status": "MORE_PRIMARY_WORK_DONE_NOT_LEGALLY_ACCEPTED",
+        "temporal_gate": {
+          "case_id": "MT-FERTILIZER-2027-EXCLUSIVE-END",
+          "status": "NECESSARY_NEGATIVE_GUARD_TEST_DESIGNED_NOT_ALL_LEGAL_TESTS",
+          "full_legal_chain_verified": false
+        }
       }
     },
     {
@@ -939,7 +954,12 @@
         },
         "latest_receipt_manifest": "docs/NFCORE_T09_RECEBIMENTO_FINAL_50_DOCUMENTOS_20261122.json",
         "latest_receipt_count": 2,
-        "primary_provision_checkpoint": "PARTIAL_TEXT_CHECKED_NOT_CURATED"
+        "primary_provision_checkpoint": "PARTIAL_TEXT_CHECKED_NOT_CURATED",
+        "temporal_gate": {
+          "case_id": "RN-FISH-2025-MIDMONTH",
+          "status": "NECESSARY_NEGATIVE_GUARD_TEST_DESIGNED_NOT_ALL_LEGAL_TESTS",
+          "full_legal_chain_verified": false
+        }
       }
     },
     {
@@ -1026,7 +1046,12 @@
         },
         "latest_receipt_manifest": "docs/NFCORE_T09_RECEBIMENTO_FINAL_50_DOCUMENTOS_20261122.json",
         "latest_receipt_count": 1,
-        "supervening_official_review_status": "MORE_PRIMARY_WORK_DONE_NOT_LEGALLY_ACCEPTED"
+        "supervening_official_review_status": "MORE_PRIMARY_WORK_DONE_NOT_LEGALLY_ACCEPTED",
+        "temporal_gate": {
+          "case_id": "RR-AGRI-2026-FEDERAL-VS-STATE",
+          "status": "NECESSARY_NEGATIVE_GUARD_TEST_DESIGNED_NOT_ALL_LEGAL_TESTS",
+          "full_legal_chain_verified": false
+        }
       }
     },
     {
@@ -1203,7 +1228,12 @@
         "latest_receipt_manifest": "docs/NFCORE_T09_RECEBIMENTO_FINAL_50_DOCUMENTOS_20261122.json",
         "latest_receipt_count": 3,
         "primary_provision_checkpoint": "PARTIAL_TEXT_CHECKED_NOT_CURATED",
-        "supervening_official_review_status": "MORE_PRIMARY_WORK_DONE_NOT_LEGALLY_ACCEPTED"
+        "supervening_official_review_status": "MORE_PRIMARY_WORK_DONE_NOT_LEGALLY_ACCEPTED",
+        "temporal_gate": {
+          "case_id": "SP-TEXTILE-ART41-INTRA-MONTH",
+          "status": "NECESSARY_NEGATIVE_GUARD_TEST_DESIGNED_NOT_ALL_LEGAL_TESTS",
+          "full_legal_chain_verified": false
+        }
       }
     },
     {

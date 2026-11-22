@@ -474,6 +474,13 @@
         ],
         "original_bytes_archived": false,
         "accepted": false
+      },
+      "temporal_authority_checkpoint_20261122": {
+        "reference": "docs/NFCORE_T09_TEMPORAL_AUTHORITY_20261122.json",
+        "case_id": "AP-APRIL2026-SUPERSEDED-REGULATION",
+        "formal_status": "RESEARCH_ONLY_FAIL_CLOSED",
+        "state_authority_and_federal_convention_not_interchangeable": true,
+        "full_temporal_chain_verified": false
       }
     },
     {
@@ -698,6 +705,13 @@
         "status": "PARTIAL_PRIMARY_TEXT_REVIEW_ONLY",
         "full_chain_verified": false,
         "legal_applicability_approved": false
+      },
+      "temporal_authority_checkpoint_20261122": {
+        "reference": "docs/NFCORE_T09_TEMPORAL_AUTHORITY_20261122.json",
+        "case_id": "MG-COHAB-ITEM26-STATE-VS-CONFAZ",
+        "formal_status": "RESEARCH_ONLY_FAIL_CLOSED",
+        "state_authority_and_federal_convention_not_interchangeable": true,
+        "full_temporal_chain_verified": false
       }
     },
     {
@@ -766,6 +780,13 @@
         "scope": "operações internas e interestaduais com fertilizantes do art31-A, desde que cumpridos demais requisitos",
         "limitation": "Informação oficial de consulta não substitui DOE, classificação do produto, prova de operação/uso agrícola, análise ST/DIFAL ou aceite humano.",
         "accepted": false
+      },
+      "temporal_authority_checkpoint_20261122": {
+        "reference": "docs/NFCORE_T09_TEMPORAL_AUTHORITY_20261122.json",
+        "case_id": "MT-FERTILIZER-2027-EXCLUSIVE-END",
+        "formal_status": "RESEARCH_ONLY_FAIL_CLOSED",
+        "state_authority_and_federal_convention_not_interchangeable": true,
+        "full_temporal_chain_verified": false
       }
     },
     {
@@ -1073,6 +1094,13 @@
         "status": "PARTIAL_PRIMARY_TEXT_REVIEW_ONLY",
         "full_chain_verified": false,
         "legal_applicability_approved": false
+      },
+      "temporal_authority_checkpoint_20261122": {
+        "reference": "docs/NFCORE_T09_TEMPORAL_AUTHORITY_20261122.json",
+        "case_id": "RN-FISH-2025-MIDMONTH",
+        "formal_status": "RESEARCH_ONLY_FAIL_CLOSED",
+        "state_authority_and_federal_convention_not_interchangeable": true,
+        "full_temporal_chain_verified": false
       }
     },
     {
@@ -1137,6 +1165,13 @@
         "source": "https://www.sefaz.rr.gov.br/downloads?catid=1404&id=25395&m=0&task=download.send",
         "findings": "Anexo I art1 LXVII Decreto4335-E/2001 tratava isenção de operações INTERNAS com insumos agropecuários indicados e destinados à agricultura/pecuária, com termo textual 31/12/2025. Importação não é automaticamente interna.",
         "unresolved": "Localizar ato estadual posterior a 31/12/2025 para competência 2026; prorrogação do Convênio federal 79/2025 não é internalização automática."
+      },
+      "temporal_authority_checkpoint_20261122": {
+        "reference": "docs/NFCORE_T09_TEMPORAL_AUTHORITY_20261122.json",
+        "case_id": "RR-AGRI-2026-FEDERAL-VS-STATE",
+        "formal_status": "RESEARCH_ONLY_FAIL_CLOSED",
+        "state_authority_and_federal_convention_not_interchangeable": true,
+        "full_temporal_chain_verified": false
       }
     },
     {
@@ -1280,6 +1315,13 @@
         "finding": "Art41 Anexo III: 9,7% em 15/01/2021–31/03/2021; 9% desde 01/04/2021 até 14/01/2023; 12% desde 15/01/2023, sobre valor de saída elegível sob art52.",
         "followup": "Exigências da CAT35/2017 e estorno proporcional, devoluções, alterações, retroatividade e opção individual devem ser verificadas.",
         "accepted": false
+      },
+      "temporal_authority_checkpoint_20261122": {
+        "reference": "docs/NFCORE_T09_TEMPORAL_AUTHORITY_20261122.json",
+        "case_id": "SP-TEXTILE-ART41-INTRA-MONTH",
+        "formal_status": "RESEARCH_ONLY_FAIL_CLOSED",
+        "state_authority_and_federal_convention_not_interchangeable": true,
+        "full_temporal_chain_verified": false
       }
     },
     {
