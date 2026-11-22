@@ -5,7 +5,7 @@
 ## Dispositivo judicial de fonte primária
 
 - Fonte oficial STF: https://portal.stf.jus.br/peticaoInicial/verPeticaoInicial.asp?base=ADI&numProcesso=3779
-- Sessão virtual de 23 a 29 de agosto de 2019: o Tribunal, por maioria, julgou procedente o pedido para **declarar inconstitucionais as Leis do Estado do Pará 6.912/2006, 6.913/2006, 6.914/2006 e 6.915/2006**. O Ministro Roberto Barroso divergiu quanto à **modulação dos efeitos**. Não se presume, a partir do trecho consultado, o efeito temporal de todos os desdobramentos ou a inexistência de norma posterior válida.
+- Sessão virtual de 23 a 29 de agosto de 2019: o Tribunal, por maioria, julgou procedente o pedido para **declarar inconstitucionais as Leis do Estado do Pará 6.912/2006, 6.913/2006, 6.914/2006 e 6.915/2006**. O Ministro Roberto Barroso divergiu apenas para propor **modulação dos efeitos**, não acolhida pela maioria no julgamento de 2019. Isso NÃO comprova, por si, a inexistência de uma norma superveniente válida ou a situação de eventuais embargos posteriores. A candidata continua bloqueada.
 - A candidata `PA-POLITICA-LEI6913-DEC2490-V1` atualmente aponta a Lei 6.913/2006 e o Decreto 2.490/2006, o que obriga a rastrear judicialmente a validade **da exata base legal**, não apenas ler a lei de origem.
 
 ## Pendências jurídicas internas, independentes de contador
