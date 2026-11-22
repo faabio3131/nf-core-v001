@@ -1,5 +1,6 @@
 """T09 curatorial status reconciliation must fail closed on premature promotion."""
 from copy import deepcopy
+import re
 from pathlib import Path
 from runpy import run_path
 
@@ -31,15 +32,57 @@ def _fixture():
     ]
 
 
-def test_t09_audit_reports_all_27_internal_gaps_without_releasing_fiscal_right():
-    report = audit_files()
+def test_t09_audit_reconciles_current_per_uf_acceptance_without_fiscal_release():
+    """Track actual progress; never pin acceptable results to an old snapshot."""
+    queue, candidates, dossiers = _fixture()
+    report = audit_curation(queue, candidates, dossiers)
+    indexed_queue = {entry["uf"]: entry for entry in queue["work_items"]}
+    indexed_docs = {entry["uf"]: entry for entry in dossiers["dossiers"]}
+    indexed_drafts = {entry["uf"]: entry for entry in candidates["candidates"]}
+    required = AUDIT_FUNCTIONS["_REQUIRED_INTERNAL"]
+    assert set(indexed_queue) == set(indexed_docs) == set(indexed_drafts)
+    accepted = {
+        uf for uf, entry in indexed_queue.items()
+        if entry["internal_curatorial_accepted"] is True
+    }
+    missing = set()
+    for uf, entry in indexed_queue.items():
+        doc, draft = indexed_docs[uf], indexed_drafts[uf]
+        assert entry["candidate_id"] == doc["candidate_id"] == draft["candidate_id"]
+        if any(entry.get(key) is not True for key in required):
+            missing.add(uf)
+        digest = entry.get("source_publication_and_original_bytes_digest")
+        if not isinstance(digest, str) or re.fullmatch(r"[a-f0-9]{64}", digest) is None:
+            missing.add(uf)
+        if entry.get("individual_concession_normative_requirement_verified") is not True:
+            missing.add(uf)
+        if doc.get("evidence_status") != "COMPLETE_RESEARCH_INTERNALLY_VERIFIED":
+            missing.add(uf)
+        if doc.get("independent_counter_review") is not True:
+            missing.add(uf)
+        if uf in accepted:
+            assert uf not in missing, f"{uf}: acceptance without full internal proof"
+            assert doc["internal_acceptance"] is True
+            assert entry["independent_agent_counter_review_passed"] is True
+            assert doc["independent_counter_review"] is True
+            assert re.fullmatch(r"[a-f0-9]{64}", digest) is not None
+        else:
+            assert doc["internal_acceptance"] is False
+        assert draft["review_status"] == "draft"
+        assert draft["import_authorized"] is False
+        assert entry["legally_importable"] is False
+        assert entry["eligible_for_fiscal_application"] is False
     assert report["schema_version"] == "nfcore.t09.internal-curation-audit/v1"
-    assert report["status"] == "INTERNAL_CURATORIAL_BLOCKED"
-    assert report["representative_ufs"] == 27
-    assert report["internally_accepted_ufs"] == 0
-    assert len(report["missing_gates_by_uf"]) == 27
+    assert report["representative_ufs"] == len(indexed_queue)
+    assert report["internally_accepted_ufs"] == len(accepted)
+    assert set(report["missing_gates_by_uf"]) == missing
+    assert set(report["unaccepted_internal_ufs"]) == set(indexed_queue) - accepted
+    complete = not missing and len(accepted) == len(indexed_queue)
+    assert report["all_internal_gates_recorded"] is complete
+    assert report["status"] == (
+        "INTERNAL_RESEARCH_RECORDED" if complete else "INTERNAL_CURATORIAL_BLOCKED"
+    )
     assert report["fiscal_application_authorized"] is False
-    assert report["all_internal_gates_recorded"] is False
 
 
 @pytest.mark.parametrize("fake_field", [
@@ -194,3 +237,25 @@ def test_all_boolean_research_gates_without_internal_ack_cannot_close():
     assert len(result["unaccepted_internal_ufs"]) == 27
     assert result["all_internal_gates_recorded"] is False
     assert result["fiscal_application_authorized"] is False
+
+
+
+def test_t09_acceptance_without_original_sha_is_rejected():
+    q, c, d = deepcopy(_fixture())
+    row, doc = q["work_items"][0], d["dossiers"][0]
+    row["internal_curatorial_accepted"] = True
+    row["source_publication_and_original_bytes_digest"] = None
+    doc["internal_acceptance"] = True
+    with pytest.raises(ValueError, match="premature or inconsistent"):
+        audit_curation(q, c, d)
+
+
+def test_t09_acceptance_without_independent_counter_review_is_rejected():
+    q, c, d = deepcopy(_fixture())
+    row, doc = q["work_items"][0], d["dossiers"][0]
+    row["internal_curatorial_accepted"] = True
+    row["independent_agent_counter_review_passed"] = False
+    doc["independent_counter_review"] = False
+    doc["internal_acceptance"] = True
+    with pytest.raises(ValueError, match="premature or inconsistent"):
+        audit_curation(q, c, d)
