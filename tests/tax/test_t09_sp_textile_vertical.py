@@ -226,3 +226,23 @@ def test_sp_official_art41_capture_manifest_is_linked_to_queue_not_entitlement()
     assert capture["does_not_certify_legal_chain"] is True
     assert row["internal_curatorial_accepted"] is False
     assert row["legally_importable"] is False
+
+
+def test_sp_confaz_2018_decree_annex_anchors_precise_textile_benefit():
+    dossier, _ = _documents()
+    state = next(x for x in dossier["dossiers"] if x["uf"] == "SP")
+    route = state["sp_vertical_checkpoint_20261122"]["confaz_reinstitution_evidence"]
+    items = route["state_publication"]["annex"]
+    assert [(x["item"], x["ricms"]) for x in items] == [
+        (26, "Anexo II art.52"),
+        (59, "Anexo III art.41"),
+    ]
+    assert route["state_publication"]["official_url"].endswith("/dec63320.aspx")
+    assert route["reinstitution"]["official_url"].endswith("/dec64118.aspx")
+    assert route["confaz_certificate"]["act"].endswith("6/2018")
+    assert route["confaz_certificate"]["deposit_process"] == "12004.100961/2018-08"
+    assert route["confaz_certificate"]["pdf_bytes_sha256"] is None
+    assert route["legal_route_identified"] is True
+    assert route["complete_legal_route_verified"] is False
+    assert route["current_taxpayer_entitlement"] is False
+    assert state["internal_acceptance"] is False

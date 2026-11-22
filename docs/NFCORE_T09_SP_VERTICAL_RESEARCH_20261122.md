@@ -52,3 +52,13 @@
 
 ## Testes
 O módulo `tests/tax/test_t09_sp_textile_vertical.py` executa hipóteses de fábrica, NCM e CFOP baseadas na consulta de 2026 **com dados sintéticos e sem declaração de entitlement**. Resultado `potential` do motor é exclusivamente triagem: `issuance_authorized=false`, `tax_calculation_authorized=false`, `eligibility_certified=false`. O teste não prova a integralidade da classificação NCM nem a regularidade da opção de um contribuinte verdadeiro. Submeter execução CI e análise contraditória independente.
+
+
+## Complemento 22/11 — LC 160/2017 / CONFAZ 190/2017: trilha original de SP
+
+- [Decreto estadual 63.320/2018](https://legislacao.fazenda.sp.gov.br/Paginas/dec63320.aspx): Anexo das normas existentes em 08/08/2017. **Item 59** registra especificamente Decreto 62.560/2017, art. 2º, RICMS Anexo III art. 41 (crédito outorgado têxtil). **Item 26** registra Decreto 56.019/2010, RICMS Anexo II art. 52 (redução da base para têxteis). Este é um vínculo por benefício, **não** só por título do Convênio.
+- [Certificado SE/CONFAZ nº 6/2018](https://www.confaz.fazenda.gov.br/legislacao/certificado-registro-deposito-cv-icms-190-17-1/sao-paulo/2018/sei_mf-0741366-certificado-de-registro-e-deposito-sp.pdf): documento PDF oficial confirma depósito de planilhas/atos em 30/05/2018, referenciando expressamente Decreto SP 63.320/2018, processo SEI nº 12004.100961/2018-08. Sua existência foi lida e conferida visualmente, mas **ainda não possui digest SHA-256 dos bytes originais arquivados** neste pacote.
+- [Certificado SE/CONFAZ nº 19/2018](https://www.confaz.fazenda.gov.br/legislacao/certificado-registro-deposito-cv-icms-190-17-1/sao-paulo/2018/sei_mf-0880143-certificado-de-registro-e-deposito-19-18-2.pdf): segundo depósito (27/06/2018) de atos concessivos relacionados ao mesmo decreto de SP.
+- [Decreto estadual 64.118/2019](https://legislacao.fazenda.sp.gov.br/Paginas/dec64118.aspx): **reinstitui os benefícios relacionados no anexo do 63.320/2018** sob LC160/17 e Convênio 190/17; mantém condições e limites de atos concessivos; admite revogação ou redução futura.
+
+**GATE LC160/CONFAZ:** o vínculo histórico específico dos arts. 41/52 foi identificado oficialmente, mas a cadeia completa de modificações 2018-2026 e atos/certificados posteriores, além da auditabilidade de originais do DOE, ainda são pendências. Portanto `confaz_legal_route_verified` permanece `false`; nenhuma aprovação prematura.

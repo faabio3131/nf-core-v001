@@ -1461,7 +1461,9 @@
           "tests": "PENDING_CI",
           "source_docs": "docs/NFCORE_T09_SP_VERTICAL_RESEARCH_20261122.md",
           "art41_gazette_original_verified": false,
-          "art41_capture_artifact_id": 14766917663
+          "art41_capture_artifact_id": 14766917663,
+          "confaz_route_identified": true,
+          "confaz_route_complete": false
         }
       }
     },

@@ -1622,6 +1622,67 @@
           "other_modifying_decree_originals_unverified": true,
           "full_chain_complete": false,
           "copy_accessible_in_git_checkout": false
+        },
+        "confaz_reinstitution_evidence": {
+          "source_classification": "PRIMARY_OFFICIAL_STATE_ACT_AND_FEDERAL_CERTIFICATE_PARTIAL_CHAIN",
+          "state_publication": {
+            "act": "Decreto SP 63.320 de 28/03/2018",
+            "official_url": "https://legislacao.fazenda.sp.gov.br/Paginas/dec63320.aspx",
+            "published": "2018-03-29",
+            "annex": [
+              {
+                "item": 26,
+                "origin_decree": "56.019/2010",
+                "ricms": "Anexo II art.52",
+                "benefit": "textile reduced tax base",
+                "registered_activity": "domestic textile manufacturer products"
+              },
+              {
+                "item": 59,
+                "origin_decree": "62.560/2017",
+                "ricms": "Anexo III art.41",
+                "benefit": "textile outorgado credit linked to art52",
+                "registered_activity": "domestic qualifying textile outputs"
+              }
+            ]
+          },
+          "reinstitution": {
+            "act": "Decreto SP 64.118 de 26/02/2019",
+            "official_url": "https://legislacao.fazenda.sp.gov.br/Paginas/dec64118.aspx",
+            "published": "2019-02-27",
+            "art1": "Reinstitutes listed acts of Annex of Decreto 63.320/2018 under LC160/2017 and Convênio190/17",
+            "section1": "Preexisting specific grant acts remain subject to their terms and periods",
+            "section2": "May revoke, modify or narrow benefits"
+          },
+          "confaz_certificate": {
+            "act": "Certificado de Registro e Depósito SE/CONFAZ nº 6/2018",
+            "official_pdf_url": "https://www.confaz.fazenda.gov.br/legislacao/certificado-registro-deposito-cv-icms-190-17-1/sao-paulo/2018/sei_mf-0741366-certificado-de-registro-e-deposito-sp.pdf",
+            "date": "2018-06-07",
+            "signed": "2018-06-08",
+            "publication_base": "Decreto SP 63.320/2018",
+            "underlying_deposit": "2018-05-30",
+            "deposit_process": "12004.100961/2018-08",
+            "scope": "Sheets of acts and tax benefit documentation deposited by SP; benefit-specific item covered by Decree Annex 59 and 26.",
+            "pdf_bytes_sha256": null,
+            "signature_verified_offline": false
+          },
+          "followup_certificate": {
+            "act": "SE/CONFAZ 19/2018",
+            "official_pdf_url": "https://www.confaz.fazenda.gov.br/legislacao/certificado-registro-deposito-cv-icms-190-17-1/sao-paulo/2018/sei_mf-0880143-certificado-de-registro-e-deposito-19-18-2.pdf",
+            "underlying_deposit": "2018-06-27",
+            "scope": "SP acts concession sheets and documentation relating to Decreto 63.320/2018",
+            "not_a_fresh_current_entitlement": true
+          },
+          "remaining_to_certify": [
+            "Download and hash exact official decree originals, complementing consolidated HTML citations",
+            "Check Annex of decree 63.320/2018 modifications in 2018-2020 and subsequent state norms",
+            "Check deposits for amendments/extensions under CONFAZ clauses 7, 9 and 12",
+            "Validate 2021-2026 current scope/st/disal operation and all date restrictions",
+            "Obtain independent adversarial review using separate agent"
+          ],
+          "legal_route_identified": true,
+          "complete_legal_route_verified": false,
+          "current_taxpayer_entitlement": false
         }
       }
     },
