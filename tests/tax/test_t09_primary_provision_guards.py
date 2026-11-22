@@ -37,7 +37,16 @@ def _dossier(uf):
 
 def _evaluate(uf, month, *, start="2026-01-01", omitted=(),
               operation="domestic_sale", cfop="5102"):
-    inspected = _dossier(uf)["primary_provision_checkpoint_20261122"]
+    row = _dossier(uf)
+    inspected = row.get("primary_provision_checkpoint_20261122")
+    if inspected is None and uf == "AP":
+        ap = row["supervening_official_20261122"]
+        inspected = {
+            "articles": "Decreto 2.656/2026 art. 9",
+            "evidence": ap["required_review_keys"],
+        }
+    if inspected is None:
+        raise KeyError("source-specific test case not defined")
     required = inspected["evidence"]
     policy = {
         "schema_version": RULE_SCHEMA,
