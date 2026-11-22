@@ -146,11 +146,16 @@ def audit_curation(queue: dict[str, Any], drafts: dict[str, Any],
             blocked[uf] = missing
     return {
         "schema_version": "nfcore.t09.internal-curation-audit/v1",
-        "status": "INTERNAL_CURATORIAL_BLOCKED" if blocked else "INTERNAL_RESEARCH_RECORDED",
+        "status": (
+            "INTERNAL_CURATORIAL_BLOCKED"
+            if blocked or len(accepted) != len(items)
+            else "INTERNAL_RESEARCH_RECORDED"
+        ),
         "representative_ufs": len(items),
         "internally_accepted_ufs": len(accepted),
         "missing_gates_by_uf": blocked,
-        "all_internal_gates_recorded": not blocked,
+        "unaccepted_internal_ufs": sorted(set(items) - set(accepted)),
+        "all_internal_gates_recorded": not blocked and len(accepted) == len(items),
         "external_activation_gates_pending_by_uf": external_pending,
         "external_activation_gates_separate_from_internal": True,
         "external_approval_is_a_promotion_dependency": True,

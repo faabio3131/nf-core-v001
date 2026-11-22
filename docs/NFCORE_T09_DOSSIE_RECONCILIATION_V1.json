@@ -327,6 +327,26 @@
         ],
         "manifest": "docs/NFCORE_T09_RECEBIMENTO_FINAL_50_DOCUMENTOS_20261122.json",
         "not_a_legal_approval": true
+      },
+      "official_crosscheck_late_2026": {
+        "uf": "AC",
+        "act": "Decreto AC 11.852/2026 sobre RICMS Decreto 008/1998",
+        "url": "https://legis.ac.gov.br/detalhar/6757",
+        "related_url": "https://legis.ac.gov.br/detalhar/4788",
+        "material": "Regras de entradas interestaduais/DIFAL e regime especial de industrial beneficiado; não criam automaticamente crédito presumido da Lei 1.358/2000.",
+        "caution": "Separar mercadorias usadas no processo industrial das demais; não deduzir dispensa de DIFAL ou da antecipação como regime fiscal universal.",
+        "conditions": [
+          "industrial_process_destination",
+          "special_regime_terms_and_difal",
+          "state_normative_eligibility_as_of_competence"
+        ],
+        "additional": "Lei 1.358 financiamento é juridicamente distinta de crédito outorgado.",
+        "status": "PRIMARY_STATE_TEXT_PARTIAL",
+        "source_original_archived_verified": false,
+        "as_of": "2026-11-22",
+        "legal_chain_complete": false,
+        "internal_acceptance": false,
+        "not_a_fiscal_policy": true
       }
     },
     {
@@ -767,6 +787,26 @@
         ],
         "manifest": "docs/NFCORE_T09_RECEBIMENTO_FINAL_50_DOCUMENTOS_20261122.json",
         "not_a_legal_approval": true
+      },
+      "official_crosscheck_late_2026": {
+        "uf": "MS",
+        "act": "LC MS 93/2001 consolidada, LC 347/2025 e ADI 3794",
+        "url": "https://aacpdappls.net.ms.gov.br/appls/legislacao/secoge/govato.nsf/66ecc3cfb53d53ff04256b140049444b/3a836f159c1b161904256c000058e57a",
+        "related_url": "https://www.ms.gov.br/financas-e-impostos/requerimento-de-incentivos-fiscais-com-compromisso-de-obrigacoes-reciprocas63",
+        "material": "Versão consolidada registra declaração STF ADI 3794 sobre dispositivos da LC 93; normas posteriores LC160/LC241 e LC347 requerem cotejo; LC347 art24-F define contribuição 13% no período 01/09/2025–31/08/2026 para grupo específico.",
+        "caution": "Não usar arts.6-8 históricos declarados inconstitucionais como autorização isolada, nem aplicar 13% a todo MS-Empreendedor sem enquadramento no art.24-F.",
+        "conditions": [
+          "ms_adi3794_constitutionality_chain",
+          "ms_eligible_individual_terms",
+          "ms_24f_contribution_period_when_applicable"
+        ],
+        "additional": "Portal de serviço oficial confirma pedidos sujeitos a contrapartidas e instrumento bilateral, não modalidade automática de crédito.",
+        "status": "PRIMARY_STATE_CONSOLIDATED_TEXT_WITH_COURT_RISK",
+        "source_original_archived_verified": false,
+        "as_of": "2026-11-22",
+        "legal_chain_complete": false,
+        "internal_acceptance": false,
+        "not_a_fiscal_policy": true
       }
     },
     {
@@ -907,6 +947,26 @@
         "status": "PARTIAL_PRIMARY_TEXT_REVIEW_ONLY",
         "full_chain_verified": false,
         "legal_applicability_approved": false
+      },
+      "official_crosscheck_late_2026": {
+        "uf": "PB",
+        "act": "Decreto PB 48.405/2026 e Portaria 00080/2026/SEFAZ",
+        "url": "https://sefaz.pb.gov.br/legislacao/397-decretos-estaduais/icms/icms-2026/17811-decreto-n-48-405-de-03-de-julho-de-2026",
+        "related_url": "https://www.sefaz.pb.gov.br/legislacao/400-portarias/portarias-2026/17560-portaria-n-00080-2026-sefaz",
+        "material": "CRF/FGTS válido na data do protocolo para concessão/renovação, Decreto 48.405 arts.1-5; Portaria 80 exige certidão de não similaridade para hipótese específica do FAIN.",
+        "caution": "Não impor CRF por nota fiscal mensal sem previsão legal; nem presumir que quatro dígitos de NCM comprovam não similaridade sem certidão quando necessária.",
+        "conditions": [
+          "fgts_valid_on_grant_or_renewal_request",
+          "fain_geief_non_similarity_certificate_when_relevant",
+          "distinct_new_product_ncm_four_digits"
+        ],
+        "additional": "FGTS é requisito de pedido/renovação, não um benefício aplicável automaticamente em operações.",
+        "status": "PRIMARY_STATE_TEXT_PARTIAL",
+        "source_original_archived_verified": false,
+        "as_of": "2026-11-22",
+        "legal_chain_complete": false,
+        "internal_acceptance": false,
+        "not_a_fiscal_policy": true
       }
     },
     {
@@ -1027,6 +1087,26 @@
         ],
         "manifest": "docs/NFCORE_T09_RECEBIMENTO_FINAL_50_DOCUMENTOS_20261122.json",
         "not_a_legal_approval": true
+      },
+      "official_crosscheck_late_2026": {
+        "uf": "PR",
+        "act": "Decreto PR 7.721/2024 e Resolução SEFA 227/2026",
+        "url": "https://www.legislacao.pr.gov.br/legislacao/pesquisarAto.do?action=exibir&codAto=341992",
+        "related_url": "https://www.legislacao.pr.gov.br/legislacao/listarAtosAno.do?action=exibir&codAto=389398&codItemAto=2473441",
+        "material": "Decreto Paraná Competitivo tem modalidades com contribuição de 0,4% sobre base de operação e relatórios de investimento, conforme artigo/benefício específico. Resolução 227/2026 versa transferência de créditos do art.12, não lista de NCM proibidas do art.14.",
+        "caution": "Não aplicar contribuição de 0,4% a todas modalidades, nem converter resolução de transferência em lista de NCM elegível.",
+        "conditions": [
+          "pr_modality_and_legal_item",
+          "pr_financial_contribution_if_required",
+          "pr_negative_ncm_list_current_by_act"
+        ],
+        "additional": "Resolução 469/2026 alterou condições da 227; verificar redação vigente, prazo e contratos/termos do investidor.",
+        "status": "PRIMARY_STATE_TEXT_PARTIAL",
+        "source_original_archived_verified": false,
+        "as_of": "2026-11-22",
+        "legal_chain_complete": false,
+        "internal_acceptance": false,
+        "not_a_fiscal_policy": true
       }
     },
     {
@@ -1374,6 +1454,26 @@
         "capture_filenames": [],
         "manifest": "docs/NFCORE_T09_RECEBIMENTO_FINAL_50_DOCUMENTOS_20261122.json",
         "not_a_legal_approval": true
+      },
+      "official_crosscheck_late_2026": {
+        "uf": "TO",
+        "act": "Lei TO 1.385/2003; Lei 3.577/2019; consulta tributária 034/2024",
+        "url": "https://dtri.sefaz.to.gov.br/legislacao/ntributaria/Leis/Lei1.385-03.htm",
+        "related_url": "https://dtri.sefaz.to.gov.br/legislacao/consultas/2024/Consulta034.2024.htm",
+        "material": "Art.6º Lei 1.385 vincula benefício a carta-consulta aprovada; Lei 3.577/2019 trata remissão, anistia e reinstituição no Convênio 190/2017.",
+        "caution": "Distinguir PROINDÚSTRIA e PROSPERAR, substituição tributária e operação; Lei de reinstituição não prova planilha depositada específica.",
+        "conditions": [
+          "to_approved_consulta_and_instrument",
+          "to_lc160_reinstitution_and_confaz_deposit",
+          "to_st_incidence_by_operation"
+        ],
+        "additional": "Lei 3.577/2019 identificada no índice de Leis da SEFAZ/TO; ainda falta cotejo de anexos/certificados por modalidade.",
+        "status": "PRIMARY_STATE_TEXT_PARTIAL",
+        "source_original_archived_verified": false,
+        "as_of": "2026-11-22",
+        "legal_chain_complete": false,
+        "internal_acceptance": false,
+        "not_a_fiscal_policy": true
       }
     }
   ],

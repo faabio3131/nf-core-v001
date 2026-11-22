@@ -38,3 +38,8 @@ Coleta **ENCERRADA**, sem novas solicitações documentais ao usuário. Inventá
 
 ## Próxima ação sem depender de novos envios
 O agente de engenharia deve continuar pesquisando fontes oficiais para lacunas específicas por UF, separar atos distintos, reconciliar CONFAZ/LC160/efeitos temporais e executar os casos legais sobre o motor único. O proprietário declarou que não possui outros documentos; **não abrir pendências artificiais de coleta com o cliente**.
+
+
+## Arquivo persistente pessoal — 22/11/2026
+
+O ZIP consolidado e seu manifesto detalhado foram copiados para a **Biblioteca pessoal privada do ChatGPT**, pasta `/NFCore Commercial Launch/T09 Legal Evidence/` e conferidos por listagem. ZIP com **20.785.123 bytes**, SHA-256 da cópia local de origem `584a0cd1458619b7033d39e95a7ee4cbe31558cba90cf0ee1cdab00e1f4cd547`, CRC íntegro e 50/50 capturas verificadas. Manifesto separado `NFCORE_T09_RECEBIMENTO_FINAL_50_DOCUMENTOS_20261122.json`, SHA-256 `4059c5c5b6f53e2fd62cc299e22dc2c881d358d35a1f430f9a6ae0cfa6bee8a7`. **Persistência de cópia pessoal confirmada**, não substitui arquivamento jurídico WORM, autenticidade de DOE ou disponibilização de bytes na CI. Arquivamento governado permanece **PARCIAL**, não marcar INT-01 como integralmente certificado.

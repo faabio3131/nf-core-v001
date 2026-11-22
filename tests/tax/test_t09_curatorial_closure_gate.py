@@ -167,3 +167,30 @@ def test_actual_taxpayer_grant_is_external_normative_predicate_is_internal():
     assert q["external_dependency_separation_20261122"][
         "external_not_a_blocker_for_internal_closeout"
     ] is True
+
+
+
+def test_all_boolean_research_gates_without_internal_ack_cannot_close():
+    """Internal acceptance must be independently recorded, never inferred."""
+    q, c, d = deepcopy(_fixture())
+    for item, dossier in zip(q["work_items"], d["dossiers"], strict=True):
+        for k in (
+            "full_amendment_chain_verified",
+            "applicability_by_competence_verified",
+            "confaz_legal_route_verified",
+            "scope_and_negative_cases_legally_grounded",
+            "independent_agent_counter_review_passed",
+            "technical_tests_certified_for_real_act",
+        ):
+            item[k] = True
+        item["source_publication_and_original_bytes_digest"] = "a" * 64
+        item["individual_concession_normative_requirement_verified"] = True
+        dossier["evidence_status"] = "COMPLETE_RESEARCH_INTERNALLY_VERIFIED"
+        dossier["independent_counter_review"] = True
+        # No human approval is required, but technical/internal acceptance
+        # still must be a separate attested step, not an inferred boolean.
+    result = audit_curation(q, c, d)
+    assert result["missing_gates_by_uf"] == {}
+    assert len(result["unaccepted_internal_ufs"]) == 27
+    assert result["all_internal_gates_recorded"] is False
+    assert result["fiscal_application_authorized"] is False
