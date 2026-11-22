@@ -178,7 +178,7 @@ def main() -> None:
         parser.error(f"T09 integrity or premature promotion gate: {exc}")
     print(json.dumps(report, ensure_ascii=False, sort_keys=True))
     if args.require_closure and not report["all_internal_gates_recorded"]:
-        parser.exit(1, "T09 internal curation remains unverified; external approval is a separate promotion gate.\n")
+        parser.exit(\n            1, "T09 internal curation unverified; external approval is a separate gate.\n"\n        )
 
 
 if __name__ == "__main__":
