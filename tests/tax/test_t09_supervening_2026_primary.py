@@ -96,3 +96,33 @@ def test_new_supervening_findings_never_promote_canonical_fiscal_rule(uf):
     assert queue["internal_curatorial_accepted"] is False
     assert queue["legally_importable"] is False
     assert queue["eligible_for_fiscal_application"] is False
+
+
+def test_ro_consolidated_government_law_does_not_auto_create_grant():
+    ro = _rows(DOSSIER_FILE, "dossiers")["RO"]
+    source = ro["official_compiled_text_chain_20261122"]
+    assert "1.283/2025" in source["law"]
+    assert "30.916/2025" in source["regulation"]
+    assert "CONDER" in source["grant_condition"]
+    assert source["original_doe_chain_archived"] is False
+    assert source["full_2026_legality_consolidated"] is False
+    assert source["approved"] is False
+    assert ro["import_authorized"] is False
+
+
+def test_rr_tax_code_2026_copy_is_not_benefit_extension_evidence():
+    rr = _rows(DOSSIER_FILE, "dossiers")["RR"]
+    source = rr["official_2026_compilation_locator"]
+    assert "39.893" in source["normative_description"]
+    assert source["source_sha256"] is None
+    assert source["extension_2026_verified"] is False
+    assert rr["internal_acceptance"] is False
+
+
+def test_27_uf_matrix_has_one_real_row_per_state():
+    raw = (DOCS / "NFCORE_T09_RESEARCH_RESIDUAL_27UFS_20261122.md").read_text(
+        encoding="utf-8"
+    )
+    assert raw.splitlines()[0].endswith("(22/11/2026)")
+    for uf in _rows(DOSSIER_FILE, "dossiers"):
+        assert sum(line.startswith(f"| {uf} |") for line in raw.splitlines()) == 1
