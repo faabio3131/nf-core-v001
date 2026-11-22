@@ -36,10 +36,10 @@
       "candidate_id": "AC-INDUSTRIA-LEI1358-DEC4196-V1",
       "filename": "AC_Decreto_4196_2001.html",
       "expected_act": "Decreto 4.196/2001",
-      "source_url": null,
+      "source_url": "https://sefaz.ac.gov.br/2021/?p=14786",
       "document_role": "primary_regulation",
-      "source_url_review_status": "official_exact_url_not_established",
-      "note": "NÃO confundir com Decreto 4.196/2019 ou Lei 4.196/2023; URL oficial exata ainda não identificada",
+      "source_url_review_status": "official_sefaz_primary_act_locator_identified_download_and_bytes_needed",
+      "note": "Rejeitar arquivo histórico baixado de https://www.legis.ac.gov.br/detalhar/4520: é o DECRETO 8.701/2018 com listagem de atos, não o texto do Decreto 4.196/2001. Fonte correta SEFAZ/AC identifica Decreto 4.196/2001, alterado inclusive em 2025.",
       "required_for_internal_reconciliation": true
     },
     {
@@ -70,12 +70,12 @@
       "uf": "PA",
       "lot": "A",
       "candidate_id": "PA-POLITICA-LEI6913-DEC2490-V1",
-      "filename": "PA_Lei_6913_2006.html",
+      "filename": "PA_Lei_6913_2006.pdf",
       "expected_act": "Lei 6.913/2006",
-      "source_url": null,
+      "source_url": "https://bancodeleis.alepa.pa.gov.br/arquivos/lei6913_2006_96939.pdf",
       "document_role": "primary_statute",
-      "source_url_review_status": "official_exact_url_not_established",
-      "note": "Evitar usar /legislacao/5840, que é referência a resolução individual",
+      "source_url_review_status": "official_legislative_pdf_captured_date_conflict_pending_doe_reconciliation",
+      "note": "PDF de 5 páginas efetivamente contém Lei 6.913/2006, mas possui divergência editorial: cabeçalho data 03/08/2006; fecho data 03/10/2006; DOE nº 30.779 de 04/10/2006. Não corrigir bytes; confirmar publicação original.",
       "required_for_internal_reconciliation": true
     },
     {
