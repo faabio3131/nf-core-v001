@@ -1,9 +1,18 @@
 """T09 curatorial status reconciliation must fail closed on premature promotion."""
 from copy import deepcopy
+from pathlib import Path
+from runpy import run_path
 
 import pytest
 
-from scripts.nfcore_t09_curatorial_closure import audit_curation, audit_files
+# Only the Python package under src/ is importable in the CI runner. Keep the
+# T09 research audit as a read-only script, not a new domain authority.
+AUDIT_SOURCE = (
+    Path(__file__).resolve().parents[2] / "scripts/nfcore_t09_curatorial_closure.py"
+)
+AUDIT_FUNCTIONS = run_path(str(AUDIT_SOURCE), run_name="t09_curatorial_audit_test")
+audit_curation = AUDIT_FUNCTIONS["audit_curation"]
+audit_files = AUDIT_FUNCTIONS["audit_files"]
 
 
 def _fixture():

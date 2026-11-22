@@ -137,7 +137,6 @@ def audit_curation(queue: dict[str, Any], drafts: dict[str, Any],
     return {
         "schema_version": "nfcore.t09.internal-curation-audit/v1",
         "status": "INTERNAL_CURATORIAL_BLOCKED" if blocked else "INTERNAL_RESEARCH_RECORDED",
-        "reviewed_countries": 0,
         "representative_ufs": len(items),
         "internally_accepted_ufs": len(accepted),
         "missing_gates_by_uf": blocked,
