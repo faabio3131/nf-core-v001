@@ -201,7 +201,7 @@ def test_sp_formal_rudfto_option_is_not_a_taxpayer_grant():
     assert rule["grant_requirement_normatively_verified"] is True
     assert rule["authorizes_actual_grant"] is False
     assert rule["needs_actual_taxpayer_proof"] == "EXTERNAL_AT_APPLICATION"
-    assert "CAT35 art2" in rule["base"][-1]
+    assert "CAT35/2017 art2" in rule["base"][-1]
     assert scope["fiscal_activation_authorized"] is False
 
 
