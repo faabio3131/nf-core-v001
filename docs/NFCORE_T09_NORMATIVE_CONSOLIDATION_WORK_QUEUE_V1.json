@@ -114,7 +114,8 @@
         "case_design": "CONDITIONAL_POSITIVE_AND_NEGATIVE_PREPARED_NOT_CERTIFIED",
         "internal_grant_requirement_review": "PENDING_NORMATIVE_DETERMINATION",
         "actual_taxpayer_grant": "EXTERNAL_PER_TAXPAYER_WHEN_REQUIRED",
-        "actual_taxpayer_grant_not_required_to_finish_internal_curation": true
+        "actual_taxpayer_grant_not_required_to_finish_internal_curation": true,
+        "additional_primary_text_review": "CONTENT_IDENTIFIED_NOT_BYTES_ARCHIVED"
       }
     },
     {
@@ -505,7 +506,8 @@
         "case_design": "CONDITIONAL_POSITIVE_AND_NEGATIVE_PREPARED_NOT_CERTIFIED",
         "internal_grant_requirement_review": "PENDING_NORMATIVE_DETERMINATION",
         "actual_taxpayer_grant": "EXTERNAL_PER_TAXPAYER_WHEN_REQUIRED",
-        "actual_taxpayer_grant_not_required_to_finish_internal_curation": true
+        "actual_taxpayer_grant_not_required_to_finish_internal_curation": true,
+        "additional_primary_text_review": "CONTENT_IDENTIFIED_NOT_BYTES_ARCHIVED"
       }
     },
     {
@@ -674,7 +676,8 @@
         "case_design": "CONDITIONAL_POSITIVE_AND_NEGATIVE_PREPARED_NOT_CERTIFIED",
         "internal_grant_requirement_review": "PENDING_NORMATIVE_DETERMINATION",
         "actual_taxpayer_grant": "EXTERNAL_PER_TAXPAYER_WHEN_REQUIRED",
-        "actual_taxpayer_grant_not_required_to_finish_internal_curation": true
+        "actual_taxpayer_grant_not_required_to_finish_internal_curation": true,
+        "additional_primary_text_review": "CONTENT_IDENTIFIED_NOT_BYTES_ARCHIVED"
       }
     },
     {
@@ -969,7 +972,10 @@
     "internal_curatorial_signoff": "PENDING_NOT_GRANTED",
     "reconciliation_checkpoint": "docs/NFCORE_T09_DOSSIE_RECONCILIATION_V1.json",
     "received_or_cotejo_count": 19,
-    "unaccounted_in_audited_local_evidence_count": 3
+    "unaccounted_in_audited_local_evidence_count": 3,
+    "additional_online_primary_text_review_count": 3,
+    "all_22_entries_content_located_or_cotejo": true,
+    "all_22_original_bytes_archived": false
   },
   "internal_external_gate_clarification": "Internal research establishes necessity/dispensation and tests grant lifecycle with controlled evidence. Actual third-party taxpayer grant and professional opinion are external; no client grant required to finish internal curation. Legacy combined taxpayer_grant_required_and_verified remains false, never substitute it for internal requirement determination."
 }

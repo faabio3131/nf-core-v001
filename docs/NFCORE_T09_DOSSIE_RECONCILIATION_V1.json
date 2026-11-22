@@ -85,7 +85,13 @@
       "identity_status": "no_received_act_in_audited_batches",
       "source_pointer": "https://bancodeleis.alepa.pa.gov.br/arquivos/lei2490_2006_53513.pdf",
       "original_publisher_bytes_archived": false,
-      "eligible_for_import": false
+      "eligible_for_import": false,
+      "online_primary_inspection": {
+        "status": "CONTENT_IDENTIFIED_NOT_BYTES_ARCHIVED",
+        "date": "2026-11-22",
+        "url": "https://bancodeleis.alepa.pa.gov.br/arquivos/lei2490_2006_53513.pdf",
+        "findings": "Texto primário ALEPA conferido: Decreto 2.490 de 06/10/2006 remete à Lei 6.913 de 03/10/2006. Divergência editorial da lei recebida (agosto/outubro) continua registrada. ADI 3779 e efeitos, atos supervenientes e reinstituição específica não reconciliados."
+      }
     },
     {
       "uf": "PA",
@@ -151,7 +157,13 @@
       "identity_status": "no_received_act_in_audited_batches",
       "source_pointer": "https://diario.imprensaoficial.al.gov.br/apinova/api/editions/viewPdf/51478",
       "original_publisher_bytes_archived": false,
-      "eligible_for_import": false
+      "eligible_for_import": false,
+      "online_primary_inspection": {
+        "status": "CONTENT_IDENTIFIED_NOT_BYTES_ARCHIVED",
+        "date": "2026-11-22",
+        "url": "https://diario.imprensaoficial.al.gov.br/apinova/api/editions/viewPdf/51478",
+        "findings": "DOE edição 2777 suplemento 06/04/2026 p.4: arts.1–3 distinguem prorrogação mediante resolução CONEDES e expansão/modernização e empregos, adesão por Convênio 190 cláusula 13 e hipóteses de renovação de ofício; art.5 efeitos 01/05/2026. Prazo 2032 não implica renovação automática universal."
+      }
     },
     {
       "uf": "AP",
@@ -217,7 +229,13 @@
       "identity_status": "no_received_act_in_audited_batches",
       "source_pointer": "https://www3.alerj.rj.gov.br/lotus_notes/default.asp?URL=L0NPTlRMRUkuTlNGL2M4YWEwOTAwMDI1ZmVlZjYwMzI1NjRlYzAwNjBkZmZmLzY4ZDI2ZWU1OThmMWFlNzI4MzI1N2E5OTAwNjNiMzcxP09wZW5Eb2N1bWVudA%3D%3D&id=2",
       "original_publisher_bytes_archived": false,
-      "eligible_for_import": false
+      "eligible_for_import": false,
+      "online_primary_inspection": {
+        "status": "CONTENT_IDENTIFIED_NOT_BYTES_ARCHIVED",
+        "date": "2026-11-22",
+        "url": "https://www3.alerj.rj.gov.br/lotus_notes/default.asp?URL=L0NPTlRMRUkuTlNGL2M4YWEwOTAwMDI1ZmVlZjYwMzI1NjRlYzAwNjBkZmZmLzY4ZDI2ZWU1OThmMWFlNzI4MzI1N2E5OTAwNjNiMzcxP09wZW5Eb2N1bWVudA%3D%3D&id=2",
+        "findings": "Texto consolidado ALERJ: art.1 prazo textual 31/12/2032; Lei 9.731/2022; referências à Lei 8.481/2019 e Decreto 46.409/2018. Art.2 redação Lei 10.983/2025 carga efetiva 2,5%, não percentual de crédito; §11 inclui FECP de 1%; §§1,3,4,9 impõem restrições a créditos, estabelecimentos, destino e regime. Saídas interestaduais não são globalmente excluídas; conferir hipóteses específicas e efeitos temporais."
+      }
     },
     {
       "uf": "RN",
@@ -324,7 +342,13 @@
       ],
       "independent_counter_review": false,
       "internal_acceptance": false,
-      "import_authorized": false
+      "import_authorized": false,
+      "online_primary_inspection": {
+        "source_url": "https://diario.imprensaoficial.al.gov.br/apinova/api/editions/viewPdf/51478",
+        "findings": "DOE edição 2777 suplemento 06/04/2026 p.4: arts.1–3 distinguem prorrogação mediante resolução CONEDES e expansão/modernização e empregos, adesão por Convênio 190 cláusula 13 e hipóteses de renovação de ofício; art.5 efeitos 01/05/2026. Prazo 2032 não implica renovação automática universal.",
+        "original_bytes_archived": false,
+        "full_temporal_chain_verified": false
+      }
     },
     {
       "uf": "AM",
@@ -563,7 +587,13 @@
       ],
       "independent_counter_review": false,
       "internal_acceptance": false,
-      "import_authorized": false
+      "import_authorized": false,
+      "online_primary_inspection": {
+        "source_url": "https://bancodeleis.alepa.pa.gov.br/arquivos/lei2490_2006_53513.pdf",
+        "findings": "Texto primário ALEPA conferido: Decreto 2.490 de 06/10/2006 remete à Lei 6.913 de 03/10/2006. Divergência editorial da lei recebida (agosto/outubro) continua registrada. ADI 3779 e efeitos, atos supervenientes e reinstituição específica não reconciliados.",
+        "original_bytes_archived": false,
+        "full_temporal_chain_verified": false
+      }
     },
     {
       "uf": "PB",
@@ -672,7 +702,13 @@
       ],
       "independent_counter_review": false,
       "internal_acceptance": false,
-      "import_authorized": false
+      "import_authorized": false,
+      "online_primary_inspection": {
+        "source_url": "https://www3.alerj.rj.gov.br/lotus_notes/default.asp?URL=L0NPTlRMRUkuTlNGL2M4YWEwOTAwMDI1ZmVlZjYwMzI1NjRlYzAwNjBkZmZmLzY4ZDI2ZWU1OThmMWFlNzI4MzI1N2E5OTAwNjNiMzcxP09wZW5Eb2N1bWVudA%3D%3D&id=2",
+        "findings": "Texto consolidado ALERJ: art.1 prazo textual 31/12/2032; Lei 9.731/2022; referências à Lei 8.481/2019 e Decreto 46.409/2018. Art.2 redação Lei 10.983/2025 carga efetiva 2,5%, não percentual de crédito; §11 inclui FECP de 1%; §§1,3,4,9 impõem restrições a créditos, estabelecimentos, destino e regime. Saídas interestaduais não são globalmente excluídas; conferir hipóteses específicas e efeitos temporais.",
+        "original_bytes_archived": false,
+        "full_temporal_chain_verified": false
+      }
     },
     {
       "uf": "RN",
@@ -839,5 +875,7 @@
       "internal_acceptance": false,
       "import_authorized": false
     }
-  ]
+  ],
+  "online_primary_text_review_count": 3,
+  "source_queue_content_located_or_cotejo_count": 22
 }
