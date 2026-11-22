@@ -1,6 +1,6 @@
 """T09 curatorial status reconciliation must fail closed on premature promotion."""
-from copy import deepcopy
 import re
+from copy import deepcopy
 from pathlib import Path
 from runpy import run_path
 
