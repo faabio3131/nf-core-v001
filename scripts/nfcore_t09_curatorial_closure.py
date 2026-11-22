@@ -1,7 +1,9 @@
-"""T09 read-only internal curation reconciliation; not a fiscal release authority.
+"""T09 INTERNAL curation audit, separate from EXTERNAL human signoff.
 
-This check detects premature promotion in the research files. It neither
-validates a signature nor replaces the canonical HMAC/RBAC import boundary.
+Blocks premature fiscal promotion. Internal research closure never requires a
+human-owner approval, actual taxpayer grant or signed accountant opinion.
+Those remain mandatory for subsequent fiscal activation and are not bypassed.
+This check neither verifies signatures nor replaces the canonical HMAC/RBAC gate.
 """
 from __future__ import annotations
 
@@ -79,6 +81,7 @@ def audit_curation(queue: dict[str, Any], drafts: dict[str, Any],
     ):
         raise ValueError("research draft claims an unsupported fiscal release")
     blocked: dict[str, list[str]] = {}
+    external_pending: dict[str, list[str]] = {}
     accepted: list[str] = []
     for uf in sorted(_UF_CODES):
         item, draft, dossier = items[uf], candidates[uf], research[uf]
@@ -103,22 +106,29 @@ def audit_curation(queue: dict[str, Any], drafts: dict[str, Any],
             missing.append("source_publication_and_original_bytes_digest")
         if item.get("individual_concession_normative_requirement_verified") is not True:
             missing.append("individual_concession_normative_requirement_verified")
-        if dossier.get("evidence_status") != "COMPLETE_RESEARCH_HUMAN_APPROVED":
+        if dossier.get("evidence_status") != "COMPLETE_RESEARCH_INTERNALLY_VERIFIED":
             missing.append("dossier_legal_evidence_complete")
         if dossier.get("independent_counter_review") is not True:
             missing.append("independent_dossier_counter_review")
+        # Human product-owner signoff and an accountant's opinion are EXTERNAL
+        # activation gates. Never count them as missing INTERNAL research gates.
+        # Nor does this read-only report validate an externally supplied signature.
         approval = item.get("human_approval_record")
-        if (
-            not isinstance(approval, dict)
-            or not all(
+        human_receipt_recorded = (
+            isinstance(approval, dict)
+            and all(
                 isinstance(approval.get(k), str) and approval[k].strip()
                 for k in ("reviewer", "approval_id", "approved_at", "head_sha")
             )
-            or _SHA256.fullmatch(approval.get("head_sha", "")) is None
-        ):
-            missing.append("human_approval_record")
-        # Human product approval is a separate action and must never be set
-        # by this tool. The validity of a claimed receipt is checked elsewhere.
+            and isinstance(approval.get("head_sha"), str)
+            and _SHA256.fullmatch(approval["head_sha"]) is not None
+        )
+        external: list[str] = []
+        if not human_receipt_recorded:
+            external.append("human_product_owner_approval")
+        if item.get("accountant_external_opinion") != "RECEIVED_SIGNED_VERIFIED":
+            external.append("independent_accountant_opinion")
+        external_pending[uf] = external
         if item.get("internal_curatorial_accepted") is True or (
             dossier.get("internal_acceptance") is True
         ):
@@ -141,6 +151,10 @@ def audit_curation(queue: dict[str, Any], drafts: dict[str, Any],
         "internally_accepted_ufs": len(accepted),
         "missing_gates_by_uf": blocked,
         "all_internal_gates_recorded": not blocked,
+        "external_activation_gates_pending_by_uf": external_pending,
+        "external_activation_gates_separate_from_internal": True,
+        "external_approval_is_a_promotion_dependency": True,
+        "external_approval_validated_by_this_script": False,
         "fiscal_application_authorized": False,
         "independent_review_and_human_approval_still_require_proof": True,
     }
@@ -164,7 +178,7 @@ def main() -> None:
         parser.error(f"T09 integrity or premature promotion gate: {exc}")
     print(json.dumps(report, ensure_ascii=False, sort_keys=True))
     if args.require_closure and not report["all_internal_gates_recorded"]:
-        parser.exit(1, "T09 curatorial closure is not certified; do not unblock T10.\n")
+        parser.exit(1, "T09 internal curation remains unverified; external approval is a separate promotion gate.\n")
 
 
 if __name__ == "__main__":

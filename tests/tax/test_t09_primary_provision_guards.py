@@ -74,7 +74,7 @@ def _evaluate(uf, month, *, start="2026-01-01", omitted=(),
         "allowed_ncms": [],
         "allowed_cfops": ["5102"],
         "allowed_operations": ["domestic_sale"],
-        "required_evidence": required,
+        "required_evidence": list(required),
         "individual_concession_required": False,
     }
     evidence_keys = (

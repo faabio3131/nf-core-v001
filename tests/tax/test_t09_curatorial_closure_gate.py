@@ -86,3 +86,65 @@ def test_t09_duplicate_uf_is_rejected_without_partial_acceptance():
     d["dossiers"][0]["uf"] = d["dossiers"][1]["uf"]
     with pytest.raises(ValueError, match="duplicated UF/candidate"):
         audit_curation(q, c, d)
+
+
+def test_human_product_approval_is_external_and_not_an_internal_gate():
+    """Even all synthetic internal checks cannot grant a production release."""
+    q, c, d = deepcopy(_fixture())
+    for item, row in zip(q["work_items"], d["dossiers"], strict=True):
+        for key in (
+            "full_amendment_chain_verified",
+            "applicability_by_competence_verified",
+            "confaz_legal_route_verified",
+            "scope_and_negative_cases_legally_grounded",
+            "independent_agent_counter_review_passed",
+            "technical_tests_certified_for_real_act",
+        ):
+            item[key] = True
+        # Synthetic proof is deliberately NOT a real source attestation.
+        item["source_publication_and_original_bytes_digest"] = "a" * 64
+        item["individual_concession_normative_requirement_verified"] = True
+        item["internal_curatorial_accepted"] = True
+        row["evidence_status"] = "COMPLETE_RESEARCH_INTERNALLY_VERIFIED"
+        row["independent_counter_review"] = True
+        row["internal_acceptance"] = True
+        # Neither an external human approval nor accountant opinion is supplied.
+        assert "human_approval_record" not in item
+        assert item["accountant_external_opinion"] == "PENDING_NOT_RECEIVED"
+    report = audit_curation(q, c, d)
+    assert report["all_internal_gates_recorded"] is True
+    assert report["internally_accepted_ufs"] == 27
+    assert report["missing_gates_by_uf"] == {}
+    assert all(
+        "human_product_owner_approval" in blockers
+        for blockers in report["external_activation_gates_pending_by_uf"].values()
+    )
+    assert report["external_activation_gates_separate_from_internal"] is True
+    assert report["external_approval_validated_by_this_script"] is False
+    assert report["fiscal_application_authorized"] is False
+    assert c["import_authorized"] is False
+    assert all(item["legally_importable"] is False for item in q["work_items"])
+
+
+def test_only_external_records_do_not_fabricate_internal_curation():
+    q, c, d = deepcopy(_fixture())
+    for item in q["work_items"]:
+        item["human_approval_record"] = {
+            "reviewer": "synthetic-test",
+            "approval_id": "fake-not-verified",
+            "approved_at": "2026-11-22",
+            "head_sha": "b" * 64,
+        }
+    report = audit_curation(q, c, d)
+    assert report["all_internal_gates_recorded"] is False
+    assert report["internally_accepted_ufs"] == 0
+    assert report["fiscal_application_authorized"] is False
+
+
+def test_missing_external_receipt_does_not_hide_internal_deficiencies():
+    q, c, d = deepcopy(_fixture())
+    report = audit_curation(q, c, d)
+    for blockers in report["missing_gates_by_uf"].values():
+        assert "human_approval_record" not in blockers
+        assert "full_amendment_chain_verified" in blockers
+    assert report["external_activation_gates_separate_from_internal"] is True
