@@ -325,3 +325,40 @@ def test_temporal_matrix_does_not_replace_27uf_legal_curation():
     assert not data["import_authorized"]
     assert not data["source_originals_archived"]
     assert not data["independent_review_passed"]
+
+
+
+@pytest.mark.parametrize("missing", [
+    "mg_cohab_recognition_per_invoice",
+    "mg_project_quantity_limit",
+    "mg_invoice_recognition_number_date",
+    "mg_invoice_tax_dispensation_amount",
+])
+def test_mg_cohab_individual_invoice_recognition_required_for_advisory(missing):
+    """Necessary conditions of SEF/MG Resolução Conjunta 01/1998, not a grant."""
+    row = _dossier("MG")
+    original = row["primary_provision_checkpoint_20261122"][
+        "resolution_1998_original_evidence"
+    ]
+    assert original["source_url"].endswith("rr0001_1998.html")
+    assert original["capture_sha256"] == (
+        "125b051af5214d535ffa97b81ec2cab01c44620f73748be6f66876587c7d7edc"
+    )
+    assert original["additional_normative_reconciliation_pending"]
+    result = _evaluate("MG", date(2026, 11, 1), omitted=(missing,))
+    assert result["status"] == "insufficient_basis"
+    assert result["reason_codes"] == [f"missing:{missing}"]
+    assert not result["eligibility_certified"]
+    assert not result["tax_calculation_authorized"]
+
+
+def test_mg_source_is_not_an_automatic_benefit_permission():
+    row = _dossier("MG")
+    scope = row["primary_provision_checkpoint_20261122"]
+    assert "mg_cohab_recognition_per_invoice" in scope["evidence"]
+    assert row["internal_acceptance"] is False
+    assert row["import_authorized"] is False
+    result = _evaluate("MG", date(2026, 11, 1))
+    assert result["status"] == "potential"
+    assert result["advisory_only"] is True
+    assert result["tax_calculation_authorized"] is False

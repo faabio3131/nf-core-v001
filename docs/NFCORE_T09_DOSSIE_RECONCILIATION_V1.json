@@ -671,7 +671,7 @@
       ],
       "conditional_positive": "Saída interna de material listado para empreendimento Cohab, desconto e indicação fiscal.",
       "negative": "Venda para obra não coordenada pela Cohab ou sem desconto.",
-      "remaining_temporal_and_route_review": "Convênio 136/97 identificado como rota candidata, verificar prorrogação, adoção estadual e prazo 31/12/2026",
+      "remaining_temporal_and_route_review": "Item 26 Anexo II RICMS/MG e Convênio136/97 até 31/12/2026 no texto estadual; Resolução Conjunta 01/1998 exige reconhecimento COHAB/MG prévio POR NOTA FISCAL, limites quantitativos de projeto e dados da NF. Confrontar vigência/alterações da resolução, possíveis prorrogações 2026/28, requisitos por competência, CONFAZ e autenticidade de concessões externas.",
       "required_review_evidence": "cohab_material_and_discount",
       "evidence_status": "PARTIAL_RESEARCH_NOT_ACCEPTED",
       "positive_expected": "potential_only_if_all_reviewed",
@@ -698,13 +698,38 @@
         "evidence": [
           "mg_cohab_material_project",
           "mg_discount_invoice_note",
-          "mg_convention_136_97"
+          "mg_convention_136_97",
+          "mg_cohab_recognition_per_invoice",
+          "mg_project_quantity_limit",
+          "mg_invoice_recognition_number_date",
+          "mg_invoice_tax_dispensation_amount"
         ],
         "unresolved": "Resolução conjunta 01/1998, comprovação concreta e prorrogações CONFAZ",
         "source_kind": "OFFICIAL_STATE_HTML_TEXT",
         "status": "PARTIAL_PRIMARY_TEXT_REVIEW_ONLY",
         "full_chain_verified": false,
-        "legal_applicability_approved": false
+        "legal_applicability_approved": false,
+        "resolution_1998_original_evidence": {
+          "source_url": "https://www.fazenda.mg.gov.br/empresas/legislacao_tributaria/resolucoes/1998/rr0001_1998.html",
+          "act": "Resolução Conjunta SEF/Habitação nº 01, de 16/03/1998",
+          "published": "1998-03-18",
+          "captured_filename": "MG_ResolucaoConjunta_01_1998.html",
+          "captured_bytes": 40844,
+          "capture_sha256": "125b051af5214d535ffa97b81ec2cab01c44620f73748be6f66876587c7d7edc",
+          "source_character": "captura do portal oficial SEF/MG, hash dos bytes locais; nao atesta texto consolidado 2026",
+          "requirements": [
+            "art1: five specified material classes exclusively in low-income residential COHAB/MG projects",
+            "art2 II: prior COHAB/MG recognition",
+            "art3 II: quantities bounded to the approved project or technically justified reevaluation",
+            "art3 III: unique Recognition of Benefit issued for EACH invoice",
+            "art4 II-III: invoice complementary note with recognition number/date and tax waived",
+            "art5: recipient presents first invoice copy to COHAB/MG within five working days",
+            "art6: fraud entails full tax and penalties"
+          ],
+          "additional_normative_reconciliation_pending": true,
+          "operational_requirement_for_real_taxpayer": "EXTERNAL_RECOGNITION_PER_INVOICE_ONLY_WHEN_ACTUALLY_APPLICABLE",
+          "status": "PRIMARY_OFFICIAL_TEXT_COTEJADO_NOT_LEGALLY_CERTIFIED"
+        }
       },
       "temporal_authority_checkpoint_20261122": {
         "reference": "docs/NFCORE_T09_TEMPORAL_AUTHORITY_20261122.json",

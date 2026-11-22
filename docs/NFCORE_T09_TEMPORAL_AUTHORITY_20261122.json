@@ -21,12 +21,14 @@
         "material and COHAB eligible project",
         "discount on sale price",
         "NF complementary notice",
-        "61.11% base reduction at 18% state rate or 41.66% at 12%"
+        "61.11% base reduction at 18% state rate or 41.66% at 12%",
+        "Resolução Conjunta 01/1998 recognition by COHAB/MG PER invoice, with project quantity and note details"
       ],
       "pending": [
         "validate Convênio 131/26 exact item and federal effect",
         "state incorporation after 2026 if any",
-        "resolve operation and actual eligible material"
+        "resolve operation and actual eligible material",
+        "confirm procedural act effect and any later amendments up to competence 2026"
       ],
       "verified": "STATE_OFFICIAL_TEXT_COMPLETE_FOR_ITEM26_ONLY",
       "approved": false

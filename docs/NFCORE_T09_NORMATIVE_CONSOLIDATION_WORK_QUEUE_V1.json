@@ -538,6 +538,18 @@
           "case_id": "MG-COHAB-ITEM26-STATE-VS-CONFAZ",
           "status": "NECESSARY_NEGATIVE_GUARD_TEST_DESIGNED_NOT_ALL_LEGAL_TESTS",
           "full_legal_chain_verified": false
+        },
+        "mg_procedural_recognition": {
+          "source": "https://www.fazenda.mg.gov.br/empresas/legislacao_tributaria/resolucoes/1998/rr0001_1998.html",
+          "evidence_sha256": "125b051af5214d535ffa97b81ec2cab01c44620f73748be6f66876587c7d7edc",
+          "requirements": [
+            "mg_cohab_recognition_per_invoice",
+            "mg_project_quantity_limit",
+            "mg_invoice_recognition_number_date",
+            "mg_invoice_tax_dispensation_amount"
+          ],
+          "status": "TEXT_CHECKED_IN_1998_ACT_NOT_2026_NORMATIVE_CURATION",
+          "human_acceptance": false
         }
       }
     },
