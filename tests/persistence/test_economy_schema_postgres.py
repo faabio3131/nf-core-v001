@@ -766,7 +766,9 @@ def _certify_t09_state(database, monkeypatch):
         "cnae_scope": "allowlist", "allowed_cnaes": ["6201501"],
         "ncm_scope": "allowlist", "allowed_ncms": ["84713012"],
         "allowed_cfops": ["5102"], "allowed_operations": ["domestic_sale"],
-        "required_evidence": [], "legal_citations": [{
+        "required_evidence": [],
+        "individual_concession_required": True,
+        "legal_citations": [{
             "act": norm, "provision": "TESTE SINTETICO, NAO LEI",
             "source_url": url, "source_sha256": "a" * 64,
             "published_on": "2025-01-01", "valid_from": "2026-01-01",
@@ -787,6 +789,13 @@ def _certify_t09_state(database, monkeypatch):
                 "state_registration_regular_review", "icms_st_applicability_review",
                 "difal_applicability_review", "individual_concession_review",
             )
+        },
+        "individual_concession": {
+            "status": "active", "competence": competence.isoformat(),
+            "review_reference": "reviewed-synthetic-T09",
+            "document_reference": "synthetic-pg-individual-grant",
+            "issuer_cnpj": issuer.value, "uf": "SP",
+            "valid_from": "2026-01-01", "valid_until": "2027-01-01",
         },
     }
 
