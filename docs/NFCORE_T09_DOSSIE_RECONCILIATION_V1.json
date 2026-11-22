@@ -1381,7 +1381,10 @@
       "evidence_status": "PARTIAL_RESEARCH_NOT_ACCEPTED",
       "positive_expected": "potential_only_if_all_reviewed",
       "negative_expected": "blocked",
-      "source_capture_records": [],
+      "source_capture_records": [
+        "SP_RICMS_AnexoII_art52.html",
+        "SP_PortariaCAT_35_2017.html"
+      ],
       "independent_counter_review": false,
       "internal_acceptance": false,
       "import_authorized": false,
@@ -1427,6 +1430,181 @@
         "formal_status": "RESEARCH_ONLY_FAIL_CLOSED",
         "state_authority_and_federal_convention_not_interchangeable": true,
         "full_temporal_chain_verified": false
+      },
+      "sp_vertical_checkpoint_20261122": {
+        "schema": "nfcore.t09.single-state-vertical-review/v1",
+        "uf": "SP",
+        "candidate_id": "SP-RICMS2000-AN3-ART41-TEXTILE-V1",
+        "research_date": "2026-11-22",
+        "status": "VERTICAL_IN_PROGRESS_SOURCE_AND_LEGAL_REVIEW_ONLY",
+        "source_captures": [
+          {
+            "filename": "SP_RICMS_AnexoII_art52.html",
+            "source_url": "https://legislacao.fazenda.sp.gov.br/Paginas/an2art052.aspx",
+            "bytes": 171572,
+            "sha256_of_captured_bytes": "0b8102e052b75146a61636c5cbbfaf3b82120b11c5ef1aafe33ac80e9a3b901d",
+            "source_role": "RICMS/SP Anexo II art.52",
+            "capture_not_equivalent_to_original_publication": "STATE_PORTAL_CONSOLIDATION_NOT_AUTHENTICATED_DOE"
+          },
+          {
+            "filename": "SP_PortariaCAT_35_2017.html",
+            "source_url": "https://legislacao.fazenda.sp.gov.br/Paginas/pcat352017.aspx",
+            "bytes": 158040,
+            "sha256_of_captured_bytes": "fbbb5fdbce095d7fe439d06ec4b3f0af5071b1f02080d1ae18146d51423d6d04",
+            "source_role": "Portaria CAT 35/2017",
+            "capture_not_equivalent_to_original_publication": "STATE_PORTAL_CONSOLIDATION_NOT_AUTHENTICATED_DOE"
+          }
+        ],
+        "excluded_false_source": {
+          "filename": "SP_PortariaCAT_35_2010_original.html",
+          "sha256": "e66f8795a987bee747bef48957594c75788134a9ad3372a3ef7cd8cd5cb50346",
+          "reason": "Portaria CAT 35/2010 is not textile CAT 35/2017"
+        },
+        "uncaptured_primary_act": {
+          "url": "https://legislacao.fazenda.sp.gov.br/Paginas/an3art041.aspx",
+          "act": "RICMS/SP Anexo III art.41",
+          "official_text_consulted": true,
+          "original_publication_bytes_sha256": null,
+          "official_original_authenticity_verified": false
+        },
+        "official_2026_interpretation": {
+          "url": "https://legislacao.fazenda.sp.gov.br/Paginas/RC33644_2026.aspx",
+          "act": "Resposta à Consulta Tributária 33644/2026, publicada 04/11/2026",
+          "scope": "Individual consultation; expressly does not confirm taxpayer compliance, entitlement or credits",
+          "critical_finding": "Portaria CAT 35/2017 kept 9% text after 2023 but Art.41 changed to 12% by Decreto 67.524/2023 effective 15/01/2023"
+        },
+        "amendment_chain_known": [
+          {
+            "act": "Decreto 62.560/2017",
+            "from": "2017-05-06",
+            "effect": "Art.41 introduced with 12%",
+            "verified_from": "state official art41 and RC33644/2026"
+          },
+          {
+            "act": "Decreto 65.255/2020",
+            "from": "2021-01-15",
+            "effect": "9.7% for 15/01–31/03/2021",
+            "verified_from": "state official art41 and CAT35/2017"
+          },
+          {
+            "act": "Decreto 65.452/2020",
+            "from": "2021-04-01",
+            "effect": "9% through 14/01/2023",
+            "verified_from": "state official art41 and RC33644/2026"
+          },
+          {
+            "act": "Decreto 67.524/2023",
+            "from": "2023-01-15",
+            "effect": "12% thereafter, based on taxpayer eligible sale value",
+            "verified_from": "state official art41 and RC33644/2026"
+          },
+          {
+            "act": "Decreto 69.292/2025",
+            "from": "2025-01-01",
+            "effect": "Art41 and Art52 current statutory end extended to 31/12/2026",
+            "verified_from": "state official art41 and art52"
+          },
+          {
+            "act": "Portaria CAT 35/2017",
+            "from": "2017-05-27",
+            "effect": "RUDFTO formal optional election + 12-month minimum + apportioned credit reversal; later CAT126/2017 and CAT27/2021",
+            "verified_from": "state official CAT35/2017"
+          }
+        ],
+        "temporal_status": "KNOWN_TEXT_2017_2026_NOT_COMPLETE_DOE_CHAIN_OR_2026_AMENDMENT_SWEEP",
+        "current_art41_percent_of_eligible_sale": "12%",
+        "current_art41_state_end_inclusive": "2026-12-31",
+        "legally_cited_route": "Convênio ICMS 190/2017 is cited in state art41/52; exact reinstitution listing, registration, deposit, certificate and later effects remain unverified",
+        "scope": [
+          {
+            "requirement": "Internal taxable sales of listed textile NCM manufactured by eligible SP establishment (Art41 c/c Art52)",
+            "source": "Art41 caput; Art52 caput"
+          },
+          {
+            "requirement": "Art52 item I: NCM 5402–5406, 5501–5507, 5902.20.00 (12% ICMS burden); item II textile chapters with exclusions including 5601 and 6309, plus specified accessories, subject to current version",
+            "source": "Art52 I, II(a-i)"
+          },
+          {
+            "requirement": "Art52 §1: own manufacturer, same owner transfer or qualifying in-state outsourced manufacturing with material/brand/credential condition",
+            "source": "Art52 §1"
+          },
+          {
+            "requirement": "Art52 §2: tax regularity and permitted sureties or active installments where expressly allowed",
+            "source": "Art52 §2"
+          },
+          {
+            "requirement": "Art52 §4: no consumer or final user (current post-2021 text); historical separate Simples restriction NOT current by inference",
+            "source": "Art52 §4"
+          },
+          {
+            "requirement": "Art41 §§1-4: taxable, book as Outros Créditos, no real/symbolic return, substitutes other credits",
+            "source": "Art41 §§1-4"
+          },
+          {
+            "requirement": "Portaria CAT35/2017 art2: RUDFTO election for all establishments, subsequent-month effectiveness, minimum 12 months",
+            "source": "CAT35 art2"
+          },
+          {
+            "requirement": "Portaria CAT35 art5: apportioned reversal E=(B/T)xC using 12-month mean and memory/RAICMS records",
+            "source": "CAT35 art5"
+          },
+          {
+            "requirement": "CFOP 5.101; CNAE 14.21-5/00; NCM 6115.95.00 are example facts in RC33644/2026, NOT complete statute-wide white lists",
+            "source": "RC33644/2026 items1–3"
+          }
+        ],
+        "negative_examples": [
+          {
+            "case": "Out-of-state sale CFOP 6.101",
+            "basis": "Art41 caput, Art52 caput",
+            "expected": "not_applicable"
+          },
+          {
+            "case": "Final consumer",
+            "basis": "Art52 §4",
+            "expected": "insufficient_basis without nonfinal-consumer proof"
+          },
+          {
+            "case": "NCM 6309.00.00 in excluded position 6309",
+            "basis": "Art52 II(a)",
+            "expected": "not_applicable"
+          },
+          {
+            "case": "No RUDFTO option or within incomplete first month",
+            "basis": "CAT35 art2",
+            "expected": "insufficient_basis/not_applicable"
+          },
+          {
+            "case": "Actual/symbolic return, accumulation of input credits",
+            "basis": "Art41 §§3-4, CAT35 art5",
+            "expected": "insufficient_basis"
+          },
+          {
+            "case": "Competence 01/2027 without demonstrated extension",
+            "basis": "Art41 §5 and Art52 §5",
+            "expected": "not_applicable"
+          },
+          {
+            "case": "Unresolved ST or DIFAL for a concrete operation",
+            "basis": "canonical mandatory operation evidence, not general statutory waiver",
+            "expected": "insufficient_basis"
+          }
+        ],
+        "unresolved_internal": [
+          "Obtain original publication bytes for Art41 and binding amendment acts, archived and SHA-256 matched",
+          "Verify full chain including later 2026 publications and exact historical time boundaries",
+          "Validate explicit LC160/CONFAZ190 deposit/certificate and art41/52 reinstitution effects",
+          "Resolve entire NCM eligibility by exact context, ST/DIFAL and outsourced manufacturing exceptions",
+          "Run and archive end-to-end positive/negative cases as state-specific source-backed tests",
+          "Independent third-party technical/legal counterreview with auditable review identity"
+        ],
+        "normative_individual_requirement": "Option RUDFTO per CAT35 art2; not universal individual project granting. Art52 §1 may require prior tax authority credenciamento for specific outsourced manufacturing. Do not confuse option with approved individual concession.",
+        "normative_grant_requirement_verified": false,
+        "original_source_digest_gate_verified": false,
+        "full_amendment_chain_verified": false,
+        "independent_review_passed": false,
+        "internal_acceptance": false,
+        "fiscal_activation_authorized": false
       }
     },
     {
