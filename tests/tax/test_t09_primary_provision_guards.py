@@ -189,3 +189,42 @@ def test_final_fifty_captures_linked_to_same_canonical_27_dossiers():
         assert intake["capture_count"] == len(intake["capture_filenames"])
         assert row["internal_acceptance"] is False
         assert row["import_authorized"] is False
+
+
+
+def test_amapa_april_2026_successor_decree_cannot_backdate_entire_month():
+    ap = _dossier("AP")
+    chain = ap["supervening_official_20261122"]["regulations"]
+    assert chain[0]["act"] == "Decreto 2.349/2026"
+    assert chain[0]["status"] == "REVOKED_2026_04_17"
+    assert chain[1]["act"] == "Decreto 2.656/2026"
+    assert chain[1]["published"] == "2026-04-17"
+    assert chain[2]["act"] == "Lei 3.490/2026"
+    assert ap["internal_acceptance"] is False
+    assert ap["import_authorized"] is False
+    # Synthetic advisory policy effective only from successor publication;
+    # full month of April cannot be granted automatically.
+    event = _evaluate("AP", date(2026, 4, 1), start="2026-04-17")
+    assert event["status"] == "not_applicable"
+    assert event["reason_codes"] == ["state_rule_not_effective_entire_month"]
+    assert event["tax_calculation_authorized"] is False
+
+
+def test_mt_2027_end_requires_source_specific_route_not_generic_convênio():
+    mt = _dossier("MT")
+    note = mt["official_consultation_20261122"]
+    assert note["status"] == "STATE_TAX_AUTHORITY_INTERPRETIVE_INFORMATION_NOT_DOE"
+    assert "Decreto1802/2025" in note["legal_route"].replace(" ", "")
+    assert "2027-12-31" in note["legal_route"]
+    assert mt["internal_acceptance"] is False
+    assert mt["import_authorized"] is False
+
+
+def test_pa_and_rr_unresolved_judicial_and_state_extension_never_approved():
+    pa = _dossier("PA")["judicial_source_checkpoint_20261122"]
+    rr = _dossier("RR")["official_consultation_20261122"]
+    assert "STF_DECISION_IDENTIFIED" in pa["status"]
+    assert "2025" in rr["findings"]
+    assert "2026" in rr["unresolved"]
+    assert not _dossier("PA")["import_authorized"]
+    assert not _dossier("RR")["import_authorized"]

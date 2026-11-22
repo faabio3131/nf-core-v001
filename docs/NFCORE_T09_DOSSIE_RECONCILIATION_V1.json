@@ -411,7 +411,7 @@
       ],
       "conditional_positive": "Ato declaratório publicado e averbado; selo somente se confirmado aplicável na competência.",
       "negative": "Inadimplência na concessão ou ato não publicado; não presumir exigência universal de selo.",
-      "remaining_temporal_and_route_review": "Decretos 6.199/2014 e 4.960/2018, Portaria (T) 007/2024 e IN 001/2024; fonte primária pendente; artigo procedimental não concede taxa",
+      "remaining_temporal_and_route_review": "Lei 3395/2025, Decreto 2349 de 07/04/2026 REVOGADO em 17/04/2026 pelo Decreto 2656 (DOE 8639 p75–76), Lei 3490/2026 e Anexo Único, CONFAZ 21/28/26; art415/selo em vigência; falta vínculo exato entre ato individual e modalidade.",
       "required_review_evidence": "ap_regime_and_seal_scope",
       "evidence_status": "PARTIAL_RESEARCH_NOT_ACCEPTED",
       "positive_expected": "potential_only_if_all_reviewed",
@@ -430,6 +430,50 @@
         ],
         "manifest": "docs/NFCORE_T09_RECEBIMENTO_FINAL_50_DOCUMENTOS_20261122.json",
         "not_a_legal_approval": true
+      },
+      "supervening_official_20261122": {
+        "status": "PRIMARY_DIARIO_TEXT_VERIFIED_FULL_CHAIN_NOT_ACCEPTED",
+        "legislative_anchor": "Lei 3.395/2025",
+        "regulations": [
+          {
+            "act": "Decreto 2.349/2026",
+            "published": "2026-04-07",
+            "source": "https://diofe.portal.ap.gov.br/portal/edicoes/download/9901",
+            "status": "REVOKED_2026_04_17"
+          },
+          {
+            "act": "Decreto 2.656/2026",
+            "published": "2026-04-17",
+            "source": "https://diofe.portal.ap.gov.br/portal/edicoes/visualizar_pdf/9915/",
+            "pages": "75-76/231",
+            "governs": "Incentivos produtivos Lei 3.395/2025",
+            "art5": "ato concessorio SEFAZ condicionado a instrução Agencia Amapa e aprovação CONDI",
+            "art9": "revoga Decreto 2.349/2026",
+            "art10": "efeitos até 2032-12-31"
+          },
+          {
+            "act": "Lei 3.490/2026",
+            "published": "2026-05-20",
+            "source": "https://diofe.portal.ap.gov.br/portal/edicoes/download/9949",
+            "pages": "3-5/132",
+            "art1": "prorroga benefícios listados no Anexo Único, conforme Convênios 21/2026 e 28/2026 sem ampliar benefícios",
+            "art7": "fruição condicionada à vigência do respectivo convênio; verificar anexo e internalização"
+          }
+        ],
+        "findings": [
+          "Art. 415 RICMS/AP permanece referência procedimental, não constitui isoladamente uma modalidade de incentivo nem porcentagem",
+          "Em abril/2026 houve dois regulamentos sucessivos e revogação intramensal, impedindo declaração uniforme sem revisão da competência",
+          "O Selo Sustentabilidade exige reconstrução de escopo, suspensão Portaria (T) 007/2024 e atos posteriores",
+          "Novos convênios e anexos da Lei 3.490/2026 não comprovam por si vínculo exato com modalidade selecionada."
+        ],
+        "required_review_keys": [
+          "ap_individual_grant_and_condi",
+          "ap_april_2026_revocation",
+          "ap_seal_suspension_scope",
+          "ap_specific_convênio_and_annex"
+        ],
+        "original_bytes_archived": false,
+        "accepted": false
       }
     },
     {
@@ -695,7 +739,7 @@
       ],
       "conditional_positive": "Fertilizante abrangido e destinado a uso agrícola/pecuário nas operações legais.",
       "negative": "Produto fora de escopo ou confusão com diferimento Anexo VII.",
-      "remaining_temporal_and_route_review": "Vigência textual 31/12/2027 conforme consulta 124/2026; confirmar atos e Convênio pertinente",
+      "remaining_temporal_and_route_review": "Informação SEFAZ MT 124/2026 confirma rota Convênio100/97 + 79/25 internalizada pelo Decreto1802/2025 art31-A §6 até 31/12/2027; faltam critérios completos art31-A, ST/DIFAL, uso, NCM, histórico e conferência DOE.",
       "required_review_evidence": "mt_fertilizer_destination",
       "evidence_status": "PARTIAL_RESEARCH_NOT_ACCEPTED",
       "positive_expected": "potential_only_if_all_reviewed",
@@ -712,6 +756,16 @@
         ],
         "manifest": "docs/NFCORE_T09_RECEBIMENTO_FINAL_50_DOCUMENTOS_20261122.json",
         "not_a_legal_approval": true
+      },
+      "official_consultation_20261122": {
+        "status": "STATE_TAX_AUTHORITY_INTERPRETIVE_INFORMATION_NOT_DOE",
+        "source": "https://app1.sefaz.mt.gov.br/sistema/legislacao/respostaconsulta.nsf/766feae0478e62780325673c0049468e/dfdffa903c8253dd03258e28005313b4",
+        "act": "Informação 124/2026-UDCR/UNERC",
+        "approved": "2026-06-23",
+        "legal_route": "Convênio ICMS 100/1997 cláusulas 3ª-A/3ª-B, prorrogado 79/2025; Decreto 1802/2025 acrescenta art31-A §6 de MT com termo até 2027-12-31",
+        "scope": "operações internas e interestaduais com fertilizantes do art31-A, desde que cumpridos demais requisitos",
+        "limitation": "Informação oficial de consulta não substitui DOE, classificação do produto, prova de operação/uso agrícola, análise ST/DIFAL ou aceite humano.",
+        "accepted": false
       }
     },
     {
@@ -755,6 +809,13 @@
         ],
         "manifest": "docs/NFCORE_T09_RECEBIMENTO_FINAL_50_DOCUMENTOS_20261122.json",
         "not_a_legal_approval": true
+      },
+      "judicial_source_checkpoint_20261122": {
+        "status": "STF_DECISION_IDENTIFIED_EFFECTS_AND_SUPERVENING_LAW_NOT_RECONCILED",
+        "source": "https://portal.stf.jus.br/peticaoInicial/verPeticaoInicial.asp?base=ADI&numProcesso=3779",
+        "decision": "ADI3779 julgada procedente; Leis PA 6.912,6.913,6.914,6.915/2006 declaradas inconstitucionais no julgamento 23-29/08/2019, acórdão DJ 04/12/2019",
+        "warning": "Não confundir ADI 3779 com 3246 ou 3796; Lei 7485/2010 e normas estaduais posteriores não eliminam por si risco judicial.",
+        "accepted": false
       }
     },
     {
@@ -1070,6 +1131,12 @@
         ],
         "manifest": "docs/NFCORE_T09_RECEBIMENTO_FINAL_50_DOCUMENTOS_20261122.json",
         "not_a_legal_approval": true
+      },
+      "official_consultation_20261122": {
+        "status": "STATE_OFFICIAL_INTERPRETATION_HISTORICAL_2025",
+        "source": "https://www.sefaz.rr.gov.br/downloads?catid=1404&id=25395&m=0&task=download.send",
+        "findings": "Anexo I art1 LXVII Decreto4335-E/2001 tratava isenção de operações INTERNAS com insumos agropecuários indicados e destinados à agricultura/pecuária, com termo textual 31/12/2025. Importação não é automaticamente interna.",
+        "unresolved": "Localizar ato estadual posterior a 31/12/2025 para competência 2026; prorrogação do Convênio federal 79/2025 não é internalização automática."
       }
     },
     {
@@ -1205,6 +1272,14 @@
         "status": "PARTIAL_PRIMARY_TEXT_REVIEW_ONLY",
         "full_chain_verified": false,
         "legal_applicability_approved": false
+      },
+      "official_consultation_20261122": {
+        "status": "STATE_TAX_AUTHORITY_CONSULTATION_NOT_INDIVIDUAL_GRANT",
+        "source": "https://legislacao.fazenda.sp.gov.br/Paginas/RC33644_2026.aspx",
+        "act": "RC 33644/2026",
+        "finding": "Art41 Anexo III: 9,7% em 15/01/2021–31/03/2021; 9% desde 01/04/2021 até 14/01/2023; 12% desde 15/01/2023, sobre valor de saída elegível sob art52.",
+        "followup": "Exigências da CAT35/2017 e estorno proporcional, devoluções, alterações, retroatividade e opção individual devem ser verificadas.",
+        "accepted": false
       }
     },
     {

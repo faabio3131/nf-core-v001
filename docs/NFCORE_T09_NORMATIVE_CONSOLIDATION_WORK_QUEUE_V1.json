@@ -225,7 +225,8 @@
           "remaining_normative_work": "INTERNAL"
         },
         "latest_receipt_manifest": "docs/NFCORE_T09_RECEBIMENTO_FINAL_50_DOCUMENTOS_20261122.json",
-        "latest_receipt_count": 1
+        "latest_receipt_count": 1,
+        "supervening_official_review_status": "MORE_PRIMARY_WORK_DONE_NOT_LEGALLY_ACCEPTED"
       }
     },
     {
@@ -613,7 +614,8 @@
           "remaining_normative_work": "INTERNAL"
         },
         "latest_receipt_manifest": "docs/NFCORE_T09_RECEBIMENTO_FINAL_50_DOCUMENTOS_20261122.json",
-        "latest_receipt_count": 1
+        "latest_receipt_count": 1,
+        "supervening_official_review_status": "MORE_PRIMARY_WORK_DONE_NOT_LEGALLY_ACCEPTED"
       }
     },
     {
@@ -662,7 +664,8 @@
           "remaining_normative_work": "INTERNAL"
         },
         "latest_receipt_manifest": "docs/NFCORE_T09_RECEBIMENTO_FINAL_50_DOCUMENTOS_20261122.json",
-        "latest_receipt_count": 4
+        "latest_receipt_count": 4,
+        "supervening_official_review_status": "MORE_PRIMARY_WORK_DONE_NOT_LEGALLY_ACCEPTED"
       }
     },
     {
@@ -1022,7 +1025,8 @@
           "remaining_normative_work": "INTERNAL"
         },
         "latest_receipt_manifest": "docs/NFCORE_T09_RECEBIMENTO_FINAL_50_DOCUMENTOS_20261122.json",
-        "latest_receipt_count": 1
+        "latest_receipt_count": 1,
+        "supervening_official_review_status": "MORE_PRIMARY_WORK_DONE_NOT_LEGALLY_ACCEPTED"
       }
     },
     {
@@ -1198,7 +1202,8 @@
         },
         "latest_receipt_manifest": "docs/NFCORE_T09_RECEBIMENTO_FINAL_50_DOCUMENTOS_20261122.json",
         "latest_receipt_count": 3,
-        "primary_provision_checkpoint": "PARTIAL_TEXT_CHECKED_NOT_CURATED"
+        "primary_provision_checkpoint": "PARTIAL_TEXT_CHECKED_NOT_CURATED",
+        "supervening_official_review_status": "MORE_PRIMARY_WORK_DONE_NOT_LEGALLY_ACCEPTED"
       }
     },
     {
