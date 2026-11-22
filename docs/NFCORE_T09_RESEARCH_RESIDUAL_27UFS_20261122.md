@@ -47,3 +47,8 @@ Critérios cumulativos: original e SHA arquivado; norma/alterações/competênci
 - **MG:** Convênio 131/2026 é norma federal; pesquisar seus efeitos específicos sem usar o padrão de decretos estaduais como critério de inexistência.
 
 As correções são parte da pesquisa; **nenhum documento foi promovido a fonte jurídica integralmente certificada**, e a ausência de novos arquivos do proprietário não é impeditivo para a continuidade interna. Detalhamento: [coleta encerrada](NFCORE_T09_COLETA_ENCERRADA_20261122.md).
+
+
+### Cotejo adicional de 6 UFs (22/11)
+
+SP/MG/RN/PB/PE/PI tiveram trechos primários examinados e pendências especificadas em `NFCORE_T09_DISPOSITIVOS_VERIFICADOS_20261122.md`. A menção a Decreto 61.000/2026 em PE como modificador do PRODEPE é histórica e **foi corrigida**: norma pertence a EFD/Coopera. Nenhuma cadeia legal foi integralmente aceita, nem os requisitos das outras 21 UFs foram dispensados.
