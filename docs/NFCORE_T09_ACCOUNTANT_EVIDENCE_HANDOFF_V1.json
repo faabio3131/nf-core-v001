@@ -545,13 +545,13 @@
       "research_source": "https://www.sefaz.pe.gov.br/Legislacao/Tributaria/Consolidada-Por-Assunto/Paginas/PRODEPE.aspx",
       "source_inspection_type": "official_amended_regulation",
       "source_clause_inspected": true,
-      "identified_legal_provision": "Decreto PE 21.959/1999 (PRODEPE) — alterações até Decreto 61.000/2026 indicadas pela SEFAZ",
+      "identified_legal_provision": "Lei 11.675/1999 e Decreto 21.959/1999, modalidade PRODEPE ainda não consolidada",
       "official_sources_inspected": [
         "https://www.sefaz.pe.gov.br/Legislacao/Tributaria/Documents/legislacao/decretos/1999/Dec21959_99.htm"
       ],
       "legally_relevant_findings": [
         "O Decreto 21.959/1999 regulamenta o Programa de Desenvolvimento do Estado de Pernambuco (PRODEPE) para indústria e comércio atacadista.",
-        "A versão publicada na SEFAZ lista o Decreto 61.000/2026 como ato alterador; não usar versão consolidada anterior sem revisão.",
+        "Decreto 61.000/2026 altera regras gerais de EFD/regularidade do Decreto 44.650/2017 e Programa Coopera, NÃO é ato modificador material do PRODEPE.",
         "O regulamento geral não substitui ato de concessão individual do programa e condições do produto, CACEPE e competência."
       ],
       "exclusion_scenarios": [
@@ -569,7 +569,13 @@
       "accountant_review_document": null,
       "accountant_review_status": "pending",
       "decision": "not_certified",
-      "enabled": false
+      "enabled": false,
+      "scope_correction_20261122": {
+        "act": "Decreto 61.000/2026",
+        "applies_to": "EFD/Coopera, não ato alterador material PRODEPE",
+        "source_url": "https://www.sefaz.pe.gov.br/Legislacao/Tributaria/Documents/Legislacao/Decretos/2026/Dec61000_2026.htm",
+        "signoff_received": false
+      }
     },
     {
       "uf": "PI",

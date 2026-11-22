@@ -916,14 +916,14 @@
       "findings_verified_from_public_source": [
         "SEFAZ/PE reúne a legislação do PRODEPE por assunto e regras de escrituração",
         "O Decreto 21.959/1999 regulamenta o Programa de Desenvolvimento do Estado de Pernambuco (PRODEPE) para indústria e comércio atacadista.",
-        "A versão publicada na SEFAZ lista o Decreto 61.000/2026 como ato alterador; não usar versão consolidada anterior sem revisão.",
+        "Decreto 61.000/2026 altera regras gerais de EFD/regularidade do Decreto 44.650/2017 e Programa Coopera, NÃO é ato modificador material do PRODEPE.",
         "O regulamento geral não substitui ato de concessão individual do programa e condições do produto, CACEPE e competência."
       ],
       "eligibility_predicates_to_confirm": [
         "Exige ato individual, produtos habilitados, CACEPE, obrigações fiscais e prazo de fruição"
       ],
       "negative_eligibility_scenario": "A não utilização no período próprio e acúmulo proibido dependem do regime e da regra específica",
-      "legal_temporal_notes": "Decreto 21.959/1999 consolidado na SEFAZ/PE inclui alteração Decreto 61.000/2026; data de efeito e ato concessivo de cada empreendimento devem ser confirmados antes de qualquer revisão.",
+      "legal_temporal_notes": "Lei 11.675/1999 e Decreto 21.959/1999 são fundamentos da modalidade PRODEPE selecionada. Alterações materiais, períodos e atos concessivos individuais permanecem sem consolidação; Decreto 61.000/2026 é norma de EFD/Coopera, não altera especificamente percentual do benefício.",
       "mandatory_missing": [
         "conferir texto primário integral, dispositivo concessivo, redações, revogações e efeitos para cada competência",
         "verificar CONFAZ/LC160, lei estadual e ato individual quando aplicáveis",
@@ -959,7 +959,21 @@
         ],
         "fully_consolidated_current_to_20261121": false,
         "independent_accountant_opinion": false,
-        "publisher_bytes_sha256": null
+        "publisher_bytes_sha256": null,
+        "superseded_on": "2026-11-22",
+        "supersession_notice": "A afirmação histórica de que Decreto 61.000/2026 é alterador material do PRODEPE estava incorreta. Não utilizar esse subregistro como fonte atual."
+      },
+      "corrected_source_scope_20261122": {
+        "act": "Decreto 61.000/2026",
+        "classification": "EFD_AND_COOPERA_NOT_PRODEPE_MATERIAL_AMENDMENT",
+        "government_source": "https://www.sefaz.pe.gov.br/Legislacao/Tributaria/Documents/Legislacao/Decretos/2026/Dec61000_2026.htm",
+        "verified_prodepe_anchors": [
+          "Lei 11.675/1999",
+          "Decreto 21.959/1999"
+        ],
+        "all_amendments_reconciled": false,
+        "review_status": "draft",
+        "approved": false
       }
     },
     {
