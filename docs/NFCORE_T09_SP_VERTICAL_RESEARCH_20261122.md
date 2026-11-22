@@ -16,7 +16,7 @@
 ## Fontes primárias e preservação por hash
 - [RICMS/SP Anexo II art.52](https://legislacao.fazenda.sp.gov.br/Paginas/an2art052.aspx), arquivo recebido `SP_RICMS_AnexoII_art52.html`, **171572 bytes**, SHA-256 **0b8102e052b75146a61636c5cbbfaf3b82120b11c5ef1aafe33ac80e9a3b901d**. O hash atesta exclusivamente os bytes da captura HTML no portal estadual; **não certifica o arquivo originário do DOE nem a cadeia integral**.
 - [Portaria CAT 35/2017](https://legislacao.fazenda.sp.gov.br/Paginas/pcat352017.aspx), arquivo recebido `SP_PortariaCAT_35_2017.html`, **158040 bytes**, SHA-256 **fbbb5fdbce095d7fe439d06ec4b3f0af5071b1f02080d1ae18146d51423d6d04**. O hash atesta exclusivamente os bytes da captura HTML no portal estadual; **não certifica o arquivo originário do DOE nem a cadeia integral**.
-- [Art41 Anexo III](https://legislacao.fazenda.sp.gov.br/Paginas/an3art041.aspx): texto oficial consultado (sem hash dos bytes originais publicados neste pacote).
+- [Art41 Anexo III](https://legislacao.fazenda.sp.gov.br/Paginas/an3art041.aspx): **captura HTTP bruta oficial** via GitHub Actions #45054804621, 157.381 bytes, SHA-256 `08e35cf1671526d59a538fe975f98148080c7eb5ccdbdfeb697ee5d562cc4b68`, artefato #14766917663; recuperado, CRC e SHA conferidos e espelhado na Biblioteca privada. É a consolidação do **portal oficial estadual**, não a versão autenticada de cada edição histórica do DOE.
 - [RC 33644/2026](https://legislacao.fazenda.sp.gov.br/Paginas/RC33644_2026.aspx): consulta publicada em 04/11/2026, com ressalva explícita de não confirmação do direito material.
 - [Portaria CAT35/2010](https://legislacao.fazenda.sp.gov.br/): arquivo indevidamente confundível com a Portaria CAT35/2017; **não usar** como evidência do crédito têxtil.
 
@@ -48,7 +48,7 @@
 - Run and archive end-to-end positive/negative cases as state-specific source-backed tests
 - Independent third-party technical/legal counterreview with auditable review identity
 
-**Proveniência legal:** o art.41 e o art.52 citam o Convênio 190/2017, mas isso **não comprova sozinho** a planilha depositada/registro da modalidade. O campo `source_publication_and_original_bytes_digest` da fila permanece **NULL** por falta do original completo da publicação-base. Os seis gates restantes e o aceite continuam false, e a pesquisa não muda `review_status=draft`.
+**Proveniência legal:** o art.41 e o art.52 citam o Convênio 190/2017, mas isso **não comprova sozinho** a planilha depositada/registro da modalidade. O campo `source_publication_and_original_bytes_digest` da fila agora contém **SHA-256 real dos bytes do texto-base divulgado no portal oficial**. Isto conclui a captura técnica dessa fonte, mas **não** a auditoria de todas as publicações originárias do DOE nem o depósito da modalidade no CONFAZ. Os seis gates restantes e o aceite continuam false, e a pesquisa não muda `review_status=draft`.
 
 ## Testes
 O módulo `tests/tax/test_t09_sp_textile_vertical.py` executa hipóteses de fábrica, NCM e CFOP baseadas na consulta de 2026 **com dados sintéticos e sem declaração de entitlement**. Resultado `potential` do motor é exclusivamente triagem: `issuance_authorized=false`, `tax_calculation_authorized=false`, `eligibility_certified=false`. O teste não prova a integralidade da classificação NCM nem a regularidade da opção de um contribuinte verdadeiro. Submeter execução CI e análise contraditória independente.

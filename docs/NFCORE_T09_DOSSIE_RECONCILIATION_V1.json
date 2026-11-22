@@ -1460,13 +1460,6 @@
           "sha256": "e66f8795a987bee747bef48957594c75788134a9ad3372a3ef7cd8cd5cb50346",
           "reason": "Portaria CAT 35/2010 is not textile CAT 35/2017"
         },
-        "uncaptured_primary_act": {
-          "url": "https://legislacao.fazenda.sp.gov.br/Paginas/an3art041.aspx",
-          "act": "RICMS/SP Anexo III art.41",
-          "official_text_consulted": true,
-          "original_publication_bytes_sha256": null,
-          "official_original_authenticity_verified": false
-        },
         "official_2026_interpretation": {
           "url": "https://legislacao.fazenda.sp.gov.br/Paginas/RC33644_2026.aspx",
           "act": "Resposta à Consulta Tributária 33644/2026, publicada 04/11/2026",
@@ -1591,7 +1584,7 @@
           }
         ],
         "unresolved_internal": [
-          "Obtain original publication bytes for Art41 and binding amendment acts, archived and SHA-256 matched",
+          "Validate each historical DOE and modifying decree original and any further 2026 effects; official consolidated Art41 HTTP bytes are captured",
           "Verify full chain including later 2026 publications and exact historical time boundaries",
           "Validate explicit LC160/CONFAZ190 deposit/certificate and art41/52 reinstitution effects",
           "Resolve entire NCM eligibility by exact context, ST/DIFAL and outsourced manufacturing exceptions",
@@ -1600,11 +1593,36 @@
         ],
         "normative_individual_requirement": "Option RUDFTO per CAT35 art2; not universal individual project granting. Art52 §1 may require prior tax authority credenciamento for specific outsourced manufacturing. Do not confuse option with approved individual concession.",
         "normative_grant_requirement_verified": false,
-        "original_source_digest_gate_verified": false,
+        "original_source_digest_gate_verified": true,
         "full_amendment_chain_verified": false,
         "independent_review_passed": false,
         "internal_acceptance": false,
-        "fiscal_activation_authorized": false
+        "fiscal_activation_authorized": false,
+        "primary_art41_source": {
+          "source_url": "https://legislacao.fazenda.sp.gov.br/Paginas/an3art041.aspx",
+          "act": "RICMS/SP Anexo III art.41",
+          "source_owner": "Secretaria da Fazenda e Planejamento do Estado de São Paulo",
+          "capture_type": "OFFICIAL_STATE_PORTAL_CURRENT_CONSOLIDATED_HTML_RAW_RESPONSE",
+          "source_sha256": "08e35cf1671526d59a538fe975f98148080c7eb5ccdbdfeb697ee5d562cc4b68",
+          "source_bytes": 157381,
+          "captured_at_utc": "2026-11-22T18:23:58.532961+00:00",
+          "github_workflow_run": 45054804621,
+          "github_artifact_id": 14766917663,
+          "github_artifact_url": "https://github.com/faabio3131/nf-core-v001/actions/runs/45054804621",
+          "archive_member": "sources/SP-08e35cf1671526d5.html",
+          "private_library_copy": "/NFCore Commercial Launch/T09 Legal Evidence/SP/SP_AnexoIII_Art41_Oficial_Captura_20261122.html",
+          "content_verified_contains": [
+            "Artigo 41 (PRODUTOS TÊXTEIS)",
+            "Decreto 67.524/2023",
+            "12%",
+            "31 de dezembro de 2026"
+          ],
+          "raw_source_digest_calculated_from_bytes": true,
+          "original_state_official_gazette_doefile_verified": false,
+          "other_modifying_decree_originals_unverified": true,
+          "full_chain_complete": false,
+          "copy_accessible_in_git_checkout": false
+        }
       }
     },
     {

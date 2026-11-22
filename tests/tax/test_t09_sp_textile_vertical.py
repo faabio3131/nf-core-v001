@@ -127,7 +127,13 @@ def test_sp_captured_state_portal_bytes_have_real_manifest_digests():
         assert capture["source_url"].startswith(
             "https://legislacao.fazenda.sp.gov.br/"
         )
-    assert source["uncaptured_primary_act"]["original_publication_bytes_sha256"] is None
+    original = source["primary_art41_source"]
+    assert original["source_sha256"] == (
+        "08e35cf1671526d59a538fe975f98148080c7eb5ccdbdfeb697ee5d562cc4b68"
+    )
+    assert original["source_bytes"] == 157381
+    assert original["github_artifact_id"] == 14766917663
+    assert original["original_state_official_gazette_doefile_verified"] is False
     assert source["independent_review_passed"] is False
     assert row["internal_acceptance"] is False
     assert row["import_authorized"] is False
@@ -192,3 +198,31 @@ def test_sp_formal_rudfto_option_is_not_a_taxpayer_grant():
     assert "RUDFTO" in scope["normative_individual_requirement"]
     assert scope["normative_grant_requirement_verified"] is False
     assert scope["fiscal_activation_authorized"] is False
+
+
+
+def test_sp_official_art41_capture_manifest_is_linked_to_queue_not_entitlement():
+    dossiers, _ = _documents()
+    capture = json.loads(
+        (DOCS / "NFCORE_T09_SP_ART41_OFFICIAL_CAPTURE_20261122.json")
+        .read_text(encoding="utf-8")
+    )
+    queue = json.loads(
+        (DOCS / "NFCORE_T09_NORMATIVE_CONSOLIDATION_WORK_QUEUE_V1.json")
+        .read_text(encoding="utf-8")
+    )
+    row = next(x for x in queue["work_items"] if x["uf"] == "SP")
+    study = next(x for x in dossiers["dossiers"] if x["uf"] == "SP")
+    assert capture["sha256_of_http_response"] == row[
+        "source_publication_and_original_bytes_digest"
+    ]
+    assert capture["byte_count"] == 157381
+    assert capture["crc_verification"] == "PASS"
+    assert capture["github_artifact_id"] == 14766917663
+    assert study["sp_vertical_checkpoint_20261122"][
+        "primary_art41_source"
+    ]["source_sha256"] == capture["sha256_of_http_response"]
+    assert capture["is_historic_original_gazette"] is False
+    assert capture["does_not_certify_legal_chain"] is True
+    assert row["internal_curatorial_accepted"] is False
+    assert row["legally_importable"] is False

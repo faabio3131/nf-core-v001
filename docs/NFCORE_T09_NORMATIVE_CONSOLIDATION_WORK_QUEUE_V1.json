@@ -1408,7 +1408,7 @@
       "already_examined_government_excerpt": true,
       "current_state": "AWAITING_COMPLETE_NORMATIVE_CONSOLIDATION",
       "internal_ai_legal_owner": "AI_LEGAL_TAX_RESEARCH_SPECIALIST",
-      "source_publication_and_original_bytes_digest": null,
+      "source_publication_and_original_bytes_digest": "08e35cf1671526d59a538fe975f98148080c7eb5ccdbdfeb697ee5d562cc4b68",
       "full_amendment_chain_verified": false,
       "applicability_by_competence_verified": false,
       "confaz_legal_route_verified": false,
@@ -1455,11 +1455,13 @@
         },
         "sp_vertical_checkpoint": {
           "status": "IN_PROGRESS",
-          "source_captures_verified_sha256": 2,
-          "art41_original_capture_verified": false,
+          "source_captures_verified_sha256": 3,
+          "art41_original_capture_verified": true,
           "independent_counter_review": false,
           "tests": "PENDING_CI",
-          "source_docs": "docs/NFCORE_T09_SP_VERTICAL_RESEARCH_20261122.md"
+          "source_docs": "docs/NFCORE_T09_SP_VERTICAL_RESEARCH_20261122.md",
+          "art41_gazette_original_verified": false,
+          "art41_capture_artifact_id": 14766917663
         }
       }
     },

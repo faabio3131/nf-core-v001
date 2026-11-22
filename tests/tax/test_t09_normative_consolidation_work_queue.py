@@ -1,5 +1,6 @@
 """T09 internal legal AI curation and external accountant are independent gates."""
 import json
+import re
 from pathlib import Path
 
 import pytest
@@ -47,7 +48,18 @@ def test_each_legal_ai_job_is_fail_closed_until_original_act_and_signoff(uf):
     queue = _document("NFCORE_T09_NORMATIVE_CONSOLIDATION_WORK_QUEUE_V1.json")
     item = next(x for x in queue["work_items"] if x["uf"] == uf)
     assert item["current_state"] == "AWAITING_COMPLETE_NORMATIVE_CONSOLIDATION"
-    assert item["source_publication_and_original_bytes_digest"] is None
+    digest = item["source_publication_and_original_bytes_digest"]
+    if digest is not None:
+        assert re.fullmatch(r"[a-f0-9]{64}", digest)
+        research = _document("NFCORE_T09_DOSSIE_RECONCILIATION_V1.json")
+        dossier = next(x for x in research["dossiers"] if x["uf"] == uf)
+        source = dossier.get("sp_vertical_checkpoint_20261122", {}).get(
+            "primary_art41_source"
+        )
+        assert source is not None, f"{uf}: no linked official original capture"
+        assert source["source_sha256"] == digest
+        assert source["raw_source_digest_calculated_from_bytes"] is True
+        assert source["full_chain_complete"] is False
     assert not item["full_amendment_chain_verified"]
     assert not item["applicability_by_competence_verified"]
     assert not item["confaz_legal_route_verified"]
