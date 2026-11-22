@@ -259,6 +259,8 @@ def test_pa_and_rr_unresolved_judicial_and_state_extension_never_approved():
     pa = _dossier("PA")["judicial_source_checkpoint_20261122"]
     rr = _dossier("RR")["official_consultation_20261122"]
     assert "STF_DECISION_IDENTIFIED" in pa["status"]
+    assert pa["2019_majority_modulation_denied"] is True
+    assert "superseding valid law" in pa["still_unverified"]
     assert "2025" in rr["findings"]
     assert "2026" in rr["unresolved"]
     assert not _dossier("PA")["import_authorized"]
