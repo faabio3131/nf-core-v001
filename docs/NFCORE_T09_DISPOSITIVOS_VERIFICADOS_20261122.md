@@ -35,8 +35,8 @@ Controles de evidência a validar: pb_fain_project_approval, pb_ncm_first_four_d
 ## PE
 Fonte: https://www.sefaz.pe.gov.br/Legislacao/Tributaria/Documents/Legislacao/Decretos/2026/Dec61000_2026.htm
 Complemento: https://www.sefaz.pe.gov.br/Legislacao/Tributaria/Documents/legislacao/decretos/1999/Dec21959_99.htm
-Dispositivos: Decreto 61.000/2026 ementa; Lei 11.675/1999 e Decreto 21.959/1999
-Achados: Decreto 61.000/2026 altera EFD-ICMS/IPI e conformidade Programa Coopera, NÃO altera materialmente benefício PRODEPE. Não usar como ato concessivo nem modificador de percentual.
+Dispositivos: Decreto 61.000/2026 art.2º; Decreto 21.959/1999 art.21-A §10; Lei 11.675/1999
+Achados: Decreto 61.000/2026 ALTERA o art.21-A §10 do regulamento PRODEPE quanto à regularidade EFD-ICMS/IPI, mas não altera diretamente percentual e não é ato de concessão individual.
 Pendências: Localizar alterações realmente pertinentes ao PRODEPE e validar produto, prazo, EFD, concessão
 Controles de evidência a validar: pe_prodepe_material_act, pe_prodepe_product_grant, pe_actual_amendments, pe_confaz_route.
 
@@ -49,4 +49,4 @@ Controles de evidência a validar: pi_internal_operation, pi_art25a_product_list
 
 ## Decisões
 
-Não aproveitar fontes secundárias como original. Os 50 arquivos recebidos foram vinculados aos 27 dossiês sem confundir captura com vigência. PE Decreto 61.000/2026 deixa de figurar como modificador material PRODEPE; PB Decreto 47.898/2026 é confirmado. Sem inventar CNAE, NCM, CFOP, atos individuais, CONFAZ, data de competência ou percentual. Todos os 27 status de aceite permanecem negativos. Não confundir uma guarda testada com o benefício integral homologado. A revisão independente e o aceite humano permanecem pendentes.
+Não aproveitar fontes secundárias como original. Os 50 arquivos recebidos foram vinculados aos 27 dossiês sem confundir captura com vigência. PE Decreto 61.000/2026 é modificador de regularidade EFD no regulamento PRODEPE, sem alteração direta de percentual; PB Decreto 47.898/2026 é confirmado. Sem inventar CNAE, NCM, CFOP, atos individuais, CONFAZ, data de competência ou percentual. Todos os 27 status de aceite permanecem negativos. Não confundir uma guarda testada com o benefício integral homologado. A revisão independente e o aceite humano permanecem pendentes.
