@@ -37,7 +37,7 @@
     "competence_time_interval_and_transitional_rules",
     "state_legal_path_and_confaz_lc160_when_applicable",
     "eligible_operations_ncm_cnae_cfop_icms_regime_and_exceptions",
-    "individual_grant_adhesion_and_maintenance_when_required",
+    "individual_grant_requirement_and_conditions_normatively_established",
     "reproducible_positive_and_negative_cases_anchored_in_act",
     "independent_adversarial_agent_review_of_source_and_result",
     "deterministic_tests_and_ci_success_for_latest_head"
@@ -1524,7 +1524,7 @@
   },
   "external_dependency_separation_20261122": {
     "classification": "APPROVED_SCOPE_DECISION_BY_PRODUCT_OWNER",
-    "scope": "Internal engineering research and certification can complete WITHOUT human-curatorial release approval, independent accountant opinion, or individual taxpayer grant.",
+    "scope": "Internal engineering research and certification can complete WITHOUT human-curatorial release approval, independent accountant opinion, or individual taxpayer grant. The actual adhesion/concession/maintenance of a taxpayer is external; determining the normative requirement is internal.",
     "internal_requirements": [
       "official primary act and archived source bytes with digest",
       "full amendment / repeal / temporal / CONFAZ route for the chosen act",
@@ -1552,7 +1552,7 @@
     "competence_time_interval_and_transitional_rules",
     "state_legal_path_and_confaz_lc160_when_applicable",
     "eligible_operations_ncm_cnae_cfop_icms_regime_and_exceptions",
-    "individual_grant_adhesion_and_maintenance_when_required",
+    "individual_grant_requirement_and_conditions_normatively_established",
     "reproducible_positive_and_negative_cases_anchored_in_act",
     "independent_adversarial_agent_review_of_source_and_result",
     "deterministic_tests_and_ci_success_for_latest_head",
@@ -1563,6 +1563,7 @@
     "independent_accountant_signed_opinion",
     "taxpayer_specific_grant_or_adhesion_if_applicable",
     "taxpayer_evidence_and_reconciliation_without_secrets",
-    "fiscal_activation_explicit_authorization"
+    "fiscal_activation_explicit_authorization",
+    "individual_grant_adhesion_and_maintenance_when_required"
   ]
 }

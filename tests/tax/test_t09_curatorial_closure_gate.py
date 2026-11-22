@@ -148,3 +148,22 @@ def test_missing_external_receipt_does_not_hide_internal_deficiencies():
         assert "human_approval_record" not in blockers
         assert "full_amendment_chain_verified" in blockers
     assert report["external_activation_gates_separate_from_internal"] is True
+
+
+def test_actual_taxpayer_grant_is_external_normative_predicate_is_internal():
+    q, _, _ = _fixture()
+    assert "human_product_owner_approval_of_curatorial_release" not in q[
+        "completion_gates"
+    ]
+    assert "individual_grant_adhesion_and_maintenance_when_required" not in q[
+        "internal_completion_gates"
+    ]
+    assert "individual_grant_requirement_and_conditions_normatively_established" in q[
+        "internal_completion_gates"
+    ]
+    assert "individual_grant_adhesion_and_maintenance_when_required" in q[
+        "external_release_gates"
+    ]
+    assert q["external_dependency_separation_20261122"][
+        "external_not_a_blocker_for_internal_closeout"
+    ] is True
