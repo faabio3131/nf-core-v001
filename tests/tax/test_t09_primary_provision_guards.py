@@ -177,7 +177,9 @@ def test_even_synthetic_complete_review_never_authorizes_real_tax():
 
 def test_pe_decree_61000_excluded_from_prodepe_material_modifiers():
     row = _dossier("PE")
-    assert "61.000" not in row["remaining_temporal_and_route_review"]
+    assert "61.000/2026 pertence a EFD/Coopera" in (
+        row["remaining_temporal_and_route_review"]
+    )
     assert "NÃO altera materialmente" in (
         row["primary_provision_checkpoint_20261122"]["finding"]
     )
