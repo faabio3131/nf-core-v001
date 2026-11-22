@@ -1223,14 +1223,14 @@
       "supervening_2026_primary_examination": {
         "status": "OFFICIAL_TEXT_EXAMINED_FULL_CHAIN_NOT_CERTIFIED",
         "issuer": "state_official",
-        "act": "Decreto PR de 2026 (codAto 392500), art.3 altera Decreto 7.721/2024 art.12",
+        "act": "Decreto PR 13.467/2026 (DOE 27/04/2026), art.3 altera Decreto 7.721/2024 art.12",
         "official_url": "https://www.legislacao.pr.gov.br/legislacao/listarAtosAno.do?action=exibirImpressao&codAto=392500",
         "additional_official_sources": [
           "https://www.legislacao.pr.gov.br/legislacao/listarAtosAno.do?action=exibir&codAto=341992"
         ],
         "article_or_change": "O ato de 2026 altera art.12 §§2,3,6, relativo a créditos SISCRED e investimentos; é necessária comparação por data e por modalidade de enquadramento. Registros DOE 2026 demonstram deferimentos individuais, não benefício universal.",
         "critical_negative": "Não usar redação de art.12 de 2024 em períodos posteriores à alteração sem reconciliar a entrada em vigor, nem estender o deferimento de outro CNPJ.",
-        "competence_change_start_reference": "2026-05-01",
+        "competence_change_start_reference": "2026-04-27",
         "validity_warning": "Start of reference is contextual; reconcile publication, effects and transitions for exact competence before calculating",
         "gate": "PR_7721_ART12_SUPERVENIENTE",
         "government_source_byte_snapshot_sha256": null,
