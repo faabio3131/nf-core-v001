@@ -97,7 +97,15 @@
       ],
       "independent_adversarial_review": false,
       "internal_curation_accepted": false,
-      "autoriza_aplicacao_fiscal": false
+      "autoriza_aplicacao_fiscal": false,
+      "amendment_2026_checked": {
+        "act": "Decreto AM 53.496/2026, art.113, e decretos concessivos CODAM 2026",
+        "official_url": "https://sistemas.sefaz.am.gov.br/get/Normas.do?metodo=viewDoc&uuidDoc=777a28b3-f4a1-4914-946e-ce0bce0ca68b",
+        "observation": "Art.113 do Decreto 47.727/2023 alterado para processo produtivo elementar sem PPB; o Decreto 53.496/2026 disciplina patamares vinculados a empregados CAGED e ativos. Exige classificação material do produto/projeto; benefícios de decretos concessivos individuais não são universais.",
+        "negative": "Sem projeto CODAM, sem PPB/reconhecimento de processo elementar ou sem requisitos econômicos documentados não inferir percentual de crédito estímulo.",
+        "unreviewed_raw_publisher_bytes": true,
+        "competence_consistency_not_certified": true
+      }
     },
     {
       "uf": "AP",
@@ -227,7 +235,15 @@
       ],
       "independent_adversarial_review": false,
       "internal_curation_accepted": false,
-      "autoriza_aplicacao_fiscal": false
+      "autoriza_aplicacao_fiscal": false,
+      "amendment_2026_checked": {
+        "act": "IN DF 2/2024 alterada por IN 6/2025 e 9/2025; Decreto 39.803/2019",
+        "official_url": "https://www.sinj.df.gov.br/sinj/Norma/9a5960f6085d47acba30a377d5c0b405/Instru_o_Normativa_6_04_02_2025.html",
+        "observation": "Normas de apuração 2025 alteram a IN 2/2024, vinculada ao EMPREGA-DF. Ato de 2026 sobre acompanhamento não substitui TARE ou ato material do programa.",
+        "negative": "Apuração em 2026 somente com cópia de IN 2/2024 originária, alterações 6/2025 e 9/2025 e ato TARE aplicável; não aproveitar código 1317 de outra modalidade.",
+        "unreviewed_raw_publisher_bytes": true,
+        "competence_consistency_not_certified": true
+      }
     },
     {
       "uf": "ES",
@@ -289,7 +305,15 @@
       ],
       "independent_adversarial_review": false,
       "internal_curation_accepted": false,
-      "autoriza_aplicacao_fiscal": false
+      "autoriza_aplicacao_fiscal": false,
+      "amendment_2026_checked": {
+        "act": "Lei GO 24.441/2026 altera Lei 20.787/2020 em adesão a MS",
+        "official_url": "https://legisla.casacivil.go.gov.br/pesquisa_legislacao/116157",
+        "observation": "Lei 24.441/2026 promove adesão específica do ProGoiás à LC 93/2001 de MS sob LC160/2017 art3 §8 e Convênio190 cláusula13; não importa todos benefícios de MS. Lei 24.533/2026 trata convalidação condicionada específica.",
+        "negative": "Não converter adesão interestadual ou convalidação de 2026 em crédito automático sem objeto, período, setor, termo e ato concessivo.",
+        "unreviewed_raw_publisher_bytes": true,
+        "competence_consistency_not_certified": true
+      }
     },
     {
       "uf": "MA",
@@ -407,7 +431,15 @@
       ],
       "independent_adversarial_review": false,
       "internal_curation_accepted": false,
-      "autoriza_aplicacao_fiscal": false
+      "autoriza_aplicacao_fiscal": false,
+      "amendment_2026_checked": {
+        "act": "Decreto MT 1.802/2025, RICMS Anexo V art.31-A §6, Informação SEFAZ 124/2026",
+        "official_url": "https://app1.sefaz.mt.gov.br/sistema/legislacao/respostaconsulta.nsf/5540d90afcacd4f204257057004b655c/dfdffa903c8253dd03258e28005313b4",
+        "observation": "A autoridade confirma prorrogação estadual expressa do art.31-A até 31/12/2027 e aplicação condicionada a operações internas/interestaduais com fertilizantes abrangidos. Isso não certifica outros bens, NCM nem eventual diferimento.",
+        "negative": "Não inferir que o art.31-A expirou em 2025 nem que fertilizantes sem destinação agropecuária são elegíveis. Não usar automaticamente o mesmo CST do diferimento.",
+        "unreviewed_raw_publisher_bytes": true,
+        "competence_consistency_not_certified": true
+      }
     },
     {
       "uf": "PA",
@@ -455,8 +487,8 @@
       "programa_ou_ato": "Lei 6.000/1994; Decreto 17.252/1994, art. 3º; Decreto 47.898/2026",
       "source_of_primary_review": "https://www.sefaz.pb.gov.br/legislacao/397-decretos-estaduais/icms/icms-2026/17297-decreto-n-47-898-de-18-de-fevereiro-de-2026",
       "dispositivo_ou_risco_especifico": "FAIN_NOVO_PRODUTO",
-      "constatacao_de_pesquisa": "FAIN Decreto 17.252/1994 foi alterado pelo Decreto 47.898/2026; condições de produto, setor, deliberação e efeitos devem ser precisadas.",
-      "cenario_negativo_obrigatorio": "Negar existência do Decreto 47.898/2026 ou inferir enquadramento automático por NCM.",
+      "constatacao_de_pesquisa": "FAIN Decreto 17.252/1994 foi alterado pelo Decreto 47.898/2026; condições de produto, setor, deliberação e efeitos devem ser precisadas. Decreto 48.405/2026 acrescenta exigência de CRF-FGTS na concessão/renovação, vigente desde 04/07/2026.",
+      "cenario_negativo_obrigatorio": "Negar existência do Decreto 47.898/2026 ou inferir enquadramento automático por NCM. Em concessão/renovação sob Decreto 48.405/2026, CRF-FGTS ausente ou inválido impede deferimento.",
       "caso_positivo_condicional": "Ato Conselho, produto enquadrado e parecer técnico favorável.",
       "conferencia_temporal_e_confaz_pendente": "Critérios novos de classificação NCM e prazo Convênio190; publicação e efeitos",
       "original_captures_in_50_lot": [
@@ -475,7 +507,15 @@
       ],
       "independent_adversarial_review": false,
       "internal_curation_accepted": false,
-      "autoriza_aplicacao_fiscal": false
+      "autoriza_aplicacao_fiscal": false,
+      "amendment_2026_checked": {
+        "act": "Decreto PB 48.405/2026, arts.1-6, e alteração do art.16 FAIN",
+        "official_url": "https://sefaz.pb.gov.br/legislacao/35-decretos-estaduais/59-icms/397-icms-2026/17811-decreto-n-48-405-de-03-de-julho-de-2026",
+        "observation": "Desde DOE 04/07/2026, concessão ou renovação de benefício fiscal exige Certificado de Regularidade FGTS (CRF) válido no protocolo, não estendido a terceiros, e acrescenta impedimento por débitos FGTS ao art.16 do Decreto 17.252/1994.",
+        "negative": "Pedido de concessão/renovação com CRF ausente, vencido ou com débito FGTS não pode ser tratado como deferido; vigência é da publicação e não retroage automaticamente.",
+        "unreviewed_raw_publisher_bytes": true,
+        "competence_consistency_not_certified": true
+      }
     },
     {
       "uf": "PE",
@@ -483,14 +523,22 @@
       "programa_ou_ato": "Lei 11.675/1999, Decreto 21.959/1999, Portaria SF 239/2001",
       "source_of_primary_review": "https://www.sefaz.pe.gov.br/Legislacao/Tributaria/Documents/legislacao/decretos/1999/Dec21959_99.htm",
       "dispositivo_ou_risco_especifico": "DECRETO_CONCESSIVO",
-      "constatacao_de_pesquisa": "PRODEPE Lei 11.675/1999/Decreto 21.959/1999 condiciona a concessão específica e início do benefício; Decreto 61.000/2026 é EFD/Coopera, não alteração específica do PRODEPE.",
-      "cenario_negativo_obrigatorio": "Calcular incentivo antes do decreto concessivo ou por Decreto 61.000/2026.",
+      "constatacao_de_pesquisa": "O Decreto 61.000/2026 alterou o Decreto 21.959/1999, art.21-A §10, sobre regularidade EFD-ICMS/IPI exigível ao PRODEPE; não alterou diretamente os percentuais do incentivo.",
+      "cenario_negativo_obrigatorio": "Sem regularidade dos arquivos EFD-ICMS/IPI e sem decreto concessivo, não concluir elegibilidade; não usar ato de regularidade como fonte de crédito presumido.",
       "caso_positivo_condicional": "Ato individual, produto habilitado e prazo válido.",
       "conferencia_temporal_e_confaz_pendente": "Lei 11.675/1999 e Decreto 21.959/1999: consolidar atos materiais/CONFAZ e modalidade. Decreto 61.000/2026 pertence a EFD/Coopera, NÃO é alteração material PRODEPE.",
       "original_captures_in_50_lot": [],
       "independent_adversarial_review": false,
       "internal_curation_accepted": false,
-      "autoriza_aplicacao_fiscal": false
+      "autoriza_aplicacao_fiscal": false,
+      "amendment_2026_checked": {
+        "act": "Decreto PE 61.000/2026 art.2 altera Decreto 21.959/1999 art.21-A §10",
+        "official_url": "https://www.sefaz.pe.gov.br/Legislacao/Tributaria/Documents/Legislacao/Decretos/2026/Dec61000_2026.htm",
+        "observation": "Ato não muda percentual ou montante material do PRODEPE, MAS altera o próprio regulamento do PRODEPE art.21-A §10: EFD-ICMS/IPI com inconsistência classificada como pendência pode impedir a caracterização de entrega regular, nos termos do art.269-H do Decreto 44.650/2017.",
+        "negative": "Não ignorar irregularidade de EFD na elegibilidade do PRODEPE nem assumir que o Decreto 61.000/2026 concede ou modifica percentuais diretamente.",
+        "unreviewed_raw_publisher_bytes": true,
+        "competence_consistency_not_certified": true
+      }
     },
     {
       "uf": "PI",
@@ -533,7 +581,15 @@
       ],
       "independent_adversarial_review": false,
       "internal_curation_accepted": false,
-      "autoriza_aplicacao_fiscal": false
+      "autoriza_aplicacao_fiscal": false,
+      "amendment_2026_checked": {
+        "act": "Decreto PR 13.467/2026 (DOE 27/04/2026), art.3 altera Decreto 7.721/2024 art.12",
+        "official_url": "https://www.legislacao.pr.gov.br/legislacao/listarAtosAno.do?action=exibirImpressao&codAto=392500",
+        "observation": "O ato de 2026 altera art.12 §§2,3,6, relativo a créditos SISCRED e investimentos; é necessária comparação por data e por modalidade de enquadramento. Registros DOE 2026 demonstram deferimentos individuais, não benefício universal.",
+        "negative": "Não usar redação de art.12 de 2024 em períodos posteriores à alteração sem reconciliar a entrada em vigor, nem estender o deferimento de outro CNPJ.",
+        "unreviewed_raw_publisher_bytes": true,
+        "competence_consistency_not_certified": true
+      }
     },
     {
       "uf": "RJ",
@@ -676,7 +732,15 @@
       "original_captures_in_50_lot": [],
       "independent_adversarial_review": false,
       "internal_curation_accepted": false,
-      "autoriza_aplicacao_fiscal": false
+      "autoriza_aplicacao_fiscal": false,
+      "amendment_2026_checked": {
+        "act": "Consulta COPAT 008/2026 examina Pró-Emprego Lei 13.992/2007 e Decreto 105/2007",
+        "official_url": "https://legislacao.sef.sc.gov.br/consulta/views/Publico/DocumentoLegalViewer.ashx?id=427EFD6A-6871-466E-9279-A182F0DE5D7C",
+        "observation": "Orientação estadual de 2026 examina cumulação do diferimento Pró-Emprego com outro crédito presumido e remete a restrições de fruição; não representa TTD, portaria concessiva nem mudança direta de percentual para todos.",
+        "negative": "Não inferir cumulação irrestrita por serem operações diferentes sem revisar condições da decisão e TTD do contribuinte.",
+        "unreviewed_raw_publisher_bytes": true,
+        "competence_consistency_not_certified": true
+      }
     },
     {
       "uf": "SE",
@@ -742,5 +806,9 @@
       "internal_curation_accepted": false,
       "autoriza_aplicacao_fiscal": false
     }
-  ]
+  ],
+  "research_update_20261122": {
+    "material_regulatory_corrections": 8,
+    "note": "PE Decreto 61.000/2026 altera regulamento do PRODEPE em EFD regularity; PB Decreto 48.405/2026 cria requisito FGTS. No legal chain or entitlement approved."
+  }
 }
