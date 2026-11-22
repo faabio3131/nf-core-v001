@@ -938,7 +938,7 @@
       ],
       "conditional_positive": "Somente após base superveniente/reinstituição e decisão judicial reconciliadas, e ato individual correspondente.",
       "negative": "Lei declarada inconstitucional não reconciliada ou resolução ALUBAR usada para terceiro.",
-      "remaining_temporal_and_route_review": "Acórdão, efeitos, Lei 7.485/2010, Decreto 990/2020, depósito; data divergente",
+      "remaining_temporal_and_route_review": "STF ADI 3779: 2019 majority declared Lei 6.913/2006 unconstitutional, rejecting Barroso modulation dissent; verify subsequent judicial motions, 2026 legal basis/reinstitution, specific CONFAZ deposit, grants and inconsistent 2006 official publication dates.",
       "required_review_evidence": "pa_judicial_and_individual_basis",
       "evidence_status": "PARTIAL_RESEARCH_NOT_ACCEPTED",
       "positive_expected": "potential_only_if_all_reviewed",
@@ -975,7 +975,11 @@
         "source": "https://portal.stf.jus.br/peticaoInicial/verPeticaoInicial.asp?base=ADI&numProcesso=3779",
         "decision": "ADI3779 julgada procedente; Leis PA 6.912,6.913,6.914,6.915/2006 declaradas inconstitucionais no julgamento 23-29/08/2019, acórdão DJ 04/12/2019",
         "warning": "Não confundir ADI 3779 com 3246 ou 3796; Lei 7485/2010 e normas estaduais posteriores não eliminam por si risco judicial.",
-        "accepted": false
+        "accepted": false,
+        "2019_majority_modulation_denied": true,
+        "2019_result_source": "https://portal.stf.jus.br/peticaoInicial/verPeticaoInicial.asp?base=ADI&numProcesso=3779",
+        "2019_judgment_scope": "STF majority declared laws 6.912-6.915/2006 unconstitutional; Justice Barroso dissented solely on modulation, not on constitutional merits",
+        "still_unverified": "Any later motion affecting effects, superseding valid law, specific LC160 re-institution, CONFAZ deposit and taxpayer-level grant"
       }
     },
     {
