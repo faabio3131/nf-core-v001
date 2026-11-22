@@ -50,8 +50,10 @@ def _validate_crosscheck(cross: dict, draft: dict, queue: dict, captures: dict) 
     counted = Counter()
     for r in rows:
         uf = r["uf"]
-        assert isinstance(r["constatacao_de_pesquisa"], str) and len(r["constatacao_de_pesquisa"]) > 60
-        assert isinstance(r["cenario_negativo_obrigatorio"], str) and len(r["cenario_negativo_obrigatorio"]) > 40
+        assert isinstance(r["constatacao_de_pesquisa"], str)
+        assert len(r["constatacao_de_pesquisa"]) > 60
+        assert isinstance(r["cenario_negativo_obrigatorio"], str)
+        assert len(r["cenario_negativo_obrigatorio"]) > 40
         assert r["source_of_primary_review"].startswith("https://")
         assert r["independent_adversarial_review"] is False
         assert r["internal_curation_accepted"] is False
