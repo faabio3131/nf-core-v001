@@ -183,14 +183,28 @@ def test_even_synthetic_complete_review_never_authorizes_real_tax():
     assert outcome["approved_cents"] is None
 
 
-def test_pe_decree_61000_excluded_from_prodepe_material_modifiers():
+def test_pe_decree_61000_changes_prodepe_efd_compliance_not_credit_rate():
     row = _dossier("PE")
-    assert "61.000/2026 pertence a EFD/Coopera" in (
-        row["remaining_temporal_and_route_review"]
+    text = row["primary_provision_checkpoint_20261122"]["finding"]
+    assert "art.21-A §10" in text
+    assert "EFD-ICMS/IPI" in text
+    assert "NÃO muda diretamente percentual" in text
+    assert "não cria benefício" in row["remaining_temporal_and_route_review"]
+    assert "pe_efd_regular_delivery_art21a" in (
+        row["primary_provision_checkpoint_20261122"]["evidence"]
     )
-    assert "NÃO altera materialmente" in (
-        row["primary_provision_checkpoint_20261122"]["finding"]
+
+
+def test_pb_decree_48405_adds_fgts_compliance_to_fain_renewals():
+    row = _dossier("PB")
+    assert "48.405/2026" in row["reference"]
+    assert "pb_fain_fgts_crf_renewal" in (
+        row["primary_provision_checkpoint_20261122"]["evidence"]
     )
+    claim = row["supervening_2026_primary_examination"]
+    assert "FGTS" in claim["article_or_change"]
+    assert claim["competence_change_start_reference"] == "2026-07-04"
+    assert claim["internal_acceptance"] is False
 
 
 def test_final_fifty_captures_linked_to_same_canonical_27_dossiers():
