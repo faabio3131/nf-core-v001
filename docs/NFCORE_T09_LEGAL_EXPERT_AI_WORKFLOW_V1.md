@@ -1,3 +1,5 @@
+> **ATUALIZAÇÃO T09 — 22/11/2026:** o CURRENT deste documento na sua criação (HEAD `917cf3ac`) é histórico. PR #592 permanece Draft. Novo checkpoint [pesquisa parcial e evidências](NFCORE_T09_RESEARCH_PACKAGE_CHECKPOINT_20261122.md), [29 capturas](NFCORE_T09_RESEARCH_PACKAGE_MANIFEST_20261122.json), [27 lacunas](NFCORE_T09_RESEARCH_RESIDUAL_27UFS_20261122.md). A pesquisa tem 58 casos apenas propostos e 0/27 curadorias aceitas; CI atual deve ser confirmada por SHA após commits documentais. O processo `AI_LEGAL_TAX_RESEARCH_SPECIALIST` descrito aqui não significa que exista agente autônomo já implantado; nenhuma revisão independente está comprovada.
+
 # T09 — Agente IA especialista em Direito Tributário Estadual (consolidação normativa)
 
 **Decisão do proprietário em 21/11/2026:** a **consolidação jurídica integral por benefício e competência** é uma tarefa de pesquisa e engenharia jurídica **interna executável por IA especializada**, com prova documental. O **parecer independente assinado** do contador foi classificado como **PENDÊNCIA EXTERNA**; isso não elimina seu gate antes da aplicação fiscal real.
