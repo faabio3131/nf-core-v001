@@ -73,3 +73,8 @@ mas todas permanecem `draft` e sem SHA256 real do texto consolidado,
 parecer externo, direito fiscal ou importação. **A tabela anterior mantém 0/27
 benefícios homologados**; não alterar o significado das colunas ou confundir
 27 linhas documentadas com 27 benefícios juridicamente certificados.
+
+
+### Reconciliação documental de 22/11/2026
+
+Os 27 dossiês de pesquisa e as 22 entradas de captura estão relacionados em `NFCORE_T09_DOSSIE_RECONCILIATION_V1.json`. Conteúdo localizado/cotejado não implica cadeia legal completa. Ver `NFCORE_T09_RECONCILIACAO_27UFS_20261122.md`. Mantidos 0/27 aceites e importações; gates externos independentes.

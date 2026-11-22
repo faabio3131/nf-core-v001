@@ -1,0 +1,843 @@
+{
+  "schema_version": "nfcore.t09.research-dossier-reconciliation/v1",
+  "as_of": "2026-11-22",
+  "baseline": "867af5ebcf4ad2c1fdcd2dccea4c8df683ad7db7",
+  "scope": "27 representative hypotheses, non-executable, not a certified legal catalog",
+  "archived_originals_verified": false,
+  "prior_audit_refs": [
+    "NFCORE_T09_LOTE_A_AUDITORIA_BYTES_20261121.md",
+    "NFCORE_T09_LOTE_12_AUDITORIA_BYTES_20261122.md"
+  ],
+  "source_queue_count": 22,
+  "source_records": [
+    {
+      "uf": "AC",
+      "expected_act": "Lei 1.358/2000",
+      "expected_filename": "AC_Lei_1358_2000.html",
+      "received_filename": "AC_Lei_1358_2000.html",
+      "capture_sha256": "306781dc3329c1c9d5955fa5636f3accc31654ece050a1b3dc4737bba653923a",
+      "identity_status": "identified_prior_audit",
+      "source_pointer": "https://www.legis.ac.gov.br/detalhar/1775",
+      "original_publisher_bytes_archived": false,
+      "eligible_for_import": false
+    },
+    {
+      "uf": "AC",
+      "expected_act": "Decreto 4.196/2001",
+      "expected_filename": "AC_Decreto_4196_2001.html",
+      "received_filename": "AC_Decreto_4196_2001.html",
+      "capture_sha256": "e976c4cd2b64422c1a3845018aabc19788286b095256d4d2ad5969310aae4fc0",
+      "identity_status": "correct_replacement",
+      "source_pointer": "https://sefaz.ac.gov.br/2021/?p=14786",
+      "original_publisher_bytes_archived": false,
+      "eligible_for_import": false
+    },
+    {
+      "uf": "AC",
+      "expected_act": "Decreto 11.618/2025 (altera Decreto 4.196/2001)",
+      "expected_filename": "AC_Decreto_11618_2025.html",
+      "received_filename": "AC_Decreto_11618_2025.html",
+      "capture_sha256": "b9f9534525a8e60e61ac1c01752a0137c13f000b1351ba3d2d25827c3667dee7",
+      "identity_status": "identified_prior_audit",
+      "source_pointer": "https://legis.ac.gov.br/detalhar/6259",
+      "original_publisher_bytes_archived": false,
+      "eligible_for_import": false
+    },
+    {
+      "uf": "AC",
+      "expected_act": "Lei 3.460/2018 (LC 160/reinstituição)",
+      "expected_filename": "AC_Lei_3460_2018.html",
+      "received_filename": "AC_Lei_3460_2018.html",
+      "capture_sha256": "d98520d93b21b25ff92400a1e8e28849d829ffc4887935eed93bf701f58f12f0",
+      "identity_status": "identified_prior_audit",
+      "source_pointer": "https://legis.ac.gov.br/detalhar/2217",
+      "original_publisher_bytes_archived": false,
+      "eligible_for_import": false
+    },
+    {
+      "uf": "PA",
+      "expected_act": "Lei 6.913/2006",
+      "expected_filename": "PA_Lei_6913_2006.pdf",
+      "received_filename": "PA_Lei_6913_2006.pdf",
+      "capture_sha256": "2d549170207872f2b76dabbd513b0837c435e4f00ab4a242e8fde9d4abe7c1f1",
+      "identity_status": "identified_date_and_judicial_conflict",
+      "source_pointer": "https://bancodeleis.alepa.pa.gov.br/arquivos/lei6913_2006_96939.pdf",
+      "original_publisher_bytes_archived": false,
+      "eligible_for_import": false
+    },
+    {
+      "uf": "PA",
+      "expected_act": "Lei 7.485/2010",
+      "expected_filename": "PA_Lei_7485_2010.html",
+      "received_filename": "PA_Lei_7485_2010.html",
+      "capture_sha256": "94202d426bd3973876fbb5a73b97d257f9c79e0fa617a4970449b5c26d0306e2",
+      "identity_status": "identified_prior_audit",
+      "source_pointer": "https://www.sistemas.pa.gov.br/sisleis/legislacao/1390",
+      "original_publisher_bytes_archived": false,
+      "eligible_for_import": false
+    },
+    {
+      "uf": "PA",
+      "expected_act": "Decreto 2.490/2006",
+      "expected_filename": "PA_Decreto_2490_2006.pdf",
+      "received_filename": null,
+      "capture_sha256": null,
+      "identity_status": "no_received_act_in_audited_batches",
+      "source_pointer": "https://bancodeleis.alepa.pa.gov.br/arquivos/lei2490_2006_53513.pdf",
+      "original_publisher_bytes_archived": false,
+      "eligible_for_import": false
+    },
+    {
+      "uf": "PA",
+      "expected_act": "Decreto 990/2020 altera Decreto 2.490/2006",
+      "expected_filename": "PA_Decreto_990_2020.html",
+      "received_filename": "PA_Decreto_990_2020.html",
+      "capture_sha256": "013742c3c37debcea213322b36228d7deeb19052bfcef2980d5735c8dab6d0f6",
+      "identity_status": "identified_prior_audit",
+      "source_pointer": "https://www.sistemas.pa.gov.br/sisleis/legislacao/5827",
+      "original_publisher_bytes_archived": false,
+      "eligible_for_import": false
+    },
+    {
+      "uf": "PI",
+      "expected_act": "DOE nº 57/2025, Decreto 23.672/2025",
+      "expected_filename": "PI_DOE_57_2025_Decreto_23672_2025.pdf",
+      "received_filename": "PI_DOE_57_2025_Decreto_23672_2025.pdf",
+      "capture_sha256": "4fa8c246f47267f84ca957a0054bf8418590d9490eaca911f2bc3dbbbbdaa5ad",
+      "identity_status": "identified_date_conflict",
+      "source_pointer": "https://www.diario.pi.gov.br/doe/files/diarios/anexo/e1d8ee2a-5cf4-437f-93fa-393753b8574a/DOEPI_57_2025.pdf",
+      "original_publisher_bytes_archived": false,
+      "eligible_for_import": false
+    },
+    {
+      "uf": "PI",
+      "expected_act": "Decreto 21.866/2023, Anexo IV art.25-A consolidado",
+      "expected_filename": "PI_RICMS_Decreto_21866_2023_Anexo_IV_art25A.html",
+      "received_filename": "PI_RICMS_Decreto_21866_2023_Anexo_IV_art25A.pdf",
+      "capture_sha256": "6310248448f1da7ae3eae8dc5cef23736b43c03795afa444eccb002f70dafe07",
+      "identity_status": "official_compilation_pdf_not_html",
+      "source_pointer": null,
+      "original_publisher_bytes_archived": false,
+      "eligible_for_import": false
+    },
+    {
+      "uf": "AL",
+      "expected_act": "Lei 5.671/1995",
+      "expected_filename": "AL_Lei_5671_1995.html",
+      "received_filename": "AL_Lei_5671_1995.html",
+      "capture_sha256": "a23b73f43ab5d0f26f1f30c9f6338bfb6fdb57b504951897c11a9bc2b805d0ca",
+      "identity_status": "official_compilation_2025",
+      "source_pointer": null,
+      "original_publisher_bytes_archived": false,
+      "eligible_for_import": false
+    },
+    {
+      "uf": "AL",
+      "expected_act": "Decreto 38.394/2000",
+      "expected_filename": "AL_Decreto_38394_2000.html",
+      "received_filename": "AL_Decreto_38394_2000.html",
+      "capture_sha256": "0c926b903821f64a789997e067ebeaeb4764b23ad04e076db39df6117ff1eb35",
+      "identity_status": "official_compilation_2025",
+      "source_pointer": null,
+      "original_publisher_bytes_archived": false,
+      "eligible_for_import": false
+    },
+    {
+      "uf": "AL",
+      "expected_act": "Decreto 107.816/2026 e publicação no DOE",
+      "expected_filename": "AL_DOE_2026_Decreto_107816.pdf",
+      "received_filename": null,
+      "capture_sha256": null,
+      "identity_status": "no_received_act_in_audited_batches",
+      "source_pointer": "https://diario.imprensaoficial.al.gov.br/apinova/api/editions/viewPdf/51478",
+      "original_publisher_bytes_archived": false,
+      "eligible_for_import": false
+    },
+    {
+      "uf": "AP",
+      "expected_act": "Decreto 2.269/1998, art.415 incisos VI/VII",
+      "expected_filename": "AP_Decreto_2269_1998_Art415_VI_VII.html",
+      "received_filename": "Decreto Nº 2269 DE 24_07_1998 - Estadual - Amapá - LegisWeb.html",
+      "capture_sha256": "8caf16a3004c3b62ded1a5b26048ced0546343ab5fb40173361f0e3c95884983",
+      "identity_status": "secondary_compilation",
+      "source_pointer": null,
+      "original_publisher_bytes_archived": false,
+      "eligible_for_import": false
+    },
+    {
+      "uf": "RJ",
+      "expected_act": "Portaria SSER 345/2023",
+      "expected_filename": "RJ_Portaria_SSER_345_2023.html",
+      "received_filename": "RJ_Portaria_SSER_345_2023.html",
+      "capture_sha256": "479633989a20c17c3166598f002b0d0f91bcf193eccd66a2ef9f2a3283ca0282",
+      "identity_status": "official_compilation",
+      "source_pointer": null,
+      "original_publisher_bytes_archived": false,
+      "eligible_for_import": false
+    },
+    {
+      "uf": "RJ",
+      "expected_act": "Portaria SSER 350/2024",
+      "expected_filename": "RJ_Portaria_SSER_350_2024.html",
+      "received_filename": "RJ_Portaria_SSER_350_2024.html",
+      "capture_sha256": "6bcc9da4e73bf97c1be6fdab8793287d06eee74dbc8fe6dc078eeedcff913167",
+      "identity_status": "identified",
+      "source_pointer": null,
+      "original_publisher_bytes_archived": false,
+      "eligible_for_import": false
+    },
+    {
+      "uf": "RJ",
+      "expected_act": "Portaria SSER 362/2024",
+      "expected_filename": "RJ_Portaria_SSER_362_2024.html",
+      "received_filename": null,
+      "capture_sha256": null,
+      "identity_status": "official_publication_visual_and_transcription_no_original_bytes",
+      "source_pointer": null,
+      "original_publisher_bytes_archived": false,
+      "eligible_for_import": false
+    },
+    {
+      "uf": "RJ",
+      "expected_act": "Portaria SSER 431/2025",
+      "expected_filename": "RJ_Portaria_SSER_431_2025.html",
+      "received_filename": "RJ_Portaria_SSER_431_2025.html",
+      "capture_sha256": "c6d1b8f2cd2363ea5e8cff385d84d6b2b9a8d66663330bf9e09b9a80f4656578",
+      "identity_status": "identified_SUBEREC_not_SSER",
+      "source_pointer": null,
+      "original_publisher_bytes_archived": false,
+      "eligible_for_import": false
+    },
+    {
+      "uf": "RJ",
+      "expected_act": "Lei 6.331/2012 consolidada com prorrogação/alterações",
+      "expected_filename": "RJ_Lei_6331_2012.html",
+      "received_filename": null,
+      "capture_sha256": null,
+      "identity_status": "no_received_act_in_audited_batches",
+      "source_pointer": "https://www3.alerj.rj.gov.br/lotus_notes/default.asp?URL=L0NPTlRMRUkuTlNGL2M4YWEwOTAwMDI1ZmVlZjYwMzI1NjRlYzAwNjBkZmZmLzY4ZDI2ZWU1OThmMWFlNzI4MzI1N2E5OTAwNjNiMzcxP09wZW5Eb2N1bWVudA%3D%3D&id=2",
+      "original_publisher_bytes_archived": false,
+      "eligible_for_import": false
+    },
+    {
+      "uf": "RN",
+      "expected_act": "Decreto 31.825/2022 Anexo 003 arts.1-6 consolidado",
+      "expected_filename": "RN_Decreto_31825_2022_Anexo_003.html",
+      "received_filename": "Decreto Nº 31825 DE 18_08_2022 - Estadual - Rio Grande do Norte - LegisWeb.html",
+      "capture_sha256": "9e6195a0e5bbd84933ef51c10972b5dbdbc6f927da40fccd17a5b73e463e5c17",
+      "identity_status": "secondary_compilation_primary_text_cotejo",
+      "source_pointer": null,
+      "original_publisher_bytes_archived": false,
+      "eligible_for_import": false
+    },
+    {
+      "uf": "SE",
+      "expected_act": "Lei 3.140/1991",
+      "expected_filename": "SE_Lei_3140_1991.html",
+      "received_filename": "LEI 3140_1991 23_12_1991.html",
+      "capture_sha256": "c757671875ac9abe50d3367a784c36febbfc656146c252e69467382e71d30d04",
+      "identity_status": "official_compilation_2026",
+      "source_pointer": null,
+      "original_publisher_bytes_archived": false,
+      "eligible_for_import": false
+    },
+    {
+      "uf": "SE",
+      "expected_act": "Decreto 29.935/2014",
+      "expected_filename": "SE_Decreto_29935_2014.pdf",
+      "received_filename": "SE_Decreto_29935_2014.pdf",
+      "capture_sha256": "ca18358fccdfd93259819b1ab1d2fe7347b7084cde54d9660b3c8d0ffc67b3b8",
+      "identity_status": "identified_historical_regulation",
+      "source_pointer": "https://pge.se.gov.br/wp-content/uploads/2025/02/DECRETO-29-935-1.pdf",
+      "original_publisher_bytes_archived": false,
+      "eligible_for_import": false
+    }
+  ],
+  "invalid_and_superseded": [
+    {
+      "file": "AC_Decreto_4196_2001.html",
+      "sha256": "d4c3c4d54d104131f5cb43b51be7d1f5ce8fd1d0f26a0ce0e5ed26f007b12aa1",
+      "reason": "wrong act 8701/2018"
+    },
+    {
+      "file": "RJ_Portaria_SSER_362_2024.html",
+      "sha256": "f00908fb3058cc962b63a16577ac30f83d522ef4a73e5fd1b875500b8b4453f9",
+      "reason": "CAPTCHA, not the act"
+    },
+    {
+      "file": "RN_RICMS_Decreto_31825_2022_Anexo003.html",
+      "sha256": "ccba52f489593d764e2b54b1ac3fc85aeae09996a7379cabf88ae927cb3eed9e",
+      "reason": "base decree without annex"
+    },
+    {
+      "file": "SE_Lei_3140_1991.pdf",
+      "sha256": "710660329fbdfac01faa327ef2874ec62f7ddff65eeacd5a0f9f12abda205c5a",
+      "reason": "historical secondary reproduction 2018"
+    }
+  ],
+  "dossiers": [
+    {
+      "uf": "AC",
+      "candidate_id": "AC-INDUSTRIA-LEI1358-DEC4196-V1",
+      "reference": "Lei 1.358/2000 art.1; Decreto 4.196/2001 anexo arts.2–4",
+      "source_pointers": [
+        "https://www.legis.ac.gov.br/detalhar/1775",
+        "https://sefaz.ac.gov.br/2021/?p=14786"
+      ],
+      "conditional_positive": "Projeto industrial autorizado, investimento e saldo devedor compatíveis; financiamento limitado, não crédito automático.",
+      "negative": "Termo/projeto ausente ou tentativa de tratar teto de 95% como crédito universal.",
+      "remaining_temporal_and_route_review": "Lei 3.460/2018 e depósito específico LC160; Decreto 11.618/2025; prazo individual versus limite 2035",
+      "required_review_evidence": "grant_project_investment",
+      "evidence_status": "PARTIAL_RESEARCH_NOT_ACCEPTED",
+      "positive_expected": "potential_only_if_all_reviewed",
+      "negative_expected": "blocked",
+      "source_capture_records": [
+        "AC_Lei_1358_2000.html",
+        "AC_Decreto_4196_2001.html",
+        "AC_Decreto_11618_2025.html",
+        "AC_Lei_3460_2018.html"
+      ],
+      "independent_counter_review": false,
+      "internal_acceptance": false,
+      "import_authorized": false
+    },
+    {
+      "uf": "AL",
+      "candidate_id": "AL-PRODESIN-LEI5671-DEC38394-V1",
+      "reference": "Lei 5.671/1995 art.4; Decreto 38.394/2000",
+      "source_pointers": [
+        "https://sapl.al.al.leg.br/media/sapl/public/normajuridica/2015/1189/1189_texto_integral.pdf",
+        "https://gcs2.sefaz.al.gov.br/#/documentos/visualizar-documento?key=lJTBBV86KJI%3D",
+        "https://gcs2.sefaz.al.gov.br/#/documentos/visualizar-documento?key=5v1%2BuGOBjcc%3D&acess=1"
+      ],
+      "conditional_positive": "Deliberação CONEDES e modalidade exata de diferimento comprovadas.",
+      "negative": "Projeto sem deliberação ou modalidade divergente.",
+      "remaining_temporal_and_route_review": "Compilações 07/11/2025; localizar Decreto 107.816/2026 e cadeia CONFAZ",
+      "required_review_evidence": "conedes_benefit_scope",
+      "evidence_status": "PARTIAL_RESEARCH_NOT_ACCEPTED",
+      "positive_expected": "potential_only_if_all_reviewed",
+      "negative_expected": "blocked",
+      "source_capture_records": [
+        "AL_Lei_5671_1995.html",
+        "AL_Decreto_38394_2000.html",
+        "AL_DOE_2026_Decreto_107816.pdf"
+      ],
+      "independent_counter_review": false,
+      "internal_acceptance": false,
+      "import_authorized": false
+    },
+    {
+      "uf": "AM",
+      "candidate_id": "AM-POLITICA-INDUSTRIAL-DEC47727-V1",
+      "reference": "Decreto 47.727/2023 (regulamento apontado no catálogo; conferir numeração e data)",
+      "source_pointers": [
+        "https://sistemas.sefaz.am.gov.br/get/Normas.do?metodo=viewDoc&uuidDoc=c4fa0162-c63e-47ed-8fc6-fe61309ddc15"
+      ],
+      "conditional_positive": "Resolução CODAM, decreto concessivo e produto do projeto correspondentes.",
+      "negative": "Produto não abrangido ou decreto de terceiro.",
+      "remaining_temporal_and_route_review": "Conferir norma-base e Decretos 53.487/2026, 53.496/2026 e posteriores; fundamento CONFAZ/regime constitucional específico",
+      "required_review_evidence": "codam_product_decree",
+      "evidence_status": "PARTIAL_RESEARCH_NOT_ACCEPTED",
+      "positive_expected": "potential_only_if_all_reviewed",
+      "negative_expected": "blocked",
+      "source_capture_records": [],
+      "independent_counter_review": false,
+      "internal_acceptance": false,
+      "import_authorized": false
+    },
+    {
+      "uf": "AP",
+      "candidate_id": "AP-REGIME-ESPECIAL-RICMS-ART415-V1",
+      "reference": "Decreto 2.269/1998 art.415 II, V–VII e §§2–8",
+      "source_pointers": [
+        "https://sefaz.portal.ap.gov.br/conteudo/orientacoes/coordenadoria-de-tributacao-cotri",
+        "https://www.legisweb.com.br/legislacao/?id=250408",
+        "https://www.normasbrasil.com.br/norma/portaria-t-7-2024-ap_458412.html",
+        "https://www.tributa.net/legislacao/instrucao-normativa-gab-sefaz-n-001-2024-doe-de-17-06-2024"
+      ],
+      "conditional_positive": "Ato declaratório publicado e averbado; selo somente se confirmado aplicável na competência.",
+      "negative": "Inadimplência na concessão ou ato não publicado; não presumir exigência universal de selo.",
+      "remaining_temporal_and_route_review": "Decretos 6.199/2014 e 4.960/2018, Portaria (T) 007/2024 e IN 001/2024; fonte primária pendente; artigo procedimental não concede taxa",
+      "required_review_evidence": "ap_regime_and_seal_scope",
+      "evidence_status": "PARTIAL_RESEARCH_NOT_ACCEPTED",
+      "positive_expected": "potential_only_if_all_reviewed",
+      "negative_expected": "blocked",
+      "source_capture_records": [
+        "AP_Decreto_2269_1998_Art415_VI_VII.html"
+      ],
+      "independent_counter_review": false,
+      "internal_acceptance": false,
+      "import_authorized": false
+    },
+    {
+      "uf": "BA",
+      "candidate_id": "BA-DESENVOLVE-DEC8205-V1",
+      "reference": "Decreto 8.205/2002 arts.2–3",
+      "source_pointers": [
+        "https://mbusca.sefaz.ba.gov.br/DITRI/normas_complementares/decretos/decreto_2002_8205_desenvolve.pdf"
+      ],
+      "conditional_positive": "Projeto habilitado por resolução, aquisição/saldo devedor dentro da modalidade e prazo.",
+      "negative": "Resolução de terceiro, fundo social não reconciliado ou saldo fora do projeto.",
+      "remaining_temporal_and_route_review": "Decreto 24.401/2026 e atos específicos LC160; distinguir diferimento e dilação",
+      "required_review_evidence": "desenvolve_approved_project",
+      "evidence_status": "PARTIAL_RESEARCH_NOT_ACCEPTED",
+      "positive_expected": "potential_only_if_all_reviewed",
+      "negative_expected": "blocked",
+      "source_capture_records": [],
+      "independent_counter_review": false,
+      "internal_acceptance": false,
+      "import_authorized": false
+    },
+    {
+      "uf": "CE",
+      "candidate_id": "CE-FDI-LEI10367-DEC34508-V1",
+      "reference": "Lei 10.367/1979; Decreto 34.508/2022",
+      "source_pointers": [
+        "https://www.adece.ce.gov.br/wp-content/uploads/sites/98/2026/10/34.508-16-10-2026.pdf"
+      ],
+      "conditional_positive": "Contrato vigente e deliberação CONDEC compatíveis com projeto.",
+      "negative": "Guia promocional sem contrato ou prazo.",
+      "remaining_temporal_and_route_review": "Consolidar regulamento, modalidade e percentuais contratuais; confirmar rota CONFAZ",
+      "required_review_evidence": "fdi_contract_terms",
+      "evidence_status": "PARTIAL_RESEARCH_NOT_ACCEPTED",
+      "positive_expected": "potential_only_if_all_reviewed",
+      "negative_expected": "blocked",
+      "source_capture_records": [],
+      "independent_counter_review": false,
+      "internal_acceptance": false,
+      "import_authorized": false
+    },
+    {
+      "uf": "DF",
+      "candidate_id": "DF-EMPREGA-DF-DEC39803-V1",
+      "reference": "Decreto 39.803/2019 arts.7–8",
+      "source_pointers": [
+        "https://www.sinj.df.gov.br/sinj/Norma/2257f831264c4e06850f0248431427df/Decreto_39803_02_05_2019.html"
+      ],
+      "conditional_positive": "Projeto aprovado, saída de fabricação própria e percentual individual definido.",
+      "negative": "Requerimento negado ou teto de 67% usado como taxa automática.",
+      "remaining_temporal_and_route_review": "Adesão MS, LC160/Convênio190, atos 2026 e modalidade art.23",
+      "required_review_evidence": "df_pvtefs_approved",
+      "evidence_status": "PARTIAL_RESEARCH_NOT_ACCEPTED",
+      "positive_expected": "potential_only_if_all_reviewed",
+      "negative_expected": "blocked",
+      "source_capture_records": [],
+      "independent_counter_review": false,
+      "internal_acceptance": false,
+      "import_authorized": false
+    },
+    {
+      "uf": "ES",
+      "candidate_id": "ES-COMPETE-DEC6116R-V1",
+      "reference": "Lei 10.568/2016; Decreto 6.116-R (referência a conferir)",
+      "source_pointers": [
+        "https://sedes.es.gov.br/Media/aa/LEI%20N%C2%B0%2010.568%20-%20ATUALIZADA.pdf"
+      ],
+      "conditional_positive": "Termo setorial válido e operação abrangida.",
+      "negative": "Somente código DUA ou outro setor.",
+      "remaining_temporal_and_route_review": "Identificar dispositivo material e legislação setorial atual; CONFAZ específico",
+      "required_review_evidence": "compete_sector_adhesion",
+      "evidence_status": "PARTIAL_RESEARCH_NOT_ACCEPTED",
+      "positive_expected": "potential_only_if_all_reviewed",
+      "negative_expected": "blocked",
+      "source_capture_records": [],
+      "independent_counter_review": false,
+      "internal_acceptance": false,
+      "import_authorized": false
+    },
+    {
+      "uf": "GO",
+      "candidate_id": "GO-PROGOIAS-LEI20787-ART24-V1",
+      "reference": "Lei 20.787/2020 art.24",
+      "source_pointers": [
+        "https://appasp.economia.go.gov.br/legislacao/arquivos/Leis/L_20787.htm"
+      ],
+      "conditional_positive": "Termo, ICMS próprio/ST e PROTEGE regulares na competência; aferir exceções.",
+      "negative": "Inadimplência impeditiva sem regularização aplicável.",
+      "remaining_temporal_and_route_review": "Lei 24.533/2026 e convalidação específica; reinstituição/rota aplicável",
+      "required_review_evidence": "progoias_compliance_period",
+      "evidence_status": "PARTIAL_RESEARCH_NOT_ACCEPTED",
+      "positive_expected": "potential_only_if_all_reviewed",
+      "negative_expected": "blocked",
+      "source_capture_records": [],
+      "independent_counter_review": false,
+      "internal_acceptance": false,
+      "import_authorized": false
+    },
+    {
+      "uf": "MA",
+      "candidate_id": "MA-MAIS-EMPRESAS-LEI10690-2017-V1",
+      "reference": "Lei 10.690/2017",
+      "source_pointers": [
+        "https://seinc.ma.gov.br/uploads/seinc/docs/Lei_N%C2%BA_1069026_Setembro_de_2017.pdf"
+      ],
+      "conditional_positive": "Carta Consulta aprovada e ato individual CONDEP válido.",
+      "negative": "Carta protocolada sem deliberação.",
+      "remaining_temporal_and_route_review": "Regulamento e modalidade material; cadeia CONFAZ e prazo",
+      "required_review_evidence": "condep_approved_grant",
+      "evidence_status": "PARTIAL_RESEARCH_NOT_ACCEPTED",
+      "positive_expected": "potential_only_if_all_reviewed",
+      "negative_expected": "blocked",
+      "source_capture_records": [],
+      "independent_counter_review": false,
+      "internal_acceptance": false,
+      "import_authorized": false
+    },
+    {
+      "uf": "MG",
+      "candidate_id": "MG-RICMS2023-ANII-ITEM26-COHAB-V1",
+      "reference": "RICMS/2023 Anexo II item 26 e 26.1",
+      "source_pointers": [
+        "https://www.fazenda.mg.gov.br/empresas/legislacao_tributaria/ricms_2023_seco/anexoii2023_3.html"
+      ],
+      "conditional_positive": "Saída interna de material listado para empreendimento Cohab, desconto e indicação fiscal.",
+      "negative": "Venda para obra não coordenada pela Cohab ou sem desconto.",
+      "remaining_temporal_and_route_review": "Convênio 136/97 identificado como rota candidata, verificar prorrogação, adoção estadual e prazo 31/12/2026",
+      "required_review_evidence": "cohab_material_and_discount",
+      "evidence_status": "PARTIAL_RESEARCH_NOT_ACCEPTED",
+      "positive_expected": "potential_only_if_all_reviewed",
+      "negative_expected": "blocked",
+      "source_capture_records": [],
+      "independent_counter_review": false,
+      "internal_acceptance": false,
+      "import_authorized": false
+    },
+    {
+      "uf": "MS",
+      "candidate_id": "MS-EMPREENDEDOR-LC93-TERMO-V1",
+      "reference": "LC 93/2001; Termo de Acordo",
+      "source_pointers": [
+        "https://aacpdappls.net.ms.gov.br/appls/legislacao/secoge/govato.nsf/66ecc3cfb53d53ff04256b140049444b/3a836f159c1b161904256c000058e57a"
+      ],
+      "conditional_positive": "Termo válido; investimento e contrapartidas comprovados.",
+      "negative": "Termo ausente ou investimento não comprovado.",
+      "remaining_temporal_and_route_review": "Localizar dispositivo e ato de concessão, percentual e depósito/rota",
+      "required_review_evidence": "ms_investment_agreement",
+      "evidence_status": "PARTIAL_RESEARCH_NOT_ACCEPTED",
+      "positive_expected": "potential_only_if_all_reviewed",
+      "negative_expected": "blocked",
+      "source_capture_records": [],
+      "independent_counter_review": false,
+      "internal_acceptance": false,
+      "import_authorized": false
+    },
+    {
+      "uf": "MT",
+      "candidate_id": "MT-RICMS2014-ANV-ART31A-AGRO-V1",
+      "reference": "RICMS/2014 Anexo V art.31-A; Decreto 1.802/2025",
+      "source_pointers": [
+        "https://www.sefaz.mt.gov.br/legislacao/Subindice.aspx?ID=259"
+      ],
+      "conditional_positive": "Fertilizante abrangido e destinado a uso agrícola/pecuário nas operações legais.",
+      "negative": "Produto fora de escopo ou confusão com diferimento Anexo VII.",
+      "remaining_temporal_and_route_review": "Vigência textual 31/12/2027 conforme consulta 124/2026; confirmar atos e Convênio pertinente",
+      "required_review_evidence": "mt_fertilizer_destination",
+      "evidence_status": "PARTIAL_RESEARCH_NOT_ACCEPTED",
+      "positive_expected": "potential_only_if_all_reviewed",
+      "negative_expected": "blocked",
+      "source_capture_records": [],
+      "independent_counter_review": false,
+      "internal_acceptance": false,
+      "import_authorized": false
+    },
+    {
+      "uf": "PA",
+      "candidate_id": "PA-POLITICA-LEI6913-DEC2490-V1",
+      "reference": "Lei 6.913/2006; Decreto 2.490/2006; ADI 3779",
+      "source_pointers": [
+        "https://www.sistemas.pa.gov.br/sisleis/legislacao/5827",
+        "https://portal.stf.jus.br/peticaoInicial/verPeticaoInicial.asp?base=ADI&numProcesso=3779"
+      ],
+      "conditional_positive": "Somente após base superveniente/reinstituição e decisão judicial reconciliadas, e ato individual correspondente.",
+      "negative": "Lei declarada inconstitucional não reconciliada ou resolução ALUBAR usada para terceiro.",
+      "remaining_temporal_and_route_review": "Acórdão, efeitos, Lei 7.485/2010, Decreto 990/2020, depósito; data divergente",
+      "required_review_evidence": "pa_judicial_and_individual_basis",
+      "evidence_status": "PARTIAL_RESEARCH_NOT_ACCEPTED",
+      "positive_expected": "potential_only_if_all_reviewed",
+      "negative_expected": "blocked",
+      "source_capture_records": [
+        "PA_Lei_6913_2006.pdf",
+        "PA_Lei_7485_2010.html",
+        "PA_Decreto_2490_2006.pdf",
+        "PA_Decreto_990_2020.html"
+      ],
+      "independent_counter_review": false,
+      "internal_acceptance": false,
+      "import_authorized": false
+    },
+    {
+      "uf": "PB",
+      "candidate_id": "PB-FAIN-DEC17252-ART3-V1",
+      "reference": "Decreto 17.252/1994 art.3; Decreto 47.898/2026",
+      "source_pointers": [
+        "https://portal.sefaz.pb.gov.br/legislacao/35-decretos-estaduais/59-icms/267-icms-1994/5391-decreto-n-17-252-de-27-de-dezembro-de-1994"
+      ],
+      "conditional_positive": "Ato Conselho, produto enquadrado e parecer técnico favorável.",
+      "negative": "NCM isolada ou parecer contrário.",
+      "remaining_temporal_and_route_review": "Critérios novos de classificação NCM e prazo Convênio190; publicação e efeitos",
+      "required_review_evidence": "fain_product_approved",
+      "evidence_status": "PARTIAL_RESEARCH_NOT_ACCEPTED",
+      "positive_expected": "potential_only_if_all_reviewed",
+      "negative_expected": "blocked",
+      "source_capture_records": [],
+      "independent_counter_review": false,
+      "internal_acceptance": false,
+      "import_authorized": false
+    },
+    {
+      "uf": "PE",
+      "candidate_id": "PE-PRODEPE-LEI11675-DEC21959-V1",
+      "reference": "Lei 11.675/1999; Decreto 21.959/1999",
+      "source_pointers": [
+        "https://www.sefaz.pe.gov.br/Legislacao/Tributaria/Documents/legislacao/decretos/1999/Dec21959_99.htm"
+      ],
+      "conditional_positive": "Ato individual, produto habilitado e prazo válido.",
+      "negative": "Produto não concedido ou acúmulo vedado.",
+      "remaining_temporal_and_route_review": "Decreto 61.000/2026 e cadeia por modalidade; CONFAZ/LC160",
+      "required_review_evidence": "prodepe_product_grant",
+      "evidence_status": "PARTIAL_RESEARCH_NOT_ACCEPTED",
+      "positive_expected": "potential_only_if_all_reviewed",
+      "negative_expected": "blocked",
+      "source_capture_records": [],
+      "independent_counter_review": false,
+      "internal_acceptance": false,
+      "import_authorized": false
+    },
+    {
+      "uf": "PI",
+      "candidate_id": "PI-RICMS2023-AN4-ART25A-BASIC-FOOD-V1",
+      "reference": "RICMS Anexo IV art.25-A alíneas a–j; Decreto 23.672/2025",
+      "source_pointers": [
+        "https://www.diario.pi.gov.br/doe/files/diarios/anexo/e1d8ee2a-5cf4-437f-93fa-393753b8574a/DOEPI_57_2025.pdf",
+        "https://portaldalegislacao.sefaz.pi.gov.br/Arquivos/ARQUIVOS_CHRONUS/ARQUIVO_PRINCIPAL_LEGISLACAO/1396/Decreto_n_21.866_2023_-_ANEXO_IV.pdf",
+        "https://www.legisweb.com.br/legislacao/?id=353897",
+        "https://www.legisweb.com.br/legislacao/?id=503617"
+      ],
+      "conditional_positive": "Operação interna com arroz (alínea b), desde 01/04/2025, enquanto Convênio224 vigente e estorno/regime/ST revisados.",
+      "negative": "Operação interestadual, ovos (art.17) ou competência anterior a abril/2025.",
+      "remaining_temporal_and_route_review": "Adesão 2025, Convênios 226/23, 21/26 e 131/26; ratificação e adoção; divergência editorial data 25/27 março",
+      "required_review_evidence": "pi_art25a_product_and_credit_review",
+      "evidence_status": "PARTIAL_RESEARCH_NOT_ACCEPTED",
+      "positive_expected": "potential_only_if_all_reviewed",
+      "negative_expected": "blocked",
+      "source_capture_records": [
+        "PI_DOE_57_2025_Decreto_23672_2025.pdf",
+        "PI_RICMS_Decreto_21866_2023_Anexo_IV_art25A.html"
+      ],
+      "independent_counter_review": false,
+      "internal_acceptance": false,
+      "import_authorized": false
+    },
+    {
+      "uf": "PR",
+      "candidate_id": "PR-PARANA-COMPETITIVO-DEC7721-V1",
+      "reference": "Decreto 7.721/2024 art.14; Resolução 304/2025",
+      "source_pointers": [
+        "https://www.legislacao.pr.gov.br/legislacao/pesquisarAto.do?action=exibir&codAto=341992"
+      ],
+      "conditional_positive": "Projeto e concessão atuais, NCM não impedida.",
+      "negative": "Aplicar Decreto 6.434/2017 revogado ou NCM impedida.",
+      "remaining_temporal_and_route_review": "Resoluções 227/228/229/469/2026, NPF 002/2026, cadeia e CONFAZ",
+      "required_review_evidence": "pr_current_grant_ncm",
+      "evidence_status": "PARTIAL_RESEARCH_NOT_ACCEPTED",
+      "positive_expected": "potential_only_if_all_reviewed",
+      "negative_expected": "blocked",
+      "source_capture_records": [],
+      "independent_counter_review": false,
+      "internal_acceptance": false,
+      "import_authorized": false
+    },
+    {
+      "uf": "RJ",
+      "candidate_id": "RJ-LEI6331-PORT345-ADESAO-V1",
+      "reference": "Lei 6.331/2012 art.2; Portarias 345/2023, 350/2024, 362/2024, SUBEREC 431/2025",
+      "source_pointers": [
+        "https://www3.alerj.rj.gov.br/lotus_notes/default.asp?URL=L0NPTlRMRUkuTlNGL2M4YWEwOTAwMDI1ZmVlZjYwMzI1NjRlYzAwNjBkZmZmLzY4ZDI2ZWU1OThmMWFlNzI4MzI1N2E5OTAwNjNiMzcxP09wZW5Eb2N1bWVudA%3D%3D&id=2",
+        "https://legislacao.fazenda.rj.gov.br/wcc42000049760/",
+        "https://www.ioerj.com.br/portal/modules/conteudoonline/do_seleciona_edicao.php?data=MjAyNDA0MTc%3D"
+      ],
+      "conditional_positive": "Indústria têxtil enquadrada, adesão eficaz e operação abrangida.",
+      "negative": "Adesão ainda sem efeitos, cancelamento retroativo, Simples vedado ou carga efetiva confundida com crédito.",
+      "remaining_temporal_and_route_review": "Lei 10.983/2025, cadeia procedimental, ato material, CONFAZ e competência",
+      "required_review_evidence": "rj_textile_adhesion_validity",
+      "evidence_status": "PARTIAL_RESEARCH_NOT_ACCEPTED",
+      "positive_expected": "potential_only_if_all_reviewed",
+      "negative_expected": "blocked",
+      "source_capture_records": [
+        "RJ_Portaria_SSER_345_2023.html",
+        "RJ_Portaria_SSER_350_2024.html",
+        "RJ_Portaria_SSER_362_2024.html",
+        "RJ_Portaria_SSER_431_2025.html",
+        "RJ_Lei_6331_2012.html"
+      ],
+      "independent_counter_review": false,
+      "internal_acceptance": false,
+      "import_authorized": false
+    },
+    {
+      "uf": "RN",
+      "candidate_id": "RN-RICMS2022-AN003-REDUCAO-V1",
+      "reference": "RICMS/2022 Anexo 003 art.1 I a e parágrafo único; arts.5–6; Decreto 34.390/2025",
+      "source_pointers": [
+        "https://webdisk.diariooficial.rn.gov.br/Jornal/12022-08-19.pdf",
+        "https://www.diariooficial.rn.gov.br/dei/dorn3/documentos/00000001/20220819/783139.htm",
+        "https://webdisk.diariooficial.rn.gov.br/Jornal/12025-03-08.pdf"
+      ],
+      "conditional_positive": "Produtor/beneficiador ou cooperativa abrangida, peixe originário RN, operação interna, opção e contribuinte normal.",
+      "negative": "Peixe de origem fora do RN, ausência de opção, crédito acumulado indevido; camarão não é hipótese art.1 I b.",
+      "remaining_temporal_and_route_review": "Percentual histórico 60%, alteração 64%; verificar eficácia 20/03/2025 e cadeia intermediária, CONFAZ",
+      "required_review_evidence": "rn_fish_origin_option",
+      "evidence_status": "PARTIAL_RESEARCH_NOT_ACCEPTED",
+      "positive_expected": "potential_only_if_all_reviewed",
+      "negative_expected": "blocked",
+      "source_capture_records": [
+        "RN_Decreto_31825_2022_Anexo_003.html"
+      ],
+      "independent_counter_review": false,
+      "internal_acceptance": false,
+      "import_authorized": false
+    },
+    {
+      "uf": "RO",
+      "candidate_id": "RO-INDS-LEI1558-DEC12988-V1",
+      "reference": "Lei 1.558/2005; Decreto 12.988/2007 arts.8 e 13",
+      "source_pointers": [
+        "https://sapl.al.ro.leg.br/media/sapl/public/normajuridica/2005/3535/3535_texto_integral.pdf"
+      ],
+      "conditional_positive": "Concessão CONDER e atividade não excluída, faixa juridicamente suportada.",
+      "negative": "Critério revogado ou faixa superior sem manifestações exigidas.",
+      "remaining_temporal_and_route_review": "Decretos 28.386/2023 e 30.916/2025; atos CONFAZ e vigência",
+      "required_review_evidence": "ro_conder_current_class",
+      "evidence_status": "PARTIAL_RESEARCH_NOT_ACCEPTED",
+      "positive_expected": "potential_only_if_all_reviewed",
+      "negative_expected": "blocked",
+      "source_capture_records": [],
+      "independent_counter_review": false,
+      "internal_acceptance": false,
+      "import_authorized": false
+    },
+    {
+      "uf": "RR",
+      "candidate_id": "RR-RICMS2001-AN1-ART1-LXVII-V1",
+      "reference": "RICMS Decreto 4.335/2001 Anexo I art.1 LXVII",
+      "source_pointers": [
+        "https://www.sefaz.rr.gov.br/cidadao/downloads?catid=494&id=25462&m=0&task=download.send",
+        "https://www.sefaz.rr.gov.br/downloads/legislacao?dir=02+-+LEGISLACAO+ESTADUAL"
+      ],
+      "conditional_positive": "Insumo listado, operação interna e destinação legal em competência vigente.",
+      "negative": "Operação interestadual ou extrapolação para DIFAL.",
+      "remaining_temporal_and_route_review": "Obter Anexo I consolidado, atos 2025/2026 e Convênio 100/97; índice oficial não é texto",
+      "required_review_evidence": "rr_agro_input_scope",
+      "evidence_status": "PARTIAL_RESEARCH_NOT_ACCEPTED",
+      "positive_expected": "potential_only_if_all_reviewed",
+      "negative_expected": "blocked",
+      "source_capture_records": [],
+      "independent_counter_review": false,
+      "internal_acceptance": false,
+      "import_authorized": false
+    },
+    {
+      "uf": "RS",
+      "candidate_id": "RS-RICMS1997-L1-ART32-CLXXXVI-METAL-V1",
+      "reference": "RICMS Livro I art.32 CLXXXVI; IN 045/98",
+      "source_pointers": [
+        "https://receita.fazenda.rs.gov.br/servicos-a-empresas/servicos?servico=1946"
+      ],
+      "conditional_positive": "Fabricante CGC/TE, NCM 94069020 ou 73082000, opção deferida eficaz no mês.",
+      "negative": "NCM diferente ou opção ainda sem efeito.",
+      "remaining_temporal_and_route_review": "Redação integral, percentual, prazos e rota CONFAZ",
+      "required_review_evidence": "rs_metal_option",
+      "evidence_status": "PARTIAL_RESEARCH_NOT_ACCEPTED",
+      "positive_expected": "potential_only_if_all_reviewed",
+      "negative_expected": "blocked",
+      "source_capture_records": [],
+      "independent_counter_review": false,
+      "internal_acceptance": false,
+      "import_authorized": false
+    },
+    {
+      "uf": "SC",
+      "candidate_id": "SC-PROEMPREGO-LEI13992-DEC105-V1",
+      "reference": "Lei 13.992/2007; Decreto 105/2007",
+      "source_pointers": [
+        "https://legislacao.sef.sc.gov.br/html/leis/2007/lei_07_13992.htm"
+      ],
+      "conditional_positive": "TTD e resolução do Secretário válidos, obrigações e modalidade cumpridas.",
+      "negative": "Protocolo sem decisão, inadimplência impeditiva ou acumulação indevida.",
+      "remaining_temporal_and_route_review": "Vigência do tratamento, alterações e ato CONFAZ específico",
+      "required_review_evidence": "sc_ttd_resolution",
+      "evidence_status": "PARTIAL_RESEARCH_NOT_ACCEPTED",
+      "positive_expected": "potential_only_if_all_reviewed",
+      "negative_expected": "blocked",
+      "source_capture_records": [],
+      "independent_counter_review": false,
+      "internal_acceptance": false,
+      "import_authorized": false
+    },
+    {
+      "uf": "SE",
+      "candidate_id": "SE-PSDI-LEI3140-DEC29935-V1",
+      "reference": "Lei 3.140/1991 art.3 IV, §§3–5, 10,17,31; Decreto 29.935/2014",
+      "source_pointers": [
+        "https://pge.se.gov.br/wp-content/uploads/2025/02/DECRETO-29-935-1.pdf",
+        "https://aleselegis.al.se.leg.br/Arquivo/Documents/legislacao/html_impressao/L31401991.html",
+        "https://www.legisweb.com.br/legislacao/?id=466606",
+        "https://www.legisweb.com.br/legislacao/?id=469405",
+        "https://www.confaz.fazenda.gov.br/legislacao/certificado-registro-deposito-cv-icms-190-17-1/sergipe/2024/126-certificado-de-registro-e-deposito-se-an-e-ac-alteracao-e-extensao.pdf"
+      ],
+      "conditional_positive": "Indústria nova no regime compatível, resolução CDI e ICMS devido da atividade-fim; 8% sobre imposto, não faturamento.",
+      "negative": "Simples concomitante, resolução ausente ou uso de percentual como alíquota sobre receita.",
+      "remaining_temporal_and_route_review": "Leis 8.636/2019, 8.858/2021, 9.494/2024, 9.812/2025, 9.943/2026; Decretos 820/868 de 2024; depósito específico",
+      "required_review_evidence": "se_psdi_cdi_scope",
+      "evidence_status": "PARTIAL_RESEARCH_NOT_ACCEPTED",
+      "positive_expected": "potential_only_if_all_reviewed",
+      "negative_expected": "blocked",
+      "source_capture_records": [
+        "SE_Lei_3140_1991.html",
+        "SE_Decreto_29935_2014.pdf"
+      ],
+      "independent_counter_review": false,
+      "internal_acceptance": false,
+      "import_authorized": false
+    },
+    {
+      "uf": "SP",
+      "candidate_id": "SP-RICMS2000-AN3-ART41-TEXTILE-V1",
+      "reference": "RICMS Anexo III art.41 e Anexo II art.52; Portaria CAT 35/2017",
+      "source_pointers": [
+        "https://legislacao.fazenda.sp.gov.br/Paginas/an3art041.aspx"
+      ],
+      "conditional_positive": "Saída interna tributada de produto abrangido art.52, opção válida e sem retorno/exclusão.",
+      "negative": "Saída interestadual, consumidor final vedado, retorno simbólico ou créditos cumulados.",
+      "remaining_temporal_and_route_review": "Prazo textual 31/12/2026; legislação posterior, NCM e rota CONFAZ",
+      "required_review_evidence": "sp_textile_art52_option",
+      "evidence_status": "PARTIAL_RESEARCH_NOT_ACCEPTED",
+      "positive_expected": "potential_only_if_all_reviewed",
+      "negative_expected": "blocked",
+      "source_capture_records": [],
+      "independent_counter_review": false,
+      "internal_acceptance": false,
+      "import_authorized": false
+    },
+    {
+      "uf": "TO",
+      "candidate_id": "TO-PROINDUSTRIA-LEI1385-ART6-V1",
+      "reference": "Lei 1.385/2003 art.6; Decreto 1.866/2003",
+      "source_pointers": [
+        "https://www.al.to.leg.br/arquivo/65595",
+        "https://dtri.sefaz.to.gov.br/legislacao/ntributaria/Leis/Lei1.385-03.htm"
+      ],
+      "conditional_positive": "Carta-consulta aprovada, cumprimento regulamento e recolhimento ao fundo sobre faturamento incentivado.",
+      "negative": "Protocolo sem aprovação ou uso de benefício de transporte revogado.",
+      "remaining_temporal_and_route_review": "Lei 3.577/2019 termo textual 31/12/2032; verificar modalidade e atos LC160",
+      "required_review_evidence": "to_proindustria_approved_letter",
+      "evidence_status": "PARTIAL_RESEARCH_NOT_ACCEPTED",
+      "positive_expected": "potential_only_if_all_reviewed",
+      "negative_expected": "blocked",
+      "source_capture_records": [],
+      "independent_counter_review": false,
+      "internal_acceptance": false,
+      "import_authorized": false
+    }
+  ]
+}

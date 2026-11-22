@@ -353,3 +353,91 @@ def test_legacy_unreviewed_grant_requirement_is_rejected():
     p.pop("individual_concession_required")
     with pytest.raises(FiscalValidationError, match="concession requirement"):
         decode_rule(p)
+
+
+# Non-executable per-act research scenarios. The fixtures intentionally keep
+# synthetic codes and signatures; these tests exercise the canonical evidence
+# gate, NOT a finding that the whole act is in force or a taxpayer qualifies.
+def _research_dossiers():
+    import json
+    from pathlib import Path
+
+    path = Path(__file__).resolve().parents[2] / "docs/NFCORE_T09_DOSSIE_RECONCILIATION_V1.json"
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+@pytest.mark.parametrize("uf", sorted(_UF_CODES))
+def test_per_act_research_condition_is_required_by_canonical_motor(uf):
+    row = next(x for x in _research_dossiers()["dossiers"] if x["uf"] == uf)
+    key = row["required_review_evidence"]
+    assert row["reference"] and row["conditional_positive"] and row["negative"]
+    assert row["remaining_temporal_and_route_review"]
+    assert row["import_authorized"] is False
+    changes = {"required_evidence": [key]}
+    result = evaluate(uf, policy_changes=changes)
+    assert result["status"] == "insufficient_basis"
+    assert result["reason_codes"] == [f"missing:{key}"]
+    # Supply a controlled review reference, not an actual taxpayer grant.
+    evidence = facts(uf)["evidence"] | {key: "synthetic-act-condition-review"}
+    result = evaluate(uf, policy_changes=changes, fact_changes={"evidence": evidence})
+    assert result["status"] == "potential"
+    assert result["eligibility_certified"] is False
+    assert result["tax_calculation_authorized"] is False
+    assert result["issuance_authorized"] is False
+
+
+def test_research_dossier_evidence_queue_preserves_missing_and_rejected_records():
+    data = _research_dossiers()
+    assert len(data["source_records"]) == 22
+    assert len({r["expected_filename"] for r in data["source_records"]}) == 22
+    assert len(data["dossiers"]) == 27
+    assert {r["uf"] for r in data["dossiers"]} == set(_UF_CODES)
+    assert not data["archived_originals_verified"]
+    assert all(not r["eligible_for_import"] for r in data["source_records"])
+    assert all(not r["internal_acceptance"] for r in data["dossiers"])
+    assert len([
+        r for r in data["source_records"]
+        if r["identity_status"] == "no_received_act_in_audited_batches"
+    ]) == 3
+    rj = next(r for r in data["source_records"] if "362_2024" in r["expected_filename"])
+    assert rj["capture_sha256"] is None
+    assert any("CAPTCHA" in x["reason"] for x in data["invalid_and_superseded"])
+    for record in data["source_records"]:
+        digest = record["capture_sha256"]
+        if digest is not None:
+            assert len(digest) == 64
+            assert all(c in "0123456789abcdef" for c in digest)
+
+
+@pytest.mark.parametrize("uf", ["PI", "MG", "SP"])
+def test_internal_operation_limitation_from_selected_acts(uf):
+    # PI art.25-A; MG Annex II item 26; SP Annex III art.41.
+    # Necessary negative condition only; no implied legal approval.
+    result = evaluate(uf, fact_changes={
+        "operation": "interstate_sale", "operation_cfop": "6102",
+    })
+    assert result["status"] == "not_applicable"
+    assert result["reason_codes"] == ["operation_excluded"]
+
+
+def test_pi_art25a_cannot_cover_march_2025():
+    # The addition takes effect 01/04/2025; other gates remain unresolved.
+    result = assess_state_rule(
+        decode_rule(policy("PI") | {"valid_from": "2025-04-01"}),
+        decode_facts(facts("PI")), issuer("PI"), date(2025, 3, 1),
+    )
+    assert result["reason_codes"] == ["state_rule_not_effective_entire_month"]
+    assert result["tax_calculation_authorized"] is False
+
+
+@pytest.mark.parametrize("uf", ["RJ", "SE"])
+def test_simplified_regime_exclusion_from_selected_textile_and_psdi_acts(uf):
+    # RJ Lei 6331 art.2 §9 and SE Lei 3140 art.3 §17.
+    # Controlled case assumes simplified ICMS; no inference for sublimite cases.
+    simplified = ReviewedStateIssuer(
+        "12345678000195", uf, "6201501", FederalIncomeTaxRegime.SIMPLES_NACIONAL,
+        True, SCOPE,
+    )
+    result = evaluate(uf, issuer_override=simplified)
+    assert result["reason_codes"] == ["income_tax_regime_excluded"]
+    assert result["eligibility_certified"] is False

@@ -64,7 +64,22 @@
       "internal_curatorial_accepted": false,
       "accountant_external_opinion": "PENDING_NOT_RECEIVED",
       "legally_importable": false,
-      "eligible_for_fiscal_application": false
+      "eligible_for_fiscal_application": false,
+      "research_checkpoint_20261122": {
+        "dossier_path": "docs/NFCORE_T09_DOSSIE_RECONCILIATION_V1.json",
+        "candidate_id": "AC-INDUSTRIA-LEI1358-DEC4196-V1",
+        "required_review_evidence": "grant_project_investment",
+        "source_capture_records": [
+          "AC_Lei_1358_2000.html",
+          "AC_Decreto_4196_2001.html",
+          "AC_Decreto_11618_2025.html",
+          "AC_Lei_3460_2018.html"
+        ],
+        "case_design": "CONDITIONAL_POSITIVE_AND_NEGATIVE_PREPARED_NOT_CERTIFIED",
+        "internal_grant_requirement_review": "PENDING_NORMATIVE_DETERMINATION",
+        "actual_taxpayer_grant": "EXTERNAL_PER_TAXPAYER_WHEN_REQUIRED",
+        "actual_taxpayer_grant_not_required_to_finish_internal_curation": true
+      }
     },
     {
       "uf": "AL",
@@ -86,7 +101,21 @@
       "internal_curatorial_accepted": false,
       "accountant_external_opinion": "PENDING_NOT_RECEIVED",
       "legally_importable": false,
-      "eligible_for_fiscal_application": false
+      "eligible_for_fiscal_application": false,
+      "research_checkpoint_20261122": {
+        "dossier_path": "docs/NFCORE_T09_DOSSIE_RECONCILIATION_V1.json",
+        "candidate_id": "AL-PRODESIN-LEI5671-DEC38394-V1",
+        "required_review_evidence": "conedes_benefit_scope",
+        "source_capture_records": [
+          "AL_Lei_5671_1995.html",
+          "AL_Decreto_38394_2000.html",
+          "AL_DOE_2026_Decreto_107816.pdf"
+        ],
+        "case_design": "CONDITIONAL_POSITIVE_AND_NEGATIVE_PREPARED_NOT_CERTIFIED",
+        "internal_grant_requirement_review": "PENDING_NORMATIVE_DETERMINATION",
+        "actual_taxpayer_grant": "EXTERNAL_PER_TAXPAYER_WHEN_REQUIRED",
+        "actual_taxpayer_grant_not_required_to_finish_internal_curation": true
+      }
     },
     {
       "uf": "AM",
@@ -108,7 +137,17 @@
       "internal_curatorial_accepted": false,
       "accountant_external_opinion": "PENDING_NOT_RECEIVED",
       "legally_importable": false,
-      "eligible_for_fiscal_application": false
+      "eligible_for_fiscal_application": false,
+      "research_checkpoint_20261122": {
+        "dossier_path": "docs/NFCORE_T09_DOSSIE_RECONCILIATION_V1.json",
+        "candidate_id": "AM-POLITICA-INDUSTRIAL-DEC47727-V1",
+        "required_review_evidence": "codam_product_decree",
+        "source_capture_records": [],
+        "case_design": "CONDITIONAL_POSITIVE_AND_NEGATIVE_PREPARED_NOT_CERTIFIED",
+        "internal_grant_requirement_review": "PENDING_NORMATIVE_DETERMINATION",
+        "actual_taxpayer_grant": "EXTERNAL_PER_TAXPAYER_WHEN_REQUIRED",
+        "actual_taxpayer_grant_not_required_to_finish_internal_curation": true
+      }
     },
     {
       "uf": "AP",
@@ -130,7 +169,19 @@
       "internal_curatorial_accepted": false,
       "accountant_external_opinion": "PENDING_NOT_RECEIVED",
       "legally_importable": false,
-      "eligible_for_fiscal_application": false
+      "eligible_for_fiscal_application": false,
+      "research_checkpoint_20261122": {
+        "dossier_path": "docs/NFCORE_T09_DOSSIE_RECONCILIATION_V1.json",
+        "candidate_id": "AP-REGIME-ESPECIAL-RICMS-ART415-V1",
+        "required_review_evidence": "ap_regime_and_seal_scope",
+        "source_capture_records": [
+          "AP_Decreto_2269_1998_Art415_VI_VII.html"
+        ],
+        "case_design": "CONDITIONAL_POSITIVE_AND_NEGATIVE_PREPARED_NOT_CERTIFIED",
+        "internal_grant_requirement_review": "PENDING_NORMATIVE_DETERMINATION",
+        "actual_taxpayer_grant": "EXTERNAL_PER_TAXPAYER_WHEN_REQUIRED",
+        "actual_taxpayer_grant_not_required_to_finish_internal_curation": true
+      }
     },
     {
       "uf": "BA",
@@ -152,7 +203,17 @@
       "internal_curatorial_accepted": false,
       "accountant_external_opinion": "PENDING_NOT_RECEIVED",
       "legally_importable": false,
-      "eligible_for_fiscal_application": false
+      "eligible_for_fiscal_application": false,
+      "research_checkpoint_20261122": {
+        "dossier_path": "docs/NFCORE_T09_DOSSIE_RECONCILIATION_V1.json",
+        "candidate_id": "BA-DESENVOLVE-DEC8205-V1",
+        "required_review_evidence": "desenvolve_approved_project",
+        "source_capture_records": [],
+        "case_design": "CONDITIONAL_POSITIVE_AND_NEGATIVE_PREPARED_NOT_CERTIFIED",
+        "internal_grant_requirement_review": "PENDING_NORMATIVE_DETERMINATION",
+        "actual_taxpayer_grant": "EXTERNAL_PER_TAXPAYER_WHEN_REQUIRED",
+        "actual_taxpayer_grant_not_required_to_finish_internal_curation": true
+      }
     },
     {
       "uf": "CE",
@@ -174,7 +235,17 @@
       "internal_curatorial_accepted": false,
       "accountant_external_opinion": "PENDING_NOT_RECEIVED",
       "legally_importable": false,
-      "eligible_for_fiscal_application": false
+      "eligible_for_fiscal_application": false,
+      "research_checkpoint_20261122": {
+        "dossier_path": "docs/NFCORE_T09_DOSSIE_RECONCILIATION_V1.json",
+        "candidate_id": "CE-FDI-LEI10367-DEC34508-V1",
+        "required_review_evidence": "fdi_contract_terms",
+        "source_capture_records": [],
+        "case_design": "CONDITIONAL_POSITIVE_AND_NEGATIVE_PREPARED_NOT_CERTIFIED",
+        "internal_grant_requirement_review": "PENDING_NORMATIVE_DETERMINATION",
+        "actual_taxpayer_grant": "EXTERNAL_PER_TAXPAYER_WHEN_REQUIRED",
+        "actual_taxpayer_grant_not_required_to_finish_internal_curation": true
+      }
     },
     {
       "uf": "DF",
@@ -196,7 +267,17 @@
       "internal_curatorial_accepted": false,
       "accountant_external_opinion": "PENDING_NOT_RECEIVED",
       "legally_importable": false,
-      "eligible_for_fiscal_application": false
+      "eligible_for_fiscal_application": false,
+      "research_checkpoint_20261122": {
+        "dossier_path": "docs/NFCORE_T09_DOSSIE_RECONCILIATION_V1.json",
+        "candidate_id": "DF-EMPREGA-DF-DEC39803-V1",
+        "required_review_evidence": "df_pvtefs_approved",
+        "source_capture_records": [],
+        "case_design": "CONDITIONAL_POSITIVE_AND_NEGATIVE_PREPARED_NOT_CERTIFIED",
+        "internal_grant_requirement_review": "PENDING_NORMATIVE_DETERMINATION",
+        "actual_taxpayer_grant": "EXTERNAL_PER_TAXPAYER_WHEN_REQUIRED",
+        "actual_taxpayer_grant_not_required_to_finish_internal_curation": true
+      }
     },
     {
       "uf": "ES",
@@ -218,7 +299,17 @@
       "internal_curatorial_accepted": false,
       "accountant_external_opinion": "PENDING_NOT_RECEIVED",
       "legally_importable": false,
-      "eligible_for_fiscal_application": false
+      "eligible_for_fiscal_application": false,
+      "research_checkpoint_20261122": {
+        "dossier_path": "docs/NFCORE_T09_DOSSIE_RECONCILIATION_V1.json",
+        "candidate_id": "ES-COMPETE-DEC6116R-V1",
+        "required_review_evidence": "compete_sector_adhesion",
+        "source_capture_records": [],
+        "case_design": "CONDITIONAL_POSITIVE_AND_NEGATIVE_PREPARED_NOT_CERTIFIED",
+        "internal_grant_requirement_review": "PENDING_NORMATIVE_DETERMINATION",
+        "actual_taxpayer_grant": "EXTERNAL_PER_TAXPAYER_WHEN_REQUIRED",
+        "actual_taxpayer_grant_not_required_to_finish_internal_curation": true
+      }
     },
     {
       "uf": "GO",
@@ -240,7 +331,17 @@
       "internal_curatorial_accepted": false,
       "accountant_external_opinion": "PENDING_NOT_RECEIVED",
       "legally_importable": false,
-      "eligible_for_fiscal_application": false
+      "eligible_for_fiscal_application": false,
+      "research_checkpoint_20261122": {
+        "dossier_path": "docs/NFCORE_T09_DOSSIE_RECONCILIATION_V1.json",
+        "candidate_id": "GO-PROGOIAS-LEI20787-ART24-V1",
+        "required_review_evidence": "progoias_compliance_period",
+        "source_capture_records": [],
+        "case_design": "CONDITIONAL_POSITIVE_AND_NEGATIVE_PREPARED_NOT_CERTIFIED",
+        "internal_grant_requirement_review": "PENDING_NORMATIVE_DETERMINATION",
+        "actual_taxpayer_grant": "EXTERNAL_PER_TAXPAYER_WHEN_REQUIRED",
+        "actual_taxpayer_grant_not_required_to_finish_internal_curation": true
+      }
     },
     {
       "uf": "MA",
@@ -262,7 +363,17 @@
       "internal_curatorial_accepted": false,
       "accountant_external_opinion": "PENDING_NOT_RECEIVED",
       "legally_importable": false,
-      "eligible_for_fiscal_application": false
+      "eligible_for_fiscal_application": false,
+      "research_checkpoint_20261122": {
+        "dossier_path": "docs/NFCORE_T09_DOSSIE_RECONCILIATION_V1.json",
+        "candidate_id": "MA-MAIS-EMPRESAS-LEI10690-2017-V1",
+        "required_review_evidence": "condep_approved_grant",
+        "source_capture_records": [],
+        "case_design": "CONDITIONAL_POSITIVE_AND_NEGATIVE_PREPARED_NOT_CERTIFIED",
+        "internal_grant_requirement_review": "PENDING_NORMATIVE_DETERMINATION",
+        "actual_taxpayer_grant": "EXTERNAL_PER_TAXPAYER_WHEN_REQUIRED",
+        "actual_taxpayer_grant_not_required_to_finish_internal_curation": true
+      }
     },
     {
       "uf": "MG",
@@ -284,7 +395,17 @@
       "internal_curatorial_accepted": false,
       "accountant_external_opinion": "PENDING_NOT_RECEIVED",
       "legally_importable": false,
-      "eligible_for_fiscal_application": false
+      "eligible_for_fiscal_application": false,
+      "research_checkpoint_20261122": {
+        "dossier_path": "docs/NFCORE_T09_DOSSIE_RECONCILIATION_V1.json",
+        "candidate_id": "MG-RICMS2023-ANII-ITEM26-COHAB-V1",
+        "required_review_evidence": "cohab_material_and_discount",
+        "source_capture_records": [],
+        "case_design": "CONDITIONAL_POSITIVE_AND_NEGATIVE_PREPARED_NOT_CERTIFIED",
+        "internal_grant_requirement_review": "PENDING_NORMATIVE_DETERMINATION",
+        "actual_taxpayer_grant": "EXTERNAL_PER_TAXPAYER_WHEN_REQUIRED",
+        "actual_taxpayer_grant_not_required_to_finish_internal_curation": true
+      }
     },
     {
       "uf": "MS",
@@ -306,7 +427,17 @@
       "internal_curatorial_accepted": false,
       "accountant_external_opinion": "PENDING_NOT_RECEIVED",
       "legally_importable": false,
-      "eligible_for_fiscal_application": false
+      "eligible_for_fiscal_application": false,
+      "research_checkpoint_20261122": {
+        "dossier_path": "docs/NFCORE_T09_DOSSIE_RECONCILIATION_V1.json",
+        "candidate_id": "MS-EMPREENDEDOR-LC93-TERMO-V1",
+        "required_review_evidence": "ms_investment_agreement",
+        "source_capture_records": [],
+        "case_design": "CONDITIONAL_POSITIVE_AND_NEGATIVE_PREPARED_NOT_CERTIFIED",
+        "internal_grant_requirement_review": "PENDING_NORMATIVE_DETERMINATION",
+        "actual_taxpayer_grant": "EXTERNAL_PER_TAXPAYER_WHEN_REQUIRED",
+        "actual_taxpayer_grant_not_required_to_finish_internal_curation": true
+      }
     },
     {
       "uf": "MT",
@@ -328,7 +459,17 @@
       "internal_curatorial_accepted": false,
       "accountant_external_opinion": "PENDING_NOT_RECEIVED",
       "legally_importable": false,
-      "eligible_for_fiscal_application": false
+      "eligible_for_fiscal_application": false,
+      "research_checkpoint_20261122": {
+        "dossier_path": "docs/NFCORE_T09_DOSSIE_RECONCILIATION_V1.json",
+        "candidate_id": "MT-RICMS2014-ANV-ART31A-AGRO-V1",
+        "required_review_evidence": "mt_fertilizer_destination",
+        "source_capture_records": [],
+        "case_design": "CONDITIONAL_POSITIVE_AND_NEGATIVE_PREPARED_NOT_CERTIFIED",
+        "internal_grant_requirement_review": "PENDING_NORMATIVE_DETERMINATION",
+        "actual_taxpayer_grant": "EXTERNAL_PER_TAXPAYER_WHEN_REQUIRED",
+        "actual_taxpayer_grant_not_required_to_finish_internal_curation": true
+      }
     },
     {
       "uf": "PA",
@@ -350,7 +491,22 @@
       "internal_curatorial_accepted": false,
       "accountant_external_opinion": "PENDING_NOT_RECEIVED",
       "legally_importable": false,
-      "eligible_for_fiscal_application": false
+      "eligible_for_fiscal_application": false,
+      "research_checkpoint_20261122": {
+        "dossier_path": "docs/NFCORE_T09_DOSSIE_RECONCILIATION_V1.json",
+        "candidate_id": "PA-POLITICA-LEI6913-DEC2490-V1",
+        "required_review_evidence": "pa_judicial_and_individual_basis",
+        "source_capture_records": [
+          "PA_Lei_6913_2006.pdf",
+          "PA_Lei_7485_2010.html",
+          "PA_Decreto_2490_2006.pdf",
+          "PA_Decreto_990_2020.html"
+        ],
+        "case_design": "CONDITIONAL_POSITIVE_AND_NEGATIVE_PREPARED_NOT_CERTIFIED",
+        "internal_grant_requirement_review": "PENDING_NORMATIVE_DETERMINATION",
+        "actual_taxpayer_grant": "EXTERNAL_PER_TAXPAYER_WHEN_REQUIRED",
+        "actual_taxpayer_grant_not_required_to_finish_internal_curation": true
+      }
     },
     {
       "uf": "PB",
@@ -372,7 +528,17 @@
       "internal_curatorial_accepted": false,
       "accountant_external_opinion": "PENDING_NOT_RECEIVED",
       "legally_importable": false,
-      "eligible_for_fiscal_application": false
+      "eligible_for_fiscal_application": false,
+      "research_checkpoint_20261122": {
+        "dossier_path": "docs/NFCORE_T09_DOSSIE_RECONCILIATION_V1.json",
+        "candidate_id": "PB-FAIN-DEC17252-ART3-V1",
+        "required_review_evidence": "fain_product_approved",
+        "source_capture_records": [],
+        "case_design": "CONDITIONAL_POSITIVE_AND_NEGATIVE_PREPARED_NOT_CERTIFIED",
+        "internal_grant_requirement_review": "PENDING_NORMATIVE_DETERMINATION",
+        "actual_taxpayer_grant": "EXTERNAL_PER_TAXPAYER_WHEN_REQUIRED",
+        "actual_taxpayer_grant_not_required_to_finish_internal_curation": true
+      }
     },
     {
       "uf": "PE",
@@ -394,7 +560,17 @@
       "internal_curatorial_accepted": false,
       "accountant_external_opinion": "PENDING_NOT_RECEIVED",
       "legally_importable": false,
-      "eligible_for_fiscal_application": false
+      "eligible_for_fiscal_application": false,
+      "research_checkpoint_20261122": {
+        "dossier_path": "docs/NFCORE_T09_DOSSIE_RECONCILIATION_V1.json",
+        "candidate_id": "PE-PRODEPE-LEI11675-DEC21959-V1",
+        "required_review_evidence": "prodepe_product_grant",
+        "source_capture_records": [],
+        "case_design": "CONDITIONAL_POSITIVE_AND_NEGATIVE_PREPARED_NOT_CERTIFIED",
+        "internal_grant_requirement_review": "PENDING_NORMATIVE_DETERMINATION",
+        "actual_taxpayer_grant": "EXTERNAL_PER_TAXPAYER_WHEN_REQUIRED",
+        "actual_taxpayer_grant_not_required_to_finish_internal_curation": true
+      }
     },
     {
       "uf": "PI",
@@ -416,7 +592,20 @@
       "internal_curatorial_accepted": false,
       "accountant_external_opinion": "PENDING_NOT_RECEIVED",
       "legally_importable": false,
-      "eligible_for_fiscal_application": false
+      "eligible_for_fiscal_application": false,
+      "research_checkpoint_20261122": {
+        "dossier_path": "docs/NFCORE_T09_DOSSIE_RECONCILIATION_V1.json",
+        "candidate_id": "PI-RICMS2023-AN4-ART25A-BASIC-FOOD-V1",
+        "required_review_evidence": "pi_art25a_product_and_credit_review",
+        "source_capture_records": [
+          "PI_DOE_57_2025_Decreto_23672_2025.pdf",
+          "PI_RICMS_Decreto_21866_2023_Anexo_IV_art25A.html"
+        ],
+        "case_design": "CONDITIONAL_POSITIVE_AND_NEGATIVE_PREPARED_NOT_CERTIFIED",
+        "internal_grant_requirement_review": "PENDING_NORMATIVE_DETERMINATION",
+        "actual_taxpayer_grant": "EXTERNAL_PER_TAXPAYER_WHEN_REQUIRED",
+        "actual_taxpayer_grant_not_required_to_finish_internal_curation": true
+      }
     },
     {
       "uf": "PR",
@@ -438,7 +627,17 @@
       "internal_curatorial_accepted": false,
       "accountant_external_opinion": "PENDING_NOT_RECEIVED",
       "legally_importable": false,
-      "eligible_for_fiscal_application": false
+      "eligible_for_fiscal_application": false,
+      "research_checkpoint_20261122": {
+        "dossier_path": "docs/NFCORE_T09_DOSSIE_RECONCILIATION_V1.json",
+        "candidate_id": "PR-PARANA-COMPETITIVO-DEC7721-V1",
+        "required_review_evidence": "pr_current_grant_ncm",
+        "source_capture_records": [],
+        "case_design": "CONDITIONAL_POSITIVE_AND_NEGATIVE_PREPARED_NOT_CERTIFIED",
+        "internal_grant_requirement_review": "PENDING_NORMATIVE_DETERMINATION",
+        "actual_taxpayer_grant": "EXTERNAL_PER_TAXPAYER_WHEN_REQUIRED",
+        "actual_taxpayer_grant_not_required_to_finish_internal_curation": true
+      }
     },
     {
       "uf": "RJ",
@@ -460,7 +659,23 @@
       "internal_curatorial_accepted": false,
       "accountant_external_opinion": "PENDING_NOT_RECEIVED",
       "legally_importable": false,
-      "eligible_for_fiscal_application": false
+      "eligible_for_fiscal_application": false,
+      "research_checkpoint_20261122": {
+        "dossier_path": "docs/NFCORE_T09_DOSSIE_RECONCILIATION_V1.json",
+        "candidate_id": "RJ-LEI6331-PORT345-ADESAO-V1",
+        "required_review_evidence": "rj_textile_adhesion_validity",
+        "source_capture_records": [
+          "RJ_Portaria_SSER_345_2023.html",
+          "RJ_Portaria_SSER_350_2024.html",
+          "RJ_Portaria_SSER_362_2024.html",
+          "RJ_Portaria_SSER_431_2025.html",
+          "RJ_Lei_6331_2012.html"
+        ],
+        "case_design": "CONDITIONAL_POSITIVE_AND_NEGATIVE_PREPARED_NOT_CERTIFIED",
+        "internal_grant_requirement_review": "PENDING_NORMATIVE_DETERMINATION",
+        "actual_taxpayer_grant": "EXTERNAL_PER_TAXPAYER_WHEN_REQUIRED",
+        "actual_taxpayer_grant_not_required_to_finish_internal_curation": true
+      }
     },
     {
       "uf": "RN",
@@ -482,7 +697,19 @@
       "internal_curatorial_accepted": false,
       "accountant_external_opinion": "PENDING_NOT_RECEIVED",
       "legally_importable": false,
-      "eligible_for_fiscal_application": false
+      "eligible_for_fiscal_application": false,
+      "research_checkpoint_20261122": {
+        "dossier_path": "docs/NFCORE_T09_DOSSIE_RECONCILIATION_V1.json",
+        "candidate_id": "RN-RICMS2022-AN003-REDUCAO-V1",
+        "required_review_evidence": "rn_fish_origin_option",
+        "source_capture_records": [
+          "RN_Decreto_31825_2022_Anexo_003.html"
+        ],
+        "case_design": "CONDITIONAL_POSITIVE_AND_NEGATIVE_PREPARED_NOT_CERTIFIED",
+        "internal_grant_requirement_review": "PENDING_NORMATIVE_DETERMINATION",
+        "actual_taxpayer_grant": "EXTERNAL_PER_TAXPAYER_WHEN_REQUIRED",
+        "actual_taxpayer_grant_not_required_to_finish_internal_curation": true
+      }
     },
     {
       "uf": "RO",
@@ -504,7 +731,17 @@
       "internal_curatorial_accepted": false,
       "accountant_external_opinion": "PENDING_NOT_RECEIVED",
       "legally_importable": false,
-      "eligible_for_fiscal_application": false
+      "eligible_for_fiscal_application": false,
+      "research_checkpoint_20261122": {
+        "dossier_path": "docs/NFCORE_T09_DOSSIE_RECONCILIATION_V1.json",
+        "candidate_id": "RO-INDS-LEI1558-DEC12988-V1",
+        "required_review_evidence": "ro_conder_current_class",
+        "source_capture_records": [],
+        "case_design": "CONDITIONAL_POSITIVE_AND_NEGATIVE_PREPARED_NOT_CERTIFIED",
+        "internal_grant_requirement_review": "PENDING_NORMATIVE_DETERMINATION",
+        "actual_taxpayer_grant": "EXTERNAL_PER_TAXPAYER_WHEN_REQUIRED",
+        "actual_taxpayer_grant_not_required_to_finish_internal_curation": true
+      }
     },
     {
       "uf": "RR",
@@ -526,7 +763,17 @@
       "internal_curatorial_accepted": false,
       "accountant_external_opinion": "PENDING_NOT_RECEIVED",
       "legally_importable": false,
-      "eligible_for_fiscal_application": false
+      "eligible_for_fiscal_application": false,
+      "research_checkpoint_20261122": {
+        "dossier_path": "docs/NFCORE_T09_DOSSIE_RECONCILIATION_V1.json",
+        "candidate_id": "RR-RICMS2001-AN1-ART1-LXVII-V1",
+        "required_review_evidence": "rr_agro_input_scope",
+        "source_capture_records": [],
+        "case_design": "CONDITIONAL_POSITIVE_AND_NEGATIVE_PREPARED_NOT_CERTIFIED",
+        "internal_grant_requirement_review": "PENDING_NORMATIVE_DETERMINATION",
+        "actual_taxpayer_grant": "EXTERNAL_PER_TAXPAYER_WHEN_REQUIRED",
+        "actual_taxpayer_grant_not_required_to_finish_internal_curation": true
+      }
     },
     {
       "uf": "RS",
@@ -548,7 +795,17 @@
       "internal_curatorial_accepted": false,
       "accountant_external_opinion": "PENDING_NOT_RECEIVED",
       "legally_importable": false,
-      "eligible_for_fiscal_application": false
+      "eligible_for_fiscal_application": false,
+      "research_checkpoint_20261122": {
+        "dossier_path": "docs/NFCORE_T09_DOSSIE_RECONCILIATION_V1.json",
+        "candidate_id": "RS-RICMS1997-L1-ART32-CLXXXVI-METAL-V1",
+        "required_review_evidence": "rs_metal_option",
+        "source_capture_records": [],
+        "case_design": "CONDITIONAL_POSITIVE_AND_NEGATIVE_PREPARED_NOT_CERTIFIED",
+        "internal_grant_requirement_review": "PENDING_NORMATIVE_DETERMINATION",
+        "actual_taxpayer_grant": "EXTERNAL_PER_TAXPAYER_WHEN_REQUIRED",
+        "actual_taxpayer_grant_not_required_to_finish_internal_curation": true
+      }
     },
     {
       "uf": "SC",
@@ -570,7 +827,17 @@
       "internal_curatorial_accepted": false,
       "accountant_external_opinion": "PENDING_NOT_RECEIVED",
       "legally_importable": false,
-      "eligible_for_fiscal_application": false
+      "eligible_for_fiscal_application": false,
+      "research_checkpoint_20261122": {
+        "dossier_path": "docs/NFCORE_T09_DOSSIE_RECONCILIATION_V1.json",
+        "candidate_id": "SC-PROEMPREGO-LEI13992-DEC105-V1",
+        "required_review_evidence": "sc_ttd_resolution",
+        "source_capture_records": [],
+        "case_design": "CONDITIONAL_POSITIVE_AND_NEGATIVE_PREPARED_NOT_CERTIFIED",
+        "internal_grant_requirement_review": "PENDING_NORMATIVE_DETERMINATION",
+        "actual_taxpayer_grant": "EXTERNAL_PER_TAXPAYER_WHEN_REQUIRED",
+        "actual_taxpayer_grant_not_required_to_finish_internal_curation": true
+      }
     },
     {
       "uf": "SE",
@@ -592,7 +859,20 @@
       "internal_curatorial_accepted": false,
       "accountant_external_opinion": "PENDING_NOT_RECEIVED",
       "legally_importable": false,
-      "eligible_for_fiscal_application": false
+      "eligible_for_fiscal_application": false,
+      "research_checkpoint_20261122": {
+        "dossier_path": "docs/NFCORE_T09_DOSSIE_RECONCILIATION_V1.json",
+        "candidate_id": "SE-PSDI-LEI3140-DEC29935-V1",
+        "required_review_evidence": "se_psdi_cdi_scope",
+        "source_capture_records": [
+          "SE_Lei_3140_1991.html",
+          "SE_Decreto_29935_2014.pdf"
+        ],
+        "case_design": "CONDITIONAL_POSITIVE_AND_NEGATIVE_PREPARED_NOT_CERTIFIED",
+        "internal_grant_requirement_review": "PENDING_NORMATIVE_DETERMINATION",
+        "actual_taxpayer_grant": "EXTERNAL_PER_TAXPAYER_WHEN_REQUIRED",
+        "actual_taxpayer_grant_not_required_to_finish_internal_curation": true
+      }
     },
     {
       "uf": "SP",
@@ -614,7 +894,17 @@
       "internal_curatorial_accepted": false,
       "accountant_external_opinion": "PENDING_NOT_RECEIVED",
       "legally_importable": false,
-      "eligible_for_fiscal_application": false
+      "eligible_for_fiscal_application": false,
+      "research_checkpoint_20261122": {
+        "dossier_path": "docs/NFCORE_T09_DOSSIE_RECONCILIATION_V1.json",
+        "candidate_id": "SP-RICMS2000-AN3-ART41-TEXTILE-V1",
+        "required_review_evidence": "sp_textile_art52_option",
+        "source_capture_records": [],
+        "case_design": "CONDITIONAL_POSITIVE_AND_NEGATIVE_PREPARED_NOT_CERTIFIED",
+        "internal_grant_requirement_review": "PENDING_NORMATIVE_DETERMINATION",
+        "actual_taxpayer_grant": "EXTERNAL_PER_TAXPAYER_WHEN_REQUIRED",
+        "actual_taxpayer_grant_not_required_to_finish_internal_curation": true
+      }
     },
     {
       "uf": "TO",
@@ -636,7 +926,17 @@
       "internal_curatorial_accepted": false,
       "accountant_external_opinion": "PENDING_NOT_RECEIVED",
       "legally_importable": false,
-      "eligible_for_fiscal_application": false
+      "eligible_for_fiscal_application": false,
+      "research_checkpoint_20261122": {
+        "dossier_path": "docs/NFCORE_T09_DOSSIE_RECONCILIATION_V1.json",
+        "candidate_id": "TO-PROINDUSTRIA-LEI1385-ART6-V1",
+        "required_review_evidence": "to_proindustria_approved_letter",
+        "source_capture_records": [],
+        "case_design": "CONDITIONAL_POSITIVE_AND_NEGATIVE_PREPARED_NOT_CERTIFIED",
+        "internal_grant_requirement_review": "PENDING_NORMATIVE_DETERMINATION",
+        "actual_taxpayer_grant": "EXTERNAL_PER_TAXPAYER_WHEN_REQUIRED",
+        "actual_taxpayer_grant_not_required_to_finish_internal_curation": true
+      }
     }
   ],
   "initial_research_commit": "917cf3ac428b682c6d575aba3e8f18d4f316d4d5",
@@ -666,6 +966,10 @@
     "rj_news_alerj": "EXCLUDED_FROM_MANDATORY_ORIGINALS",
     "external_accountant_review": "PENDING_NOT_RECEIVED",
     "individual_grant": "PER_TAXPAYER_AT_RUNTIME_WHEN_REQUIRED",
-    "internal_curatorial_signoff": "PENDING_NOT_GRANTED"
-  }
+    "internal_curatorial_signoff": "PENDING_NOT_GRANTED",
+    "reconciliation_checkpoint": "docs/NFCORE_T09_DOSSIE_RECONCILIATION_V1.json",
+    "received_or_cotejo_count": 19,
+    "unaccounted_in_audited_local_evidence_count": 3
+  },
+  "internal_external_gate_clarification": "Internal research establishes necessity/dispensation and tests grant lifecycle with controlled evidence. Actual third-party taxpayer grant and professional opinion are external; no client grant required to finish internal curation. Legacy combined taxpayer_grant_required_and_verified remains false, never substitute it for internal requirement determination."
 }
