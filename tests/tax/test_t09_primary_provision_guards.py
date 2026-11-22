@@ -136,6 +136,8 @@ def test_six_primary_source_reviews_do_not_certify_any_candidate(uf):
     ("PB", "pb_ncm_first_four_digits"),
     ("PI", "pi_confaz_224_17"),
     ("PE", "pe_actual_amendments"),
+    ("PB", "pb_fain_fgts_crf_renewal"),
+    ("PE", "pe_efd_regular_delivery_art21a"),
 ])
 def test_missing_act_specific_review_is_not_legal_eligibility(uf, omitted):
     outcome = _evaluate(uf, date(2026, 11, 1), omitted=(omitted,))
