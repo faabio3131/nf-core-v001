@@ -78,7 +78,9 @@
         "case_design": "CONDITIONAL_POSITIVE_AND_NEGATIVE_PREPARED_NOT_CERTIFIED",
         "internal_grant_requirement_review": "PENDING_NORMATIVE_DETERMINATION",
         "actual_taxpayer_grant": "EXTERNAL_PER_TAXPAYER_WHEN_REQUIRED",
-        "actual_taxpayer_grant_not_required_to_finish_internal_curation": true
+        "actual_taxpayer_grant_not_required_to_finish_internal_curation": true,
+        "package_status": "PARTIAL_RESEARCH_NOT_APPROVED",
+        "package_residual_register": "docs/NFCORE_T09_RESEARCH_RESIDUAL_27UFS_20261122.md"
       }
     },
     {
@@ -115,7 +117,9 @@
         "internal_grant_requirement_review": "PENDING_NORMATIVE_DETERMINATION",
         "actual_taxpayer_grant": "EXTERNAL_PER_TAXPAYER_WHEN_REQUIRED",
         "actual_taxpayer_grant_not_required_to_finish_internal_curation": true,
-        "additional_primary_text_review": "CONTENT_IDENTIFIED_NOT_BYTES_ARCHIVED"
+        "additional_primary_text_review": "CONTENT_IDENTIFIED_NOT_BYTES_ARCHIVED",
+        "package_status": "PARTIAL_RESEARCH_NOT_APPROVED",
+        "package_residual_register": "docs/NFCORE_T09_RESEARCH_RESIDUAL_27UFS_20261122.md"
       }
     },
     {
@@ -147,7 +151,9 @@
         "case_design": "CONDITIONAL_POSITIVE_AND_NEGATIVE_PREPARED_NOT_CERTIFIED",
         "internal_grant_requirement_review": "PENDING_NORMATIVE_DETERMINATION",
         "actual_taxpayer_grant": "EXTERNAL_PER_TAXPAYER_WHEN_REQUIRED",
-        "actual_taxpayer_grant_not_required_to_finish_internal_curation": true
+        "actual_taxpayer_grant_not_required_to_finish_internal_curation": true,
+        "package_status": "PARTIAL_RESEARCH_NOT_APPROVED",
+        "package_residual_register": "docs/NFCORE_T09_RESEARCH_RESIDUAL_27UFS_20261122.md"
       }
     },
     {
@@ -181,7 +187,9 @@
         "case_design": "CONDITIONAL_POSITIVE_AND_NEGATIVE_PREPARED_NOT_CERTIFIED",
         "internal_grant_requirement_review": "PENDING_NORMATIVE_DETERMINATION",
         "actual_taxpayer_grant": "EXTERNAL_PER_TAXPAYER_WHEN_REQUIRED",
-        "actual_taxpayer_grant_not_required_to_finish_internal_curation": true
+        "actual_taxpayer_grant_not_required_to_finish_internal_curation": true,
+        "package_status": "PARTIAL_RESEARCH_NOT_APPROVED",
+        "package_residual_register": "docs/NFCORE_T09_RESEARCH_RESIDUAL_27UFS_20261122.md"
       }
     },
     {
@@ -213,7 +221,9 @@
         "case_design": "CONDITIONAL_POSITIVE_AND_NEGATIVE_PREPARED_NOT_CERTIFIED",
         "internal_grant_requirement_review": "PENDING_NORMATIVE_DETERMINATION",
         "actual_taxpayer_grant": "EXTERNAL_PER_TAXPAYER_WHEN_REQUIRED",
-        "actual_taxpayer_grant_not_required_to_finish_internal_curation": true
+        "actual_taxpayer_grant_not_required_to_finish_internal_curation": true,
+        "package_status": "PARTIAL_RESEARCH_NOT_APPROVED",
+        "package_residual_register": "docs/NFCORE_T09_RESEARCH_RESIDUAL_27UFS_20261122.md"
       }
     },
     {
@@ -245,7 +255,9 @@
         "case_design": "CONDITIONAL_POSITIVE_AND_NEGATIVE_PREPARED_NOT_CERTIFIED",
         "internal_grant_requirement_review": "PENDING_NORMATIVE_DETERMINATION",
         "actual_taxpayer_grant": "EXTERNAL_PER_TAXPAYER_WHEN_REQUIRED",
-        "actual_taxpayer_grant_not_required_to_finish_internal_curation": true
+        "actual_taxpayer_grant_not_required_to_finish_internal_curation": true,
+        "package_status": "PARTIAL_RESEARCH_NOT_APPROVED",
+        "package_residual_register": "docs/NFCORE_T09_RESEARCH_RESIDUAL_27UFS_20261122.md"
       }
     },
     {
@@ -277,7 +289,9 @@
         "case_design": "CONDITIONAL_POSITIVE_AND_NEGATIVE_PREPARED_NOT_CERTIFIED",
         "internal_grant_requirement_review": "PENDING_NORMATIVE_DETERMINATION",
         "actual_taxpayer_grant": "EXTERNAL_PER_TAXPAYER_WHEN_REQUIRED",
-        "actual_taxpayer_grant_not_required_to_finish_internal_curation": true
+        "actual_taxpayer_grant_not_required_to_finish_internal_curation": true,
+        "package_status": "PARTIAL_RESEARCH_NOT_APPROVED",
+        "package_residual_register": "docs/NFCORE_T09_RESEARCH_RESIDUAL_27UFS_20261122.md"
       }
     },
     {
@@ -309,7 +323,9 @@
         "case_design": "CONDITIONAL_POSITIVE_AND_NEGATIVE_PREPARED_NOT_CERTIFIED",
         "internal_grant_requirement_review": "PENDING_NORMATIVE_DETERMINATION",
         "actual_taxpayer_grant": "EXTERNAL_PER_TAXPAYER_WHEN_REQUIRED",
-        "actual_taxpayer_grant_not_required_to_finish_internal_curation": true
+        "actual_taxpayer_grant_not_required_to_finish_internal_curation": true,
+        "package_status": "PARTIAL_RESEARCH_NOT_APPROVED",
+        "package_residual_register": "docs/NFCORE_T09_RESEARCH_RESIDUAL_27UFS_20261122.md"
       }
     },
     {
@@ -341,7 +357,9 @@
         "case_design": "CONDITIONAL_POSITIVE_AND_NEGATIVE_PREPARED_NOT_CERTIFIED",
         "internal_grant_requirement_review": "PENDING_NORMATIVE_DETERMINATION",
         "actual_taxpayer_grant": "EXTERNAL_PER_TAXPAYER_WHEN_REQUIRED",
-        "actual_taxpayer_grant_not_required_to_finish_internal_curation": true
+        "actual_taxpayer_grant_not_required_to_finish_internal_curation": true,
+        "package_status": "PARTIAL_RESEARCH_NOT_APPROVED",
+        "package_residual_register": "docs/NFCORE_T09_RESEARCH_RESIDUAL_27UFS_20261122.md"
       }
     },
     {
@@ -373,7 +391,9 @@
         "case_design": "CONDITIONAL_POSITIVE_AND_NEGATIVE_PREPARED_NOT_CERTIFIED",
         "internal_grant_requirement_review": "PENDING_NORMATIVE_DETERMINATION",
         "actual_taxpayer_grant": "EXTERNAL_PER_TAXPAYER_WHEN_REQUIRED",
-        "actual_taxpayer_grant_not_required_to_finish_internal_curation": true
+        "actual_taxpayer_grant_not_required_to_finish_internal_curation": true,
+        "package_status": "PARTIAL_RESEARCH_NOT_APPROVED",
+        "package_residual_register": "docs/NFCORE_T09_RESEARCH_RESIDUAL_27UFS_20261122.md"
       }
     },
     {
@@ -405,7 +425,9 @@
         "case_design": "CONDITIONAL_POSITIVE_AND_NEGATIVE_PREPARED_NOT_CERTIFIED",
         "internal_grant_requirement_review": "PENDING_NORMATIVE_DETERMINATION",
         "actual_taxpayer_grant": "EXTERNAL_PER_TAXPAYER_WHEN_REQUIRED",
-        "actual_taxpayer_grant_not_required_to_finish_internal_curation": true
+        "actual_taxpayer_grant_not_required_to_finish_internal_curation": true,
+        "package_status": "PARTIAL_RESEARCH_NOT_APPROVED",
+        "package_residual_register": "docs/NFCORE_T09_RESEARCH_RESIDUAL_27UFS_20261122.md"
       }
     },
     {
@@ -437,7 +459,9 @@
         "case_design": "CONDITIONAL_POSITIVE_AND_NEGATIVE_PREPARED_NOT_CERTIFIED",
         "internal_grant_requirement_review": "PENDING_NORMATIVE_DETERMINATION",
         "actual_taxpayer_grant": "EXTERNAL_PER_TAXPAYER_WHEN_REQUIRED",
-        "actual_taxpayer_grant_not_required_to_finish_internal_curation": true
+        "actual_taxpayer_grant_not_required_to_finish_internal_curation": true,
+        "package_status": "PARTIAL_RESEARCH_NOT_APPROVED",
+        "package_residual_register": "docs/NFCORE_T09_RESEARCH_RESIDUAL_27UFS_20261122.md"
       }
     },
     {
@@ -469,7 +493,9 @@
         "case_design": "CONDITIONAL_POSITIVE_AND_NEGATIVE_PREPARED_NOT_CERTIFIED",
         "internal_grant_requirement_review": "PENDING_NORMATIVE_DETERMINATION",
         "actual_taxpayer_grant": "EXTERNAL_PER_TAXPAYER_WHEN_REQUIRED",
-        "actual_taxpayer_grant_not_required_to_finish_internal_curation": true
+        "actual_taxpayer_grant_not_required_to_finish_internal_curation": true,
+        "package_status": "PARTIAL_RESEARCH_NOT_APPROVED",
+        "package_residual_register": "docs/NFCORE_T09_RESEARCH_RESIDUAL_27UFS_20261122.md"
       }
     },
     {
@@ -507,7 +533,9 @@
         "internal_grant_requirement_review": "PENDING_NORMATIVE_DETERMINATION",
         "actual_taxpayer_grant": "EXTERNAL_PER_TAXPAYER_WHEN_REQUIRED",
         "actual_taxpayer_grant_not_required_to_finish_internal_curation": true,
-        "additional_primary_text_review": "CONTENT_IDENTIFIED_NOT_BYTES_ARCHIVED"
+        "additional_primary_text_review": "CONTENT_IDENTIFIED_NOT_BYTES_ARCHIVED",
+        "package_status": "PARTIAL_RESEARCH_NOT_APPROVED",
+        "package_residual_register": "docs/NFCORE_T09_RESEARCH_RESIDUAL_27UFS_20261122.md"
       }
     },
     {
@@ -539,7 +567,9 @@
         "case_design": "CONDITIONAL_POSITIVE_AND_NEGATIVE_PREPARED_NOT_CERTIFIED",
         "internal_grant_requirement_review": "PENDING_NORMATIVE_DETERMINATION",
         "actual_taxpayer_grant": "EXTERNAL_PER_TAXPAYER_WHEN_REQUIRED",
-        "actual_taxpayer_grant_not_required_to_finish_internal_curation": true
+        "actual_taxpayer_grant_not_required_to_finish_internal_curation": true,
+        "package_status": "PARTIAL_RESEARCH_NOT_APPROVED",
+        "package_residual_register": "docs/NFCORE_T09_RESEARCH_RESIDUAL_27UFS_20261122.md"
       }
     },
     {
@@ -571,7 +601,9 @@
         "case_design": "CONDITIONAL_POSITIVE_AND_NEGATIVE_PREPARED_NOT_CERTIFIED",
         "internal_grant_requirement_review": "PENDING_NORMATIVE_DETERMINATION",
         "actual_taxpayer_grant": "EXTERNAL_PER_TAXPAYER_WHEN_REQUIRED",
-        "actual_taxpayer_grant_not_required_to_finish_internal_curation": true
+        "actual_taxpayer_grant_not_required_to_finish_internal_curation": true,
+        "package_status": "PARTIAL_RESEARCH_NOT_APPROVED",
+        "package_residual_register": "docs/NFCORE_T09_RESEARCH_RESIDUAL_27UFS_20261122.md"
       }
     },
     {
@@ -606,7 +638,9 @@
         "case_design": "CONDITIONAL_POSITIVE_AND_NEGATIVE_PREPARED_NOT_CERTIFIED",
         "internal_grant_requirement_review": "PENDING_NORMATIVE_DETERMINATION",
         "actual_taxpayer_grant": "EXTERNAL_PER_TAXPAYER_WHEN_REQUIRED",
-        "actual_taxpayer_grant_not_required_to_finish_internal_curation": true
+        "actual_taxpayer_grant_not_required_to_finish_internal_curation": true,
+        "package_status": "PARTIAL_RESEARCH_NOT_APPROVED",
+        "package_residual_register": "docs/NFCORE_T09_RESEARCH_RESIDUAL_27UFS_20261122.md"
       }
     },
     {
@@ -638,7 +672,9 @@
         "case_design": "CONDITIONAL_POSITIVE_AND_NEGATIVE_PREPARED_NOT_CERTIFIED",
         "internal_grant_requirement_review": "PENDING_NORMATIVE_DETERMINATION",
         "actual_taxpayer_grant": "EXTERNAL_PER_TAXPAYER_WHEN_REQUIRED",
-        "actual_taxpayer_grant_not_required_to_finish_internal_curation": true
+        "actual_taxpayer_grant_not_required_to_finish_internal_curation": true,
+        "package_status": "PARTIAL_RESEARCH_NOT_APPROVED",
+        "package_residual_register": "docs/NFCORE_T09_RESEARCH_RESIDUAL_27UFS_20261122.md"
       }
     },
     {
@@ -677,7 +713,9 @@
         "internal_grant_requirement_review": "PENDING_NORMATIVE_DETERMINATION",
         "actual_taxpayer_grant": "EXTERNAL_PER_TAXPAYER_WHEN_REQUIRED",
         "actual_taxpayer_grant_not_required_to_finish_internal_curation": true,
-        "additional_primary_text_review": "CONTENT_IDENTIFIED_NOT_BYTES_ARCHIVED"
+        "additional_primary_text_review": "CONTENT_IDENTIFIED_NOT_BYTES_ARCHIVED",
+        "package_status": "PARTIAL_RESEARCH_NOT_APPROVED",
+        "package_residual_register": "docs/NFCORE_T09_RESEARCH_RESIDUAL_27UFS_20261122.md"
       }
     },
     {
@@ -711,7 +749,9 @@
         "case_design": "CONDITIONAL_POSITIVE_AND_NEGATIVE_PREPARED_NOT_CERTIFIED",
         "internal_grant_requirement_review": "PENDING_NORMATIVE_DETERMINATION",
         "actual_taxpayer_grant": "EXTERNAL_PER_TAXPAYER_WHEN_REQUIRED",
-        "actual_taxpayer_grant_not_required_to_finish_internal_curation": true
+        "actual_taxpayer_grant_not_required_to_finish_internal_curation": true,
+        "package_status": "PARTIAL_RESEARCH_NOT_APPROVED",
+        "package_residual_register": "docs/NFCORE_T09_RESEARCH_RESIDUAL_27UFS_20261122.md"
       }
     },
     {
@@ -743,7 +783,9 @@
         "case_design": "CONDITIONAL_POSITIVE_AND_NEGATIVE_PREPARED_NOT_CERTIFIED",
         "internal_grant_requirement_review": "PENDING_NORMATIVE_DETERMINATION",
         "actual_taxpayer_grant": "EXTERNAL_PER_TAXPAYER_WHEN_REQUIRED",
-        "actual_taxpayer_grant_not_required_to_finish_internal_curation": true
+        "actual_taxpayer_grant_not_required_to_finish_internal_curation": true,
+        "package_status": "PARTIAL_RESEARCH_NOT_APPROVED",
+        "package_residual_register": "docs/NFCORE_T09_RESEARCH_RESIDUAL_27UFS_20261122.md"
       }
     },
     {
@@ -775,7 +817,9 @@
         "case_design": "CONDITIONAL_POSITIVE_AND_NEGATIVE_PREPARED_NOT_CERTIFIED",
         "internal_grant_requirement_review": "PENDING_NORMATIVE_DETERMINATION",
         "actual_taxpayer_grant": "EXTERNAL_PER_TAXPAYER_WHEN_REQUIRED",
-        "actual_taxpayer_grant_not_required_to_finish_internal_curation": true
+        "actual_taxpayer_grant_not_required_to_finish_internal_curation": true,
+        "package_status": "PARTIAL_RESEARCH_NOT_APPROVED",
+        "package_residual_register": "docs/NFCORE_T09_RESEARCH_RESIDUAL_27UFS_20261122.md"
       }
     },
     {
@@ -807,7 +851,9 @@
         "case_design": "CONDITIONAL_POSITIVE_AND_NEGATIVE_PREPARED_NOT_CERTIFIED",
         "internal_grant_requirement_review": "PENDING_NORMATIVE_DETERMINATION",
         "actual_taxpayer_grant": "EXTERNAL_PER_TAXPAYER_WHEN_REQUIRED",
-        "actual_taxpayer_grant_not_required_to_finish_internal_curation": true
+        "actual_taxpayer_grant_not_required_to_finish_internal_curation": true,
+        "package_status": "PARTIAL_RESEARCH_NOT_APPROVED",
+        "package_residual_register": "docs/NFCORE_T09_RESEARCH_RESIDUAL_27UFS_20261122.md"
       }
     },
     {
@@ -839,7 +885,9 @@
         "case_design": "CONDITIONAL_POSITIVE_AND_NEGATIVE_PREPARED_NOT_CERTIFIED",
         "internal_grant_requirement_review": "PENDING_NORMATIVE_DETERMINATION",
         "actual_taxpayer_grant": "EXTERNAL_PER_TAXPAYER_WHEN_REQUIRED",
-        "actual_taxpayer_grant_not_required_to_finish_internal_curation": true
+        "actual_taxpayer_grant_not_required_to_finish_internal_curation": true,
+        "package_status": "PARTIAL_RESEARCH_NOT_APPROVED",
+        "package_residual_register": "docs/NFCORE_T09_RESEARCH_RESIDUAL_27UFS_20261122.md"
       }
     },
     {
@@ -874,7 +922,9 @@
         "case_design": "CONDITIONAL_POSITIVE_AND_NEGATIVE_PREPARED_NOT_CERTIFIED",
         "internal_grant_requirement_review": "PENDING_NORMATIVE_DETERMINATION",
         "actual_taxpayer_grant": "EXTERNAL_PER_TAXPAYER_WHEN_REQUIRED",
-        "actual_taxpayer_grant_not_required_to_finish_internal_curation": true
+        "actual_taxpayer_grant_not_required_to_finish_internal_curation": true,
+        "package_status": "PARTIAL_RESEARCH_NOT_APPROVED",
+        "package_residual_register": "docs/NFCORE_T09_RESEARCH_RESIDUAL_27UFS_20261122.md"
       }
     },
     {
@@ -906,7 +956,9 @@
         "case_design": "CONDITIONAL_POSITIVE_AND_NEGATIVE_PREPARED_NOT_CERTIFIED",
         "internal_grant_requirement_review": "PENDING_NORMATIVE_DETERMINATION",
         "actual_taxpayer_grant": "EXTERNAL_PER_TAXPAYER_WHEN_REQUIRED",
-        "actual_taxpayer_grant_not_required_to_finish_internal_curation": true
+        "actual_taxpayer_grant_not_required_to_finish_internal_curation": true,
+        "package_status": "PARTIAL_RESEARCH_NOT_APPROVED",
+        "package_residual_register": "docs/NFCORE_T09_RESEARCH_RESIDUAL_27UFS_20261122.md"
       }
     },
     {
@@ -938,7 +990,9 @@
         "case_design": "CONDITIONAL_POSITIVE_AND_NEGATIVE_PREPARED_NOT_CERTIFIED",
         "internal_grant_requirement_review": "PENDING_NORMATIVE_DETERMINATION",
         "actual_taxpayer_grant": "EXTERNAL_PER_TAXPAYER_WHEN_REQUIRED",
-        "actual_taxpayer_grant_not_required_to_finish_internal_curation": true
+        "actual_taxpayer_grant_not_required_to_finish_internal_curation": true,
+        "package_status": "PARTIAL_RESEARCH_NOT_APPROVED",
+        "package_residual_register": "docs/NFCORE_T09_RESEARCH_RESIDUAL_27UFS_20261122.md"
       }
     }
   ],
@@ -977,5 +1031,21 @@
     "all_22_entries_content_located_or_cotejo": true,
     "all_22_original_bytes_archived": false
   },
-  "internal_external_gate_clarification": "Internal research establishes necessity/dispensation and tests grant lifecycle with controlled evidence. Actual third-party taxpayer grant and professional opinion are external; no client grant required to finish internal curation. Legacy combined taxpayer_grant_required_and_verified remains false, never substitute it for internal requirement determination."
+  "internal_external_gate_clarification": "Internal research establishes necessity/dispensation and tests grant lifecycle with controlled evidence. Actual third-party taxpayer grant and professional opinion are external; no client grant required to finish internal curation. Legacy combined taxpayer_grant_required_and_verified remains false, never substitute it for internal requirement determination.",
+  "research_package_checkpoint_20261122": {
+    "path": "docs/NFCORE_T09_RESEARCH_PACKAGE_CHECKPOINT_20261122.md",
+    "manifest_path": "docs/NFCORE_T09_RESEARCH_PACKAGE_MANIFEST_20261122.json",
+    "residual_path": "docs/NFCORE_T09_RESEARCH_RESIDUAL_27UFS_20261122.md",
+    "sha256": "001f7e85c84e35914931218a8b5c4d492cd65d7332e847c3f36167d66e5cc12b",
+    "verified_captures": 29,
+    "zip_entries": 64,
+    "proposed_not_executed_cases": 58,
+    "independent_review": false,
+    "accepted_curations": 0,
+    "imports": 0,
+    "original_binary_archived_in_git": false,
+    "source_ci_commit": "c6008bb7bb0e3c2ec5e52c693f2384e6969a5fc4",
+    "source_ci_run": 44986673875,
+    "new_head_ci": "REQUIRED"
+  }
 }

@@ -78,3 +78,8 @@ benefícios homologados**; não alterar o significado das colunas ou confundir
 ### Reconciliação documental de 22/11/2026
 
 Os 27 dossiês de pesquisa e as 22 entradas de captura estão relacionados em `NFCORE_T09_DOSSIE_RECONCILIATION_V1.json`. Conteúdo localizado/cotejado não implica cadeia legal completa. Ver `NFCORE_T09_RECONCILIACAO_27UFS_20261122.md`. Mantidos 0/27 aceites e importações; gates externos independentes.
+
+
+### Pesquisa complementar registrada em 22/11/2026 — CURRENT documental
+
+Pacote ZIP SHA-256 `001f7e85c84e35914931218a8b5c4d492cd65d7332e847c3f36167d66e5cc12b` conferido: 64 entradas, 29 capturas com integridade local 29/29, 27 dossiês preliminares, 58 casos propostos **não executados**. O ZIP e suas fontes originais não foram enviados ao GitHub, somente seu índice/rastreabilidade. **0/27 curadorias aceitas/importadas.** Fonte da verdade: [`NFCORE_T09_RESEARCH_PACKAGE_CHECKPOINT_20261122.md`](NFCORE_T09_RESEARCH_PACKAGE_CHECKPOINT_20261122.md); [manifesto](NFCORE_T09_RESEARCH_PACKAGE_MANIFEST_20261122.json); [pendências UF](NFCORE_T09_RESEARCH_RESIDUAL_27UFS_20261122.md). A engenharia anterior tinha 6/6 workflows verdes no commit `c6008bb7`, mas nova CI deve ser verificada no novo HEAD. INT-03–06/08/09 pendentes; dependências externas separadas; T10 bloqueada.

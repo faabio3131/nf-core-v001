@@ -1,3 +1,5 @@
+> **SUPERSESSÃO DE CURRENT — 22/11/2026:** este é o checkpoint histórico do dia 21; sua matriz de faltantes e CI antiga não representa o HEAD atual. Consulte `NFCORE_T09_RESEARCH_PACKAGE_CHECKPOINT_20261122.md`, manifesto e registro de pendências, bem como GitHub CURRENT antes de agir. Mantidos 0/27 aceites e nenhum deploy.
+
 # T09 — checkpoint de fechamento interno vs externo (21/11/2026)
 
 ## Autoridades e estados distintos
