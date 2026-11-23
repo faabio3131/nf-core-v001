@@ -63,6 +63,14 @@ def assess_priority_state_context(
             "insufficient_basis",
             "rr_lxvii_2026_specific_state_extension_not_proven",
         )
+    if (
+        program == "AP_FISH_3599"
+        and isinstance(context, dict)
+        and context.get("claimed_3490_extension_for_fish") is True
+    ):
+        return _advisory(
+            "insufficient_basis", "ap_3490_annex_does_not_extend_fish_3599",
+        )
     if program == "AP_FISH_3599" and competence < date(2026, 5, 1):
         return _advisory(
             "insufficient_basis",

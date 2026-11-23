@@ -139,3 +139,13 @@ def test_rule_rejects_invalid_program_registration():
     # Invalid schema must never infer a different state's authority.
     with pytest.raises(FiscalValidationError):
         decode_rule({"schema_version": "other", "program_id": AP})
+
+
+def test_lei_3490_2026_does_not_extend_fish_3599_by_analogy():
+    out = assess_priority_state_context(
+        AP, _ap(claimed_3490_extension_for_fish=True), date(2026, 11, 1),
+    )
+    assert out["reason_codes"] == [
+        "ap_3490_annex_does_not_extend_fish_3599"
+    ]
+    assert out["tax_calculation_authorized"] is False

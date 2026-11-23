@@ -785,7 +785,19 @@
         },
         "internal_curatorial_accepted": false,
         "independent_counter_review_passed": false,
-        "all_relevant_primary_bytes_archived": false
+        "all_relevant_primary_bytes_archived": false,
+        "annex_3490_negative": {
+          "act": "Lei 3.490/2026, DOE AP nº 8659",
+          "source_url": "https://diofe.portal.ap.gov.br/portal/edicoes/download/9949",
+          "source_sha256": "9180d91856bd3d955cc99a1a1e5b9c5f789131253e97a947e2d2f3ffde3f9523",
+          "pages": 132,
+          "art9_annex_benefits_deadline": "2026-12-31",
+          "annex_includes_decree_3599_2001": false,
+          "automatic_fish_extension_from_this_law": false,
+          "not_proof_fish_itself_expired": true,
+          "source_integrity_verified": true,
+          "legal_review_of_other_fish_acts_complete": false
+        }
       },
       "priority_4uf_binary_evidence_20261123": {
         "archive": "/NFCore Commercial Launch/T09 Legal Evidence/T09_PRIORITY_4UF_OFFICIAL_BYTES_20261123.zip",
@@ -1611,7 +1623,18 @@
         "material_replacement": null,
         "internal_curatorial_accepted": false,
         "independent_counter_review_passed": false,
-        "all_relevant_primary_bytes_archived": false
+        "all_relevant_primary_bytes_archived": false,
+        "adi3779_official_digest": {
+          "source_url": "https://portal.stf.jus.br/peticaoInicial/verPeticaoInicial.asp?base=ADI&numProcesso=3779",
+          "sha256": "aede1b1a62bca6bdf677a8c0a54313a61785cd538a1b05ce6a91a96e2c0b5ac5",
+          "original_captured": true,
+          "initial_petition_numbers": "6882–6885",
+          "final_dispositive_numbers": "6912–6915",
+          "judgment_date": "2019-08-23/2019-08-29",
+          "final_publication": "2019-12-04",
+          "majority_modulation_denied": true,
+          "successor_8930_individual_legality_certified": false
+        }
       },
       "priority_4uf_binary_evidence_20261123": {
         "archive": "/NFCore Commercial Launch/T09 Legal Evidence/T09_PRIORITY_4UF_OFFICIAL_BYTES_20261123.zip",
@@ -2388,7 +2411,15 @@
         "material_replacement": null,
         "internal_curatorial_accepted": false,
         "independent_counter_review_passed": false,
-        "all_relevant_primary_bytes_archived": false
+        "all_relevant_primary_bytes_archived": false,
+        "lxvii_2026_unresolved": {
+          "2026_specific_extension_official_text_found": false,
+          "2025_last_known_valid_day": "2025-12-31",
+          "consultation_capture_error": "Redirect outside official publisher allowlist",
+          "compiled_2026_capture_error": "404",
+          "gatt_direct_import_case_requires_separate_analysis": true,
+          "2026_tax_benefit_permitted": false
+        }
       },
       "priority_4uf_binary_evidence_20261123": {
         "archive": "/NFCore Commercial Launch/T09 Legal Evidence/T09_PRIORITY_4UF_OFFICIAL_BYTES_20261123.zip",
