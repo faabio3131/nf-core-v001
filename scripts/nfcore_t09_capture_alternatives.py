@@ -20,7 +20,7 @@ _CAPTURE = run_path(
 capture_one = _CAPTURE["capture_one"]
 official_url = _CAPTURE["official_url"]
 
-EXPECTED_UFS = frozenset({"AC", "AL", "AP", "PA", "PI", "RJ", "RN", "SE"})
+EXPECTED_UFS = frozenset({"AC", "AL", "AM", "AP", "BA", "CE", "DF", "ES", "GO", "MA", "MG", "MS", "MT", "PA", "PB", "PE", "PI", "PR", "RJ", "RN", "RO", "RR", "RS", "SC", "SE", "SP", "TO"})
 SOURCE_SCHEMA = "nfcore.t09.official-alternative-source-trial/v1"
 
 

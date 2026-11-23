@@ -29,7 +29,7 @@ jobs:
           python scripts/nfcore_t09_capture_alternatives.py \
             --catalog docs/NFCORE_T09_STATE_BENEFIT_DRAFT_CANDIDATES_V1.json \
             --alternatives docs/NFCORE_T09_OFFICIAL_ALTERNATIVE_SOURCE_TRIAL_V1.json \
-            --output t09-alternative-evidence --timeout 120 --workers 8
+            --output t09-alternative-evidence --timeout 30 --workers 8
       - name: Preserve original bytes and hash manifest
         if: always()
         uses: actions/upload-artifact@v4
