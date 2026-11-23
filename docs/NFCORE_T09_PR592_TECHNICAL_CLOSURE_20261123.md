@@ -39,8 +39,18 @@ Critérios para sair de Draft e integrar, sem confundir com autorização de dep
 - [x] CI do HEAD técnico-fonte `d4d5f295d3ccbd42c6fc0b76726e5c53f832fb3a` = **SUCCESS**; Ruff, Mypy, Pytest, E2E, runtime, segurança, backup/restore e ready.
 - [x] Matriz e dossiê distinguem certificação interna de curadoria legal pendente.
 - [x] Backlog jurídico específico criado para PR posterior, sem bloquear os gates internos do motor.
-- [ ] **CI do commit documental deste termo** concluída com SUCCESS: verificar o SHA produzido e seus status — não herdar automaticamente a CI do commit pai.
+- [x] **CI do HEAD #592 `c083595b57a6222bbd8fc34f66d3e6fedf3b9364` — [#45273717614](https://github.com/faabio3131/nf-core-v001/actions/runs/45273717614), SUCCESS em 23/11/2026.** Este certificado é do HEAD **anterior à reconciliação multi-parent**; a candidata final precisa passar uma única CI no próprio SHA. Não herdar o certificado da #592.
 - [ ] **Destino `main`**: reconciliar/retarget ou executar integração controlada conforme branches vigentes e verificar CI integrada no destino; PR atual tem base em branch de trabalho.
 - [ ] Aplicar gate humano de merge/release conforme as regras do projeto; **nenhum merge em main foi realizado nem solicitado neste fechamento**.
 
 **Veredito técnico**: `READY_FOR_TECHNICAL_REVIEW` sob verificação do HEAD documental e do fluxo de integração; **não** `PRODUCTION_APPROVED`, **não** `GO_LIVE`, **não** `27_UF_LEGAL_CERTIFIED`.
+
+## 5. Reconciliação HEAD #592 → PR única `main` (23/11/2026)
+
+**FATOS DE GRAFO:** `main@549ab3c` é ancestral do HEAD #592 com 1293 commits de avanço; `production@a5989e5` também é ancestral, com 1329 commits de avanço; `work/nfcore-closeout-20261119@39e64ea` é ancestral, 163 commits atrás. `#498@4cbbe7c3`, `#560@96fdfbed` e `#563@1da651e2` são ancestrais. `#468/#556@5cb2f4e9` divergem por 3 commits; `#591@30b9d1e9` diverge por 2 commits. A candidata tem os três HEADs como pais diretos, preservando todo o DAG, sem reescrever SHA. Consultar [auditoria de perda zero](audit/NFCORE_7PRS_ZERO_LOSS_CANDIDATE_20261123.md).
+
+**PRESERVAÇÃO:** nenhum arquivo que exista nas sete PRs, `main` ou `production` está ausente no snapshot #592. Os 149 caminhos de 59 tarefas constam na candidata. Os controles de A1 e da identidade DPS já estavam no código de #592, mas seus dois testes específicos foram adicionados no fechamento. O diff da candidata versus #592 deve conter apenas esses dois testes e documentação de auditoria/ledger. **Nenhuma regra, permissão, importador, flag, migration ou runtime foi alterado.**
+
+**GATES SEPARADOS:** `ENGINEERING_BUILD_CANDIDATE` só pode ser promovido a `CERTIFIED_INTERNAL_ON_CONSOLIDATED_HEAD` se a CI única do novo SHA terminar SUCCESS e a prova dos 149 caminhos e ancestralidade permanecer válida. `INTEGRATED_MAIN` só depois de merge autorizado + CI pós-merge. `PRODUCTION_APPROVED=NO` até provas operacionais e Go/No-Go. `T10_RELEASED=NO` até integração à `main` e fechamento técnico formal T01–T09.
+
+**SE/AP/PA/RR:** `BLOCK_ICMS_BENEFIT_CALCULATION_AND_FISCAL_IMPORT`, `legal_benefit_certified=false`, 0/4 importáveis, pesquisa documental futura apartada. Não há nova pesquisa ou habilitação neste fechamento.

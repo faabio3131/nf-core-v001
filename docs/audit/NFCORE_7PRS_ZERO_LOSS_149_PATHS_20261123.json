@@ -1,0 +1,467 @@
+{
+  "schema_version": "nfcore.seven-pr-zero-loss-149-paths/v1",
+  "date": "2026-11-23",
+  "baseline_head": "c083595b57a6222bbd8fc34f66d3e6fedf3b9364",
+  "main": "549ab3c005d7183ff6c7940236414412ea004b9d",
+  "production": "a5989e523c871c288bc2388c9508c1738082bb9a",
+  "commit_parents": [
+    "c083595b57a6222bbd8fc34f66d3e6fedf3b9364",
+    "5cb2f4e9b73af3f7d9402e8b87c6cd2ff763f29f",
+    "30b9d1e9d71c606f83a9274bd652af6829db57d3"
+  ],
+  "ci_baseline_run": 45273717614,
+  "references_total": 149,
+  "unique_paths_count": 112,
+  "missing_paths": [],
+  "paths": [
+    {
+      "path": ".github/workflows/ci.yml",
+      "git_blob_sha_at_baseline": "793fa31347994fbc621522c30e00040adc0cbe57"
+    },
+    {
+      "path": ".github/workflows/promote-production.yml",
+      "git_blob_sha_at_baseline": "b0a878d17d87b7c2dd2bf4eb641f0886de3104a8"
+    },
+    {
+      "path": "deploy/contabo/README.md",
+      "git_blob_sha_at_baseline": "e93c49f1b5a92292bd447d36b99e03d06b2c095a"
+    },
+    {
+      "path": "deploy/contabo/a1-vault-ops.py",
+      "git_blob_sha_at_baseline": "cf03398298fc8c5f9e7bb3eb011566316b704e21"
+    },
+    {
+      "path": "deploy/contabo/backup.sh",
+      "git_blob_sha_at_baseline": "2ad4ca395c2275876672ea4898b49072761d3c10"
+    },
+    {
+      "path": "deploy/contabo/compose.prod.yml",
+      "git_blob_sha_at_baseline": "1051209da598df828b009c529a7c1a4b5bc036aa"
+    },
+    {
+      "path": "deploy/contabo/compose.worker.opt-in.yml",
+      "git_blob_sha_at_baseline": "f8b71bddcfbe04bafd168027f9cb7eb90e363670"
+    },
+    {
+      "path": "deploy/contabo/deploy.sh",
+      "git_blob_sha_at_baseline": "a7fd8e2a2054766a42c42aaca05ee7046b89085e"
+    },
+    {
+      "path": "deploy/contabo/restore-test.sh",
+      "git_blob_sha_at_baseline": "2f21c69bfcd4ecf79054951dc9c64fc8e91824dc"
+    },
+    {
+      "path": "deploy/contabo/root-host-audit.sh",
+      "git_blob_sha_at_baseline": "8e66be6ce07ee15e1c2b856dc5f3bec777c04a68"
+    },
+    {
+      "path": "deploy/contabo/test-deploy.sh",
+      "git_blob_sha_at_baseline": "6759f16cf35a8e46b891c02c677d388af1823f7b"
+    },
+    {
+      "path": "docs/NFCORE_CL15_STAGING_CURRENT_AUDIT_2026-10-01.md",
+      "git_blob_sha_at_baseline": "f1911142cb8f747a7893d76f3cb18bbf7c9a0c3e"
+    },
+    {
+      "path": "docs/NFCORE_V1_CAPABILITY_MATRIX_2026-10-05.md",
+      "git_blob_sha_at_baseline": "438105e7b0d4b048296dec78b48b073c3561b288"
+    },
+    {
+      "path": "docs/NFCORE_V1_COMMERCIAL_LAUNCH_CURRENT.md",
+      "git_blob_sha_at_baseline": "19fef2bd919a356712adc635ed0aa03f1badeb97"
+    },
+    {
+      "path": "docs/NFCORE_V1_P02_FRONTEND_BACKEND_MATRIX_2026-10-06.md",
+      "git_blob_sha_at_baseline": "c61a5c6d7bda09829fded8d6faef5e98cf7b91a0"
+    },
+    {
+      "path": "docs/V2_15_NFCE_HOMOLOGATION_MATRIX.md",
+      "git_blob_sha_at_baseline": "a1454f9dcbaee5eb498962838f8c6601c60ba71e"
+    },
+    {
+      "path": "docs/V2_15_NFE_HOMOLOGATION_MATRIX.md",
+      "git_blob_sha_at_baseline": "d46c22565222aefcb5f9758fc366c794b4a7597d"
+    },
+    {
+      "path": "docs/V2_15_NFSE_HOMOLOGATION_MATRIX.md",
+      "git_blob_sha_at_baseline": "3a43e835cd5f1612cb38dc9516fe348d8f67d7ea"
+    },
+    {
+      "path": "docs/checkpoints/NFV1_P00_T01_CURRENT_RECONCILIATION_2026-10-05.md",
+      "git_blob_sha_at_baseline": "b7aae123964544a4af8260bf9fb268a2932ff223"
+    },
+    {
+      "path": "docs/checkpoints/NFV1_P06_T01_SELECTION_2026-10-09.md",
+      "git_blob_sha_at_baseline": "a5fe54b0b38f930a11b18946848c20a733406ffd"
+    },
+    {
+      "path": "docs/coverage/NFCORE_MG_W1_MUNICIPAL_CELLS_2026-11-11.json",
+      "git_blob_sha_at_baseline": "e6ae24f79cb259ff434e484b6cfb47cb6eed7582"
+    },
+    {
+      "path": "docs/coverage/NFCORE_SP22_OPERATION_READINESS_2026-11-12.json",
+      "git_blob_sha_at_baseline": "c4ab4c975bd2d49e72c778648085eedf0fb6772e"
+    },
+    {
+      "path": "docs/operations/NFV1_CONTABO_WINDOWS_EXISTING_ACCESS_RUNBOOK.md",
+      "git_blob_sha_at_baseline": "d26352ae6ff56868111e52946f101e3f20cab1b3"
+    },
+    {
+      "path": "docs/operations/WP_WEB_08_OPERABILITY_RUNBOOKS.md",
+      "git_blob_sha_at_baseline": "59714f385cef1015df64eeaaf244ed81409c0b1f"
+    },
+    {
+      "path": "portal/app.js",
+      "git_blob_sha_at_baseline": "751b5c06a5a86b07420b2c331bf059e327353194"
+    },
+    {
+      "path": "scripts/ci/migration_guard.py",
+      "git_blob_sha_at_baseline": "191acc76f75a29fe418f6feec0568764b41f7160"
+    },
+    {
+      "path": "scripts/ci/production_preflight.sh",
+      "git_blob_sha_at_baseline": "3396f1e2bf5d6c1b5761c378f38c529b37c29c6a"
+    },
+    {
+      "path": "scripts/ci/run_production_promotion.sh",
+      "git_blob_sha_at_baseline": "3b081bacd522394d24ad0613f6addabb87398bef"
+    },
+    {
+      "path": "scripts/ci/staging_smoke.sh",
+      "git_blob_sha_at_baseline": "4384e97fe4e15e2b4aa0ae50c22f5a1740efd2ed"
+    },
+    {
+      "path": "scripts/ci/verify_production_revision.py",
+      "git_blob_sha_at_baseline": "b0a35fc4b530f1bb443531e81fdcb90a206e262d"
+    },
+    {
+      "path": "src/kordena_fiscal/application/cakto_reconciliation.py",
+      "git_blob_sha_at_baseline": "c8a2998d1225e716b88c1de9f76558992082f037"
+    },
+    {
+      "path": "src/kordena_fiscal/application/command_commercial.py",
+      "git_blob_sha_at_baseline": "1a22e6cfe157593fd55d2dcababa7867e6ac9d0a"
+    },
+    {
+      "path": "src/kordena_fiscal/application/commercial_acquisition.py",
+      "git_blob_sha_at_baseline": "588444d8c219327868857f84ddfb9bc3ff60fab0"
+    },
+    {
+      "path": "src/kordena_fiscal/application/commercial_claim.py",
+      "git_blob_sha_at_baseline": "d50234fc3e1b67a0932c8492a6505ff05c83773c"
+    },
+    {
+      "path": "src/kordena_fiscal/application/commercial_fulfillment.py",
+      "git_blob_sha_at_baseline": "c83951f0ff820769fc07be656a452554e6913c7c"
+    },
+    {
+      "path": "src/kordena_fiscal/application/commercial_trial.py",
+      "git_blob_sha_at_baseline": "f92d612a13decadee866652466dbba819e8a29d2"
+    },
+    {
+      "path": "src/kordena_fiscal/application/service.py",
+      "git_blob_sha_at_baseline": "575252c09cef9441c4947bdf6b8b6fbfbdb6d6a5"
+    },
+    {
+      "path": "src/kordena_fiscal/contingency/outbox.py",
+      "git_blob_sha_at_baseline": "dcf395ee2ca2bf2987368f2165e4f8f550ed6686"
+    },
+    {
+      "path": "src/kordena_fiscal/control_plane/capability.py",
+      "git_blob_sha_at_baseline": "abf6286e391633c672f26be8a5555e788047db64"
+    },
+    {
+      "path": "src/kordena_fiscal/control_plane/commercial.py",
+      "git_blob_sha_at_baseline": "f25bb9e01d21a94e3108263c017ecaee936a5eee"
+    },
+    {
+      "path": "src/kordena_fiscal/gateway/nfse_nacional_homologation.py",
+      "git_blob_sha_at_baseline": "88dfec477622f0a3c2282c9d02aabb0e0e038dc1"
+    },
+    {
+      "path": "src/kordena_fiscal/gateway/nfse_receipt_pki.py",
+      "git_blob_sha_at_baseline": "ae493d7fc6a5ef14eee1e7479f4ce9680ae9941f"
+    },
+    {
+      "path": "src/kordena_fiscal/gateway/sp4_municipal_canonical.py",
+      "git_blob_sha_at_baseline": "97e644fdfde87a186b163ced4acc62643d6143eb"
+    },
+    {
+      "path": "src/kordena_fiscal/observability/metrics.py",
+      "git_blob_sha_at_baseline": "9bfc38f1d903427f84b9ce61ecbbe789d35b753a"
+    },
+    {
+      "path": "src/kordena_fiscal/product/billing.py",
+      "git_blob_sha_at_baseline": "24496dfc7b15dbfb9f1f7b2fadfd2e400c5737e3"
+    },
+    {
+      "path": "src/kordena_fiscal/product/commercial_lifecycle.py",
+      "git_blob_sha_at_baseline": "1c6ae4e7c660fc62456b3a3bba1a7acebb4d04db"
+    },
+    {
+      "path": "src/kordena_fiscal/product/commercial_readiness.py",
+      "git_blob_sha_at_baseline": "c07036a6e7d7eedafe9663771ec0d07f835b5dd0"
+    },
+    {
+      "path": "src/kordena_fiscal/runtime/alert_rules.py",
+      "git_blob_sha_at_baseline": "2fd2e05506775d9bbd1e2609fc043ce8d18363a4"
+    },
+    {
+      "path": "src/kordena_fiscal/runtime/api.py",
+      "git_blob_sha_at_baseline": "6fcf7c36329af18625428cf6c0e8aefac2c0f5de"
+    },
+    {
+      "path": "src/kordena_fiscal/runtime/canonical_fiscal_composition.py",
+      "git_blob_sha_at_baseline": "5d795e18c188201eda2a8469636fa2cb79919b78"
+    },
+    {
+      "path": "src/kordena_fiscal/runtime/commercial_observability.py",
+      "git_blob_sha_at_baseline": "e1b8b27665d43331efcda548201c96e97ba0d63f"
+    },
+    {
+      "path": "src/kordena_fiscal/runtime/composition.py",
+      "git_blob_sha_at_baseline": "861296faf030fcd11dfe5e2e02f6bcd236f28692"
+    },
+    {
+      "path": "src/kordena_fiscal/runtime/config.py",
+      "git_blob_sha_at_baseline": "be969584cf9923e3dedc0d43e8645d5c14e14b34"
+    },
+    {
+      "path": "src/kordena_fiscal/runtime/controlled_pilots.py",
+      "git_blob_sha_at_baseline": "2cfb4d89e7c63462b265cfbc9688fc9d3a68e21f"
+    },
+    {
+      "path": "src/kordena_fiscal/runtime/fiscal_runtime.py",
+      "git_blob_sha_at_baseline": "ca711292104c71f5392562aa6c93f4380427b5a7"
+    },
+    {
+      "path": "src/kordena_fiscal/runtime/gsm_staging_identity_policy.py",
+      "git_blob_sha_at_baseline": "8d9bbf143fa7c019c30466e3ab93c2c6cf31f805"
+    },
+    {
+      "path": "src/kordena_fiscal/runtime/homologation_readiness.py",
+      "git_blob_sha_at_baseline": "c6c003d503f512a4d431ee035a94b785fe229bd0"
+    },
+    {
+      "path": "src/kordena_fiscal/runtime/otel_trace_sink.py",
+      "git_blob_sha_at_baseline": "076160827d4f7c746f815313cc4f5949f7e1b376"
+    },
+    {
+      "path": "src/kordena_fiscal/runtime/production_command_ingress.py",
+      "git_blob_sha_at_baseline": "ce550b4f7be0f23255c4454c7142aab33cc1cad2"
+    },
+    {
+      "path": "src/kordena_fiscal/runtime/production_gsm.py",
+      "git_blob_sha_at_baseline": "1d5999634038a2ab8f58c37ceca5df696656b759"
+    },
+    {
+      "path": "src/kordena_fiscal/runtime/provider_event_handlers.py",
+      "git_blob_sha_at_baseline": "b10f960f15eeb1c9f5c9925265d8e2f14dc3bb02"
+    },
+    {
+      "path": "src/kordena_fiscal/runtime/provider_operation_wiring.py",
+      "git_blob_sha_at_baseline": "0bb1ce77dea91cba172ed5aa7c65355e03f9ece9"
+    },
+    {
+      "path": "src/kordena_fiscal/runtime/secret_manager.py",
+      "git_blob_sha_at_baseline": "867a88f6e35edd09e24a7a627684470d6510ae37"
+    },
+    {
+      "path": "src/kordena_fiscal/runtime/worker_composition.py",
+      "git_blob_sha_at_baseline": "4b9440ae3e50af3b1fea1be116bae75e30886884"
+    },
+    {
+      "path": "src/kordena_fiscal/runtime/worker_health.py",
+      "git_blob_sha_at_baseline": "d7b17782792fb591da1def344a8d3b6ff6687539"
+    },
+    {
+      "path": "src/kordena_fiscal/runtime/worker_main.py",
+      "git_blob_sha_at_baseline": "f52f94d7551bc83e912f5f2df29035b5a67217e5"
+    },
+    {
+      "path": "src/kordena_fiscal/security/human_administration.py",
+      "git_blob_sha_at_baseline": "d6c5455dbceceb2d6e201f2151867d4911f4a01a"
+    },
+    {
+      "path": "src/kordena_fiscal/security/s2s.py",
+      "git_blob_sha_at_baseline": "37461b7b0be2d60819bf01b832a38c07407918d6"
+    },
+    {
+      "path": "src/kordena_fiscal/security/secret_binding.py",
+      "git_blob_sha_at_baseline": "0772858bd5e7c2d492fc119b63be0a63aff5a755"
+    },
+    {
+      "path": "src/kordena_fiscal/signing/nfe_xmldsig.py",
+      "git_blob_sha_at_baseline": "a348bcfa1567695956ebf0ac355906f444478f29"
+    },
+    {
+      "path": "src/kordena_fiscal/vault/encrypted_a1.py",
+      "git_blob_sha_at_baseline": "242e5ef9db032c9fff91c6636f44e5cb90a79510"
+    },
+    {
+      "path": "src/kordena_fiscal/vault/google_secret_manager.py",
+      "git_blob_sha_at_baseline": "c70931c00e5cc92d5eec7979c98222d54a14e415"
+    },
+    {
+      "path": "src/kordena_fiscal/web/command_commercial.py",
+      "git_blob_sha_at_baseline": "188eeb50933c41513405f0b73dd428c239510b04"
+    },
+    {
+      "path": "src/kordena_fiscal/web/human_auth.py",
+      "git_blob_sha_at_baseline": "77aa910d857d3fc4ac7e82b49382bb1c69ec0bf0"
+    },
+    {
+      "path": "src/kordena_fiscal/web/portal_api.py",
+      "git_blob_sha_at_baseline": "ea7b7190616f6401f8739d27c9793c452a442b72"
+    },
+    {
+      "path": "src/kordena_fiscal/web/portal_runtime.py",
+      "git_blob_sha_at_baseline": "41a1a4e5fcebb75e6fb173fc11650c1b25fbdafe"
+    },
+    {
+      "path": "src/kordena_fiscal/web/public_commercial_acquisition.py",
+      "git_blob_sha_at_baseline": "2b779ecf5cc7b58a1645978f50c0f7991b66887e"
+    },
+    {
+      "path": "src/kordena_fiscal/web/public_trial.py",
+      "git_blob_sha_at_baseline": "218c508234f67b880999f04205c6f65fc31dbe90"
+    },
+    {
+      "path": "tests/application/test_cl11_cakto_reconciliation.py",
+      "git_blob_sha_at_baseline": "5c23da8b6ee3b55a49a0ae976015d7f2822aef13"
+    },
+    {
+      "path": "tests/application/test_nfv1_p09_t02_fiscal_reconciliation_metrics.py",
+      "git_blob_sha_at_baseline": "a5a2ec5fee1a603271073edde54d48f7fe2efeb8"
+    },
+    {
+      "path": "tests/application/test_p03_t05_canonical_lifecycle.py",
+      "git_blob_sha_at_baseline": "0fe4d59f211c37976e141337bb341136102a7512"
+    },
+    {
+      "path": "tests/application/test_p04_t02_worker_recovery.py",
+      "git_blob_sha_at_baseline": "70e25708657e4f539774907e4a7a289c4e6d5474"
+    },
+    {
+      "path": "tests/e2e/claim.spec.js",
+      "git_blob_sha_at_baseline": "000608f01256e684e187cac5a0ba3e2ce43cf22a"
+    },
+    {
+      "path": "tests/e2e/inutilization_durable.spec.js",
+      "git_blob_sha_at_baseline": "a4ebee9f6860a8653ae7c875108c6126758ae15e"
+    },
+    {
+      "path": "tests/e2e/portal.spec.js",
+      "git_blob_sha_at_baseline": "afc11dedc5d0c1c8b9f4006b77cbc6efbf3bcc85"
+    },
+    {
+      "path": "tests/e2e/trial_durable.spec.js",
+      "git_blob_sha_at_baseline": "0025b910f398aa23a714113ec63f795a503d8b50"
+    },
+    {
+      "path": "tests/gateway/test_mg_nfse_channel_guard.py",
+      "git_blob_sha_at_baseline": "7cd08faaf8c36c237c937a934c04fc5fba9aaa81"
+    },
+    {
+      "path": "tests/gateway/test_sp22_federal_nfse_channel.py",
+      "git_blob_sha_at_baseline": "ddb75f74aeb83476181f656377656f8bb2849a08"
+    },
+    {
+      "path": "tests/product/test_commercial_e2e.py",
+      "git_blob_sha_at_baseline": "c35a60f9ca9e8ce513dadc9643679bd0aece643e"
+    },
+    {
+      "path": "tests/runtime/test_nfv1_p09_t03_worker_canonical_alert_delivery.py",
+      "git_blob_sha_at_baseline": "f7a162f1f050f4f07d96ae413c5ddf2edec5f44a"
+    },
+    {
+      "path": "tests/runtime/test_p01_t03_bridge_authority.py",
+      "git_blob_sha_at_baseline": "539d761a1738479fba37c034dd16419d680dad2c"
+    },
+    {
+      "path": "tests/runtime/test_p01_t03_portal_authority.py",
+      "git_blob_sha_at_baseline": "dec97791b3ca5c5d177d7498dec8008581df86b7"
+    },
+    {
+      "path": "tests/runtime/test_p01_t04_fiscal_api_certification.py",
+      "git_blob_sha_at_baseline": "ff6563b00a0bbe6001cd219beba0a1e5c3550402"
+    },
+    {
+      "path": "tests/runtime/test_p02_t02_fiscal_surfaces.py",
+      "git_blob_sha_at_baseline": "c4d15ba98752a91c610bcd7f5de01573f8f76119"
+    },
+    {
+      "path": "tests/runtime/test_p02_t03_configuration_surfaces.py",
+      "git_blob_sha_at_baseline": "74a26c33508a6ade59e5b1aa6cf0e11a4118e9e9"
+    },
+    {
+      "path": "tests/runtime/test_p02_t04_users_rbac.py",
+      "git_blob_sha_at_baseline": "d7b6d4235136fc83e0aff71d0e6ff3dd71937ac2"
+    },
+    {
+      "path": "tests/runtime/test_p02_t05_billing_plans_usage.py",
+      "git_blob_sha_at_baseline": "e41a149e9a7ad56829ca0e666812fd469e57ceaf"
+    },
+    {
+      "path": "tests/runtime/test_p02_t06_inutilization.py",
+      "git_blob_sha_at_baseline": "56c0ee4b8a2de607c38749b23643b40e4c8bc046"
+    },
+    {
+      "path": "tests/runtime/test_p03_t01_acquisition.py",
+      "git_blob_sha_at_baseline": "6816dcd273670b29cba08844bcc445504943cc3b"
+    },
+    {
+      "path": "tests/runtime/test_p03_t02_trial.py",
+      "git_blob_sha_at_baseline": "f22d1c528ce1881b705e4bc270c69dee43663679"
+    },
+    {
+      "path": "tests/runtime/test_p03_t03_command.py",
+      "git_blob_sha_at_baseline": "35e009eff2deb12abf3389f77f2b31221a35ec5d"
+    },
+    {
+      "path": "tests/runtime/test_p03_t04_readiness.py",
+      "git_blob_sha_at_baseline": "6a5410fc836e105f3ed890b065b442d37e3c6fa0"
+    },
+    {
+      "path": "tests/runtime/test_p04_t01_handler_registry.py",
+      "git_blob_sha_at_baseline": "b0db5b51f698bd8a0e3b96bc3729e49084e74671"
+    },
+    {
+      "path": "tests/runtime/test_p04_t03_worker_observability.py",
+      "git_blob_sha_at_baseline": "1bb16eee47319e72a7519f86aa4209704e58d4ea"
+    },
+    {
+      "path": "tests/runtime/test_p04_t04_worker_container.py",
+      "git_blob_sha_at_baseline": "07650a377a03463d4c080dce1d2b2fb5a964333b"
+    },
+    {
+      "path": "tests/runtime/test_post_web12_controlled_pilot_scope.py",
+      "git_blob_sha_at_baseline": "0c37b455981d94d18c7840ed3861b430967db65d"
+    },
+    {
+      "path": "tests/test_native_sale.py",
+      "git_blob_sha_at_baseline": "669cc85cb953bd469a1785fbadcf8d7f0c6e381d"
+    },
+    {
+      "path": "tests/test_nfv1_p09_t01_otlp_http_real.py",
+      "git_blob_sha_at_baseline": "cebec0a039e1f494a8b8b20de8a32656d95ba004"
+    },
+    {
+      "path": "tests/vault/test_p06_t02_google_secret_manager.py",
+      "git_blob_sha_at_baseline": "637c4f11507fe16ba90630563a24878e4a20f9c7"
+    },
+    {
+      "path": "tests/vault/test_p06_t03_scope_certification.py",
+      "git_blob_sha_at_baseline": "a8f386a7d2b54aee4f78432165b8fdbb596dc4f8"
+    },
+    {
+      "path": "tests/vault/test_p06_t04_rotation_failures.py",
+      "git_blob_sha_at_baseline": "7a3b874f7472a114a2d6c748972660ea76cb55d2"
+    },
+    {
+      "path": "tests/web/test_native_nfse_preparation_http.py",
+      "git_blob_sha_at_baseline": "b72830bbea91addf8bff652eaf65668575cb5ea5"
+    }
+  ],
+  "warning": "presence is not task certification; final candidate CI and main merge are separate gates"
+}

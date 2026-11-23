@@ -1,4 +1,23 @@
 # Central de Economia Fiscal — execução T01–T22
+
+## CURRENT superior — reconciliação de engenharia T01–T09, 23/11/2026
+
+Este bloco **sobrepõe somente os estados históricos de integração/CI** no quadro de T01–T09 abaixo; não altera escopo, amplia programa fiscal nem habilita T10. Trilha canônica candidata: merge multi-parent sem perda de commits, herdeira de `#592@c083595b`, `#468/#556@5cb2f4e9` e `#591@30b9d1e9`. Auditoria: [NFCORE_7PRS_ZERO_LOSS_CANDIDATE_20261123.md](audit/NFCORE_7PRS_ZERO_LOSS_CANDIDATE_20261123.md).
+
+| Etapa | CODE_IMPLEMENTED | CI do baseline `#592@c083595b` | Certificação / restrição | Main final |
+|---|---|---|---|---|
+| T01 | SIM, migração/RLS e store | SUCCESS #45273717614 | Certificação interna histórica registrada | PENDENTE DA PR ÚNICA |
+| T02 | SIM, contrato cognitivo | SUCCESS #45273717614 | Interna histórica; IA não é autoridade | PENDENTE DA PR ÚNICA |
+| T03 | SIM, sentinela | SUCCESS #45273717614 | Interna histórica; mudança normativa não concede direito | PENDENTE DA PR ÚNICA |
+| T04 | SIM, Simples/Fator R | SUCCESS #45273717614 | Interna histórica; não transmite PGDAS | PENDENTE DA PR ÚNICA |
+| T05 | SIM, diagnóstico | SUCCESS #45273717614 | Entrega interna histórica; integração na candidata | PENDENTE DA PR ÚNICA |
+| T06 | SIM, segregação | SUCCESS #45273717614 | Entrega interna histórica; integração na candidata | PENDENTE DA PR ÚNICA |
+| T07 | SIM, apuração consultiva | SUCCESS #45273717614 | Implementação testada; aceite legal/paridade PGDAS real **não inferidos** | PENDENTE DA PR ÚNICA |
+| T08 | SIM, catálogo federal consultivo | SUCCESS #45273717614 | Motor testado; abrangência e revisão legal externa/independente não inferidas | PENDENTE DA PR ÚNICA |
+| T09 | SIM, motor estadual de triagem 27 UFs | SUCCESS #45273717614 | `T09_ENGINEERING_CERTIFIED_INTERNAL` no baseline; 0/27 curadorias aplicáveis, 4 UFs em bloqueio explícito | PENDENTE DA PR ÚNICA |
+
+**Gate único para T10:** `BLOCKED_UNTIL_MAIN_INTEGRATED_AND_T01_T09_ACCEPTED`. A CI do baseline não certifica novo commit; após SUCCESS da candidata, registrar o run na PR. Nenhum trabalho T10–T22 iniciado. Estados dos benefícios SE/AP/PA/RR: bloqueados, não importáveis e fora de cálculo e emissão, sem pesquisa jurídica nesta execução.
+
 Fonte: NFCore_Cronograma_Master_v3_Trilhas_Com_Trava.xlsx, Trilha 1, linhas 6–27.
 A folha T23–T33, a Trilha 2 H01–H06 e a reformulação Enterprise não integram esta rodada. A futura oitava tela é a Central de Economia Fiscal; T21 exige interface funcional antes do redesign. Nenhuma tarefa é ENTREGUE sem DoD, data e evidência.
 
