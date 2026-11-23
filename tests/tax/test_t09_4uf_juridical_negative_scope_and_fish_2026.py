@@ -47,7 +47,11 @@ def test_amapa_2026_fish_law_precludes_fictitious_global_expiry()->None:
     assert ap["decree_2656_article9_revokes_2349"] is True
     assert ap["proves_no_fish_incentive_in_2026"] is False
     assert ap["enable_fiscal"] is False
-    r=assess_priority_state_context("AP_FISH_3599",{"claimed_3490_extension_for_fish":True},date(2026,11,23))
+    r = assess_priority_state_context(
+        "AP_FISH_3599",
+        {"claimed_3490_extension_for_fish": True},
+        date(2026, 11, 23),
+    )
     assert r["tax_calculation_authorized"] is False
 
 def test_rr_2021_expiry_cannot_automatically_certify_no_decree_2026()->None:
