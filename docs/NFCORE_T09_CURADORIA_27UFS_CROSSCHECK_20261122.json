@@ -41,7 +41,14 @@
       ],
       "independent_adversarial_review": false,
       "internal_curation_accepted": false,
-      "autoriza_aplicacao_fiscal": false
+      "autoriza_aplicacao_fiscal": false,
+      "additional_primary_device_research_20261122": {
+        "state": "AC",
+        "act": "Lei AC 1.358/2000, art.1º",
+        "negative_test": "Não usar 95% como crédito presumido universal nem estender concessão individual sem COPIAI e análise da operação.",
+        "review_status": "PARTIAL_OFFICIAL_RESEARCH_ONLY",
+        "approved": false
+      }
     },
     {
       "uf": "AL",
@@ -646,7 +653,14 @@
       ],
       "independent_adversarial_review": false,
       "internal_curation_accepted": false,
-      "autoriza_aplicacao_fiscal": false
+      "autoriza_aplicacao_fiscal": false,
+      "additional_primary_device_research_20261122": {
+        "state": "RJ",
+        "act": "Lei RJ 6.331/2012, art.2º, com Lei 10.983/2025",
+        "negative_test": "Não somar 1% FECP por fora da carga legal sem interpretação aplicável nem estender exceção Petrópolis para 2026 ou inferir adesão sem portaria.",
+        "review_status": "PARTIAL_OFFICIAL_RESEARCH_ONLY",
+        "approved": false
+      }
     },
     {
       "uf": "RN",
@@ -674,7 +688,14 @@
       ],
       "independent_adversarial_review": false,
       "internal_curation_accepted": false,
-      "autoriza_aplicacao_fiscal": false
+      "autoriza_aplicacao_fiscal": false,
+      "additional_primary_device_research_20261122": {
+        "state": "RN",
+        "act": "Decreto RN 34.390/2025, arts.3º e 6º, Anexo 003 art.1º",
+        "negative_test": "Não aplicar 64% ao mês inteiro de março de 2025, a camarão ou lagosta sem dispositivo habilitador nem a operação sem termo de opção.",
+        "review_status": "PARTIAL_OFFICIAL_RESEARCH_ONLY",
+        "approved": false
+      }
     },
     {
       "uf": "RO",
@@ -724,7 +745,14 @@
       ],
       "independent_adversarial_review": false,
       "internal_curation_accepted": false,
-      "autoriza_aplicacao_fiscal": false
+      "autoriza_aplicacao_fiscal": false,
+      "additional_primary_device_research_20261122": {
+        "state": "RR",
+        "act": "Decreto RR 4.335-E/2001, Anexo I art.1º LXVII e Decreto 39.893-E/2026",
+        "negative_test": "Não aplicar insumos agropecuários em 2026 apenas porque a compilação geral contém alterações em 2026; exigir prorrogação estadual do inciso específico.",
+        "review_status": "PARTIAL_OFFICIAL_RESEARCH_ONLY",
+        "approved": false
+      }
     },
     {
       "uf": "RS",
@@ -752,7 +780,14 @@
       ],
       "independent_adversarial_review": false,
       "internal_curation_accepted": false,
-      "autoriza_aplicacao_fiscal": false
+      "autoriza_aplicacao_fiscal": false,
+      "additional_primary_device_research_20261122": {
+        "state": "RS",
+        "act": "RICMS/RS Livro I art.32 CLXXXVI e serviço eletrônico oficial",
+        "negative_test": "Não reconhecer mera solicitação sem deferimento, NCM fora das duas posições, FGTS ausente ou benefício antes do mês subsequente.",
+        "review_status": "PARTIAL_OFFICIAL_RESEARCH_ONLY",
+        "approved": false
+      }
     },
     {
       "uf": "SC",
@@ -839,7 +874,14 @@
       "original_captures_in_50_lot": [],
       "independent_adversarial_review": false,
       "internal_curation_accepted": false,
-      "autoriza_aplicacao_fiscal": false
+      "autoriza_aplicacao_fiscal": false,
+      "additional_primary_device_research_20261122": {
+        "state": "TO",
+        "act": "Lei TO 1.385/2003, art.6º, e alterações",
+        "negative_test": "Não inferir aprovação apenas de protocolo de carta-consulta nem cobrar contrapartida genérica de 0,3% sobre atividades não incentivadas.",
+        "review_status": "PARTIAL_OFFICIAL_RESEARCH_ONLY",
+        "approved": false
+      }
     }
   ],
   "research_update_20261122": {

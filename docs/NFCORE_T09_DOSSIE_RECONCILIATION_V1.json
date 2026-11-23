@@ -347,6 +347,20 @@
         "legal_chain_complete": false,
         "internal_acceptance": false,
         "not_a_fiscal_policy": true
+      },
+      "additional_primary_device_research_20261122": {
+        "state": "AC",
+        "official_url": "https://www.legis.ac.gov.br/detalhar/1775",
+        "act": "Lei AC 1.358/2000, art.1º",
+        "material_finding": "Financiamento direto ao contribuinte até 95% do ICMS próprio, limitado ao investimento fixo; texto legislativo registra utilização até 31/12/2035.",
+        "negative_test": "Não usar 95% como crédito presumido universal nem estender concessão individual sem COPIAI e análise da operação.",
+        "original_publication_bytes_archived_in_git": false,
+        "all_amendments_verified": false,
+        "full_competence_verified": false,
+        "confaz_route_independently_verified": false,
+        "legal_review_completed": false,
+        "internal_acceptance": false,
+        "eligible_for_real_fiscal_application": false
       }
     },
     {
@@ -1378,6 +1392,20 @@
         ],
         "manifest": "docs/NFCORE_T09_RECEBIMENTO_FINAL_50_DOCUMENTOS_20261122.json",
         "not_a_legal_approval": true
+      },
+      "additional_primary_device_research_20261122": {
+        "state": "RJ",
+        "official_url": "https://www3.alerj.rj.gov.br/lotus_notes/default.asp?URL=L0NPTlRMRUkuTlNGL2M4YWEwOTAwMDI1ZmVlZjYwMzI1NjRlYzAwNjBkZmZmLzY4ZDI2ZWU1OThmMWFlNzI4MzI1N2E5OTAwNjNiMzcxP09wZW5Eb2N1bWVudA%3D%3D&id=2",
+        "act": "Lei RJ 6.331/2012, art.2º, com Lei 10.983/2025",
+        "material_finding": "Na carga efetiva de 2,5% mencionada no art.2º considera-se incluída parcela de 1% FECP; exceção para saída interna destinada a consumidor final em Petrópolis era expressamente limitada a 30/11/2025.",
+        "negative_test": "Não somar 1% FECP por fora da carga legal sem interpretação aplicável nem estender exceção Petrópolis para 2026 ou inferir adesão sem portaria.",
+        "original_publication_bytes_archived_in_git": false,
+        "all_amendments_verified": false,
+        "full_competence_verified": false,
+        "confaz_route_independently_verified": false,
+        "legal_review_completed": false,
+        "internal_acceptance": false,
+        "eligible_for_real_fiscal_application": false
       }
     },
     {
@@ -1435,6 +1463,20 @@
         "formal_status": "RESEARCH_ONLY_FAIL_CLOSED",
         "state_authority_and_federal_convention_not_interchangeable": true,
         "full_temporal_chain_verified": false
+      },
+      "additional_primary_device_research_20261122": {
+        "state": "RN",
+        "official_url": "https://webdisk.diariooficial.rn.gov.br/Jornal/12025-03-08.pdf",
+        "act": "Decreto RN 34.390/2025, arts.3º e 6º, Anexo 003 art.1º",
+        "material_finding": "Altera crédito presumido do ICMS incidente na saída interna de peixe de origem do RN para 64%; separa hipóteses de moluscos/crustáceos, requer opção e fixa efeitos da alteração a partir de 20/03/2025.",
+        "negative_test": "Não aplicar 64% ao mês inteiro de março de 2025, a camarão ou lagosta sem dispositivo habilitador nem a operação sem termo de opção.",
+        "original_publication_bytes_archived_in_git": false,
+        "all_amendments_verified": false,
+        "full_competence_verified": false,
+        "confaz_route_independently_verified": false,
+        "legal_review_completed": false,
+        "internal_acceptance": false,
+        "eligible_for_real_fiscal_application": false
       }
     },
     {
@@ -1529,6 +1571,20 @@
         "source_sha256": null,
         "extension_2026_verified": false,
         "approved": false
+      },
+      "additional_primary_device_research_20261122": {
+        "state": "RR",
+        "official_url": "https://www.sefaz.rr.gov.br/component/jdownloads/?Itemid=402&catid=494&id=26478&m=0&task=download.send",
+        "act": "Decreto RR 4.335-E/2001, Anexo I art.1º LXVII e Decreto 39.893-E/2026",
+        "material_finding": "A compilação estadual informa atualizações gerais até 20/02/2026, mas a redação do inciso LXVII encontrada no ato consultivo indica somente isenção de operações internas até 31/12/2025.",
+        "negative_test": "Não aplicar insumos agropecuários em 2026 apenas porque a compilação geral contém alterações em 2026; exigir prorrogação estadual do inciso específico.",
+        "original_publication_bytes_archived_in_git": false,
+        "all_amendments_verified": false,
+        "full_competence_verified": false,
+        "confaz_route_independently_verified": false,
+        "legal_review_completed": false,
+        "internal_acceptance": false,
+        "eligible_for_real_fiscal_application": false
       }
     },
     {
@@ -1558,6 +1614,20 @@
         ],
         "manifest": "docs/NFCORE_T09_RECEBIMENTO_FINAL_50_DOCUMENTOS_20261122.json",
         "not_a_legal_approval": true
+      },
+      "additional_primary_device_research_20261122": {
+        "state": "RS",
+        "official_url": "https://receita.fazenda.rs.gov.br/servicos-a-empresas/servicos?servico=1946",
+        "act": "RICMS/RS Livro I art.32 CLXXXVI e serviço eletrônico oficial",
+        "material_finding": "Opção específica para fabricantes NCM 9406.90.20 e 7308.20.00; pedido analisado pela Receita, deferimento produz efeito no primeiro dia do mês seguinte e opção mínima seis meses; documentos requerem CRF FGTS.",
+        "negative_test": "Não reconhecer mera solicitação sem deferimento, NCM fora das duas posições, FGTS ausente ou benefício antes do mês subsequente.",
+        "original_publication_bytes_archived_in_git": false,
+        "all_amendments_verified": false,
+        "full_competence_verified": false,
+        "confaz_route_independently_verified": false,
+        "legal_review_completed": false,
+        "internal_acceptance": false,
+        "eligible_for_real_fiscal_application": false
       }
     },
     {
@@ -2027,6 +2097,20 @@
         "legal_chain_complete": false,
         "internal_acceptance": false,
         "not_a_fiscal_policy": true
+      },
+      "additional_primary_device_research_20261122": {
+        "state": "TO",
+        "official_url": "https://www.al.to.leg.br/arquivo/65595",
+        "act": "Lei TO 1.385/2003, art.6º, e alterações",
+        "material_finding": "A carta-consulta aprovada pela instância de desenvolvimento econômico e o projeto autorizam enquadramento de investimento; parcela de 0,3% refere-se ao faturamento incentivado nos termos da lei, não ao total irrestrito.",
+        "negative_test": "Não inferir aprovação apenas de protocolo de carta-consulta nem cobrar contrapartida genérica de 0,3% sobre atividades não incentivadas.",
+        "original_publication_bytes_archived_in_git": false,
+        "all_amendments_verified": false,
+        "full_competence_verified": false,
+        "confaz_route_independently_verified": false,
+        "legal_review_completed": false,
+        "internal_acceptance": false,
+        "eligible_for_real_fiscal_application": false
       }
     }
   ],
