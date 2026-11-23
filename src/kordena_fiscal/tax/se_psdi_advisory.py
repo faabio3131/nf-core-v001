@@ -113,6 +113,20 @@ def assess_se_psdi_context(context: object, competence: date) -> dict[str, Any]:
             return _advisory("insufficient_basis", "se_psdi_art3_5b_credit_reversal_unverified")
         return _advisory("potential", "se_psdi_domestic_raw_deferral_expert_review")
 
+    # Decreto 29.935/2014 art. 5 §20: final consumer and ICMS-ST
+    # are not covered by the generic fiscal grant; only expressly
+    # provided public-entity/fertilizer exceptions may be considered.
+    if context.get("icms_st_withheld") is not False:
+        return _advisory("not_applicable", "se_psdi_st_tax_excluded")
+    if context.get("final_consumer_operation") is not False:
+        if context.get("decree_29935_consumer_exception") not in {
+            "public_administration", "fertilizer_to_rural_producer",
+        }:
+            return _advisory("not_applicable", "se_psdi_final_consumer_excluded")
+        if context.get("consumer_exception_reviewed") is not True:
+            return _advisory(
+                "insufficient_basis", "se_psdi_consumer_exception_unreviewed",
+            )
     if context.get("operation") != "incentivized_industrial_own_activity":
         return _advisory("not_applicable", "se_psdi_operation_not_own_activity")
     if context.get("enterprise_type") not in {"new", "post_simples"}:

@@ -28,6 +28,8 @@ def _context(mode="new_industry_8", **changes):
         "grant_valid_from": "2026-01-01",
         "grant_valid_through": "2026-12-31",
         "operation": "incentivized_industrial_own_activity",
+        "icms_st_withheld": False,
+        "final_consumer_operation": False,
         "enterprise_type": "new",
         "new_enterprise_one_year_requirement_reviewed": True,
         "individual_cdi_resolution_percentage": "8",
@@ -243,3 +245,29 @@ def test_decree_868_annex_iii_can_only_be_advisory_after_exact_review():
     r = assess_se_psdi_context(facts, MONTH)
     assert r["status"] == "potential"
     assert r["tax_calculation_authorized"] is False
+
+
+@pytest.mark.parametrize("changes,reason", [
+    ({"icms_st_withheld": True}, "se_psdi_st_tax_excluded"),
+    ({"final_consumer_operation": True}, "se_psdi_final_consumer_excluded"),
+    ({"final_consumer_operation": True,
+      "decree_29935_consumer_exception": "public_administration"},
+     "se_psdi_consumer_exception_unreviewed"),
+])
+def test_decree_29935_final_consumer_and_icms_st_prohibitions(changes, reason):
+    c = _context(**changes)
+    assert assess_se_psdi_context(c, MONTH)["reason_codes"] == [reason]
+
+
+@pytest.mark.parametrize("exception", [
+    "public_administration", "fertilizer_to_rural_producer",
+])
+def test_decree_29935_exception_still_only_advisory(exception):
+    context = _context(
+        final_consumer_operation=True,
+        decree_29935_consumer_exception=exception,
+        consumer_exception_reviewed=True,
+    )
+    result = assess_se_psdi_context(context, MONTH)
+    assert result["status"] == "potential"
+    assert result["tax_calculation_authorized"] is False
