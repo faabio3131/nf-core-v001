@@ -8,7 +8,7 @@ NOT an executable fiscal concession or real benefit calculator.
 """
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, timedelta
 from typing import Any
 
 MODES = frozenset({"new_industry_8", "new_industry_6_2", "domestic_raw_deferral"})
@@ -32,7 +32,7 @@ def assess_se_psdi_context(context: object, competence: date) -> dict[str, Any]:
     if not isinstance(context, dict):
         return _advisory("insufficient_basis", "se_psdi_context_missing")
     mode = context.get("mode")
-    if mode not in MODES:
+    if not isinstance(mode, str) or mode not in MODES:
         return _advisory("not_applicable", "se_psdi_modality_unverified")
     if competence.year < 1991 or competence.year > 2100:
         return _advisory("not_applicable", "se_psdi_competence_out_of_scope")
@@ -53,7 +53,7 @@ def assess_se_psdi_context(context: object, competence: date) -> dict[str, Any]:
         return _advisory("not_applicable", "se_psdi_current_simples_excluded")
     if context.get("cdi_grant_status") != "active":
         status = context.get("cdi_grant_status")
-        if status in {"revoked", "suspended", "expired", "denied"}:
+        if isinstance(status, str) and status in {"revoked", "suspended", "expired", "denied"}:
             return _advisory("insufficient_basis", f"se_psdi_grant_{status}")
         return _advisory("insufficient_basis", "se_psdi_active_grant_missing")
     if context.get("operation_authorized_by_resolution") is not True:
@@ -69,7 +69,7 @@ def assess_se_psdi_context(context: object, competence: date) -> dict[str, Any]:
         return _advisory("insufficient_basis", "se_psdi_grant_dates_missing")
     next_month = date(competence.year + (competence.month == 12),
                       competence.month % 12 + 1, 1)
-    if start > competence or last < next_month.replace(day=1):
+    if start > competence or last < next_month - timedelta(days=1):
         # A monthly status cannot infer an intramonth legal concession.
         return _advisory("not_applicable", "se_psdi_not_effective_full_month")
     if context.get("operational_mode") != "reviewed_2026":
