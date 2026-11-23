@@ -73,14 +73,20 @@
         {
           "doc": "Decreto 2.014/2018 inventory, DOE-PA 33.584, 2018-03-23",
           "url": "https://www.ioepa.com.br/pages/2018/2018.03.23.DOE.pdf",
-          "sha256": null,
-          "kind": "OFFICIAL_DOE_ACCESSIBLE_NOT_ARCHIVED"
+          "sha256": "6dbf8fdb313e6673ce6105b9c6e74714070adaa220e39cbd2187840ef4abf0a0",
+          "kind": "OFFICIAL_DOE_PDF_ARCHIVED_SHA_VERIFIED"
         },
         {
           "doc": "Lei 8.930/2019, arts.2-8, LegisPará",
           "url": "https://www.legispara.pa.gov.br/lei/5169",
           "sha256": null,
           "kind": "OFFICIAL_COMPILED_TEXT_ACCESSIBLE_NOT_ARCHIVED"
+        },
+        {
+          "doc": "ALEPA Decreto 2.490/2006 (historical, 8pp)",
+          "url": "https://bancodeleis.alepa.pa.gov.br/arquivos/lei2490_2006_53513.pdf",
+          "sha256": "313fe0b074d55dedbff71ba148b7e703a96da1611341aee0ae074ceaa5278ad3",
+          "kind": "OFFICIAL_ALEPA_HISTORICAL_PDF_SHA_VERIFIED"
         }
       ],
       "source_limit": "Original 6.913/2006 cannot be imported on its own. Unknown whether an eligible provision was expressly reinstituted, deposited in PNTT and survived subsequent acts.",
@@ -174,6 +180,12 @@
           "url": "https://diofe.portal.ap.gov.br/portal/edicoes/download/9949",
           "sha256": "9180d91856bd3d955cc99a1a1e5b9c5f789131253e97a947e2d2f3ffde3f9523",
           "kind": "OFFICIAL_DOE_PDF_ARCHIVED"
+        },
+        {
+          "doc": "DOE AP 8.631 07/04/2026 Decreto 2.349/2026 (later repealed by 2.656/2026)",
+          "url": "https://diofe.portal.ap.gov.br/portal/edicoes/download/9901",
+          "sha256": "8db2b8901a3774739846444691b8caced5bd549759537e28182fc19782bcf9c5",
+          "kind": "OFFICIAL_DOE_PDF_ARCHIVED_SHA_VERIFIED"
         }
       ],
       "source_limit": "Faltam publicação/alterações completas do Decreto 3.599/2001 e certificado de depósito AP14/2018 Anexo I item11 e comprovação de efeitos em 2026.",
@@ -187,5 +199,23 @@
       "manual_portal": "https://diofe.portal.ap.gov.br/",
       "provisional_external_required": false
     }
-  ]
+  ],
+  "latest_primary_source_capture": {
+    "run_id": 45255832367,
+    "sha_at_capture": "c0693b468b870451bc41a2ea0a02ec3642728e0d",
+    "artifact_id": 14858011494,
+    "outer_artifact_sha256": "d8dabfff0d4351f52a3284d0e4469f2ddb960ef46e4c434a722c21db2a4d4bb0",
+    "attempted": 16,
+    "raw_captured": 7,
+    "unavailable": 9,
+    "formats": {
+      "pdf": 5,
+      "html": 2
+    },
+    "archive_verified": true,
+    "library_path": "/NFCore Commercial Launch/T09 Legal Evidence/NFCORE_T09_4UF_PRIMARY_20261123_HEAD_c0693b46.zip",
+    "legal_approval": false,
+    "independent_legal_approval": false,
+    "tax_import_authorized": false
+  }
 }

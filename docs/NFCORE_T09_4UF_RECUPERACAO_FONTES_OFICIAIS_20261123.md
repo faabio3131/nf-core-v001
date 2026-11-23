@@ -37,3 +37,14 @@ Pesquisa feita em fontes oficiais estaduais, STF e CONFAZ, com confronto entre d
 ## Decisão controlada
 
 `SE`, `AP`, `PA` e `RR` permanecem **BLOCK_ICMS_BENEFIT_CALCULATION_AND_FISCAL_IMPORT**; `0/4` certificações binárias. Fontes oficiais localizadas são etapas de coleta interna; não exigem entrega pessoal pelo Diretor. **Ainda não foram produzidos nesta revisão hashes novos nem prova exaustiva positiva/negativa.** A CI e o artefato de coleta devem ser conferidos por SHA do HEAD após a atualização; revisões jurídicas independentes e eventuais atos individuais não podem ser fabricados.
+
+## Complemento — originais recuperados e verificados por SHA-256
+
+**Workflow [#45255832367](https://github.com/faabio3131/nf-core-v001/actions/runs/45255832367): SUCCESS**, 16 tentativas, 7 capturas, 9 indisponíveis, dos quais **5 PDFs oficiais + 2 páginas HTML contextuais** (uma delas o visualizador HTML DIOFE-AP nº 9915, **não** o PDF). ZIP externo com SHA-256 `d8dabfff0d4351f52a3284d0e4469f2ddb960ef46e4c434a722c21db2a4d4bb0`, verificando os bytes internos dos sete arquivos. Artefato nº 14858011494, cópia durável na Biblioteca NFCore (caminho descrito no manifesto). **Nenhuma aprovação jurídica**.
+
+- **PA, DOE nº 33.584/2018**, 72 páginas, **p. física 6**, Apêndice I itens **13 (Lei 6.913/2006)** e **32 (Decreto 2.490/2006)**, com prazo histórico de 15 anos definido por concessão e prorrogação condicionada; SHA-256 `6dbf8fdb313e6673ce6105b9c6e74714070adaa220e39cbd2187840ef4abf0a0`. Confirma inventário, **não** a subsistência ou constitucionalidade em 2026.
+- **AP, DOE nº 8.631/2026**, 305 páginas, **p. física 20**, Decreto 2.349/2026; SHA-256 `8db2b8901a3774739846444691b8caced5bd549759537e28182fc19782bcf9c5`. O Decreto foi posteriormente revogado pelo Decreto 2.656/2026: documento histórico **não** autoriza cálculo atual.
+- **PA, ALEPA Decreto 2.490/2006**, 8 páginas, SHA-256 `313fe0b074d55dedbff71ba148b7e703a96da1611341aee0ae074ceaa5278ad3`. É regulamento original vinculado à Lei 6.913/2006 objeto da ADI 3779, **não** sucessão certificada.
+- **AP, URL de visualização 9915**, nesta coleta produziu **HTML** (SHA-256 `441d8eb7c491819263d64bbff99685fcb8c6d87e208b0c4590e3d32abfd2eb20`), não um novo DOE em PDF. O dossiê antigo preserva PDF distinto; **não substituir PDF pelo HTML**.
+
+As fontes de **SE e RR permanecem inacessíveis no runner** desta execução; isso não significa inexistência de ato. Permanecem 0/4 certificações jurídicas finais e bloqueio fiscal das quatro candidatas.
