@@ -1,0 +1,58 @@
+{
+  "schema_version": "nfcore.t09.4uf-new-original-bytes-20261123/v1",
+  "head_at_collection": "e131e883b0294691a7c115ddf5dd1ebcd9651218",
+  "github_actions_run": 45260593829,
+  "artifact_id": 14861655000,
+  "archive_sha256": "b34daa62df013d99808a8cd2d56b2b6471a0fce8b805789702d7e212b5d5647a",
+  "library_path": "/NFCore Commercial Launch/T09 Legal Evidence/NFCORE_T09_4UF_SOURCE_CAPTURE_e131e883_20261123.zip",
+  "attempted": 20,
+  "captured": 11,
+  "unavailable": 9,
+  "new_verified_sources": [
+    {
+      "uf": "AP",
+      "source_url": "https://diofe.portal.ap.gov.br/portal/edicoes/download/9915",
+      "format": "pdf",
+      "sha256": "6b0c7f575d89cea05b7d031778a326d2a4d85f51458abf052a63720a576f7bd0",
+      "size_bytes": 6151710,
+      "verification": "Decreto 2656/2026 Art3 I inclui indústria do pescado; Art9 revoga 2349; Art10 efeitos até 2032"
+    },
+    {
+      "uf": "RR",
+      "source_url": "https://www.sefaz.rr.gov.br/downloads/legislacao?dir=02+-+LEGISLACAO+ESTADUAL%2F07+-+DECRETOS%2F2025",
+      "format": "html",
+      "sha256": "d7600ddf41154aca82336f9ba97a2754532628ceaf21f2dd70d0e611460534c7",
+      "size_bytes": 40887,
+      "verification": "Índice oficial; não certifica inexistência de norma fora do índice"
+    },
+    {
+      "uf": "RR",
+      "source_url": "https://www.sefaz.rr.gov.br/downloads/legislacao?dir=02+-+LEGISLACAO+ESTADUAL%2F07+-+DECRETOS%2F2026",
+      "format": "html",
+      "sha256": "378dd46a6ae8beaad7088479f17e49de9cee3a7a82f4fd62a0467e48f86a8e7a",
+      "size_bytes": 35554,
+      "verification": "Índice oficial; não exaustivo para prova negativa"
+    },
+    {
+      "uf": "RR",
+      "source_url": "https://www.sefaz.rr.gov.br/downloads/legislacao?dir=03+-+NORMAS+RECENTES",
+      "format": "html",
+      "sha256": "be32de99d01d3db3c2bcb16c8ed5e62d64c33053a3fdd6b351b47be078f753e3",
+      "size_bytes": 173002,
+      "verification": "Índice oficial; não exaustivo para prova negativa"
+    }
+  ],
+  "earlier_captured_sha256": [
+    "d4c6b485514ac97dc3bbe8418b07ff7324984e58670d056601be0d6c8a3fff44",
+    "8db2b8901a3774739846444691b8caced5bd549759537e28182fc19782bcf9c5",
+    "9180d91856bd3d955cc99a1a1e5b9c5f789131253e97a947e2d2f3ffde3f9523",
+    "441d8eb7c491819263d64bbff99685fcb8c6d87e208b0c4590e3d32abfd2eb20",
+    "313fe0b074d55dedbff71ba148b7e703a96da1611341aee0ae074ceaa5278ad3",
+    "aede1b1a62bca6bdf677a8c0a54313a61785cd538a1b05ce6a91a96e2c0b5ac5",
+    "6dbf8fdb313e6673ce6105b9c6e74714070adaa220e39cbd2187840ef4abf0a0"
+  ],
+  "official_document_capture_not_legal_approval": true,
+  "legal_verdict_positive_count": 0,
+  "full_four_state_negative_certification_count": 0,
+  "fiscal_import_authorized": false
+}

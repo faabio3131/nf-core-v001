@@ -34,3 +34,13 @@
 - RR: DOE/compilação RR que alcance competência novembro de 2026 para o inciso LXVII, decreto expresso posterior se houver e original Consulta 24/2024 com SHA. Índice recente não constitui prova negativa exaustiva.
 
 **Resultado técnico do motor:** 4/4 bloqueios implementados e preservados. **Resultado jurídico amplo:** 0/4 vereditos binários irrestritos demonstrados; **1 veredito negativo estritamente delimitado (PA, lei original isolada)**. O exame de fatos novos afasta conscientemente qualquer declaração de “4/4 jurídico” inventada.
+
+## Atualização probatória do último lote — PDF oficial 2.656 + índices RR (GitHub Actions #45260593829)
+
+A coleta por URL oficial direta `/portal/edicoes/download/9915` foi concluída; não confundir com `/visualizar_pdf/9915/` que produz HTML. **PDF integral DOE-AP nº 8.639, 231 páginas, SHA-256 `6b0c7f575d89cea05b7d031778a326d2a4d85f51458abf052a63720a576f7bd0`**. **Página 75:** Decreto 2.656/2026, art. 3º, inciso I, inclui indústria do pescado. **Página 76:** art. 5º exige concessão formal SEFAZ após Agência Amapá/CONDI; art. 9º revoga 2.349/2026; art. 10 prevê efeitos até 31/12/2032. Isso **contradiz** uma decisão negativa genérica sobre existência do incentivo no setor em 2026, mas **não** concede benefício automático e **não** certifica a modalidade exata do Decreto 3.599/2001.
+
+Três índices oficiais SEFAZ/RR de decretos 2025, decretos 2026 e normas recentes foram arquivados: SHA-256, respectivamente, `d7600ddf41154aca82336f9ba97a2754532628ceaf21f2dd70d0e611460534c7`, `378dd46a6ae8beaad7088479f17e49de9cee3a7a82f4fd62a0467e48f86a8e7a` e `be32de99d01d3db3c2bcb16c8ed5e62d64c33053a3fdd6b351b47be078f753e3`. Esses índices **não demonstram exaustividade do DOE** e não certificam ausência universal de prorrogação.
+
+**[Coleta #45260593829](https://github.com/faabio3131/nf-core-v001/actions/runs/45260593829): SUCCESS**. **20 URLs, 11 arquivos capturados e 9 indisponíveis.** Cópia durável da ZIP na Biblioteca NFCore, SHA-256 do artefato externo `b34daa62df013d99808a8cd2d56b2b6471a0fce8b805789702d7e212b5d5647a`. Manifesto `docs/NFCORE_T09_4UF_NEW_PRIMARY_CAPTURE_20261123.json` contém os hashes adicionais.
+
+**Nota de CI:** [#45260593855](https://github.com/faabio3131/nf-core-v001/actions/runs/45260593855) reprovou no Ruff por quatro problemas puramente sintáticos do teste novo (importação, pytest não usado, duas linhas longas). A correção está incluída no mesmo commit que arquiva estes novos SHA-256, sem afrouxar testes. A CI do HEAD novo deverá ser verificada independentemente.

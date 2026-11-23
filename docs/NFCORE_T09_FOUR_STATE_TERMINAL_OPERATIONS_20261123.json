@@ -53,7 +53,21 @@
         "status": "NO_EXPLICIT_2026_STATE_EXTENSION_CONFIRMED",
         "historical_expiry": "2025-12-31",
         "negative_nonexistence_certified": false,
-        "non_import_authorized": true
+        "non_import_authorized": true,
+        "retrieved_official_indexes_sha256": [
+          {
+            "url": "https://www.sefaz.rr.gov.br/downloads/legislacao?dir=02+-+LEGISLACAO+ESTADUAL%2F07+-+DECRETOS%2F2025",
+            "sha256": "d7600ddf41154aca82336f9ba97a2754532628ceaf21f2dd70d0e611460534c7"
+          },
+          {
+            "url": "https://www.sefaz.rr.gov.br/downloads/legislacao?dir=02+-+LEGISLACAO+ESTADUAL%2F07+-+DECRETOS%2F2026",
+            "sha256": "378dd46a6ae8beaad7088479f17e49de9cee3a7a82f4fd62a0467e48f86a8e7a"
+          },
+          {
+            "url": "https://www.sefaz.rr.gov.br/downloads/legislacao?dir=03+-+NORMAS+RECENTES",
+            "sha256": "be32de99d01d3db3c2bcb16c8ed5e62d64c33053a3fdd6b351b47be078f753e3"
+          }
+        ]
       }
     },
     {
@@ -250,6 +264,12 @@
           "url": "https://diofe.portal.ap.gov.br/portal/edicoes/download/9901",
           "sha256": "8db2b8901a3774739846444691b8caced5bd549759537e28182fc19782bcf9c5",
           "kind": "OFFICIAL_DOE_PDF_ARCHIVED_SHA_VERIFIED"
+        },
+        {
+          "doc": "DOE AP nº8.639 17/04/2026 Decreto 2.656 PDF via download oficial",
+          "url": "https://diofe.portal.ap.gov.br/portal/edicoes/download/9915",
+          "sha256": "6b0c7f575d89cea05b7d031778a326d2a4d85f51458abf052a63720a576f7bd0",
+          "kind": "OFFICIAL_DOE_PDF_SHA_VERIFIED"
         }
       ],
       "source_limit": "Faltam publicação/alterações completas do Decreto 3.599/2001 e certificado de depósito AP14/2018 Anexo I item11 e comprovação de efeitos em 2026.",
@@ -271,7 +291,8 @@
         "decree_2656_article9_revokes_2349": true,
         "old_3599_not_found_in_2349_text": true,
         "proves_no_fish_incentive_in_2026": false,
-        "enable_fiscal": false
+        "enable_fiscal": false,
+        "decree_2656_pdf_verified_sha256": "6b0c7f575d89cea05b7d031778a326d2a4d85f51458abf052a63720a576f7bd0"
       }
     }
   ],
@@ -342,6 +363,43 @@
     "full_four_state_positive_certified": 0,
     "full_four_state_negative_certified": 0,
     "legally_proven_invalidation_of_legacy_pa": true,
+    "fiscal_import_authorized": false
+  },
+  "latest_archived_4uf_official_capture_20261123": {
+    "schema_version": "nfcore.t09.4uf-new-original-bytes-20261123/v1",
+    "head_at_collection": "e131e883b0294691a7c115ddf5dd1ebcd9651218",
+    "github_actions_run": 45260593829,
+    "artifact_id": 14861655000,
+    "archive_sha256": "b34daa62df013d99808a8cd2d56b2b6471a0fce8b805789702d7e212b5d5647a",
+    "library_path": "/NFCore Commercial Launch/T09 Legal Evidence/NFCORE_T09_4UF_SOURCE_CAPTURE_e131e883_20261123.zip",
+    "attempted": 20,
+    "captured": 11,
+    "unavailable": 9,
+    "new_verified_sources": [
+      {
+        "uf": "AP",
+        "sha256": "6b0c7f575d89cea05b7d031778a326d2a4d85f51458abf052a63720a576f7bd0",
+        "url": "https://diofe.portal.ap.gov.br/portal/edicoes/download/9915"
+      },
+      {
+        "uf": "RR",
+        "sha256": "d7600ddf41154aca82336f9ba97a2754532628ceaf21f2dd70d0e611460534c7",
+        "url": "https://www.sefaz.rr.gov.br/downloads/legislacao?dir=02+-+LEGISLACAO+ESTADUAL%2F07+-+DECRETOS%2F2025"
+      },
+      {
+        "uf": "RR",
+        "sha256": "378dd46a6ae8beaad7088479f17e49de9cee3a7a82f4fd62a0467e48f86a8e7a",
+        "url": "https://www.sefaz.rr.gov.br/downloads/legislacao?dir=02+-+LEGISLACAO+ESTADUAL%2F07+-+DECRETOS%2F2026"
+      },
+      {
+        "uf": "RR",
+        "sha256": "be32de99d01d3db3c2bcb16c8ed5e62d64c33053a3fdd6b351b47be078f753e3",
+        "url": "https://www.sefaz.rr.gov.br/downloads/legislacao?dir=03+-+NORMAS+RECENTES"
+      }
+    ],
+    "official_document_capture_not_legal_approval": true,
+    "legal_verdict_positive_count": 0,
+    "full_four_state_negative_certification_count": 0,
     "fiscal_import_authorized": false
   }
 }

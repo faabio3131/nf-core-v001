@@ -2,10 +2,8 @@
 from __future__ import annotations
 
 import json
-from pathlib import Path
 from datetime import date
-
-import pytest
+from pathlib import Path
 
 from kordena_fiscal.tax.t09_priority_state_guards import assess_priority_state_context
 
@@ -24,7 +22,11 @@ def test_current_prior_ci_success_and_all_four_fiscally_denied()->None:
     assert p["full_four_state_positive_certified"]==0
     assert p["full_four_state_negative_certified"]==0
     assert {x["uf"] for x in j["cases"]}=={"SE","AP","PA","RR"}
-    assert all(x["production_enabled"] is False and x["legal_certification_awarded"] is False for x in j["cases"])
+    assert all(
+        x["production_enabled"] is False
+        and x["legal_certification_awarded"] is False
+        for x in j["cases"]
+    )
 
 def test_pa_standalone_legacy_negative_is_not_successor_negative()->None:
     j=_read("NFCORE_T09_FOUR_STATE_TERMINAL_OPERATIONS_20261123.json")
@@ -70,5 +72,24 @@ def test_new_official_capture_direct_url_preserves_fail_closed()->None:
     assert w["authorized_for_import"] is False
     assert w["legal_validity_certified"] is False
     assert w["independent_approval_received"] is False
-    assert any(x["source_url"]=="https://diofe.portal.ap.gov.br/portal/edicoes/download/9915" and x["eligible_for_tax_calculation"] is False for x in w["entries"])
+    assert any(
+        x["source_url"] == "https://diofe.portal.ap.gov.br/portal/edicoes/download/9915"
+        and x["eligible_for_tax_calculation"] is False
+        for x in w["entries"]
+    )
     assert len({x["source_url"] for x in w["entries"]})==len(w["entries"])
+
+
+def test_current_2026_amapa_pdf_archived_and_rr_indexes_are_not_negative_proofs() -> None:
+    data = _read("NFCORE_T09_4UF_NEW_PRIMARY_CAPTURE_20261123.json")
+    assert (data["attempted"], data["captured"], data["unavailable"]) == (20, 11, 9)
+    assert data["fiscal_import_authorized"] is False
+    assert data["full_four_state_negative_certification_count"] == 0
+    assert data["official_document_capture_not_legal_approval"] is True
+    sources = data["new_verified_sources"]
+    assert len(sources) == 4
+    assert all(len(x["sha256"]) == 64 for x in sources)
+    ap = next(x for x in sources if x["uf"] == "AP")
+    assert ap["format"] == "pdf"
+    assert ap["sha256"] == "6b0c7f575d89cea05b7d031778a326d2a4d85f51458abf052a63720a576f7bd0"
+    assert all(x["format"] == "html" for x in sources if x["uf"] == "RR")
