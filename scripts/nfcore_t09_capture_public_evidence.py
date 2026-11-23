@@ -34,8 +34,16 @@ ERROR_MARKERS = (
 )
 
 
+# Two exact first-party endpoints verified through the state's legal system
+# and STF. Never trust arbitrary *.com.br or arbitrary *.jus.br subdomains.
+_EXPLICIT_GOVERNMENT_PUBLISHERS = frozenset({
+    "www.ioepa.com.br",  # Pará State Official Gazette, linked by Sisleis/PA
+    "portal.stf.jus.br",  # Federal Supreme Court official ADI records
+})
+
+
 def official_url(url: str) -> bool:
-    """Reject credential-bearing, non-HTTPS and non-government endpoints."""
+    """Permit official HTTPS jurisdictions and exact verified publisher hosts."""
     try:
         u = urllib.parse.urlsplit(url)
     except ValueError:
@@ -47,7 +55,11 @@ def official_url(url: str) -> bool:
         return False
     return bool(
         u.scheme == "https" and host
-        and (host == "gov.br" or host.endswith((".gov.br", ".leg.br")))
+        and (
+            host == "gov.br"
+            or host.endswith((".gov.br", ".leg.br"))
+            or host in _EXPLICIT_GOVERNMENT_PUBLISHERS
+        )
         and not u.username and not u.password and port in (None, 443)
         and not u.fragment
     )
