@@ -75,10 +75,10 @@ def test_critical_state_specific_noncertification_is_preserved():
     matrix = _json("NFCORE_T09_27UF_EVIDENCE_MATRIX_20261123.json")
     ufs = {x["uf"]: x for x in matrix["rows"]}
     assert ufs["AP"]["status_real"] == (
-        "BLOCKED_MATERIAL_CANDIDATE_RESELECTION"
+        "MATERIAL_SELECTED_LEGAL_CHAIN_PENDING"
     )
-    assert ufs["PA"]["status_real"] == "BLOCKED_CONSTITUTIONAL_ROUTE"
-    assert ufs["RR"]["status_real"] == "BLOCKED_VALIDITY_EXTENSION"
+    assert ufs["PA"]["status_real"] == "ORIGINAL_INVALIDATED_SUCCESSOR_UNPROVEN"
+    assert ufs["RR"]["status_real"] == "EXPIRED_2025_SPECIFIC_2026_EXTENSION_UNPROVEN"
     assert ufs["SE"]["status_real"] == "BLOCKED_MODAL_CONFAZ_AND_DOE_AMENDMENT"
     assert ufs["SE"]["modal_specific_confaz"]["act"] == "SE/CONFAZ nº 126/2024"
     assert ufs["SE"]["modal_specific_confaz"][

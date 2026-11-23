@@ -77,6 +77,8 @@ def _evaluate(uf, month, *, start="2026-01-01", omitted=(),
         "required_evidence": list(required),
         "individual_concession_required": False,
     }
+    if uf == "RR":
+        policy["program_id"] = "RR_LXVII_AGRO"
     evidence_keys = (
         *_COMMON_EVIDENCE,
         *_ROUTE_EVIDENCE["state_statute"],

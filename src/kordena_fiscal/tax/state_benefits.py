@@ -172,6 +172,8 @@ def decode_rule(payload: object) -> dict[str, Any]:
         )
     if program_id in PROGRAM_UF and PROGRAM_UF[program_id] != uf:
         raise FiscalValidationError("invalid cross-jurisdiction program")
+    if program_id == "SE_PSDI" and uf != "SE":
+        raise FiscalValidationError("invalid state-specific program identity")
     se_psdi_identifier = (
         uf == "SE"
         and any(tag in str(payload.get("state_normative_reference", "")).upper()
