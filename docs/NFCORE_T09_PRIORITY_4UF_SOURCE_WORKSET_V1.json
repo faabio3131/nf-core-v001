@@ -1,7 +1,7 @@
 {
   "schema_version": "nfcore.t09.official-alternative-source-trial/v1",
   "as_of": "2026-11-23",
-  "scope": "Pesquisa interna de fontes originais alternativas SE AP PA RR, sem autorização para cálculo ou importação",
+  "scope": "Fontes primárias SE AP PA RR, inclusive DOEs setoriais e diretórios. Pesquisa interna não certifica direito sem cadeia.",
   "authorized_for_import": false,
   "legal_validity_certified": false,
   "independent_approval_received": false,
@@ -147,6 +147,42 @@
       "source_url": "https://bancodeleis.alepa.pa.gov.br/arquivos/lei2490_2006_53513.pdf",
       "verification_note": "ALEPA arquivo oficial do Decreto 2490/2006 texto histórico, não certificado de reinstituição",
       "source_kind": "primary_or_official_legal_evidence_unreviewed",
+      "review_status": "unreviewed",
+      "eligible_for_tax_calculation": false
+    },
+    {
+      "uf": "AP",
+      "candidate_id": "AP-REGIME-ESPECIAL-RICMS-ART415-V1",
+      "source_url": "https://diofe.portal.ap.gov.br/portal/edicoes/download/9915",
+      "source_kind": "primary_or_official_legal_evidence_unreviewed",
+      "verification_note": "DOE 8.639 PDF oficial para Decreto 2.656/2026 art3 pesca e art9 revoga Decreto 2.349/2026; verificar hash efetivo.",
+      "review_status": "unreviewed",
+      "eligible_for_tax_calculation": false
+    },
+    {
+      "uf": "RR",
+      "candidate_id": "RR-RICMS2001-AN1-ART1-LXVII-V1",
+      "source_url": "https://www.sefaz.rr.gov.br/downloads/legislacao?dir=03+-+NORMAS+RECENTES",
+      "source_kind": "primary_or_official_legal_evidence_unreviewed",
+      "verification_note": "Indice normas recentes SEFAZ-RR; contexto não é certidão de inexistência de prorrogação 2026.",
+      "review_status": "unreviewed",
+      "eligible_for_tax_calculation": false
+    },
+    {
+      "uf": "RR",
+      "candidate_id": "RR-RICMS2001-AN1-ART1-LXVII-V1",
+      "source_url": "https://www.sefaz.rr.gov.br/downloads/legislacao?dir=02+-+LEGISLACAO+ESTADUAL%2F07+-+DECRETOS%2F2026",
+      "source_kind": "primary_or_official_legal_evidence_unreviewed",
+      "verification_note": "Index de decretos RR 2026, não é coleção exaustiva de toda legislação estadual.",
+      "review_status": "unreviewed",
+      "eligible_for_tax_calculation": false
+    },
+    {
+      "uf": "RR",
+      "candidate_id": "RR-RICMS2001-AN1-ART1-LXVII-V1",
+      "source_url": "https://www.sefaz.rr.gov.br/downloads/legislacao?dir=02+-+LEGISLACAO+ESTADUAL%2F07+-+DECRETOS%2F2025",
+      "source_kind": "primary_or_official_legal_evidence_unreviewed",
+      "verification_note": "Index de decretos RR 2025, procurar extensão art1 LXVII Anexo I, não presume ausência.",
       "review_status": "unreviewed",
       "eligible_for_tax_calculation": false
     }
