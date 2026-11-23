@@ -105,6 +105,13 @@
         "negative": "Sem projeto CODAM, sem PPB/reconhecimento de processo elementar ou sem requisitos econômicos documentados não inferir percentual de crédito estímulo.",
         "unreviewed_raw_publisher_bytes": true,
         "competence_consistency_not_certified": true
+      },
+      "primary_legal_checkpoint_v2_20261122": {
+        "official_url": "https://sistemas.sefaz.am.gov.br/get/Normas.do?metodo=viewDoc&uuidDoc=777a28b3-f4a1-4914-946e-ce0bce0ca68b",
+        "act": "Decreto AM 53.496 de 06/02/2026, art.4º",
+        "negative_case": "Não tomar a data da publicação em fevereiro como início dos efeitos nem generalizar crédito estímulo sem projeto aprovado e requisitos específicos.",
+        "independent_review": false,
+        "accepted": false
       }
     },
     {
@@ -127,7 +134,14 @@
       ],
       "independent_adversarial_review": false,
       "internal_curation_accepted": false,
-      "autoriza_aplicacao_fiscal": false
+      "autoriza_aplicacao_fiscal": false,
+      "primary_legal_checkpoint_v2_20261122": {
+        "official_url": "https://diofe.portal.ap.gov.br/portal/edicoes/visualizar_pdf/9915/",
+        "act": "Lei 3.395/2025 e Decreto 2.656/2026, arts.1–10; Lei 3.490/2026",
+        "negative_case": "Rejeitar benefício por art.415 sozinho, operação de setor não incluído, concessão sem ato SEFAZ/CONDI ou extensão para todo abril/2026 sem norma de transição.",
+        "independent_review": false,
+        "accepted": false
+      }
     },
     {
       "uf": "BA",
@@ -167,7 +181,14 @@
       ],
       "independent_adversarial_review": false,
       "internal_curation_accepted": false,
-      "autoriza_aplicacao_fiscal": false
+      "autoriza_aplicacao_fiscal": false,
+      "primary_legal_checkpoint_v2_20261122": {
+        "official_url": "https://mbusca.sefaz.ba.gov.br/DITRI/normas_complementares/resolucoes/legcorr_desenvolve_resol_2026_067.pdf",
+        "act": "Resolução DESENVOLVE 067/2026, de 25/08/2026, DOE 03/09/2026",
+        "negative_case": "Não replicar CNPJ/setor/prazo de concessão de terceiro ou estender diferimento a qualquer aquisição, serviço ou mercadoria.",
+        "independent_review": false,
+        "accepted": false
+      }
     },
     {
       "uf": "CE",
@@ -243,6 +264,13 @@
         "negative": "Apuração em 2026 somente com cópia de IN 2/2024 originária, alterações 6/2025 e 9/2025 e ato TARE aplicável; não aproveitar código 1317 de outra modalidade.",
         "unreviewed_raw_publisher_bytes": true,
         "competence_consistency_not_certified": true
+      },
+      "primary_legal_checkpoint_v2_20261122": {
+        "official_url": "https://www.sinj.df.gov.br/sinj/Diario/c4e20456-4b0c-3655-8b23-b16905ea30e1/visualizar-pdf%209.pdf",
+        "act": "Edital de Notificação 01/2026 Emprega-DF, DODF 75 de 27/04/2026",
+        "negative_case": "Não inferir que simples notificação ou cadastro substitui TARE, nem presunção de regularidade sem certidões/documentos do contribuinte.",
+        "independent_review": false,
+        "accepted": false
       }
     },
     {
@@ -271,7 +299,14 @@
       ],
       "independent_adversarial_review": false,
       "internal_curation_accepted": false,
-      "autoriza_aplicacao_fiscal": false
+      "autoriza_aplicacao_fiscal": false,
+      "primary_legal_checkpoint_v2_20261122": {
+        "official_url": "https://sedes.es.gov.br/Media/aa/NORMA%20DE%20PROCEDIMENTO%20COMPETE%20ES%20-%20PORTARIA%20N%20176-R%202025-1.pdf",
+        "act": "Portaria SEDES 176-R, de 15/12/2025, DOE 16/12/2025",
+        "negative_case": "Não reconhecer o COMPETE-ES só por CNAE ou notícia de arrecadação, sem setor, portaria de adesão e documentos previstos na Norma 002.",
+        "independent_review": false,
+        "accepted": false
+      }
     },
     {
       "uf": "GO",

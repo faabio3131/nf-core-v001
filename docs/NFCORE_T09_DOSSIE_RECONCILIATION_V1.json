@@ -429,13 +429,31 @@
         ],
         "article_or_change": "Art.113 do Decreto 47.727/2023 alterado para processo produtivo elementar sem PPB; o Decreto 53.496/2026 disciplina patamares vinculados a empregados CAGED e ativos. Exige classificação material do produto/projeto; benefícios de decretos concessivos individuais não são universais.",
         "critical_negative": "Sem projeto CODAM, sem PPB/reconhecimento de processo elementar ou sem requisitos econômicos documentados não inferir percentual de crédito estímulo.",
-        "competence_change_start_reference": "2026-02-06",
-        "validity_warning": "Start of reference is contextual; reconcile publication, effects and transitions for exact competence before calculating",
+        "competence_change_start_reference": "2026-01-01",
+        "validity_warning": "Efeitos retroativos expressos a 01/01/2026; não inferir requisito/resultado individual do CODAM.",
         "gate": "AM_PROCESSO_ELEMENTAR_PPB_CODAM",
         "government_source_byte_snapshot_sha256": null,
         "authoritative_doe_chain_archived": false,
         "independent_counter_review": false,
-        "internal_acceptance": false
+        "internal_acceptance": false,
+        "official_publication_date": "2026-02-06",
+        "retroactive_effects_confirmed_in_art4": true
+      },
+      "primary_legal_checkpoint_v2_20261122": {
+        "act": "Decreto AM 53.496 de 06/02/2026, art.4º",
+        "official_url": "https://sistemas.sefaz.am.gov.br/get/Normas.do?metodo=viewDoc&uuidDoc=777a28b3-f4a1-4914-946e-ce0bce0ca68b",
+        "source_category": "STATE_GOVERNMENT_PRIMARY_TEXT",
+        "published_on": "2026-02-06",
+        "stated_effects_from": "2026-01-01",
+        "provisions_reviewed": "Decreto 53.496/2026 art.4º; Decreto 47.727/2023 arts.67, 113 e 113-A",
+        "researched_finding": "Regulamento alterado em 06/02/2026, com efeitos retroativos expressos a 01/01/2026. Condições econômicas do processo produtivo elementar e do projeto CODAM permanecem individualizadas.",
+        "negative_case": "Não tomar a data da publicação em fevereiro como início dos efeitos nem generalizar crédito estímulo sem projeto aprovado e requisitos específicos.",
+        "official_pdf_original_sha256": null,
+        "complete_amendment_chain_verified": false,
+        "individual_taxpayer_facts_verified": false,
+        "independent_review_passed": false,
+        "research_internal_accepted": false,
+        "actual_tax_benefit_authorized": false
       }
     },
     {
@@ -520,6 +538,35 @@
         "formal_status": "RESEARCH_ONLY_FAIL_CLOSED",
         "state_authority_and_federal_convention_not_interchangeable": true,
         "full_temporal_chain_verified": false
+      },
+      "primary_legal_checkpoint_v2_20261122": {
+        "act": "Lei 3.395/2025 e Decreto 2.656/2026, arts.1–10; Lei 3.490/2026",
+        "official_url": "https://diofe.portal.ap.gov.br/portal/edicoes/visualizar_pdf/9915/",
+        "source_category": "STATE_GOVERNMENT_PRIMARY_TEXT",
+        "published_on": "2026-04-17",
+        "stated_effects_from": "2026-04-17",
+        "provisions_reviewed": "Decreto 2.656/2026 arts.2–5,9–10, DOE/AP 8.639 pp.75–76; Lei 3.395/2025; Lei 3.490/2026",
+        "researched_finding": "Decreto 2.656/2026 REVOUGOU o 2.349/2026 e estabelece procedimentos de ato concessório SEFAZ após Agência Amapá e deliberação CONDI. Art.415 RICMS é base procedimental, não benefício material isolado. Lei 3.490/2026 prorroga benefícios apenas do Anexo Único, por convênio.",
+        "negative_case": "Rejeitar benefício por art.415 sozinho, operação de setor não incluído, concessão sem ato SEFAZ/CONDI ou extensão para todo abril/2026 sem norma de transição.",
+        "official_pdf_original_sha256": null,
+        "complete_amendment_chain_verified": false,
+        "individual_taxpayer_facts_verified": false,
+        "independent_review_passed": false,
+        "research_internal_accepted": false,
+        "actual_tax_benefit_authorized": false
+      },
+      "material_candidate_reselection_required": true,
+      "material_normative_alternative": {
+        "law": "Lei 3.395/2025",
+        "regulation": "Decreto 2.656/2026",
+        "amendment": "Lei 3.490/2026",
+        "official_urls": [
+          "https://diofe.portal.ap.gov.br/portal/edicoes/visualizar_pdf/9915/",
+          "https://diofe.portal.ap.gov.br/portal/edicoes/download/9794",
+          "https://diofe.portal.ap.gov.br/portal/edicoes/download/9949"
+        ],
+        "reason": "Art.415 RICMS is procedural and does not define a standalone material benefit",
+        "status": "RESEARCHED_NOT_CANONICALLY_RESELECTED"
       }
     },
     {
@@ -551,6 +598,22 @@
         ],
         "manifest": "docs/NFCORE_T09_RECEBIMENTO_FINAL_50_DOCUMENTOS_20261122.json",
         "not_a_legal_approval": true
+      },
+      "primary_legal_checkpoint_v2_20261122": {
+        "act": "Resolução DESENVOLVE 067/2026, de 25/08/2026, DOE 03/09/2026",
+        "official_url": "https://mbusca.sefaz.ba.gov.br/DITRI/normas_complementares/resolucoes/legcorr_desenvolve_resol_2026_067.pdf",
+        "source_category": "STATE_GOVERNMENT_PRIMARY_TEXT",
+        "published_on": "2026-09-03",
+        "stated_effects_from": "2026-07-01",
+        "provisions_reviewed": "Resolução 067/2026 arts.1º–2º, alteração Resolução 001/2024; Lei 7.980/2001, Decreto 8.205/2002",
+        "researched_finding": "A Resolução 067/2026 altera habilitação individual de projeto de ampliação/modernização no DESENVOLVE, com efeito declarado desde 01/07/2026 e diferimento para bem do ativo fixo por prazo de 48 meses nos seus termos; não é benefício para todos os contribuintes.",
+        "negative_case": "Não replicar CNPJ/setor/prazo de concessão de terceiro ou estender diferimento a qualquer aquisição, serviço ou mercadoria.",
+        "official_pdf_original_sha256": null,
+        "complete_amendment_chain_verified": false,
+        "individual_taxpayer_facts_verified": false,
+        "independent_review_passed": false,
+        "research_internal_accepted": false,
+        "actual_tax_benefit_authorized": false
       }
     },
     {
@@ -630,6 +693,22 @@
         "authoritative_doe_chain_archived": false,
         "independent_counter_review": false,
         "internal_acceptance": false
+      },
+      "primary_legal_checkpoint_v2_20261122": {
+        "act": "Edital de Notificação 01/2026 Emprega-DF, DODF 75 de 27/04/2026",
+        "official_url": "https://www.sinj.df.gov.br/sinj/Diario/c4e20456-4b0c-3655-8b23-b16905ea30e1/visualizar-pdf%209.pdf",
+        "source_category": "STATE_GOVERNMENT_PRIMARY_TEXT",
+        "published_on": "2026-04-27",
+        "stated_effects_from": "2026-05-01",
+        "provisions_reviewed": "DODF 75/2026 p.79 Edital 01/2026; Decreto 39.803/2019",
+        "researched_finding": "Notificação de participantes EMPREGA-DF para prestação de documentos anuais do exercício 2025 em 30 dias contados de 01/05/2026, incluindo CNPJ, CF/DF, certidões de regularidade e FGTS; ato não concede incentivo a novo CNPJ.",
+        "negative_case": "Não inferir que simples notificação ou cadastro substitui TARE, nem presunção de regularidade sem certidões/documentos do contribuinte.",
+        "official_pdf_original_sha256": null,
+        "complete_amendment_chain_verified": false,
+        "individual_taxpayer_facts_verified": false,
+        "independent_review_passed": false,
+        "research_internal_accepted": false,
+        "actual_tax_benefit_authorized": false
       }
     },
     {
@@ -659,6 +738,22 @@
         ],
         "manifest": "docs/NFCORE_T09_RECEBIMENTO_FINAL_50_DOCUMENTOS_20261122.json",
         "not_a_legal_approval": true
+      },
+      "primary_legal_checkpoint_v2_20261122": {
+        "act": "Portaria SEDES 176-R, de 15/12/2025, DOE 16/12/2025",
+        "official_url": "https://sedes.es.gov.br/Media/aa/NORMA%20DE%20PROCEDIMENTO%20COMPETE%20ES%20-%20PORTARIA%20N%20176-R%202025-1.pdf",
+        "source_category": "STATE_GOVERNMENT_PRIMARY_TEXT",
+        "published_on": "2025-12-16",
+        "stated_effects_from": "2025-12-16",
+        "provisions_reviewed": "Portaria 176-R/2025 arts.1º, 2º, 5º e 6º; Lei 10.568/2016 art.29 §2º",
+        "researched_finding": "Portaria institui Norma de Procedimento 002 v4.0 para adesão, atualização, exclusão e contrapartidas COMPETE-ES, exige trâmite E-Docs e anexos documentais por setor; confirma que adesão setorial não decorre apenas de código DUA.",
+        "negative_case": "Não reconhecer o COMPETE-ES só por CNAE ou notícia de arrecadação, sem setor, portaria de adesão e documentos previstos na Norma 002.",
+        "official_pdf_original_sha256": null,
+        "complete_amendment_chain_verified": false,
+        "individual_taxpayer_facts_verified": false,
+        "independent_review_passed": false,
+        "research_internal_accepted": false,
+        "actual_tax_benefit_authorized": false
       }
     },
     {
