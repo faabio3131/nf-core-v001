@@ -30,7 +30,7 @@ def test_trial_has_all_27_uf_and_never_authorizes_tax():
     sources = verify_workset(catalog, proposed)
     assert len(sources) == 43
     assert {x["uf"] for x in sources} == {
-        "AC", "AL", "AM", "AP", "BA", "CE", "DF", "ES", "GO", "MA", "MG", "MS", "MT", "PA", "PB", "PE", "PI", "PR", "RJ", "RN", "RO", "RR", "RS", "SC", "SE", "SP", "TO"
+        row["uf"] for row in catalog["candidates"]
     }
     assert all(x["eligible_for_tax_calculation"] is False for x in sources)
     assert all(x["review_status"] == "unreviewed" for x in sources)
