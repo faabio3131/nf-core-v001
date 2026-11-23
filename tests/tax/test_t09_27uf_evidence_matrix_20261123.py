@@ -74,7 +74,7 @@ def test_critical_state_specific_noncertification_is_preserved():
     )
     assert ufs["PA"]["status_real"] == "BLOCKED_CONSTITUTIONAL_ROUTE"
     assert ufs["RR"]["status_real"] == "BLOCKED_VALIDITY_EXTENSION"
-    assert ufs["SE"]["status_real"] == "BLOCKED_MODAL_CONFAZ_AND_DECREE"
+    assert ufs["SE"]["status_real"] == "BLOCKED_MODAL_CONFAZ_AND_DOE_AMENDMENT"
     assert ufs["SE"]["modal_specific_confaz"]["act"] == "SE/CONFAZ nº 126/2024"
     assert ufs["SE"]["modal_specific_confaz"][
         "specific_modality_proven"

@@ -72,6 +72,10 @@ def _context(mode="new_industry_8", **changes):
         "regulatory_credit_reversal_checked": True,
         "input_credit_accumulation": True,
         "export_exception_applicable": True,
+        "other_fiscal_incentive_on_same_operation": False,
+        "period_credit_excess_reversal_reviewed": True,
+        "reversal_proportional_to_material_used": True,
+        "deferred_tax_included_in_output_icms": True,
     }),
 ])
 def test_only_hypothetical_potential_not_tax_approval(mode, changes):
@@ -283,6 +287,8 @@ def test_2024_retroactive_820_and_november_868_not_full_month(day):
         mode="domestic_raw_deferral",
         operation="domestic_raw_material_input",
     )
+    facts["grant_valid_from"] = "2024-01-01"
+    facts["grant_valid_through"] = "2024-12-31"
     result = assess_se_psdi_context(facts, day)
     assert result["status"] == "insufficient_basis"
     assert result["reason_codes"] == [
