@@ -361,6 +361,29 @@
         "legal_review_completed": false,
         "internal_acceptance": false,
         "eligible_for_real_fiscal_application": false
+      },
+      "latest_43_source_capture_receipt": {
+        "manifest_path": "docs/NFCORE_T09_43_OFFICIAL_SOURCE_BYTES_20261122.json",
+        "original_zip_stored_in_private_library": "/NFCore Commercial Launch/T09 Legal Evidence/T09_43_Fontes_Oficiais_20261122.zip",
+        "capture_date": "2026-11-22",
+        "bytes_verified_count": 0,
+        "unavailable_count": 2,
+        "source_integrity_verification": "ALL_RECORDED_SUCCESSFUL_FILES_RECOMPUTED_SHA256",
+        "legal_publication_authenticated": false,
+        "normative_chain_consolidated": false,
+        "independent_review_received": false,
+        "official_bytes": [],
+        "failed_sources": [
+          {
+            "url": "https://www.legis.ac.gov.br/detalhar/1775",
+            "error": "<urlopen error [SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: unable to get local issuer certificate (_ssl.c:1018)>"
+          },
+          {
+            "url": "https://www.legis.ac.gov.br/detalhar/4541",
+            "error": "<urlopen error [SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: unable to get local issuer certificate (_ssl.c:1018)>"
+          }
+        ],
+        "authorized_for_import": false
       }
     },
     {
@@ -403,6 +426,31 @@
         ],
         "manifest": "docs/NFCORE_T09_RECEBIMENTO_FINAL_50_DOCUMENTOS_20261122.json",
         "not_a_legal_approval": true
+      },
+      "latest_43_source_capture_receipt": {
+        "manifest_path": "docs/NFCORE_T09_43_OFFICIAL_SOURCE_BYTES_20261122.json",
+        "original_zip_stored_in_private_library": "/NFCore Commercial Launch/T09 Legal Evidence/T09_43_Fontes_Oficiais_20261122.zip",
+        "capture_date": "2026-11-22",
+        "bytes_verified_count": 2,
+        "unavailable_count": 0,
+        "source_integrity_verification": "ALL_RECORDED_SUCCESSFUL_FILES_RECOMPUTED_SHA256",
+        "legal_publication_authenticated": false,
+        "normative_chain_consolidated": false,
+        "independent_review_received": false,
+        "official_bytes": [
+          {
+            "url": "https://diario.imprensaoficial.al.gov.br/apinova/api/editions/downloadPdf/51935",
+            "sha256": "bb280c36f2fa79e91747c0d9754b5492ad5388f0a8b716273630660b7a8e24e5",
+            "bytes": 4211052
+          },
+          {
+            "url": "https://diario.imprensaoficial.al.gov.br/apinova/api/editions/viewPdf/51478",
+            "sha256": "29f78d40a95ba8cea1c45de54a5e38d2d2a8c5a6e5ee9f86e13f1104cb14aec6",
+            "bytes": 1368534
+          }
+        ],
+        "failed_sources": [],
+        "authorized_for_import": false
       }
     },
     {
@@ -468,6 +516,31 @@
         "independent_review_passed": false,
         "research_internal_accepted": false,
         "actual_tax_benefit_authorized": false
+      },
+      "latest_43_source_capture_receipt": {
+        "manifest_path": "docs/NFCORE_T09_43_OFFICIAL_SOURCE_BYTES_20261122.json",
+        "original_zip_stored_in_private_library": "/NFCore Commercial Launch/T09 Legal Evidence/T09_43_Fontes_Oficiais_20261122.zip",
+        "capture_date": "2026-11-22",
+        "bytes_verified_count": 2,
+        "unavailable_count": 0,
+        "source_integrity_verification": "ALL_RECORDED_SUCCESSFUL_FILES_RECOMPUTED_SHA256",
+        "legal_publication_authenticated": false,
+        "normative_chain_consolidated": false,
+        "independent_review_received": false,
+        "official_bytes": [
+          {
+            "url": "https://sistemas.sefaz.am.gov.br/get/Normas.do?metodo=viewDoc&uuidDoc=777a28b3-f4a1-4914-946e-ce0bce0ca68b",
+            "sha256": "a2693a0632005d5354e1b2eab56c0f64a817b680dae940f1230f497c7c7c75bf",
+            "bytes": 122535
+          },
+          {
+            "url": "https://sistemas.sefaz.am.gov.br/get/Normas.do?metodo=viewDoc&uuidDoc=c4fa0162-c63e-47ed-8fc6-fe61309ddc15",
+            "sha256": "40453b85d1c4fcedcc8b05e3a2feac102d5d990fb607cdb26ef2807df8dc5e69",
+            "bytes": 935304
+          }
+        ],
+        "failed_sources": [],
+        "authorized_for_import": false
       }
     },
     {
@@ -581,6 +654,41 @@
         ],
         "reason": "Art.415 RICMS is procedural and does not define a standalone material benefit",
         "status": "RESEARCHED_NOT_CANONICALLY_RESELECTED"
+      },
+      "latest_43_source_capture_receipt": {
+        "manifest_path": "docs/NFCORE_T09_43_OFFICIAL_SOURCE_BYTES_20261122.json",
+        "original_zip_stored_in_private_library": "/NFCore Commercial Launch/T09 Legal Evidence/T09_43_Fontes_Oficiais_20261122.zip",
+        "capture_date": "2026-11-22",
+        "bytes_verified_count": 4,
+        "unavailable_count": 0,
+        "source_integrity_verification": "ALL_RECORDED_SUCCESSFUL_FILES_RECOMPUTED_SHA256",
+        "legal_publication_authenticated": false,
+        "normative_chain_consolidated": false,
+        "independent_review_received": false,
+        "official_bytes": [
+          {
+            "url": "https://diofe.portal.ap.gov.br/apifront/portal/edicoes/imprimir_materia/36326/1785",
+            "sha256": "e4cc24bc51f388d191cbe785c7c7d063d17870fc622155c3aebc562b32ea43f0",
+            "bytes": 309637
+          },
+          {
+            "url": "https://diofe.portal.ap.gov.br/portal/edicoes/download/9794",
+            "sha256": "d4c6b485514ac97dc3bbe8418b07ff7324984e58670d056601be0d6c8a3fff44",
+            "bytes": 5135408
+          },
+          {
+            "url": "https://diofe.portal.ap.gov.br/portal/edicoes/download/9910",
+            "sha256": "cd1deed1322e61441d8d6a910e6e29af9a73c27aba20b9e28fbc0589878506ad",
+            "bytes": 5118386
+          },
+          {
+            "url": "https://diofe.portal.ap.gov.br/portal/edicoes/visualizar_pdf/9915/",
+            "sha256": "6b0c7f575d89cea05b7d031778a326d2a4d85f51458abf052a63720a576f7bd0",
+            "bytes": 6151710
+          }
+        ],
+        "failed_sources": [],
+        "authorized_for_import": false
       }
     },
     {
@@ -628,6 +736,31 @@
         "independent_review_passed": false,
         "research_internal_accepted": false,
         "actual_tax_benefit_authorized": false
+      },
+      "latest_43_source_capture_receipt": {
+        "manifest_path": "docs/NFCORE_T09_43_OFFICIAL_SOURCE_BYTES_20261122.json",
+        "original_zip_stored_in_private_library": "/NFCore Commercial Launch/T09 Legal Evidence/T09_43_Fontes_Oficiais_20261122.zip",
+        "capture_date": "2026-11-22",
+        "bytes_verified_count": 2,
+        "unavailable_count": 0,
+        "source_integrity_verification": "ALL_RECORDED_SUCCESSFUL_FILES_RECOMPUTED_SHA256",
+        "legal_publication_authenticated": false,
+        "normative_chain_consolidated": false,
+        "independent_review_received": false,
+        "official_bytes": [
+          {
+            "url": "https://mbusca.sefaz.ba.gov.br/DITRI/normas_complementares/decretos/decreto_2002_8205_desenvolve.pdf",
+            "sha256": "26f89577b5c2aeff8cdcfacb752262abe103acbed0522eb6815a26a13761f23c",
+            "bytes": 337792
+          },
+          {
+            "url": "https://mbusca.sefaz.ba.gov.br/DITRI/normas_complementares/resolucoes/legcorr_desenvolve_resol_2026_067.pdf",
+            "sha256": "093fb03cccfee41f4fda33566599599b042b9301ecf5c247cc17f2178b6c4cba",
+            "bytes": 281226
+          }
+        ],
+        "failed_sources": [],
+        "authorized_for_import": false
       }
     },
     {
@@ -658,6 +791,26 @@
         ],
         "manifest": "docs/NFCORE_T09_RECEBIMENTO_FINAL_50_DOCUMENTOS_20261122.json",
         "not_a_legal_approval": true
+      },
+      "latest_43_source_capture_receipt": {
+        "manifest_path": "docs/NFCORE_T09_43_OFFICIAL_SOURCE_BYTES_20261122.json",
+        "original_zip_stored_in_private_library": "/NFCore Commercial Launch/T09 Legal Evidence/T09_43_Fontes_Oficiais_20261122.zip",
+        "capture_date": "2026-11-22",
+        "bytes_verified_count": 1,
+        "unavailable_count": 0,
+        "source_integrity_verification": "ALL_RECORDED_SUCCESSFUL_FILES_RECOMPUTED_SHA256",
+        "legal_publication_authenticated": false,
+        "normative_chain_consolidated": false,
+        "independent_review_received": false,
+        "official_bytes": [
+          {
+            "url": "https://www.adece.ce.gov.br/wp-content/uploads/sites/98/2026/10/34.508-16-10-2026.pdf",
+            "sha256": "576951cb24e07d775c0ea85b1d4d9b142188363e98ec09e57984cdc4026125f5",
+            "bytes": 190501
+          }
+        ],
+        "failed_sources": [],
+        "authorized_for_import": false
       }
     },
     {
@@ -723,6 +876,31 @@
         "independent_review_passed": false,
         "research_internal_accepted": false,
         "actual_tax_benefit_authorized": false
+      },
+      "latest_43_source_capture_receipt": {
+        "manifest_path": "docs/NFCORE_T09_43_OFFICIAL_SOURCE_BYTES_20261122.json",
+        "original_zip_stored_in_private_library": "/NFCore Commercial Launch/T09 Legal Evidence/T09_43_Fontes_Oficiais_20261122.zip",
+        "capture_date": "2026-11-22",
+        "bytes_verified_count": 2,
+        "unavailable_count": 0,
+        "source_integrity_verification": "ALL_RECORDED_SUCCESSFUL_FILES_RECOMPUTED_SHA256",
+        "legal_publication_authenticated": false,
+        "normative_chain_consolidated": false,
+        "independent_review_received": false,
+        "official_bytes": [
+          {
+            "url": "https://www.sinj.df.gov.br/sinj/Diario/c4e20456-4b0c-3655-8b23-b16905ea30e1/visualizar-pdf%209.pdf",
+            "sha256": "6a6f5a66896249bc5a4d7af8c2280afb354fefb9c9d2d04300acc87e344fa694",
+            "bytes": 2741092
+          },
+          {
+            "url": "https://www.sinj.df.gov.br/sinj/Norma/2257f831264c4e06850f0248431427df/Decreto_39803_02_05_2019.html",
+            "sha256": "beaf3b4a3477ec12b4c49a68618bbca3880a9d44b88958d3b74d8e0ead9c31c5",
+            "bytes": 166213
+          }
+        ],
+        "failed_sources": [],
+        "authorized_for_import": false
       }
     },
     {
@@ -768,6 +946,31 @@
         "independent_review_passed": false,
         "research_internal_accepted": false,
         "actual_tax_benefit_authorized": false
+      },
+      "latest_43_source_capture_receipt": {
+        "manifest_path": "docs/NFCORE_T09_43_OFFICIAL_SOURCE_BYTES_20261122.json",
+        "original_zip_stored_in_private_library": "/NFCore Commercial Launch/T09 Legal Evidence/T09_43_Fontes_Oficiais_20261122.zip",
+        "capture_date": "2026-11-22",
+        "bytes_verified_count": 2,
+        "unavailable_count": 0,
+        "source_integrity_verification": "ALL_RECORDED_SUCCESSFUL_FILES_RECOMPUTED_SHA256",
+        "legal_publication_authenticated": false,
+        "normative_chain_consolidated": false,
+        "independent_review_received": false,
+        "official_bytes": [
+          {
+            "url": "https://sedes.es.gov.br/Media/aa/LEI%20N%C2%B0%2010.568%20-%20ATUALIZADA.pdf",
+            "sha256": "186e0b0b51643d360d9769d3ff337bf77fbafe41fa47b150d644dd0c330f3295",
+            "bytes": 440711
+          },
+          {
+            "url": "https://sedes.es.gov.br/Media/aa/NORMA%20DE%20PROCEDIMENTO%20COMPETE%20ES%20-%20PORTARIA%20N%20176-R%202025-1.pdf",
+            "sha256": "bbaf58b232ee3afb19baf150f2d44fb37bfc6bb2967eee7d6ea10d1f4ed10770",
+            "bytes": 173154
+          }
+        ],
+        "failed_sources": [],
+        "authorized_for_import": false
       }
     },
     {
@@ -816,6 +1019,26 @@
         "authoritative_doe_chain_archived": false,
         "independent_counter_review": false,
         "internal_acceptance": false
+      },
+      "latest_43_source_capture_receipt": {
+        "manifest_path": "docs/NFCORE_T09_43_OFFICIAL_SOURCE_BYTES_20261122.json",
+        "original_zip_stored_in_private_library": "/NFCore Commercial Launch/T09 Legal Evidence/T09_43_Fontes_Oficiais_20261122.zip",
+        "capture_date": "2026-11-22",
+        "bytes_verified_count": 1,
+        "unavailable_count": 0,
+        "source_integrity_verification": "ALL_RECORDED_SUCCESSFUL_FILES_RECOMPUTED_SHA256",
+        "legal_publication_authenticated": false,
+        "normative_chain_consolidated": false,
+        "independent_review_received": false,
+        "official_bytes": [
+          {
+            "url": "https://appasp.economia.go.gov.br/legislacao/arquivos/Leis/L_20787.htm",
+            "sha256": "af59d8562d17ea8173de741c934c7760af1d211ea91cc3c6dbfc0139631f8b53",
+            "bytes": 129021
+          }
+        ],
+        "failed_sources": [],
+        "authorized_for_import": false
       }
     },
     {
@@ -845,6 +1068,26 @@
         ],
         "manifest": "docs/NFCORE_T09_RECEBIMENTO_FINAL_50_DOCUMENTOS_20261122.json",
         "not_a_legal_approval": true
+      },
+      "latest_43_source_capture_receipt": {
+        "manifest_path": "docs/NFCORE_T09_43_OFFICIAL_SOURCE_BYTES_20261122.json",
+        "original_zip_stored_in_private_library": "/NFCore Commercial Launch/T09 Legal Evidence/T09_43_Fontes_Oficiais_20261122.zip",
+        "capture_date": "2026-11-22",
+        "bytes_verified_count": 1,
+        "unavailable_count": 0,
+        "source_integrity_verification": "ALL_RECORDED_SUCCESSFUL_FILES_RECOMPUTED_SHA256",
+        "legal_publication_authenticated": false,
+        "normative_chain_consolidated": false,
+        "independent_review_received": false,
+        "official_bytes": [
+          {
+            "url": "https://seinc.ma.gov.br/uploads/seinc/docs/Lei_N%C2%BA_1069026_Setembro_de_2017.pdf",
+            "sha256": "fe3087e846439c7a96f3ce9217b9f40e6cc06a522133925ca03bc50ac8cc1b63",
+            "bytes": 3115234
+          }
+        ],
+        "failed_sources": [],
+        "authorized_for_import": false
       }
     },
     {
@@ -922,6 +1165,26 @@
         "formal_status": "RESEARCH_ONLY_FAIL_CLOSED",
         "state_authority_and_federal_convention_not_interchangeable": true,
         "full_temporal_chain_verified": false
+      },
+      "latest_43_source_capture_receipt": {
+        "manifest_path": "docs/NFCORE_T09_43_OFFICIAL_SOURCE_BYTES_20261122.json",
+        "original_zip_stored_in_private_library": "/NFCore Commercial Launch/T09 Legal Evidence/T09_43_Fontes_Oficiais_20261122.zip",
+        "capture_date": "2026-11-22",
+        "bytes_verified_count": 1,
+        "unavailable_count": 0,
+        "source_integrity_verification": "ALL_RECORDED_SUCCESSFUL_FILES_RECOMPUTED_SHA256",
+        "legal_publication_authenticated": false,
+        "normative_chain_consolidated": false,
+        "independent_review_received": false,
+        "official_bytes": [
+          {
+            "url": "https://www.fazenda.mg.gov.br/empresas/legislacao_tributaria/ricms_2023_seco/anexoii2023_3.html",
+            "sha256": "18cdaeba6bd364599deee0bec3e73afb054d43da14957b08bbf754d469b0cafe",
+            "bytes": 252254
+          }
+        ],
+        "failed_sources": [],
+        "authorized_for_import": false
       }
     },
     {
@@ -972,6 +1235,26 @@
         "legal_chain_complete": false,
         "internal_acceptance": false,
         "not_a_fiscal_policy": true
+      },
+      "latest_43_source_capture_receipt": {
+        "manifest_path": "docs/NFCORE_T09_43_OFFICIAL_SOURCE_BYTES_20261122.json",
+        "original_zip_stored_in_private_library": "/NFCore Commercial Launch/T09 Legal Evidence/T09_43_Fontes_Oficiais_20261122.zip",
+        "capture_date": "2026-11-22",
+        "bytes_verified_count": 1,
+        "unavailable_count": 0,
+        "source_integrity_verification": "ALL_RECORDED_SUCCESSFUL_FILES_RECOMPUTED_SHA256",
+        "legal_publication_authenticated": false,
+        "normative_chain_consolidated": false,
+        "independent_review_received": false,
+        "official_bytes": [
+          {
+            "url": "https://aacpdappls.net.ms.gov.br/appls/legislacao/secoge/govato.nsf/66ecc3cfb53d53ff04256b140049444b/3a836f159c1b161904256c000058e57a",
+            "sha256": "dc1295b391a260d945b3ea227a0e2b23041921efc84ac2b7d4fe1190b3e707fd",
+            "bytes": 369809
+          }
+        ],
+        "failed_sources": [],
+        "authorized_for_import": false
       }
     },
     {
@@ -1035,6 +1318,26 @@
         "authoritative_doe_chain_archived": false,
         "independent_counter_review": false,
         "internal_acceptance": false
+      },
+      "latest_43_source_capture_receipt": {
+        "manifest_path": "docs/NFCORE_T09_43_OFFICIAL_SOURCE_BYTES_20261122.json",
+        "original_zip_stored_in_private_library": "/NFCore Commercial Launch/T09 Legal Evidence/T09_43_Fontes_Oficiais_20261122.zip",
+        "capture_date": "2026-11-22",
+        "bytes_verified_count": 1,
+        "unavailable_count": 0,
+        "source_integrity_verification": "ALL_RECORDED_SUCCESSFUL_FILES_RECOMPUTED_SHA256",
+        "legal_publication_authenticated": false,
+        "normative_chain_consolidated": false,
+        "independent_review_received": false,
+        "official_bytes": [
+          {
+            "url": "https://www.sefaz.mt.gov.br/legislacao/Subindice.aspx?ID=259",
+            "sha256": "564ffd2d074260ba725b6e21c79c2c6a7ad321a82ba638c958cb41b48e96b4fa",
+            "bytes": 3572376
+          }
+        ],
+        "failed_sources": [],
+        "authorized_for_import": false
       }
     },
     {
@@ -1089,6 +1392,31 @@
         "2019_result_source": "https://portal.stf.jus.br/peticaoInicial/verPeticaoInicial.asp?base=ADI&numProcesso=3779",
         "2019_judgment_scope": "STF majority declared laws 6.912-6.915/2006 unconstitutional; Justice Barroso dissented solely on modulation, not on constitutional merits",
         "still_unverified": "Any later motion affecting effects, superseding valid law, specific LC160 re-institution, CONFAZ deposit and taxpayer-level grant"
+      },
+      "latest_43_source_capture_receipt": {
+        "manifest_path": "docs/NFCORE_T09_43_OFFICIAL_SOURCE_BYTES_20261122.json",
+        "original_zip_stored_in_private_library": "/NFCore Commercial Launch/T09 Legal Evidence/T09_43_Fontes_Oficiais_20261122.zip",
+        "capture_date": "2026-11-22",
+        "bytes_verified_count": 1,
+        "unavailable_count": 1,
+        "source_integrity_verification": "ALL_RECORDED_SUCCESSFUL_FILES_RECOMPUTED_SHA256",
+        "legal_publication_authenticated": false,
+        "normative_chain_consolidated": false,
+        "independent_review_received": false,
+        "official_bytes": [
+          {
+            "url": "https://bancodeleis.alepa.pa.gov.br/arquivos/lei2490_2006_53513.pdf",
+            "sha256": "313fe0b074d55dedbff71ba148b7e703a96da1611341aee0ae074ceaa5278ad3",
+            "bytes": 177543
+          }
+        ],
+        "failed_sources": [
+          {
+            "url": "https://www.sistemas.pa.gov.br/sisleis/legislacao/1390",
+            "error": "<urlopen error timed out>"
+          }
+        ],
+        "authorized_for_import": false
       }
     },
     {
@@ -1173,6 +1501,26 @@
         "authoritative_doe_chain_archived": false,
         "independent_counter_review": false,
         "internal_acceptance": false
+      },
+      "latest_43_source_capture_receipt": {
+        "manifest_path": "docs/NFCORE_T09_43_OFFICIAL_SOURCE_BYTES_20261122.json",
+        "original_zip_stored_in_private_library": "/NFCore Commercial Launch/T09 Legal Evidence/T09_43_Fontes_Oficiais_20261122.zip",
+        "capture_date": "2026-11-22",
+        "bytes_verified_count": 1,
+        "unavailable_count": 0,
+        "source_integrity_verification": "ALL_RECORDED_SUCCESSFUL_FILES_RECOMPUTED_SHA256",
+        "legal_publication_authenticated": false,
+        "normative_chain_consolidated": false,
+        "independent_review_received": false,
+        "official_bytes": [
+          {
+            "url": "https://portal.sefaz.pb.gov.br/legislacao/35-decretos-estaduais/59-icms/267-icms-1994/5391-decreto-n-17-252-de-27-de-dezembro-de-1994",
+            "sha256": "b852c2b5e6c0344fa2f224bb5c3ea479ec080c2b03fac0ba80f40f8c48ec7afe",
+            "bytes": 393566
+          }
+        ],
+        "failed_sources": [],
+        "authorized_for_import": false
       }
     },
     {
@@ -1235,6 +1583,26 @@
         "authoritative_doe_chain_archived": false,
         "independent_counter_review": false,
         "internal_acceptance": false
+      },
+      "latest_43_source_capture_receipt": {
+        "manifest_path": "docs/NFCORE_T09_43_OFFICIAL_SOURCE_BYTES_20261122.json",
+        "original_zip_stored_in_private_library": "/NFCore Commercial Launch/T09 Legal Evidence/T09_43_Fontes_Oficiais_20261122.zip",
+        "capture_date": "2026-11-22",
+        "bytes_verified_count": 1,
+        "unavailable_count": 0,
+        "source_integrity_verification": "ALL_RECORDED_SUCCESSFUL_FILES_RECOMPUTED_SHA256",
+        "legal_publication_authenticated": false,
+        "normative_chain_consolidated": false,
+        "independent_review_received": false,
+        "official_bytes": [
+          {
+            "url": "https://www.sefaz.pe.gov.br/Legislacao/Tributaria/Documents/legislacao/decretos/1999/Dec21959_99.htm",
+            "sha256": "5b18d3dfb3b78f41dc8a0f75d3384c2c07204c40d90e54b1add12a8d1a6580f1",
+            "bytes": 283949
+          }
+        ],
+        "failed_sources": [],
+        "authorized_for_import": false
       }
     },
     {
@@ -1283,6 +1651,36 @@
         "status": "PARTIAL_PRIMARY_TEXT_REVIEW_ONLY",
         "full_chain_verified": false,
         "legal_applicability_approved": false
+      },
+      "latest_43_source_capture_receipt": {
+        "manifest_path": "docs/NFCORE_T09_43_OFFICIAL_SOURCE_BYTES_20261122.json",
+        "original_zip_stored_in_private_library": "/NFCore Commercial Launch/T09 Legal Evidence/T09_43_Fontes_Oficiais_20261122.zip",
+        "capture_date": "2026-11-22",
+        "bytes_verified_count": 2,
+        "unavailable_count": 1,
+        "source_integrity_verification": "ALL_RECORDED_SUCCESSFUL_FILES_RECOMPUTED_SHA256",
+        "legal_publication_authenticated": false,
+        "normative_chain_consolidated": false,
+        "independent_review_received": false,
+        "official_bytes": [
+          {
+            "url": "https://dfe-portal.svrs.rs.gov.br/Difal/Beneficios",
+            "sha256": "a80978916b08614187579cd6e14860c163043eea99d2ffada84b37d3ed220f1c",
+            "bytes": 2233304
+          },
+          {
+            "url": "https://www.pi.gov.br/isencao-de-impostos-em-produtos-da-cesta-basica-ja-esta-em-vigor-no-piaui/",
+            "sha256": "02324e34e78c10d9ef08f0b704b33ea08bb2b8c206cf6ddbbca55ee8e58fa5f6",
+            "bytes": 565898
+          }
+        ],
+        "failed_sources": [
+          {
+            "url": "https://www.diario.pi.gov.br/doe/files/diarios/anexo/e1d8ee2a-5cf4-437f-93fa-393753b8574a/DOEPI_57_2025.pdf",
+            "error": "<urlopen error timed out>"
+          }
+        ],
+        "authorized_for_import": false
       }
     },
     {
@@ -1350,6 +1748,26 @@
         "authoritative_doe_chain_archived": false,
         "independent_counter_review": false,
         "internal_acceptance": false
+      },
+      "latest_43_source_capture_receipt": {
+        "manifest_path": "docs/NFCORE_T09_43_OFFICIAL_SOURCE_BYTES_20261122.json",
+        "original_zip_stored_in_private_library": "/NFCore Commercial Launch/T09 Legal Evidence/T09_43_Fontes_Oficiais_20261122.zip",
+        "capture_date": "2026-11-22",
+        "bytes_verified_count": 1,
+        "unavailable_count": 0,
+        "source_integrity_verification": "ALL_RECORDED_SUCCESSFUL_FILES_RECOMPUTED_SHA256",
+        "legal_publication_authenticated": false,
+        "normative_chain_consolidated": false,
+        "independent_review_received": false,
+        "official_bytes": [
+          {
+            "url": "https://www.legislacao.pr.gov.br/legislacao/pesquisarAto.do?action=exibir&codAto=341992",
+            "sha256": "6078162a76a1c97816b187885e1734d4ef502470d609a88b31ebb4bbdbdc5a1a",
+            "bytes": 118354
+          }
+        ],
+        "failed_sources": [],
+        "authorized_for_import": false
       }
     },
     {
@@ -1406,6 +1824,31 @@
         "legal_review_completed": false,
         "internal_acceptance": false,
         "eligible_for_real_fiscal_application": false
+      },
+      "latest_43_source_capture_receipt": {
+        "manifest_path": "docs/NFCORE_T09_43_OFFICIAL_SOURCE_BYTES_20261122.json",
+        "original_zip_stored_in_private_library": "/NFCore Commercial Launch/T09 Legal Evidence/T09_43_Fontes_Oficiais_20261122.zip",
+        "capture_date": "2026-11-22",
+        "bytes_verified_count": 1,
+        "unavailable_count": 1,
+        "source_integrity_verification": "ALL_RECORDED_SUCCESSFUL_FILES_RECOMPUTED_SHA256",
+        "legal_publication_authenticated": false,
+        "normative_chain_consolidated": false,
+        "independent_review_received": false,
+        "official_bytes": [
+          {
+            "url": "https://www3.alerj.rj.gov.br/lotus_notes/default.asp?URL=L0NPTlRMRUkuTlNGL2M4YWEwOTAwMDI1ZmVlZjYwMzI1NjRlYzAwNjBkZmZmLzY4ZDI2ZWU1OThmMWFlNzI4MzI1N2E5OTAwNjNiMzcxP09wZW5Eb2N1bWVudA%3D%3D&id=2",
+            "sha256": "2151ea6b4f756234fb499827117bed6cb8721d6055801637d2ca131234631821",
+            "bytes": 143232
+          }
+        ],
+        "failed_sources": [
+          {
+            "url": "https://www.alerj.rj.gov.br/Visualizar/Noticia/53774",
+            "error": "HTML maintenance/access/error page"
+          }
+        ],
+        "authorized_for_import": false
       }
     },
     {
@@ -1477,6 +1920,31 @@
         "legal_review_completed": false,
         "internal_acceptance": false,
         "eligible_for_real_fiscal_application": false
+      },
+      "latest_43_source_capture_receipt": {
+        "manifest_path": "docs/NFCORE_T09_43_OFFICIAL_SOURCE_BYTES_20261122.json",
+        "original_zip_stored_in_private_library": "/NFCore Commercial Launch/T09 Legal Evidence/T09_43_Fontes_Oficiais_20261122.zip",
+        "capture_date": "2026-11-22",
+        "bytes_verified_count": 2,
+        "unavailable_count": 0,
+        "source_integrity_verification": "ALL_RECORDED_SUCCESSFUL_FILES_RECOMPUTED_SHA256",
+        "legal_publication_authenticated": false,
+        "normative_chain_consolidated": false,
+        "independent_review_received": false,
+        "official_bytes": [
+          {
+            "url": "https://webdisk.diariooficial.rn.gov.br/Jornal/12022-08-19.pdf",
+            "sha256": "ba238dbd80742cb960bd87ba518874cec3be94faa2544553e1b04967a594803a",
+            "bytes": 7205144
+          },
+          {
+            "url": "https://webdisk.diariooficial.rn.gov.br/Jornal/12026-02-04.pdf",
+            "sha256": "e622436e090c3e4f0cbf94522f8bae2d89c579874e401901bf2fa531f0db37ae",
+            "bytes": 3873741
+          }
+        ],
+        "failed_sources": [],
+        "authorized_for_import": false
       }
     },
     {
@@ -1521,6 +1989,26 @@
         "full_2026_legality_consolidated": false,
         "independent_review": false,
         "approved": false
+      },
+      "latest_43_source_capture_receipt": {
+        "manifest_path": "docs/NFCORE_T09_43_OFFICIAL_SOURCE_BYTES_20261122.json",
+        "original_zip_stored_in_private_library": "/NFCore Commercial Launch/T09 Legal Evidence/T09_43_Fontes_Oficiais_20261122.zip",
+        "capture_date": "2026-11-22",
+        "bytes_verified_count": 1,
+        "unavailable_count": 0,
+        "source_integrity_verification": "ALL_RECORDED_SUCCESSFUL_FILES_RECOMPUTED_SHA256",
+        "legal_publication_authenticated": false,
+        "normative_chain_consolidated": false,
+        "independent_review_received": false,
+        "official_bytes": [
+          {
+            "url": "https://sapl.al.ro.leg.br/media/sapl/public/normajuridica/2005/3535/3535_texto_integral.pdf",
+            "sha256": "133ca677d653e6bbb21af43587002c70c844704b0d1c138fffdfdb91ced0cb44",
+            "bytes": 620350
+          }
+        ],
+        "failed_sources": [],
+        "authorized_for_import": false
       }
     },
     {
@@ -1585,6 +2073,25 @@
         "legal_review_completed": false,
         "internal_acceptance": false,
         "eligible_for_real_fiscal_application": false
+      },
+      "latest_43_source_capture_receipt": {
+        "manifest_path": "docs/NFCORE_T09_43_OFFICIAL_SOURCE_BYTES_20261122.json",
+        "original_zip_stored_in_private_library": "/NFCore Commercial Launch/T09 Legal Evidence/T09_43_Fontes_Oficiais_20261122.zip",
+        "capture_date": "2026-11-22",
+        "bytes_verified_count": 0,
+        "unavailable_count": 1,
+        "source_integrity_verification": "ALL_RECORDED_SUCCESSFUL_FILES_RECOMPUTED_SHA256",
+        "legal_publication_authenticated": false,
+        "normative_chain_consolidated": false,
+        "independent_review_received": false,
+        "official_bytes": [],
+        "failed_sources": [
+          {
+            "url": "https://www.sefaz.rr.gov.br/cidadao/downloads?catid=494&id=25462&m=0&task=download.send",
+            "error": "HTTP Error 404: Not Found"
+          }
+        ],
+        "authorized_for_import": false
       }
     },
     {
@@ -1628,6 +2135,26 @@
         "legal_review_completed": false,
         "internal_acceptance": false,
         "eligible_for_real_fiscal_application": false
+      },
+      "latest_43_source_capture_receipt": {
+        "manifest_path": "docs/NFCORE_T09_43_OFFICIAL_SOURCE_BYTES_20261122.json",
+        "original_zip_stored_in_private_library": "/NFCore Commercial Launch/T09 Legal Evidence/T09_43_Fontes_Oficiais_20261122.zip",
+        "capture_date": "2026-11-22",
+        "bytes_verified_count": 1,
+        "unavailable_count": 0,
+        "source_integrity_verification": "ALL_RECORDED_SUCCESSFUL_FILES_RECOMPUTED_SHA256",
+        "legal_publication_authenticated": false,
+        "normative_chain_consolidated": false,
+        "independent_review_received": false,
+        "official_bytes": [
+          {
+            "url": "https://receita.fazenda.rs.gov.br/servicos-a-empresas/servicos?servico=1946",
+            "sha256": "a7b624b3f81cf206decf5b02657c2929b9d3bc77fad915e154aa5e20c23a3c3c",
+            "bytes": 53913
+          }
+        ],
+        "failed_sources": [],
+        "authorized_for_import": false
       }
     },
     {
@@ -1672,6 +2199,26 @@
         "authoritative_doe_chain_archived": false,
         "independent_counter_review": false,
         "internal_acceptance": false
+      },
+      "latest_43_source_capture_receipt": {
+        "manifest_path": "docs/NFCORE_T09_43_OFFICIAL_SOURCE_BYTES_20261122.json",
+        "original_zip_stored_in_private_library": "/NFCore Commercial Launch/T09 Legal Evidence/T09_43_Fontes_Oficiais_20261122.zip",
+        "capture_date": "2026-11-22",
+        "bytes_verified_count": 1,
+        "unavailable_count": 0,
+        "source_integrity_verification": "ALL_RECORDED_SUCCESSFUL_FILES_RECOMPUTED_SHA256",
+        "legal_publication_authenticated": false,
+        "normative_chain_consolidated": false,
+        "independent_review_received": false,
+        "official_bytes": [
+          {
+            "url": "https://legislacao.sef.sc.gov.br/html/leis/2007/lei_07_13992.htm",
+            "sha256": "71279147ab8f85d6250067b265486b8e9d7eaa5c4187fdab8ba68cfcd9a03d2e",
+            "bytes": 43199
+          }
+        ],
+        "failed_sources": [],
+        "authorized_for_import": false
       }
     },
     {
@@ -1705,6 +2252,33 @@
         "capture_filenames": [],
         "manifest": "docs/NFCORE_T09_RECEBIMENTO_FINAL_50_DOCUMENTOS_20261122.json",
         "not_a_legal_approval": true
+      },
+      "latest_43_source_capture_receipt": {
+        "manifest_path": "docs/NFCORE_T09_43_OFFICIAL_SOURCE_BYTES_20261122.json",
+        "original_zip_stored_in_private_library": "/NFCore Commercial Launch/T09 Legal Evidence/T09_43_Fontes_Oficiais_20261122.zip",
+        "capture_date": "2026-11-22",
+        "bytes_verified_count": 0,
+        "unavailable_count": 3,
+        "source_integrity_verification": "ALL_RECORDED_SUCCESSFUL_FILES_RECOMPUTED_SHA256",
+        "legal_publication_authenticated": false,
+        "normative_chain_consolidated": false,
+        "independent_review_received": false,
+        "official_bytes": [],
+        "failed_sources": [
+          {
+            "url": "https://pge.se.gov.br/wp-content/uploads/2025/09/Ata-da-250a-Reuniao-Ordinaria-do-Conselho-Superior.pdf",
+            "error": "<urlopen error timed out>"
+          },
+          {
+            "url": "https://pge.se.gov.br/wp-content/uploads/2025/09/Parecer-Referencial-no-4063.2025-CEDEC.pdf",
+            "error": "<urlopen error timed out>"
+          },
+          {
+            "url": "https://sedetec.se.gov.br/wp-content/uploads/2025/02/Res-24-DGF-SOLUCOES-TEXTEIS-LTDA.pdf",
+            "error": "<urlopen error timed out>"
+          }
+        ],
+        "authorized_for_import": false
       }
     },
     {
@@ -2050,6 +2624,26 @@
           "legal_full_chain_still_pending": true,
           "authorizes_actual_grant": false
         }
+      },
+      "latest_43_source_capture_receipt": {
+        "manifest_path": "docs/NFCORE_T09_43_OFFICIAL_SOURCE_BYTES_20261122.json",
+        "original_zip_stored_in_private_library": "/NFCore Commercial Launch/T09 Legal Evidence/T09_43_Fontes_Oficiais_20261122.zip",
+        "capture_date": "2026-11-22",
+        "bytes_verified_count": 1,
+        "unavailable_count": 0,
+        "source_integrity_verification": "ALL_RECORDED_SUCCESSFUL_FILES_RECOMPUTED_SHA256",
+        "legal_publication_authenticated": false,
+        "normative_chain_consolidated": false,
+        "independent_review_received": false,
+        "official_bytes": [
+          {
+            "url": "https://legislacao.fazenda.sp.gov.br/Paginas/an3art041.aspx",
+            "sha256": "d092a152f185d54c09d4e8339cf0065380e98a2760a7efa954c32ecbe8a52282",
+            "bytes": 157381
+          }
+        ],
+        "failed_sources": [],
+        "authorized_for_import": false
       }
     },
     {
@@ -2111,6 +2705,26 @@
         "legal_review_completed": false,
         "internal_acceptance": false,
         "eligible_for_real_fiscal_application": false
+      },
+      "latest_43_source_capture_receipt": {
+        "manifest_path": "docs/NFCORE_T09_43_OFFICIAL_SOURCE_BYTES_20261122.json",
+        "original_zip_stored_in_private_library": "/NFCore Commercial Launch/T09 Legal Evidence/T09_43_Fontes_Oficiais_20261122.zip",
+        "capture_date": "2026-11-22",
+        "bytes_verified_count": 1,
+        "unavailable_count": 0,
+        "source_integrity_verification": "ALL_RECORDED_SUCCESSFUL_FILES_RECOMPUTED_SHA256",
+        "legal_publication_authenticated": false,
+        "normative_chain_consolidated": false,
+        "independent_review_received": false,
+        "official_bytes": [
+          {
+            "url": "https://www.al.to.leg.br/arquivo/65595",
+            "sha256": "2746cddc449ff4cda33c9cb2b953bf1ae329f397fc8b074235f83ffaffd7063a",
+            "bytes": 165013
+          }
+        ],
+        "failed_sources": [],
+        "authorized_for_import": false
       }
     }
   ],

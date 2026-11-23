@@ -107,6 +107,13 @@
           "scope": "INTERNAL_RESEARCH",
           "verified_full_chain": false,
           "approved": false
+        },
+        "latest_43_source_capture_receipt": {
+          "manifest_path": "docs/NFCORE_T09_43_OFFICIAL_SOURCE_BYTES_20261122.json",
+          "bytes_verified_count": 0,
+          "unavailable_count": 2,
+          "normative_chain_consolidated": false,
+          "independent_review_received": false
         }
       }
     },
@@ -161,6 +168,13 @@
           "accountant_opinion": "EXTERNAL_BEFORE_FISCAL_ACTIVATION",
           "actual_taxpayer_grant": "EXTERNAL_BY_TAXPAYER_WHEN_NORM_REQUIRES",
           "not_required_for_internal_eng_curation": true
+        },
+        "latest_43_source_capture_receipt": {
+          "manifest_path": "docs/NFCORE_T09_43_OFFICIAL_SOURCE_BYTES_20261122.json",
+          "bytes_verified_count": 2,
+          "unavailable_count": 0,
+          "normative_chain_consolidated": false,
+          "independent_review_received": false
         }
       }
     },
@@ -210,6 +224,13 @@
           "accountant_opinion": "EXTERNAL_BEFORE_FISCAL_ACTIVATION",
           "actual_taxpayer_grant": "EXTERNAL_BY_TAXPAYER_WHEN_NORM_REQUIRES",
           "not_required_for_internal_eng_curation": true
+        },
+        "latest_43_source_capture_receipt": {
+          "manifest_path": "docs/NFCORE_T09_43_OFFICIAL_SOURCE_BYTES_20261122.json",
+          "bytes_verified_count": 2,
+          "unavailable_count": 0,
+          "normative_chain_consolidated": false,
+          "independent_review_received": false
         }
       }
     },
@@ -267,6 +288,13 @@
           "accountant_opinion": "EXTERNAL_BEFORE_FISCAL_ACTIVATION",
           "actual_taxpayer_grant": "EXTERNAL_BY_TAXPAYER_WHEN_NORM_REQUIRES",
           "not_required_for_internal_eng_curation": true
+        },
+        "latest_43_source_capture_receipt": {
+          "manifest_path": "docs/NFCORE_T09_43_OFFICIAL_SOURCE_BYTES_20261122.json",
+          "bytes_verified_count": 4,
+          "unavailable_count": 0,
+          "normative_chain_consolidated": false,
+          "independent_review_received": false
         }
       }
     },
@@ -316,6 +344,13 @@
           "accountant_opinion": "EXTERNAL_BEFORE_FISCAL_ACTIVATION",
           "actual_taxpayer_grant": "EXTERNAL_BY_TAXPAYER_WHEN_NORM_REQUIRES",
           "not_required_for_internal_eng_curation": true
+        },
+        "latest_43_source_capture_receipt": {
+          "manifest_path": "docs/NFCORE_T09_43_OFFICIAL_SOURCE_BYTES_20261122.json",
+          "bytes_verified_count": 2,
+          "unavailable_count": 0,
+          "normative_chain_consolidated": false,
+          "independent_review_received": false
         }
       }
     },
@@ -365,6 +400,13 @@
           "accountant_opinion": "EXTERNAL_BEFORE_FISCAL_ACTIVATION",
           "actual_taxpayer_grant": "EXTERNAL_BY_TAXPAYER_WHEN_NORM_REQUIRES",
           "not_required_for_internal_eng_curation": true
+        },
+        "latest_43_source_capture_receipt": {
+          "manifest_path": "docs/NFCORE_T09_43_OFFICIAL_SOURCE_BYTES_20261122.json",
+          "bytes_verified_count": 1,
+          "unavailable_count": 0,
+          "normative_chain_consolidated": false,
+          "independent_review_received": false
         }
       }
     },
@@ -414,6 +456,13 @@
           "accountant_opinion": "EXTERNAL_BEFORE_FISCAL_ACTIVATION",
           "actual_taxpayer_grant": "EXTERNAL_BY_TAXPAYER_WHEN_NORM_REQUIRES",
           "not_required_for_internal_eng_curation": true
+        },
+        "latest_43_source_capture_receipt": {
+          "manifest_path": "docs/NFCORE_T09_43_OFFICIAL_SOURCE_BYTES_20261122.json",
+          "bytes_verified_count": 2,
+          "unavailable_count": 0,
+          "normative_chain_consolidated": false,
+          "independent_review_received": false
         }
       }
     },
@@ -463,6 +512,13 @@
           "accountant_opinion": "EXTERNAL_BEFORE_FISCAL_ACTIVATION",
           "actual_taxpayer_grant": "EXTERNAL_BY_TAXPAYER_WHEN_NORM_REQUIRES",
           "not_required_for_internal_eng_curation": true
+        },
+        "latest_43_source_capture_receipt": {
+          "manifest_path": "docs/NFCORE_T09_43_OFFICIAL_SOURCE_BYTES_20261122.json",
+          "bytes_verified_count": 2,
+          "unavailable_count": 0,
+          "normative_chain_consolidated": false,
+          "independent_review_received": false
         }
       }
     },
@@ -512,6 +568,13 @@
           "accountant_opinion": "EXTERNAL_BEFORE_FISCAL_ACTIVATION",
           "actual_taxpayer_grant": "EXTERNAL_BY_TAXPAYER_WHEN_NORM_REQUIRES",
           "not_required_for_internal_eng_curation": true
+        },
+        "latest_43_source_capture_receipt": {
+          "manifest_path": "docs/NFCORE_T09_43_OFFICIAL_SOURCE_BYTES_20261122.json",
+          "bytes_verified_count": 1,
+          "unavailable_count": 0,
+          "normative_chain_consolidated": false,
+          "independent_review_received": false
         }
       }
     },
@@ -561,6 +624,13 @@
           "accountant_opinion": "EXTERNAL_BEFORE_FISCAL_ACTIVATION",
           "actual_taxpayer_grant": "EXTERNAL_BY_TAXPAYER_WHEN_NORM_REQUIRES",
           "not_required_for_internal_eng_curation": true
+        },
+        "latest_43_source_capture_receipt": {
+          "manifest_path": "docs/NFCORE_T09_43_OFFICIAL_SOURCE_BYTES_20261122.json",
+          "bytes_verified_count": 1,
+          "unavailable_count": 0,
+          "normative_chain_consolidated": false,
+          "independent_review_received": false
         }
       }
     },
@@ -628,6 +698,13 @@
           "accountant_opinion": "EXTERNAL_BEFORE_FISCAL_ACTIVATION",
           "actual_taxpayer_grant": "EXTERNAL_BY_TAXPAYER_WHEN_NORM_REQUIRES",
           "not_required_for_internal_eng_curation": true
+        },
+        "latest_43_source_capture_receipt": {
+          "manifest_path": "docs/NFCORE_T09_43_OFFICIAL_SOURCE_BYTES_20261122.json",
+          "bytes_verified_count": 1,
+          "unavailable_count": 0,
+          "normative_chain_consolidated": false,
+          "independent_review_received": false
         }
       }
     },
@@ -690,6 +767,13 @@
           "scope": "INTERNAL_RESEARCH",
           "verified_full_chain": false,
           "approved": false
+        },
+        "latest_43_source_capture_receipt": {
+          "manifest_path": "docs/NFCORE_T09_43_OFFICIAL_SOURCE_BYTES_20261122.json",
+          "bytes_verified_count": 1,
+          "unavailable_count": 0,
+          "normative_chain_consolidated": false,
+          "independent_review_received": false
         }
       }
     },
@@ -745,6 +829,13 @@
           "accountant_opinion": "EXTERNAL_BEFORE_FISCAL_ACTIVATION",
           "actual_taxpayer_grant": "EXTERNAL_BY_TAXPAYER_WHEN_NORM_REQUIRES",
           "not_required_for_internal_eng_curation": true
+        },
+        "latest_43_source_capture_receipt": {
+          "manifest_path": "docs/NFCORE_T09_43_OFFICIAL_SOURCE_BYTES_20261122.json",
+          "bytes_verified_count": 1,
+          "unavailable_count": 0,
+          "normative_chain_consolidated": false,
+          "independent_review_received": false
         }
       }
     },
@@ -801,6 +892,13 @@
           "accountant_opinion": "EXTERNAL_BEFORE_FISCAL_ACTIVATION",
           "actual_taxpayer_grant": "EXTERNAL_BY_TAXPAYER_WHEN_NORM_REQUIRES",
           "not_required_for_internal_eng_curation": true
+        },
+        "latest_43_source_capture_receipt": {
+          "manifest_path": "docs/NFCORE_T09_43_OFFICIAL_SOURCE_BYTES_20261122.json",
+          "bytes_verified_count": 1,
+          "unavailable_count": 1,
+          "normative_chain_consolidated": false,
+          "independent_review_received": false
         }
       }
     },
@@ -864,6 +962,13 @@
           "scope": "INTERNAL_RESEARCH",
           "verified_full_chain": false,
           "approved": false
+        },
+        "latest_43_source_capture_receipt": {
+          "manifest_path": "docs/NFCORE_T09_43_OFFICIAL_SOURCE_BYTES_20261122.json",
+          "bytes_verified_count": 1,
+          "unavailable_count": 0,
+          "normative_chain_consolidated": false,
+          "independent_review_received": false
         }
       }
     },
@@ -914,6 +1019,13 @@
           "accountant_opinion": "EXTERNAL_BEFORE_FISCAL_ACTIVATION",
           "actual_taxpayer_grant": "EXTERNAL_BY_TAXPAYER_WHEN_NORM_REQUIRES",
           "not_required_for_internal_eng_curation": true
+        },
+        "latest_43_source_capture_receipt": {
+          "manifest_path": "docs/NFCORE_T09_43_OFFICIAL_SOURCE_BYTES_20261122.json",
+          "bytes_verified_count": 1,
+          "unavailable_count": 0,
+          "normative_chain_consolidated": false,
+          "independent_review_received": false
         }
       }
     },
@@ -967,6 +1079,13 @@
           "accountant_opinion": "EXTERNAL_BEFORE_FISCAL_ACTIVATION",
           "actual_taxpayer_grant": "EXTERNAL_BY_TAXPAYER_WHEN_NORM_REQUIRES",
           "not_required_for_internal_eng_curation": true
+        },
+        "latest_43_source_capture_receipt": {
+          "manifest_path": "docs/NFCORE_T09_43_OFFICIAL_SOURCE_BYTES_20261122.json",
+          "bytes_verified_count": 2,
+          "unavailable_count": 1,
+          "normative_chain_consolidated": false,
+          "independent_review_received": false
         }
       }
     },
@@ -1029,6 +1148,13 @@
           "scope": "INTERNAL_RESEARCH",
           "verified_full_chain": false,
           "approved": false
+        },
+        "latest_43_source_capture_receipt": {
+          "manifest_path": "docs/NFCORE_T09_43_OFFICIAL_SOURCE_BYTES_20261122.json",
+          "bytes_verified_count": 1,
+          "unavailable_count": 0,
+          "normative_chain_consolidated": false,
+          "independent_review_received": false
         }
       }
     },
@@ -1085,6 +1211,13 @@
           "accountant_opinion": "EXTERNAL_BEFORE_FISCAL_ACTIVATION",
           "actual_taxpayer_grant": "EXTERNAL_BY_TAXPAYER_WHEN_NORM_REQUIRES",
           "not_required_for_internal_eng_curation": true
+        },
+        "latest_43_source_capture_receipt": {
+          "manifest_path": "docs/NFCORE_T09_43_OFFICIAL_SOURCE_BYTES_20261122.json",
+          "bytes_verified_count": 1,
+          "unavailable_count": 1,
+          "normative_chain_consolidated": false,
+          "independent_review_received": false
         }
       }
     },
@@ -1142,6 +1275,13 @@
           "accountant_opinion": "EXTERNAL_BEFORE_FISCAL_ACTIVATION",
           "actual_taxpayer_grant": "EXTERNAL_BY_TAXPAYER_WHEN_NORM_REQUIRES",
           "not_required_for_internal_eng_curation": true
+        },
+        "latest_43_source_capture_receipt": {
+          "manifest_path": "docs/NFCORE_T09_43_OFFICIAL_SOURCE_BYTES_20261122.json",
+          "bytes_verified_count": 2,
+          "unavailable_count": 0,
+          "normative_chain_consolidated": false,
+          "independent_review_received": false
         }
       }
     },
@@ -1191,6 +1331,13 @@
           "accountant_opinion": "EXTERNAL_BEFORE_FISCAL_ACTIVATION",
           "actual_taxpayer_grant": "EXTERNAL_BY_TAXPAYER_WHEN_NORM_REQUIRES",
           "not_required_for_internal_eng_curation": true
+        },
+        "latest_43_source_capture_receipt": {
+          "manifest_path": "docs/NFCORE_T09_43_OFFICIAL_SOURCE_BYTES_20261122.json",
+          "bytes_verified_count": 1,
+          "unavailable_count": 0,
+          "normative_chain_consolidated": false,
+          "independent_review_received": false
         }
       }
     },
@@ -1246,6 +1393,13 @@
           "accountant_opinion": "EXTERNAL_BEFORE_FISCAL_ACTIVATION",
           "actual_taxpayer_grant": "EXTERNAL_BY_TAXPAYER_WHEN_NORM_REQUIRES",
           "not_required_for_internal_eng_curation": true
+        },
+        "latest_43_source_capture_receipt": {
+          "manifest_path": "docs/NFCORE_T09_43_OFFICIAL_SOURCE_BYTES_20261122.json",
+          "bytes_verified_count": 0,
+          "unavailable_count": 1,
+          "normative_chain_consolidated": false,
+          "independent_review_received": false
         }
       }
     },
@@ -1295,6 +1449,13 @@
           "accountant_opinion": "EXTERNAL_BEFORE_FISCAL_ACTIVATION",
           "actual_taxpayer_grant": "EXTERNAL_BY_TAXPAYER_WHEN_NORM_REQUIRES",
           "not_required_for_internal_eng_curation": true
+        },
+        "latest_43_source_capture_receipt": {
+          "manifest_path": "docs/NFCORE_T09_43_OFFICIAL_SOURCE_BYTES_20261122.json",
+          "bytes_verified_count": 1,
+          "unavailable_count": 0,
+          "normative_chain_consolidated": false,
+          "independent_review_received": false
         }
       }
     },
@@ -1344,6 +1505,13 @@
           "accountant_opinion": "EXTERNAL_BEFORE_FISCAL_ACTIVATION",
           "actual_taxpayer_grant": "EXTERNAL_BY_TAXPAYER_WHEN_NORM_REQUIRES",
           "not_required_for_internal_eng_curation": true
+        },
+        "latest_43_source_capture_receipt": {
+          "manifest_path": "docs/NFCORE_T09_43_OFFICIAL_SOURCE_BYTES_20261122.json",
+          "bytes_verified_count": 1,
+          "unavailable_count": 0,
+          "normative_chain_consolidated": false,
+          "independent_review_received": false
         }
       }
     },
@@ -1396,6 +1564,13 @@
           "accountant_opinion": "EXTERNAL_BEFORE_FISCAL_ACTIVATION",
           "actual_taxpayer_grant": "EXTERNAL_BY_TAXPAYER_WHEN_NORM_REQUIRES",
           "not_required_for_internal_eng_curation": true
+        },
+        "latest_43_source_capture_receipt": {
+          "manifest_path": "docs/NFCORE_T09_43_OFFICIAL_SOURCE_BYTES_20261122.json",
+          "bytes_verified_count": 0,
+          "unavailable_count": 3,
+          "normative_chain_consolidated": false,
+          "independent_review_received": false
         }
       }
     },
@@ -1465,6 +1640,13 @@
           "confaz_route_identified": true,
           "confaz_route_complete": false,
           "normative_individual_concession_verified": true
+        },
+        "latest_43_source_capture_receipt": {
+          "manifest_path": "docs/NFCORE_T09_43_OFFICIAL_SOURCE_BYTES_20261122.json",
+          "bytes_verified_count": 1,
+          "unavailable_count": 0,
+          "normative_chain_consolidated": false,
+          "independent_review_received": false
         }
       },
       "individual_concession_normative_requirement_verified": true
@@ -1528,6 +1710,13 @@
           "scope": "INTERNAL_RESEARCH",
           "verified_full_chain": false,
           "approved": false
+        },
+        "latest_43_source_capture_receipt": {
+          "manifest_path": "docs/NFCORE_T09_43_OFFICIAL_SOURCE_BYTES_20261122.json",
+          "bytes_verified_count": 1,
+          "unavailable_count": 0,
+          "normative_chain_consolidated": false,
+          "independent_review_received": false
         }
       }
     }
