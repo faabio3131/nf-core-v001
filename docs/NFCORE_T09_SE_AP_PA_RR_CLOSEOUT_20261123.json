@@ -96,7 +96,13 @@
       "technical_current_head_ci_green": false,
       "legal_curadoria_certified": false,
       "status": "BLOCKED_MODAL_CONFAZ_AND_DOE_AMENDMENT",
-      "next_exact_action": "Obter DOEs 820/868, certificado 13/2018 + planilha e reconciliar as seis modalidades; revisão contraditória independente."
+      "next_exact_action": "Obter DOEs 820/868, certificado 13/2018 + planilha e reconciliar as seis modalidades; revisão contraditória independente.",
+      "priority_4uf_binary_evidence_20261123": {
+        "manifest": "docs/NFCORE_T09_PRIORITY_4UF_BYTES_AUDIT_20261123.json",
+        "captured": 0,
+        "failed": 1,
+        "legal_review_complete": false
+      }
     },
     {
       "uf": "AP",
@@ -106,13 +112,15 @@
           "act": "Lei 3.395/2025, Anexo II item8, DOE 31/12/2025 nº 8.566, página do PDF 15",
           "url": "https://diofe.portal.ap.gov.br/portal/edicoes/download/9794",
           "sha256": "d4c6b485514ac97dc3bbe8418b07ff7324984e58670d056601be0d6c8a3fff44",
-          "type": "OFFICIAL_DOE_PDF_CAPTURE"
+          "type": "OFFICIAL_DOE_PDF_CAPTURE",
+          "hash_verified_from_zip": true
         },
         {
           "act": "Decreto 2.656/2026, art5, 9 e 10, DOE 17/04/2026 nº 8.639",
           "url": "https://diofe.portal.ap.gov.br/portal/edicoes/visualizar_pdf/9915/",
           "sha256": "6b0c7f575d89cea05b7d031778a326d2a4d85f51458abf052a63720a576f7bd0",
-          "type": "OFFICIAL_DOE_PDF_CAPTURE"
+          "type": "OFFICIAL_DOE_PDF_CAPTURE",
+          "hash_verified_from_zip": true
         },
         {
           "act": "Decreto 3.599/2001 originário",
@@ -176,7 +184,13 @@
       "technical_current_head_ci_green": false,
       "legal_curadoria_certified": false,
       "status": "MATERIAL_SELECTED_LEGAL_CHAIN_PENDING",
-      "next_exact_action": "Capturar Decreto 3.599/2001 integral, certificado 14/2018 item11 e verificar regime após revogação 2.349 e após 2.656/2026."
+      "next_exact_action": "Capturar Decreto 3.599/2001 integral, certificado 14/2018 item11 e verificar regime após revogação 2.349 e após 2.656/2026.",
+      "priority_4uf_binary_evidence_20261123": {
+        "manifest": "docs/NFCORE_T09_PRIORITY_4UF_BYTES_AUDIT_20261123.json",
+        "captured": 3,
+        "failed": 0,
+        "legal_review_complete": false
+      }
     },
     {
       "uf": "PA",
@@ -185,8 +199,9 @@
         {
           "act": "STF ADI 3779, julgamento 23–29/08/2019, DJ 04/12/2019",
           "url": "https://portal.stf.jus.br/peticaoInicial/verPeticaoInicial.asp?base=ADI&numProcesso=3779",
-          "sha256": null,
-          "type": "OFFICIAL_STF_DECISION_ONLINE_NO_BYTES_ARCHIVED"
+          "sha256": "aede1b1a62bca6bdf677a8c0a54313a61785cd538a1b05ce6a91a96e2c0b5ac5",
+          "type": "OFFICIAL_STF_DECISION_ONLINE_NO_BYTES_ARCHIVED",
+          "hash_verified_from_zip": true
         },
         {
           "act": "DOE/PA 23/03/2018 nº 33.584, Decreto 2.014/2018 Anexo Único Apêndice I itens 13 e 32",
@@ -252,7 +267,13 @@
       "technical_current_head_ci_green": false,
       "legal_curadoria_certified": false,
       "status": "ORIGINAL_INVALIDATED_SUCCESSOR_UNPROVEN",
-      "next_exact_action": "Obter DOE 2018 por SHA, confirmar depósitos no PNTT/CONFAZ e efeitos STF; selecionar modalidade sucessora juridicamente válida sem reviver 6.913."
+      "next_exact_action": "Obter DOE 2018 por SHA, confirmar depósitos no PNTT/CONFAZ e efeitos STF; selecionar modalidade sucessora juridicamente válida sem reviver 6.913.",
+      "priority_4uf_binary_evidence_20261123": {
+        "manifest": "docs/NFCORE_T09_PRIORITY_4UF_BYTES_AUDIT_20261123.json",
+        "captured": 1,
+        "failed": 3,
+        "legal_review_complete": false
+      }
     },
     {
       "uf": "RR",
@@ -307,7 +328,13 @@
       "technical_current_head_ci_green": false,
       "legal_curadoria_certified": false,
       "status": "EXPIRED_2025_SPECIFIC_2026_EXTENSION_UNPROVEN",
-      "next_exact_action": "Comprovar ou refutar expressamente prorrogação estadual LXVII após 31/12/2025 em DOE/SEFAZ e revisar CONFAZ100/97 por operação."
+      "next_exact_action": "Comprovar ou refutar expressamente prorrogação estadual LXVII após 31/12/2025 em DOE/SEFAZ e revisar CONFAZ100/97 por operação.",
+      "priority_4uf_binary_evidence_20261123": {
+        "manifest": "docs/NFCORE_T09_PRIORITY_4UF_BYTES_AUDIT_20261123.json",
+        "captured": 0,
+        "failed": 2,
+        "legal_review_complete": false
+      }
     }
   ]
 }

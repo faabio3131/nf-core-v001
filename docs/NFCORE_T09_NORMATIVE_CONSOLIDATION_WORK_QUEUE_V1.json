@@ -308,6 +308,12 @@
           "missing_confaz_modal_binding": true,
           "independent_review": false,
           "internal_accepted": false
+        },
+        "priority_4uf_binary_evidence_20261123": {
+          "manifest": "docs/NFCORE_T09_PRIORITY_4UF_BYTES_AUDIT_20261123.json",
+          "captured": 3,
+          "failed": 0,
+          "legal_review_complete": false
         }
       }
     },
@@ -919,6 +925,12 @@
           "missing_confaz_modal_binding": true,
           "independent_review": false,
           "internal_accepted": false
+        },
+        "priority_4uf_binary_evidence_20261123": {
+          "manifest": "docs/NFCORE_T09_PRIORITY_4UF_BYTES_AUDIT_20261123.json",
+          "captured": 1,
+          "failed": 3,
+          "legal_review_complete": false
         }
       }
     },
@@ -1433,6 +1445,12 @@
           "missing_confaz_modal_binding": true,
           "independent_review": false,
           "internal_accepted": false
+        },
+        "priority_4uf_binary_evidence_20261123": {
+          "manifest": "docs/NFCORE_T09_PRIORITY_4UF_BYTES_AUDIT_20261123.json",
+          "captured": 0,
+          "failed": 2,
+          "legal_review_complete": false
         }
       }
     },
@@ -1646,6 +1664,12 @@
           "missing_confaz_modal_binding": true,
           "independent_review": false,
           "internal_accepted": false
+        },
+        "priority_4uf_binary_evidence_20261123": {
+          "manifest": "docs/NFCORE_T09_PRIORITY_4UF_BYTES_AUDIT_20261123.json",
+          "captured": 0,
+          "failed": 1,
+          "legal_review_complete": false
         }
       }
     },

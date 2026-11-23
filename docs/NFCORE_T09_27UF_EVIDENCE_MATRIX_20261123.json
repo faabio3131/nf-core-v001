@@ -159,6 +159,13 @@
           "bytes": 6151710,
           "source_type": "GOVERNMENT_SITE_CAPTURE_UNREVIEWED",
           "artifact": "T09_43_Fontes_Oficiais_20261122.zip"
+        },
+        {
+          "url": "https://diofe.portal.ap.gov.br/portal/edicoes/download/9949",
+          "sha256": "9180d91856bd3d955cc99a1a1e5b9c5f789131253e97a947e2d2f3ffde3f9523",
+          "bytes": 3481890,
+          "source_type": "OFFICIAL_BINARY_CAPTURE_UNREVIEWED",
+          "artifact": "/NFCore Commercial Launch/T09 Legal Evidence/T09_PRIORITY_4UF_OFFICIAL_BYTES_20261123.zip"
         }
       ],
       "at_least_one_source_file_hash_recorded": true,
@@ -199,7 +206,13 @@
         "historical_certificate": "AP/CONFAZ 14/2018, Anexo I item11",
         "status": "MATERIAL_SELECTED_REQUIRES_DECRETO_ORIGINAL_AND_CONFAZ_CERTIFICATE"
       },
-      "material_scope": "FIRST_INTERNAL_FISH_SALE_DEFERRAL_DISTINCT_FROM_INDUSTRIAL_OUTPUT_CREDIT"
+      "material_scope": "FIRST_INTERNAL_FISH_SALE_DEFERRAL_DISTINCT_FROM_INDUSTRIAL_OUTPUT_CREDIT",
+      "priority_4uf_binary_evidence_20261123": {
+        "manifest": "docs/NFCORE_T09_PRIORITY_4UF_BYTES_AUDIT_20261123.json",
+        "captured": 3,
+        "failed": 0,
+        "legal_review_complete": false
+      }
     },
     {
       "uf": "BA",
@@ -539,6 +552,13 @@
           "bytes": 177543,
           "source_type": "GOVERNMENT_SITE_CAPTURE_UNREVIEWED",
           "artifact": "T09_43_Fontes_Oficiais_20261122.zip"
+        },
+        {
+          "url": "https://portal.stf.jus.br/peticaoInicial/verPeticaoInicial.asp?base=ADI&numProcesso=3779",
+          "sha256": "aede1b1a62bca6bdf677a8c0a54313a61785cd538a1b05ce6a91a96e2c0b5ac5",
+          "bytes": 61831,
+          "source_type": "OFFICIAL_BINARY_CAPTURE_UNREVIEWED",
+          "artifact": "/NFCore Commercial Launch/T09 Legal Evidence/T09_PRIORITY_4UF_OFFICIAL_BYTES_20261123.zip"
         }
       ],
       "at_least_one_source_file_hash_recorded": true,
@@ -569,7 +589,13 @@
       "fiscally_importable": false,
       "fiscal_calculation_allowed": false,
       "next_exact_action": "Obter DOE 2018 por SHA, confirmar depósitos no PNTT/CONFAZ e efeitos STF; selecionar modalidade sucessora juridicamente válida sem reviver 6.913.",
-      "stf_adi3779_2019_effect_requires_successor_law_and_deposit": true
+      "stf_adi3779_2019_effect_requires_successor_law_and_deposit": true,
+      "priority_4uf_binary_evidence_20261123": {
+        "manifest": "docs/NFCORE_T09_PRIORITY_4UF_BYTES_AUDIT_20261123.json",
+        "captured": 1,
+        "failed": 3,
+        "legal_review_complete": false
+      }
     },
     {
       "uf": "PB",
@@ -864,7 +890,13 @@
       "fiscally_importable": false,
       "fiscal_calculation_allowed": false,
       "next_exact_action": "Comprovar ou refutar expressamente prorrogação estadual LXVII após 31/12/2025 em DOE/SEFAZ e revisar CONFAZ100/97 por operação.",
-      "effective_2026_lxvii_eligible": false
+      "effective_2026_lxvii_eligible": false,
+      "priority_4uf_binary_evidence_20261123": {
+        "manifest": "docs/NFCORE_T09_PRIORITY_4UF_BYTES_AUDIT_20261123.json",
+        "captured": 0,
+        "failed": 2,
+        "legal_review_complete": false
+      }
     },
     {
       "uf": "RS",
@@ -991,7 +1023,13 @@
       "internally_curated": false,
       "fiscally_importable": false,
       "fiscal_calculation_allowed": false,
-      "next_exact_action": "Obter DOEs 820/868, certificado 13/2018 + planilha e reconciliar as seis modalidades; revisão contraditória independente."
+      "next_exact_action": "Obter DOEs 820/868, certificado 13/2018 + planilha e reconciliar as seis modalidades; revisão contraditória independente.",
+      "priority_4uf_binary_evidence_20261123": {
+        "manifest": "docs/NFCORE_T09_PRIORITY_4UF_BYTES_AUDIT_20261123.json",
+        "captured": 0,
+        "failed": 1,
+        "legal_review_complete": false
+      }
     },
     {
       "uf": "SP",

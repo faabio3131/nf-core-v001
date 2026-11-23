@@ -786,6 +786,35 @@
         "internal_curatorial_accepted": false,
         "independent_counter_review_passed": false,
         "all_relevant_primary_bytes_archived": false
+      },
+      "priority_4uf_binary_evidence_20261123": {
+        "archive": "/NFCore Commercial Launch/T09 Legal Evidence/T09_PRIORITY_4UF_OFFICIAL_BYTES_20261123.zip",
+        "manifest": "docs/NFCORE_T09_PRIORITY_4UF_BYTES_AUDIT_20261123.json",
+        "captured_files": [
+          {
+            "url": "https://diofe.portal.ap.gov.br/portal/edicoes/download/9794",
+            "sha256": "d4c6b485514ac97dc3bbe8418b07ff7324984e58670d056601be0d6c8a3fff44",
+            "bytes": 5135408,
+            "relative_path": "sources/AP-d4c6b485514ac97d.pdf"
+          },
+          {
+            "url": "https://diofe.portal.ap.gov.br/portal/edicoes/download/9949",
+            "sha256": "9180d91856bd3d955cc99a1a1e5b9c5f789131253e97a947e2d2f3ffde3f9523",
+            "bytes": 3481890,
+            "relative_path": "sources/AP-9180d91856bd3d95.pdf"
+          },
+          {
+            "url": "https://diofe.portal.ap.gov.br/portal/edicoes/visualizar_pdf/9915/",
+            "sha256": "6b0c7f575d89cea05b7d031778a326d2a4d85f51458abf052a63720a576f7bd0",
+            "bytes": 6151710,
+            "relative_path": "sources/AP-6b0c7f575d89cea0.pdf"
+          }
+        ],
+        "failed_sources": [],
+        "all_file_hashes_checked": true,
+        "complete_legal_chain_verified": false,
+        "independent_review": false,
+        "import_authorized": false
       }
     },
     {
@@ -1583,6 +1612,36 @@
         "internal_curatorial_accepted": false,
         "independent_counter_review_passed": false,
         "all_relevant_primary_bytes_archived": false
+      },
+      "priority_4uf_binary_evidence_20261123": {
+        "archive": "/NFCore Commercial Launch/T09 Legal Evidence/T09_PRIORITY_4UF_OFFICIAL_BYTES_20261123.zip",
+        "manifest": "docs/NFCORE_T09_PRIORITY_4UF_BYTES_AUDIT_20261123.json",
+        "captured_files": [
+          {
+            "url": "https://portal.stf.jus.br/peticaoInicial/verPeticaoInicial.asp?base=ADI&numProcesso=3779",
+            "sha256": "aede1b1a62bca6bdf677a8c0a54313a61785cd538a1b05ce6a91a96e2c0b5ac5",
+            "bytes": 61831,
+            "relative_path": "sources/PA-aede1b1a62bca6bd.html"
+          }
+        ],
+        "failed_sources": [
+          {
+            "url": "https://www.ioepa.com.br/pages/2018/2018.03.23.DOE.pdf",
+            "error": "The read operation timed out"
+          },
+          {
+            "url": "https://www.legispara.pa.gov.br/lei/5169",
+            "error": "<urlopen error timed out>"
+          },
+          {
+            "url": "https://www.sistemas.pa.gov.br/sisleis/legislacao/3974",
+            "error": "<urlopen error timed out>"
+          }
+        ],
+        "all_file_hashes_checked": true,
+        "complete_legal_chain_verified": false,
+        "independent_review": false,
+        "import_authorized": false
       }
     },
     {
@@ -2330,6 +2389,25 @@
         "internal_curatorial_accepted": false,
         "independent_counter_review_passed": false,
         "all_relevant_primary_bytes_archived": false
+      },
+      "priority_4uf_binary_evidence_20261123": {
+        "archive": "/NFCore Commercial Launch/T09 Legal Evidence/T09_PRIORITY_4UF_OFFICIAL_BYTES_20261123.zip",
+        "manifest": "docs/NFCORE_T09_PRIORITY_4UF_BYTES_AUDIT_20261123.json",
+        "captured_files": [],
+        "failed_sources": [
+          {
+            "url": "https://www.sefaz.rr.gov.br/component/jdownloads/?Itemid=402&catid=494&id=26478&m=0&task=download.send",
+            "error": "HTTP Error 404: Not Found"
+          },
+          {
+            "url": "https://www.sefaz.rr.gov.br/downloads?catid=1404&id=25395&m=0&task=download.send",
+            "error": "redirect outside official HTTPS government domain"
+          }
+        ],
+        "all_file_hashes_checked": true,
+        "complete_legal_chain_verified": false,
+        "independent_review": false,
+        "import_authorized": false
       }
     },
     {
@@ -2897,6 +2975,21 @@
         "internal_curatorial_accepted": false,
         "independent_counter_review_passed": false,
         "all_relevant_primary_bytes_archived": false
+      },
+      "priority_4uf_binary_evidence_20261123": {
+        "archive": "/NFCore Commercial Launch/T09 Legal Evidence/T09_PRIORITY_4UF_OFFICIAL_BYTES_20261123.zip",
+        "manifest": "docs/NFCORE_T09_PRIORITY_4UF_BYTES_AUDIT_20261123.json",
+        "captured_files": [],
+        "failed_sources": [
+          {
+            "url": "https://aleselegis.al.se.leg.br/Arquivo/Documents/legislacao/html/l84902018.html",
+            "error": "<urlopen error timed out>"
+          }
+        ],
+        "all_file_hashes_checked": true,
+        "complete_legal_chain_verified": false,
+        "independent_review": false,
+        "import_authorized": false
       }
     },
     {

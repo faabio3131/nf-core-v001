@@ -47,6 +47,11 @@ def test_27uf_matrix_matches_canonical_identity_and_capture_records():
                     "local_evidence_sha256"
                 ]
             )
+        known_sha |= {
+            x["sha256"] for x in doc.get(
+                "priority_4uf_binary_evidence_20261123", {}
+            ).get("captured_files", [])
+        }
         if work.get("source_publication_and_original_bytes_digest"):
             known_sha.add(work["source_publication_and_original_bytes_digest"])
         registered = {
