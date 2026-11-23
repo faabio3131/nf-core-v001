@@ -41,6 +41,12 @@ def test_27uf_matrix_matches_canonical_identity_and_capture_records():
             known_sha.add(doc[
                 "official_alese_compilation_user_html_20261123"
             ]["uploaded_sha256"])
+        if doc["uf"] == "SE":
+            known_sha.add(
+                doc["decree_29935_2014_archived_20261123"][
+                    "local_evidence_sha256"
+                ]
+            )
         if work.get("source_publication_and_original_bytes_digest"):
             known_sha.add(work["source_publication_and_original_bytes_digest"])
         registered = {

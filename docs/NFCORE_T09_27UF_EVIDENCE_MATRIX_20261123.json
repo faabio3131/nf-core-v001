@@ -908,28 +908,38 @@
           "bytes": 223828,
           "source_type": "OFFICIAL_LEGISLATIVE_COMPILED_NOT_DOE",
           "artifact": "/NFCore Commercial Launch/T09 Legal Evidence/SE_ALESE_LEI3140_COMPILADA_2026_20261123.html"
+        },
+        {
+          "url": "https://pge.se.gov.br/wp-content/uploads/2025/02/DECRETO-29-935-1.pdf",
+          "sha256": "ca18358fccdfd93259819b1ab1d2fe7347b7084cde54d9660b3c8d0ffc67b3b8",
+          "bytes": 171106,
+          "source_type": "STATE_PGE_REPUBLISHED_HISTORIC_DECREE_NOT_2026_CONSOLIDATED",
+          "artifact": "/NFCore Commercial Launch/T09 Legal Evidence/SE_Decreto_29935_2014_PGE_Original_Historico.pdf"
         }
       ],
       "at_least_one_source_file_hash_recorded": true,
       "original_doe_edition_and_completeness_verified": false,
-      "competence_2024_2026_consolidation_status": "INCOMPLETE_INDEPENDENT_PROOF",
+      "competence_2024_2026_consolidation_status": "PRIMARY_LAW_AND_HISTORIC_DECREE_FOUND_AMENDMENTS_PENDING",
       "modal_specific_confaz": {
         "status": "CERTIFICATE_126_2024_GENERIC_ONLY_NO_MODAL_LINK",
         "act": "SE/CONFAZ nº 126/2024",
         "url": "https://www.confaz.fazenda.gov.br/legislacao/certificado-registro-deposito-cv-icms-190-17-1/sergipe/2024/126-certificado-de-registro-e-deposito-se-an-e-ac-alteracao-e-extensao.pdf",
-        "specific_modality_proven": false
+        "specific_modality_proven": false,
+        "matched_deposit_act_by_mode": false,
+        "certificate_scope": "atos concessivos outubro/2022",
+        "register_number": "125/2024"
       },
       "positive_negative_tests": {
         "synthetic_regression_cases_recorded": true,
         "legal_2026_current_act_verified_for_all_cases": false,
         "latest_ci_full_green_for_this_snapshot": false
       },
-      "material_risk": "Lei 3.140/1991 ALESE compilada 2026 verificada; Decreto 29.935/2014 alterações 820/868/2024, vinculação CONFAZ por modalidade pendentes",
-      "status_real": "BLOCKED_MODAL_CONFAZ_AND_DECREE",
+      "material_risk": "Lei ALESE até 2026 e Decreto PGE 2014 com hashes verificados, mas Decreto 820/868/2024 sem DOE original anexado e CONFAZ 126/2024 não vinculado por modalidade.",
+      "status_real": "BLOCKED_MODAL_CONFAZ_AND_DOE_AMENDMENT",
       "internally_curated": false,
       "fiscally_importable": false,
       "fiscal_calculation_allowed": false,
-      "next_exact_action": "Lei 3.140/1991 COMPILADA PELA ALESE com alterações até 9.943/2026 (HTML do usuário SHA-256 conferido), Decreto 29.935/2014 + 820/868/2024, atos CDI/CONFAZ e vigência por competência ainda pendentes."
+      "next_exact_action": "Conciliar o Anexo III e o DOE originais 820/868/2024; vincular LC160/Conv190 depósito por modalidade, vigência 2024/2026 e revisão contraditória."
     },
     {
       "uf": "SP",

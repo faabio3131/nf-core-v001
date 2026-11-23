@@ -28,7 +28,7 @@
 | RR | RICMS 4.335-E/2001 compilado até Dec.39.893-E/2026; falta comprovar prorrogação estadual do Anexo I LXVII. |
 | RS | RICMS Livro I art.32 CLXXXVI, NCM 94069020/73082000, opção, percentual e fundamento; não confundir CXCIII. |
 | SC | Pró-Emprego Lei 13.992/2007, Dec.105/2007, COPAT 008/2026 cumulação condicionada, TTD. |
-| SE | Lei 3.140/1991 COMPILADA PELA ALESE com alterações até 9.943/2026 (HTML do usuário SHA-256 conferido), Decreto 29.935/2014 + 820/868/2024, atos CDI/CONFAZ e vigência por competência ainda pendentes. |
+| SE | Lei ALESE 3.140/1991 compilada 2026 (SHA confirmado), Decreto PGE 29.935/2014 histórico 37pp (SHA confirmado); 820/2024 efeitos 23/07/2024, 868/2024 efeitos 26/11/2024 sem DOE original no acervo; CONFAZ 126/2024 sem vínculo modal, resolução CDI e revisão. |
 | SP | Art.41 Anexo III vs art.52 Anexo II, opção CAT35, NCM, restrições ST/DIFAL e depósito. |
 | TO | PROINDÚSTRIA, Lei 3.577/2019 item 9 e planilha depositada, modalidade, carta-consulta, contrato/TARE e prazo. |
 

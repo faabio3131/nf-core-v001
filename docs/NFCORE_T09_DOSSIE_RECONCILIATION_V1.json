@@ -2554,6 +2554,63 @@
         "independent_counter_review_passed": false,
         "internal_acceptance": false,
         "fiscal_application_authorized": false
+      },
+      "decree_29935_2014_archived_20261123": {
+        "act": "Decreto 29.935/2014 (texto historico PGE, 37 paginas, sem alterações de 2024)",
+        "official_url": "https://pge.se.gov.br/wp-content/uploads/2025/02/DECRETO-29-935-1.pdf",
+        "source_type": "STATE_PGE_REPUBLISHED_HISTORIC_DECREE_NOT_2026_CONSOLIDATED",
+        "local_evidence_sha256": "ca18358fccdfd93259819b1ab1d2fe7347b7084cde54d9660b3c8d0ffc67b3b8",
+        "bytes": 171106,
+        "pages": 37,
+        "integrity_verified_by_hash": true,
+        "byte_identity_with_live_official_url_verified": false,
+        "persisted_copy": "/NFCore Commercial Launch/T09 Legal Evidence/SE_Decreto_29935_2014_PGE_Original_Historico.pdf",
+        "public_gazette_original_in_archive_verified": false,
+        "legal_in_force_for_all_months_through_2026": false
+      },
+      "psdi_modal_juridical_reconciliation_20261123": {
+        "matrix_path": "docs/NFCORE_T09_SE_PSDI_MODAL_MATRIX_20261123.json",
+        "historic_decree_sha256": "ca18358fccdfd93259819b1ab1d2fe7347b7084cde54d9660b3c8d0ffc67b3b8",
+        "amendments_2024_2026": {
+          "Lei 9.494/2024": {
+            "date": "2024-07-22",
+            "topic": "matéria-prima interna e crédito fiscal, Lei 3.140 art3 IV-d, §5-B e §31",
+            "original_doe_verified": false
+          },
+          "Decreto 820/2024": {
+            "signed": "2024-10-15",
+            "published": "2024-10-16",
+            "stated_effective_from": "2024-07-23",
+            "retroactive_effects": true,
+            "primary_doe_edition_archived": false,
+            "amendment": "Decreto 29.935/2014 art5 IV-e, §5-B e §28"
+          },
+          "Decreto 868/2024": {
+            "signed": "2024-11-25",
+            "published": "2024-11-26",
+            "stated_effective_from": "2024-11-26",
+            "retroactive_effects": false,
+            "primary_doe_edition_archived": false,
+            "amendment": "Decreto 29.935/2014 art5 §§5-C a 5-G, Anexo III, revogação §22"
+          },
+          "Lei 9.812/2025": {
+            "topic": "Lei 3140 art4 §3 estabelecimento DESENQUADRADO do Simples enquadrável como novo com requisitos",
+            "official_compilation_confirmed": true,
+            "original_doe_verified": false
+          },
+          "Lei 9.943/2026": {
+            "signed": "2026-04-01",
+            "topic": "CODISE/DESENVOLVE-SE executoras, SEDETEC administração/CDI, fiscalização e FAI",
+            "official_compilation_confirmed": true,
+            "original_doe_verified": false
+          }
+        },
+        "specific_confaz_deposit_verified": false,
+        "archive_secondary_act_originals_verified": false,
+        "all_modalities_tested_against_real_legal_originals": false,
+        "independent_review": false,
+        "internal_accepted": false,
+        "import_authorized": false
       }
     },
     {

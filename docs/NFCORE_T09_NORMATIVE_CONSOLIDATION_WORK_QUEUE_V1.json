@@ -1610,6 +1610,14 @@
           "independent_review_complete": false,
           "external_owner_document_required": false,
           "internal_curatorial_accepted": false
+        },
+        "decree_29935_2014_historical_bytes_20261123": {
+          "sha256": "ca18358fccdfd93259819b1ab1d2fe7347b7084cde54d9660b3c8d0ffc67b3b8",
+          "bytes": 171106,
+          "archive": "/NFCore Commercial Launch/T09 Legal Evidence/SE_Decreto_29935_2014_PGE_Original_Historico.pdf",
+          "legal_2026_consolidated": false,
+          "external_material_needed_from_owner": false,
+          "internal_curation_accepted": false
         }
       }
     },
