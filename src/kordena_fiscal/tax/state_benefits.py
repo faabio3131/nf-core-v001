@@ -156,6 +156,13 @@ def decode_rule(payload: object) -> dict[str, Any]:
     if BrazilianJurisdiction(uf).state_code != uf:
         raise FiscalValidationError("state benefit UF inconsistent with fiscal domain")
     program_id = payload.get("program_id")
+    se_psdi_identifier = (
+        uf == "SE"
+        and any(tag in str(payload.get("state_normative_reference", "")).upper()
+                for tag in ("PSDI", "3.140/1991", "29935/2014", "29.935/2014"))
+    )
+    if se_psdi_identifier and program_id != "SE_PSDI":
+        raise FiscalValidationError("SE PSDI requires program-specific authority")
     if program_id is not None and (
         program_id != "SE_PSDI" or uf != "SE"
     ):

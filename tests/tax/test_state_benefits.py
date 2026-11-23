@@ -441,3 +441,77 @@ def test_simplified_regime_exclusion_from_selected_textile_and_psdi_acts(uf):
     result = evaluate(uf, issuer_override=simplified)
     assert result["reason_codes"] == ["income_tax_regime_excluded"]
     assert result["eligibility_certified"] is False
+
+
+def test_se_psdi_specific_program_rejects_absent_signed_context():
+    result = evaluate(
+        "SE", policy_changes={
+            "program_id": "SE_PSDI",
+            "state_normative_reference": "Lei 3.140/1991 e Decreto 29.935/2014",
+        },
+    )
+    assert result["status"] == "insufficient_basis"
+    assert result["reason_codes"] == ["se_psdi_context_missing"]
+    assert result["tax_calculation_authorized"] is False
+
+
+@pytest.mark.parametrize("ref", [
+    "Lei 3.140/1991", "Decreto 29.935/2014",
+    "Programa PSDI Sergipe", "Decreto 29935/2014",
+])
+def test_psdi_reviewed_policy_cannot_bypass_program_router(ref):
+    with pytest.raises(FiscalValidationError, match="program-specific"):
+        decode_rule(policy("SE") | {"state_normative_reference": ref})
+
+
+def test_psdi_program_identity_cannot_be_reused_by_other_state():
+    with pytest.raises(FiscalValidationError, match="program identity"):
+        decode_rule(policy("AL") | {"program_id": "SE_PSDI"})
+
+
+def test_se_psdi_real_motor_does_not_grant_even_synthetic_program_status():
+    c = {
+        "mode": "new_industry_8",
+        "alese_amendments_by_competence_checked": True,
+        "decree_29935_and_amendments_checked": True,
+        "confaz_specific_modal_route_checked": True,
+        "cdi_resolution_signed_and_published": True,
+        "operation_ncm_cfop_cnae_reviewed": True,
+        "state_icms_st_difal_checked": True,
+        "current_simples_taxpayer": False,
+        "cdi_grant_status": "active",
+        "operation_authorized_by_resolution": True,
+        "maintenance_and_compliance_confirmed": True,
+        "cdi_cnpj_match": True,
+        "grant_valid_from": "2026-01-01",
+        "grant_valid_through": "2026-12-31",
+        "operational_mode": "reviewed_2026",
+        "icms_st_withheld": False,
+        "final_consumer_operation": False,
+        "operation": "incentivized_industrial_own_activity",
+        "enterprise_type": "new",
+        "new_enterprise_one_year_requirement_reviewed": True,
+        "individual_cdi_resolution_percentage": "8",
+    }
+    result = evaluate(
+        "SE",
+        policy_changes={
+            "program_id": "SE_PSDI",
+            "state_normative_reference": "Lei 3.140/1991 PSDI - hypothetical",
+        },
+        fact_changes={"psdi_context": c},
+    )
+    assert result["status"] == "potential"
+    assert result["tax_calculation_authorized"] is False
+    assert result["approved_cents"] is None
+    c["cdi_grant_status"] = "revoked"
+    denied = evaluate(
+        "SE",
+        policy_changes={
+            "program_id": "SE_PSDI",
+            "state_normative_reference": "Lei 3.140/1991 PSDI - hypothetical",
+        },
+        fact_changes={"psdi_context": c},
+    )
+    assert denied["status"] == "insufficient_basis"
+    assert denied["reason_codes"] == ["se_psdi_grant_revoked"]

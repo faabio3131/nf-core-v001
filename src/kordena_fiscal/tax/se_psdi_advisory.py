@@ -76,6 +76,14 @@ def assess_se_psdi_context(context: object, competence: date) -> dict[str, Any]:
         return _advisory("insufficient_basis", "se_psdi_context_version_missing")
 
     if mode == "domestic_raw_deferral":
+        # Decreto 820/2024 published 2024-10-16, stated effects
+        # from 2024-07-23; Decreto 868/2024 only from 2024-11-26.
+        # Do not infer whole-month status across either transition.
+        if competence < date(2024, 12, 1):
+            return _advisory(
+                "insufficient_basis",
+                "se_psdi_2024_retroactive_or_intra_month_transition",
+            )
         if context.get("operation") != "domestic_raw_material_input":
             return _advisory("not_applicable", "se_psdi_not_internal_raw_input")
         if context.get("used_in_incentivized_industrial_process") is not True:
@@ -121,6 +129,7 @@ def assess_se_psdi_context(context: object, competence: date) -> dict[str, Any]:
     if context.get("final_consumer_operation") is not False:
         if context.get("decree_29935_consumer_exception") not in {
             "public_administration", "fertilizer_to_rural_producer",
+            "led_devices_to_legal_entity",
         }:
             return _advisory("not_applicable", "se_psdi_final_consumer_excluded")
         if context.get("consumer_exception_reviewed") is not True:

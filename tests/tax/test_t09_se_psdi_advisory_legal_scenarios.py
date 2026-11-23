@@ -261,6 +261,7 @@ def test_decree_29935_final_consumer_and_icms_st_prohibitions(changes, reason):
 
 @pytest.mark.parametrize("exception", [
     "public_administration", "fertilizer_to_rural_producer",
+    "led_devices_to_legal_entity",
 ])
 def test_decree_29935_exception_still_only_advisory(exception):
     context = _context(
@@ -270,4 +271,21 @@ def test_decree_29935_exception_still_only_advisory(exception):
     )
     result = assess_se_psdi_context(context, MONTH)
     assert result["status"] == "potential"
+    assert result["tax_calculation_authorized"] is False
+
+
+@pytest.mark.parametrize("day", [
+    date(2024, 6, 1), date(2024, 7, 1),
+    date(2024, 10, 1), date(2024, 11, 1),
+])
+def test_2024_retroactive_820_and_november_868_not_full_month(day):
+    facts = _context(
+        mode="domestic_raw_deferral",
+        operation="domestic_raw_material_input",
+    )
+    result = assess_se_psdi_context(facts, day)
+    assert result["status"] == "insufficient_basis"
+    assert result["reason_codes"] == [
+        "se_psdi_2024_retroactive_or_intra_month_transition"
+    ]
     assert result["tax_calculation_authorized"] is False
