@@ -825,7 +825,22 @@
       "original_captures_in_50_lot": [],
       "independent_adversarial_review": false,
       "internal_curation_accepted": false,
-      "autoriza_aplicacao_fiscal": false
+      "autoriza_aplicacao_fiscal": false,
+      "user_lei3140_pdf_20261123": {
+        "sha256": "710660329fbdfac01faa327ef2874ec62f7ddff65eeacd5a0f9f12abda205c5a",
+        "source_type": "HISTORICAL_SECONDARY_CONSOLIDATION_REPUBLISHED_BY_STATE_SEDETEC",
+        "dispositive_articles": [
+          "art.3º IV",
+          "art.3º §§3º-6º",
+          "art.3º §§9º-10",
+          "art.3º §17",
+          "art.3º-B",
+          "art.5º",
+          "art.8º"
+        ],
+        "critical_negative_case": "Lei 9812/2025 admite qualificação como novo para empresa DESENQUADRADA, mas não comprova beneficiamento de optante ATUAL do Simples; vigencia e demais requisitos dependem de texto oficial vigente.",
+        "review_accepted": false
+      }
     },
     {
       "uf": "SP",

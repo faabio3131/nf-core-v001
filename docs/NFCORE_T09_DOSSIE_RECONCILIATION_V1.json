@@ -2361,6 +2361,127 @@
         "individual_entitlement_approved": false,
         "independent_counter_review": false,
         "internal_curation_accepted": false
+      },
+      "historical_statute_user_pdf_checkpoint_20261123": {
+        "evidence_date": "2026-11-23",
+        "document_name": "Lei 3.140/1991 - PSDI e FAI - reprodução LegisWeb de 21/10/2018",
+        "evidence_holder": "user_provided_document_pdf",
+        "source_type": "HISTORICAL_SECONDARY_CONSOLIDATION_REPUBLISHED_BY_STATE_SEDETEC",
+        "pages": 6,
+        "sha256": "710660329fbdfac01faa327ef2874ec62f7ddff65eeacd5a0f9f12abda205c5a",
+        "original_bytes_integrity_checked": true,
+        "pdf_metadata_creation_utc": "2018-10-21T20:41:26Z",
+        "publication_original_in_doe": "1991-12-26",
+        "state_gov_archive_url": "https://sedetec.se.gov.br/wp-content/uploads/2019/09/1.-Lei-n.%C2%BA-3.140-de-23-de-dezembro-de-1991-Institui-o-Programa-Sergipano-de-Desenvolvimento-Industrial-PSDI-e-cria-o-FAI.pdf",
+        "state_legislature_original_law_url": "https://al.se.leg.br/Legislacao/Ordinaria/1991/O31401991.pdf",
+        "matches_government_archived_copy_visually": true,
+        "matches_government_archived_copy_bytewise": false,
+        "is_authentic_original_official_diary": false,
+        "text_cutoff": "2018-10-21",
+        "legal_current_in_2026": false,
+        "user_supplied_source_stored_in_git": false,
+        "legal_benefit_authorized": false,
+        "material_findings": [
+          {
+            "provision": "art. 1º, art. 2º",
+            "page": 1,
+            "meaning": "institui PSDI e define apoios financeiro/crediticio/locacional/fiscal/infrainfraestrutura"
+          },
+          {
+            "provision": "art. 3º IV alíneas a-c; §§3º-5º",
+            "pages": [
+              2
+            ],
+            "meaning": "diferimento de ICMS/DIFAL e condições de apoio fiscal; CDI com pareceres prévios e modalidades individualizadas"
+          },
+          {
+            "provision": "art. 3º §5º I-II",
+            "page": 2,
+            "meaning": "25% do ICMS devido pelo beneficiário, com hipóteses de valor equivalente; não é alíquota genérica sobre faturamento"
+          },
+          {
+            "provision": "art. 3º §§6º,9º,10",
+            "page": 3,
+            "meaning": "prazo 10 anos; extensão até 25 anos em hipótese excepcional; eficácia conforme data de resolução CDI"
+          },
+          {
+            "provision": "art. 3º §17",
+            "page": 3,
+            "meaning": "veda concomitância de benefício PSDI a empresa enquadrada no Simples de apuração de ICMS na redação de 2018; confrontar lei de 2025"
+          },
+          {
+            "provision": "art. 3º-B",
+            "page": 4,
+            "meaning": "antecipação do pagamento com regime especial SEFAZ; percentuais de 6,2% e 8% usados no desconto conforme caso, não tributação universal"
+          },
+          {
+            "provision": "art. 5º",
+            "pages": [
+              4,
+              5
+            ],
+            "meaning": "incentivo demanda aprovação de projeto e autorização CDI, e hipóteses especiais"
+          },
+          {
+            "provision": "art. 8º",
+            "page": 5,
+            "meaning": "perda do direito se não recolhe ICMS, não implementa projeto, muda produção sem aval, deixa de prestar documentos ou descumpre obrigações"
+          }
+        ],
+        "post_2018_acts_requiring_reconciliation": [
+          {
+            "act": "Lei 8.803/2020",
+            "subject": "acrescenta §30 ao art. 3º",
+            "government_index": "https://sedetec.se.gov.br/fai/legislacao-fai/"
+          },
+          {
+            "act": "Lei 9.812/2025",
+            "subject": "acrescenta §3º ao art.4º: estabelecimento desenquadrado do Simples pode ser tratado como novo, prazo a contar do desenquadramento",
+            "verification": "SECONDARY_TEXT_CONFIRMED_OFFICIAL_DOE_BYTES_PENDING"
+          },
+          {
+            "act": "Lei 9.943/2026",
+            "subject": "inclui DESENVOLVE-SE como agente executor PSDI/FAI",
+            "verification": "SECONDARY_TEXT_CONFIRMED_OFFICIAL_DOE_BYTES_PENDING"
+          },
+          {
+            "act": "Decreto 820/2024",
+            "subject": "acrescenta art5 IV e e §§5º-B, 28 do Decreto 29935/2014",
+            "verification": "SECONDARY_TEXT_CONFIRMED"
+          },
+          {
+            "act": "Decreto 868/2024",
+            "subject": "acrescenta art5 §§5º-C-5º-G e Anexo III, revoga §22 do Decreto 29935/2014",
+            "verification": "SECONDARY_TEXT_CONFIRMED"
+          },
+          {
+            "act": "Decreto 1433/2026",
+            "subject": "menciona apoio PSDI ICMS; avaliar se mudança de condição ou alteração apenas regulatória",
+            "verification": "REQUIRES_DEVICE_COMPARISON"
+          }
+        ],
+        "positive_scenario": "Industria com projeto e modalidade correta, resolucao CDI, ato publicado, regime tributario compatível, codigo fiscal e evidencia do ICMS apurado por competencia; resultado só potencial, jamais automatizar.",
+        "negative_scenarios": [
+          "Optante atualmente pelo Simples não pode ser automaticamente tratado como elegivel com base na nova categoria para DESENQUADRADO criada em 2025.",
+          "Antes da data individual da resolucao CDI não há entitlement baseado apenas no valor/percentual de 2018.",
+          "Não converter o recolhimento de 25% do ICMS devido em aliquota de 25% sobre o faturamento.",
+          "Não generalizar os 6,2% ou 8% da antecipação para operações sem regime especial SEFAZ.",
+          "Não manter incentivo se a hipótese de perda do art.8º se concretizar.",
+          "Não estender direito atual usando o PDF de 2018 sem verificar leis e decretos 2025/2026."
+        ],
+        "outstanding_internal": [
+          "obter autenticidade/cadeia oficial em Diário Oficial de atos materialmente vigentes",
+          "confrontar todas alterações posteriores à edição de 2018 e datas de efeitos",
+          "definir dispositivo material aplicável ao candidato e competência",
+          "validar fundamento de convênio/LC160 CONFAZ ou outra rota juridica",
+          "testes juridicos efetivos dos cenarios e revisão independente"
+        ],
+        "full_amendment_chain_verified": false,
+        "competence_and_scope_verified": false,
+        "confaz_verified": false,
+        "independent_counter_review": false,
+        "internal_curation_accepted": false,
+        "import_authorized": false
       }
     },
     {

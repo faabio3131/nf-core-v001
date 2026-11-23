@@ -1589,6 +1589,16 @@
           "captured_ok": 0,
           "failed": 5,
           "curation_approved": false
+        },
+        "user_lei3140_pdf_20261123": {
+          "source_provenance_document": "docs/NFCORE_T09_SE_LEI_3140_1991_USUARIO_2018_EVIDENCE_20261123.md",
+          "sha256": "710660329fbdfac01faa327ef2874ec62f7ddff65eeacd5a0f9f12abda205c5a",
+          "source_type": "HISTORICAL_SECONDARY_CONSOLIDATION_REPUBLISHED_BY_STATE_SEDETEC",
+          "text_cutoff": "2018-10-21",
+          "original_doe_proven": false,
+          "post_2018_consolidation_complete": false,
+          "external_material_needed_from_owner": false,
+          "internal_review_complete": false
         }
       }
     },
