@@ -13,6 +13,9 @@ from typing import Any
 from kordena_fiscal.domain import BrazilianJurisdiction, FiscalValidationError
 from kordena_fiscal.tax.regimes import FederalIncomeTaxRegime
 from kordena_fiscal.tax.se_psdi_advisory import assess_se_psdi_context
+from kordena_fiscal.tax.t09_priority_state_guards import (
+    PROGRAM_UF, assess_priority_state_context, expected_program,
+)
 
 RULE_SCHEMA = "nfcore.state-icms-benefit-rule/v1"
 FACTS_SCHEMA = "nfcore.state-icms-benefit-facts/v1"
@@ -156,6 +159,15 @@ def decode_rule(payload: object) -> dict[str, Any]:
     if BrazilianJurisdiction(uf).state_code != uf:
         raise FiscalValidationError("state benefit UF inconsistent with fiscal domain")
     program_id = payload.get("program_id")
+    priority = expected_program(
+        uf, str(payload.get("state_normative_reference", "")),
+    )
+    if priority is not None and program_id != priority:
+        raise FiscalValidationError(
+            "state benefit needs its act-specific review router"
+        )
+    if program_id in PROGRAM_UF and PROGRAM_UF[program_id] != uf:
+        raise FiscalValidationError("invalid cross-jurisdiction program")
     se_psdi_identifier = (
         uf == "SE"
         and any(tag in str(payload.get("state_normative_reference", "")).upper()
@@ -163,8 +175,8 @@ def decode_rule(payload: object) -> dict[str, Any]:
     )
     if se_psdi_identifier and program_id != "SE_PSDI":
         raise FiscalValidationError("SE PSDI requires program-specific authority")
-    if program_id is not None and (
-        program_id != "SE_PSDI" or uf != "SE"
+    if program_id is not None and program_id != "SE_PSDI" and (
+        program_id not in PROGRAM_UF or PROGRAM_UF[program_id] != uf
     ):
         raise FiscalValidationError("invalid state-specific program identity")
     kind = payload.get("benefit_kind")
@@ -291,6 +303,7 @@ def decode_facts(payload: object) -> dict[str, Any]:
         "individual_concession": payload.get("individual_concession"),
         "review_reference": ref,
         "psdi_context": payload.get("psdi_context"),
+        "priority_state_context": payload.get("priority_state_context"),
     }
 
 
@@ -355,6 +368,14 @@ def assess_state_rule(
     if rule.get("program_id") == "SE_PSDI":
         state_check = assess_se_psdi_context(
             facts.get("psdi_context"), competence,
+        )
+        if state_check["status"] != "potential":
+            return _result(
+                state_check["status"], tuple(state_check["reason_codes"]),
+            )
+    if rule.get("program_id") in PROGRAM_UF:
+        state_check = assess_priority_state_context(
+            rule["program_id"], facts.get("priority_state_context"), competence,
         )
         if state_check["status"] != "potential":
             return _result(
