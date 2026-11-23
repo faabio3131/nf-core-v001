@@ -2482,6 +2482,78 @@
         "independent_counter_review": false,
         "internal_curation_accepted": false,
         "import_authorized": false
+      },
+      "official_alese_compilation_user_html_20261123": {
+        "checked_at": "2026-11-23",
+        "title": "Lei SE 3.140/1991, texto compilado da Secretaria-Geral da Mesa Diretora - ALESE LEGIS",
+        "source_url": "https://aleselegis.al.se.leg.br/Arquivo/Documents/legislacao/html/l31401991.HTML",
+        "document_type": "OFFICIAL_STATE_LEGISLATIVE_COMPILATION_HTML_NOT_ORIGINAL_DOE_ISSUE",
+        "uploaded_filename": "LEI 3140_1991 23_12_1991.html",
+        "uploaded_sha256": "520b1a1f93b9a1c6c8ec5d315d5d885ec436df4236f7c46dfbdc9a21b9c080a5",
+        "uploaded_bytes": 223828,
+        "source_exact_download_bytes_match_checked": false,
+        "original_doe_statement": "Este texto não substitui o publicado no D.O.E de 26.12.1991.",
+        "publication_date_original": "1991-12-26",
+        "explicitly_contains_amendments_until": "2026-04-01",
+        "up_to_date_for_every_amendment_through_2026_11_23": false,
+        "sections_examined": [
+          {
+            "provision": "art. 1º §§1º-3º",
+            "latest_2026_act": "Lei 9.943/2026",
+            "finding": "SEDETEC administra PSDI; CODISE e DESENVOLVE-SE executam; CDI continua órgão superior; trâmite pela entidade captadora"
+          },
+          {
+            "provision": "art. 3º §3º",
+            "latest_2026_act": "Lei 9.943/2026",
+            "finding": "CDI aprova ações após parecer técnico SEDETEC; executor CODISE ou DESENVOLVE-SE conforme captação"
+          },
+          {
+            "provision": "art. 3º IV d e §31",
+            "latest_2026_act": "Lei 9.494/2024",
+            "finding": "diferimento de ICMS sobre matéria-prima interna no processo industrial; fase se encerra na saída do produto resultante"
+          },
+          {
+            "provision": "art. 3º §5º-B",
+            "latest_2026_act": "Lei 9.494/2024",
+            "finding": "vedação de acumulação de créditos de ICMS relativos a insumos industrializados, ressalvada exportação; estornos conforme regulamento"
+          },
+          {
+            "provision": "art. 3º §17",
+            "latest_2026_act": "Lei 4.914/2003",
+            "finding": "benefícios fiscais não se aplicam concomitantemente a empresas no regime simplificado de apuração do ICMS"
+          },
+          {
+            "provision": "art. 4º §3º",
+            "latest_2026_act": "Lei 9.812/2025",
+            "finding": "empresa elegível DESENQUADRADA do Simples pode ser empreendimento novo; prazo inicia no desenquadramento"
+          },
+          {
+            "provision": "art. 8º II,V,VI",
+            "latest_2026_act": "Lei 9.943/2026",
+            "finding": "perda do benefício por mudança de produção, redução de emprego ou não apresentação de documentos sem exceções/autorizações aplicáveis"
+          },
+          {
+            "provision": "art. 11 e art. 12 §1º",
+            "latest_2026_act": "Lei 9.943/2026",
+            "finding": "FAI aplica recursos com CODISE e DESENVOLVE-SE; contas segregadas conforme a entidade executora"
+          }
+        ],
+        "negative_cases": [
+          "Texto compilado ALESE não substitui a edição original de 26/12/1991 do Diário Oficial para provar publicação primária.",
+          "Redações revogadas/riscadas preservadas no HTML NÃO são contemporaneamente vigentes.",
+          "Optante atual do Simples NÃO obtém direito automático pelo art.4º §3º destinado a estabelecimento desenquadrado.",
+          "Projeto sem aprovação CDI e enquadramento por entidade captadora não é benefício fiscal automático.",
+          "Diferimento de entrada não pode ser tratado como não incidência definitiva: art.3º §31 encerra o diferimento na saída industrializada.",
+          "Créditos ICMS sobre insumos não podem ser acumulados indiscriminadamente, respeitada a exceção de exportação e estornos do §5º-B.",
+          "A versão da lei com alterações 2026 não substitui Decreto 29.935/2014 consolidado, atos CDI individuais, CONFAZ e datas concretas de cada competência."
+        ],
+        "archived_original_gazette_issue_verified": false,
+        "full_2026_normative_amendment_chain_verified": false,
+        "regulatory_decree_29935_consolidated_to_competence": false,
+        "confaz_route_verified": false,
+        "independent_counter_review_passed": false,
+        "internal_acceptance": false,
+        "fiscal_application_authorized": false
       }
     },
     {

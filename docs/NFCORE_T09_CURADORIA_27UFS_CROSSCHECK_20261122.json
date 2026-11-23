@@ -840,6 +840,15 @@
         ],
         "critical_negative_case": "Lei 9812/2025 admite qualificação como novo para empresa DESENQUADRADA, mas não comprova beneficiamento de optante ATUAL do Simples; vigencia e demais requisitos dependem de texto oficial vigente.",
         "review_accepted": false
+      },
+      "official_alese_compilation_user_html_20261123": {
+        "source_url": "https://aleselegis.al.se.leg.br/Arquivo/Documents/legislacao/html/l31401991.HTML",
+        "sha256": "520b1a1f93b9a1c6c8ec5d315d5d885ec436df4236f7c46dfbdc9a21b9c080a5",
+        "official_legislative_text_checked": true,
+        "consolidation_includes_2026": true,
+        "official_doe_original_confirmed": false,
+        "material_scope_fiscal_authorized": false,
+        "independent_counter_review": false
       }
     },
     {

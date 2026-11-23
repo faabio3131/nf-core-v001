@@ -1599,6 +1599,17 @@
           "post_2018_consolidation_complete": false,
           "external_material_needed_from_owner": false,
           "internal_review_complete": false
+        },
+        "official_alese_compilation_user_html_20261123": {
+          "source_url": "https://aleselegis.al.se.leg.br/Arquivo/Documents/legislacao/html/l31401991.HTML",
+          "uploaded_sha256": "520b1a1f93b9a1c6c8ec5d315d5d885ec436df4236f7c46dfbdc9a21b9c080a5",
+          "document_type": "OFFICIAL_STATE_LEGISLATIVE_COMPILATION_HTML_NOT_ORIGINAL_DOE_ISSUE",
+          "compilation_includes_2026": true,
+          "original_gazette_issue": false,
+          "all_amendments_reconciled": false,
+          "independent_review_complete": false,
+          "external_owner_document_required": false,
+          "internal_curatorial_accepted": false
         }
       }
     },
