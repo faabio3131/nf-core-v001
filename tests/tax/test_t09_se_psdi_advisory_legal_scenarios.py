@@ -166,3 +166,20 @@ def test_missing_context_fails_closed():
     assert assess_se_psdi_context(None, MONTH)["reason_codes"] == [
         "se_psdi_context_missing"
     ]
+
+
+def test_grant_legal_last_day_inclusive_is_valid_entire_november():
+    r = assess_se_psdi_context(
+        _context(grant_valid_through="2026-11-30"), MONTH,
+    )
+    assert r["status"] == "potential"
+    assert r["tax_calculation_authorized"] is False
+
+
+def test_wrong_context_types_are_rejected_without_crashing():
+    assert assess_se_psdi_context({"mode": []}, MONTH)["status"] == (
+        "not_applicable"
+    )
+    c = _context()
+    c["cdi_grant_status"] = []
+    assert assess_se_psdi_context(c, MONTH)["status"] == "insufficient_basis"
