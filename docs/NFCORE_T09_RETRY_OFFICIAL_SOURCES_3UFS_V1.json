@@ -59,6 +59,33 @@
       "verification_note": "Official legal inventory for FAI and PSDI, act chronology to research",
       "review_status": "unreviewed",
       "eligible_for_tax_calculation": false
+    },
+    {
+      "uf": "SE",
+      "candidate_id": "SE-PSDI-LEI3140-DEC29935-V1",
+      "source_url": "https://www.sefaz.se.gov.br/SitePages/servicos_cidadao.aspx",
+      "source_kind": "official_psdi_legislative_or_service_reference_unreviewed",
+      "verification_note": "Official SEFAZ description of request for PSDI support with expert assessment/CDI decision",
+      "review_status": "unreviewed",
+      "eligible_for_tax_calculation": false
+    },
+    {
+      "uf": "SE",
+      "candidate_id": "SE-PSDI-LEI3140-DEC29935-V1",
+      "source_url": "https://legislacao.se.gov.br/",
+      "source_kind": "official_psdi_legislative_or_service_reference_unreviewed",
+      "verification_note": "Official legislative index: not the material PDF of Lei 3140 or Decreto 29935",
+      "review_status": "unreviewed",
+      "eligible_for_tax_calculation": false
+    },
+    {
+      "uf": "SE",
+      "candidate_id": "SE-PSDI-LEI3140-DEC29935-V1",
+      "source_url": "https://pge.se.gov.br/wp-content/uploads/2025/02/DECRETO-29-935-1.pdf",
+      "source_kind": "official_psdi_legislative_or_service_reference_unreviewed",
+      "verification_note": "Official state Procuradoria PDF of PSDI regulatory decree 29.935/2014, seek specific clauses",
+      "review_status": "unreviewed",
+      "eligible_for_tax_calculation": false
     }
   ]
 }
