@@ -833,6 +833,22 @@
         "assessment": "FISH_DEFERRAL_IDENTIFIED_BUT_2026_EFFECT_NOT_PROVEN",
         "fiscal_blocked": true,
         "legal_certification_awarded": false
+      },
+      "t09_documentary_handoff_20261123": {
+        "decision": "BLOCKED_NOT_IMPORTABLE",
+        "blocked_for_fiscal_calculation": true,
+        "blocked_for_import": true,
+        "status": "DOCUMENTARY_VERIFICATION_PENDING",
+        "classification": "BLOCKED_EXTERNAL_NORMATIVE_EVIDENCE",
+        "client_or_director_document_required_for_public_research": false,
+        "owner": "future NFCore juridical-fiscal documentary curation PR",
+        "requires_independent_legal_review": true,
+        "legal_benefit_certified": false,
+        "risk_policy": "fail-closed; no ICMS saving/eligibility assertion for this candidate",
+        "reactivation_only_with_official_evidence": true,
+        "backlog_document": "docs/NFCORE_T09_4UF_FUTURE_CURATORIA_SINGLE_CHECKLIST_20261123.md",
+        "candidate_key": "AP-REGIME-ESPECIAL-RICMS-ART415-V1",
+        "legal_issue_description": "Decreto 3.599/2001 fish deferral; DOE 2025/2026 refer to fish; CONFAZ 14/2018 and original/republication pending"
       }
     },
     {
@@ -1677,6 +1693,22 @@
         "assessment": "ORIGINAL_ACT_NOT_STANDALONE_BASIS_2026",
         "fiscal_blocked": true,
         "legal_certification_awarded": false
+      },
+      "t09_documentary_handoff_20261123": {
+        "decision": "BLOCKED_NOT_IMPORTABLE",
+        "blocked_for_fiscal_calculation": true,
+        "blocked_for_import": true,
+        "status": "DOCUMENTARY_VERIFICATION_PENDING",
+        "classification": "BLOCKED_EXTERNAL_NORMATIVE_EVIDENCE",
+        "client_or_director_document_required_for_public_research": false,
+        "owner": "future NFCore juridical-fiscal documentary curation PR",
+        "requires_independent_legal_review": true,
+        "legal_benefit_certified": false,
+        "risk_policy": "fail-closed; no ICMS saving/eligibility assertion for this candidate",
+        "reactivation_only_with_official_evidence": true,
+        "backlog_document": "docs/NFCORE_T09_4UF_FUTURE_CURATORIA_SINGLE_CHECKLIST_20261123.md",
+        "candidate_key": "PA-POLITICA-LEI6913-DEC2490-V1",
+        "legal_issue_description": "Lei 6.913/2006 stand-alone invalidated by ADI 3779; conditional successor Lei 8.930/2019 and CONFAZ/PNTT not certified"
       }
     },
     {
@@ -2457,6 +2489,22 @@
         "assessment": "NO_VERIFIED_STATE_EXTENSION_IN_2026",
         "fiscal_blocked": true,
         "legal_certification_awarded": false
+      },
+      "t09_documentary_handoff_20261123": {
+        "decision": "BLOCKED_NOT_IMPORTABLE",
+        "blocked_for_fiscal_calculation": true,
+        "blocked_for_import": true,
+        "status": "DOCUMENTARY_VERIFICATION_PENDING",
+        "classification": "BLOCKED_EXTERNAL_NORMATIVE_EVIDENCE",
+        "client_or_director_document_required_for_public_research": false,
+        "owner": "future NFCore juridical-fiscal documentary curation PR",
+        "requires_independent_legal_review": true,
+        "legal_benefit_certified": false,
+        "risk_policy": "fail-closed; no ICMS saving/eligibility assertion for this candidate",
+        "reactivation_only_with_official_evidence": true,
+        "backlog_document": "docs/NFCORE_T09_4UF_FUTURE_CURATORIA_SINGLE_CHECKLIST_20261123.md",
+        "candidate_key": "RR-RICMS2001-AN1-ART1-LXVII-V1",
+        "legal_issue_description": "RICMS-RR Anexo I art. 1º LXVII; 31/12/2025 historical expiry; verify any state 2026 extension through full official compilation/DOE"
       }
     },
     {
@@ -3045,6 +3093,22 @@
         "assessment": "BASE_REINSTITUTION_IDENTIFIED_MODAL_PROOF_INCOMPLETE",
         "fiscal_blocked": true,
         "legal_certification_awarded": false
+      },
+      "t09_documentary_handoff_20261123": {
+        "decision": "BLOCKED_NOT_IMPORTABLE",
+        "blocked_for_fiscal_calculation": true,
+        "blocked_for_import": true,
+        "status": "DOCUMENTARY_VERIFICATION_PENDING",
+        "classification": "BLOCKED_EXTERNAL_NORMATIVE_EVIDENCE",
+        "client_or_director_document_required_for_public_research": false,
+        "owner": "future NFCore juridical-fiscal documentary curation PR",
+        "requires_independent_legal_review": true,
+        "legal_benefit_certified": false,
+        "risk_policy": "fail-closed; no ICMS saving/eligibility assertion for this candidate",
+        "reactivation_only_with_official_evidence": true,
+        "backlog_document": "docs/NFCORE_T09_4UF_FUTURE_CURATORIA_SINGLE_CHECKLIST_20261123.md",
+        "candidate_key": "SE-PSDI-LEI3140-DEC29935-V1",
+        "legal_issue_description": "PSDI Lei 3.140/1991 / Decreto 29.935/2014: six modes remain unapproved pending certificate 13/2018/deposits and 2024 decrees"
       }
     },
     {
@@ -3502,5 +3566,33 @@
     "accepted": 0,
     "imported": 0,
     "comment": "6 checked legal texts are NOT 6 certified candidates"
+  },
+  "t09_technical_engineering_closeout_20261123": {
+    "status": "CERTIFICADO_INTERNAMENTE",
+    "scope": "T09 deterministic motor, internal security, persistence, API, frontend and runtime gates; not an ICMS legal approval, tenant concession or fiscal production homologation",
+    "certified_source_head": "d4d5f295d3ccbd42c6fc0b76726e5c53f832fb3a",
+    "ci_full_run_id": 45261283697,
+    "ci_full_url": "https://github.com/faabio3131/nf-core-v001/actions/runs/45261283697",
+    "ci_conclusion": "SUCCESS",
+    "python_pass": 6929,
+    "e2e_pass": 81,
+    "python_skipped": 2,
+    "warnings": 8,
+    "failed_tests": 0,
+    "quality_job_successful_steps": 43,
+    "auxiliary_workflows_success": 7,
+    "engineering_test_baseline_is_pre_documentation_commit": true,
+    "fiscal_rule_changes_in_this_closeout": false,
+    "uf_documentary_partition": [
+      "RR",
+      "PA",
+      "AP",
+      "SE"
+    ],
+    "uf_documentary_records_blocked": 4,
+    "uf_documentary_certified": 0,
+    "final_release_condition": "Technical engine gate separate from legal import gate; documentation follow-up must not block internal technical release",
+    "approved_director_scope": "separate motor certification from four state legal research; no fiscal source/code change",
+    "record_location": "docs/NFCORE_T09_PR592_TECHNICAL_CLOSURE_20261123.md"
   }
 }
