@@ -168,19 +168,38 @@
         "status": "PENDING_MODALITY_SPECIFIC_EVIDENCE",
         "act": null,
         "url": null,
-        "specific_modality_proven": false
+        "specific_modality_proven": false,
+        "analysis_20261123": {
+          "foundation": "Lei 3.395/2025 Anexo II item8 remete Certificado 14/2018 item11, Convênio 190/2017, LC160/2017",
+          "verified": "DOE_LISTED_HISTORIC_CRD",
+          "specific_modal_scope_proven": false,
+          "missing": "certificado/Anexo I original e validade atual da modalidade e Decreto 3.599/2001 integral e alterações"
+        }
       },
       "positive_negative_tests": {
         "synthetic_regression_cases_recorded": true,
         "legal_2026_current_act_verified_for_all_cases": false,
-        "latest_ci_full_green_for_this_snapshot": false
+        "latest_ci_full_green_for_this_snapshot": false,
+        "selected_material_case_synthetics": true,
+        "real_2026_modal_test_certified": false
       },
-      "material_risk": "art.415 RICMS é procedimental; avaliar Lei 3.395/2025, Decreto 2.656/2026 e Lei 3.490/2026",
-      "status_real": "BLOCKED_MATERIAL_CANDIDATE_RESELECTION",
+      "material_risk": "certificado/Anexo I original e validade atual da modalidade e Decreto 3.599/2001 integral e alterações",
+      "status_real": "MATERIAL_SELECTED_LEGAL_CHAIN_PENDING",
       "internally_curated": false,
       "fiscally_importable": false,
       "fiscal_calculation_allowed": false,
-      "next_exact_action": "Decretos 6.199/2014 e 4.960/2018 em fonte primária, Portaria (T) 007/2024, duração da suspensão do selo e benefício material art.415."
+      "next_exact_action": "Capturar Decreto 3.599/2001 integral, certificado 14/2018 item11 e verificar regime após revogação 2.349 e após 2.656/2026.",
+      "selected_material_replacement": {
+        "candidate_id": "AP-PESCADO-DEC3599-LEI3395-MATERIAL-V1",
+        "replaces_procedural": "AP-REGIME-ESPECIAL-RICMS-ART415-V1",
+        "kind": "deferral",
+        "normative_reference": "Decreto 3.599/2001, Lei 3.395/2025 Anexo II item8",
+        "operation": "primeira operação interna com pescado destinado à industrialização",
+        "other_separate_mode": "crédito presumido na saída do pescado industrializado; NÃO confundir com diferimento",
+        "historical_certificate": "AP/CONFAZ 14/2018, Anexo I item11",
+        "status": "MATERIAL_SELECTED_REQUIRES_DECRETO_ORIGINAL_AND_CONFAZ_CERTIFICATE"
+      },
+      "material_scope": "FIRST_INTERNAL_FISH_SALE_DEFERRAL_DISTINCT_FROM_INDUSTRIAL_OUTPUT_CREDIT"
     },
     {
       "uf": "BA",
@@ -529,19 +548,28 @@
         "status": "PENDING_MODALITY_SPECIFIC_EVIDENCE",
         "act": null,
         "url": null,
-        "specific_modality_proven": false
+        "specific_modality_proven": false,
+        "analysis_20261123": {
+          "foundation": "LC160/2017, Convênio190/2017, Lei 8.930/2019 arts3–8, Decreto 2.014/2018 Anexo e STF ADI3779",
+          "verified": "GENERIC_POSSIBLE_SUCCESSOR_FOUNDED_BUT_NO_ACT_SPECIFIC_REVALIDATION",
+          "specific_modal_scope_proven": false,
+          "missing": "atualidade da ação/efeitos e relação entre anexo, depósito PNTT, ato individual, nova redação e ADI; não restaurar lei inconstitucional automaticamente"
+        }
       },
       "positive_negative_tests": {
         "synthetic_regression_cases_recorded": true,
         "legal_2026_current_act_verified_for_all_cases": false,
-        "latest_ci_full_green_for_this_snapshot": false
+        "latest_ci_full_green_for_this_snapshot": false,
+        "selected_material_case_synthetics": true,
+        "real_2026_modal_test_certified": false
       },
-      "material_risk": "ADI 3779 STF, alcance de Lei 6.913/2006 e eventual fundamento sucessor válidos por competência",
-      "status_real": "BLOCKED_CONSTITUTIONAL_ROUTE",
+      "material_risk": "atualidade da ação/efeitos e relação entre anexo, depósito PNTT, ato individual, nova redação e ADI; não restaurar lei inconstitucional automaticamente",
+      "status_real": "ORIGINAL_INVALIDATED_SUCCESSOR_UNPROVEN",
       "internally_curated": false,
       "fiscally_importable": false,
       "fiscal_calculation_allowed": false,
-      "next_exact_action": "ADI 3779: acórdão e efeitos, modulação, Lei 7.485/2010, Decreto 990/2020 e reinstituição possível."
+      "next_exact_action": "Obter DOE 2018 por SHA, confirmar depósitos no PNTT/CONFAZ e efeitos STF; selecionar modalidade sucessora juridicamente válida sem reviver 6.913.",
+      "stf_adi3779_2019_effect_requires_successor_law_and_deposit": true
     },
     {
       "uf": "PB",
@@ -815,19 +843,28 @@
         "status": "PENDING_MODALITY_SPECIFIC_EVIDENCE",
         "act": null,
         "url": null,
-        "specific_modality_proven": false
+        "specific_modality_proven": false,
+        "analysis_20261123": {
+          "foundation": "Convênio ICMS100/1997, internalização RR Decreto 30.363-E/2021",
+          "verified": "HISTORICAL_THROUGH_2025_ONLY",
+          "specific_modal_scope_proven": false,
+          "missing": "dispositivo estadual específico posterior estendendo inciso LXVII a 2026, DOE original e vigência"
+        }
       },
       "positive_negative_tests": {
         "synthetic_regression_cases_recorded": true,
         "legal_2026_current_act_verified_for_all_cases": false,
-        "latest_ci_full_green_for_this_snapshot": false
+        "latest_ci_full_green_for_this_snapshot": false,
+        "selected_material_case_synthetics": true,
+        "real_2026_modal_test_certified": false
       },
-      "material_risk": "ausência de prova de prorrogação material do Anexo I art.1 LXVII para 2026",
-      "status_real": "BLOCKED_VALIDITY_EXTENSION",
+      "material_risk": "dispositivo estadual específico posterior estendendo inciso LXVII a 2026, DOE original e vigência",
+      "status_real": "EXPIRED_2025_SPECIFIC_2026_EXTENSION_UNPROVEN",
       "internally_curated": false,
       "fiscally_importable": false,
       "fiscal_calculation_allowed": false,
-      "next_exact_action": "RICMS 4.335-E/2001 compilado até Dec.39.893-E/2026; falta comprovar prorrogação estadual do Anexo I LXVII."
+      "next_exact_action": "Comprovar ou refutar expressamente prorrogação estadual LXVII após 31/12/2025 em DOE/SEFAZ e revisar CONFAZ100/97 por operação.",
+      "effective_2026_lxvii_eligible": false
     },
     {
       "uf": "RS",
@@ -934,19 +971,27 @@
         "historical_end_limit": "2032-12-31 (redação de 2018, sujeito a lei posterior)",
         "historical_reinstitution_base_identified": true,
         "original_certificate_and_annex_checked": false,
-        "modal_2024_2026_chain_unverified": true
+        "modal_2024_2026_chain_unverified": true,
+        "analysis_20261123": {
+          "foundation": "LC 160/2017, Convênio ICMS 190/2017, Lei 8.490/2018 e Certificado SE/CONFAZ 13/2018",
+          "verified": "BASE_LAW_LISTED",
+          "specific_modal_scope_proven": false,
+          "missing": "original do certificado 13/2018 e depósito/planilha vinculada a cada modalidade e alterações"
+        }
       },
       "positive_negative_tests": {
         "synthetic_regression_cases_recorded": true,
         "legal_2026_current_act_verified_for_all_cases": false,
-        "latest_ci_full_green_for_this_snapshot": false
+        "latest_ci_full_green_for_this_snapshot": false,
+        "selected_material_case_synthetics": true,
+        "real_2026_modal_test_certified": false
       },
-      "material_risk": "Lei ALESE até 2026 e Decreto PGE 2014 com hashes verificados, mas Decreto 820/868/2024 sem DOE original anexado e CONFAZ 126/2024 não vinculado por modalidade.",
+      "material_risk": "original do certificado 13/2018 e depósito/planilha vinculada a cada modalidade e alterações",
       "status_real": "BLOCKED_MODAL_CONFAZ_AND_DOE_AMENDMENT",
       "internally_curated": false,
       "fiscally_importable": false,
       "fiscal_calculation_allowed": false,
-      "next_exact_action": "Obter original CONFAZ 13/2018 e planilha da Lei 8.490/2018; cruzar reinstituição por modalidade com alterações 2024 e DOE 820/868, aceitar somente após revisão."
+      "next_exact_action": "Obter DOEs 820/868, certificado 13/2018 + planilha e reconciliar as seis modalidades; revisão contraditória independente."
     },
     {
       "uf": "SP",

@@ -236,6 +236,13 @@
         "fully_consolidated_current_to_20261121": false,
         "independent_accountant_opinion": false,
         "publisher_bytes_sha256": null
+      },
+      "priority_closeout_20261123": {
+        "status": "MATERIAL_SELECTED_LEGAL_CHAIN_PENDING",
+        "material_replacement_id": "AP-PESCADO-DEC3599-LEI3395-MATERIAL-V1",
+        "unverified_original_sources": [],
+        "positive_ruling": false,
+        "import_authorized": false
       }
     },
     {
@@ -845,6 +852,17 @@
         "verified_dispositive_summary": "STF decidiu pela inconstitucionalidade das Leis do PA 6.912/2006, 6.913/2006, 6.914/2006 e 6.915/2006. Ministro Barroso vencido quanto à modulação.",
         "remaining_review": "Verificar acórdão, embargos/trânsito, eficácia temporal, eventuais regimes estaduais supervenientes e via específica de reinstituição LC 160/2017/Convênio 190/2017; não presumir manutenção do incentivo em 2026.",
         "authorization_for_eligibility": false
+      },
+      "priority_closeout_20261123": {
+        "status": "ORIGINAL_INVALIDATED_SUCCESSOR_UNPROVEN",
+        "material_replacement_id": null,
+        "unverified_original_sources": [
+          "https://portal.stf.jus.br/peticaoInicial/verPeticaoInicial.asp?base=ADI&numProcesso=3779",
+          "https://www.ioepa.com.br/pages/2018/2018.03.23.DOE.pdf",
+          "https://www.legispara.pa.gov.br/lei/5169"
+        ],
+        "positive_ruling": false,
+        "import_authorized": false
       }
     },
     {
@@ -1358,6 +1376,15 @@
         "fully_consolidated_current_to_20261121": false,
         "independent_accountant_opinion": false,
         "publisher_bytes_sha256": null
+      },
+      "priority_closeout_20261123": {
+        "status": "EXPIRED_2025_SPECIFIC_2026_EXTENSION_UNPROVEN",
+        "material_replacement_id": null,
+        "unverified_original_sources": [
+          "https://www.sefaz.rr.gov.br/downloads?catid=1404&id=25395&m=0&task=download.send"
+        ],
+        "positive_ruling": false,
+        "import_authorized": false
       }
     },
     {
@@ -1552,6 +1579,15 @@
         "fully_consolidated_current_to_20261121": false,
         "independent_accountant_opinion": false,
         "publisher_bytes_sha256": null
+      },
+      "priority_closeout_20261123": {
+        "status": "BLOCKED_MODAL_CONFAZ_AND_DOE_AMENDMENT",
+        "material_replacement_id": null,
+        "unverified_original_sources": [
+          "https://aleselegis.al.se.leg.br/Arquivo/Documents/legislacao/html/l84902018.html"
+        ],
+        "positive_ruling": false,
+        "import_authorized": false
       }
     },
     {

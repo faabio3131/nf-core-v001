@@ -1,0 +1,100 @@
+{
+  "schema_version": "nfcore.t09.official-alternative-source-trial/v1",
+  "as_of": "2026-11-23",
+  "scope": "T09 four state original-source legal capture, not a fiscal permit",
+  "authorized_for_import": false,
+  "legal_validity_certified": false,
+  "independent_approval_received": false,
+  "entries": [
+    {
+      "uf": "SE",
+      "candidate_id": "SE-PSDI-LEI3140-DEC29935-V1",
+      "source_url": "https://aleselegis.al.se.leg.br/Arquivo/Documents/legislacao/html/l84902018.html",
+      "source_kind": "primary_or_official_legal_evidence_unreviewed",
+      "verification_note": "Lei reinstituição 8.490/2018 certificado 13/2018; original CRD still needed",
+      "review_status": "unreviewed",
+      "eligible_for_tax_calculation": false
+    },
+    {
+      "uf": "AP",
+      "candidate_id": "AP-REGIME-ESPECIAL-RICMS-ART415-V1",
+      "source_url": "https://diofe.portal.ap.gov.br/portal/edicoes/download/9794",
+      "source_kind": "primary_or_official_legal_evidence_unreviewed",
+      "verification_note": "DOE 8.566 Lei 3.395/2025 Annex II item8 fish and CRD14/2018",
+      "review_status": "unreviewed",
+      "eligible_for_tax_calculation": false
+    },
+    {
+      "uf": "AP",
+      "candidate_id": "AP-REGIME-ESPECIAL-RICMS-ART415-V1",
+      "source_url": "https://diofe.portal.ap.gov.br/portal/edicoes/visualizar_pdf/9915/",
+      "source_kind": "primary_or_official_legal_evidence_unreviewed",
+      "verification_note": "DOE 8.639 17/04/2026 Dec 2.656 and CONDI/SEFAZ",
+      "review_status": "unreviewed",
+      "eligible_for_tax_calculation": false
+    },
+    {
+      "uf": "AP",
+      "candidate_id": "AP-REGIME-ESPECIAL-RICMS-ART415-V1",
+      "source_url": "https://diofe.portal.ap.gov.br/portal/edicoes/download/9949",
+      "source_kind": "primary_or_official_legal_evidence_unreviewed",
+      "verification_note": "DOE 2026 Lei 3.490/2026 appendix time checks",
+      "review_status": "unreviewed",
+      "eligible_for_tax_calculation": false
+    },
+    {
+      "uf": "PA",
+      "candidate_id": "PA-POLITICA-LEI6913-DEC2490-V1",
+      "source_url": "https://www.ioepa.com.br/pages/2018/2018.03.23.DOE.pdf",
+      "source_kind": "primary_or_official_legal_evidence_unreviewed",
+      "verification_note": "DOE Pará 33584 23/03/2018 original decree 2.014 appendix I items13 and32",
+      "review_status": "unreviewed",
+      "eligible_for_tax_calculation": false
+    },
+    {
+      "uf": "PA",
+      "candidate_id": "PA-POLITICA-LEI6913-DEC2490-V1",
+      "source_url": "https://www.legispara.pa.gov.br/lei/5169",
+      "source_kind": "primary_or_official_legal_evidence_unreviewed",
+      "verification_note": "Lei 8.930/2019 art 3–8 remissions reinstitution not automatic",
+      "review_status": "unreviewed",
+      "eligible_for_tax_calculation": false
+    },
+    {
+      "uf": "PA",
+      "candidate_id": "PA-POLITICA-LEI6913-DEC2490-V1",
+      "source_url": "https://www.sistemas.pa.gov.br/sisleis/legislacao/3974",
+      "source_kind": "primary_or_official_legal_evidence_unreviewed",
+      "verification_note": "Decreto 2.014/2018 and app I II legal inventory",
+      "review_status": "unreviewed",
+      "eligible_for_tax_calculation": false
+    },
+    {
+      "uf": "PA",
+      "candidate_id": "PA-POLITICA-LEI6913-DEC2490-V1",
+      "source_url": "https://portal.stf.jus.br/peticaoInicial/verPeticaoInicial.asp?base=ADI&numProcesso=3779",
+      "source_kind": "primary_or_official_legal_evidence_unreviewed",
+      "verification_note": "STF ADI3779 final outcome may differ from initial challenged numbers",
+      "review_status": "unreviewed",
+      "eligible_for_tax_calculation": false
+    },
+    {
+      "uf": "RR",
+      "candidate_id": "RR-RICMS2001-AN1-ART1-LXVII-V1",
+      "source_url": "https://www.sefaz.rr.gov.br/downloads?catid=1404&id=25395&m=0&task=download.send",
+      "source_kind": "primary_or_official_legal_evidence_unreviewed",
+      "verification_note": "SEFAZ official consultation 2025 excludes automatic 2026 extension LXVII",
+      "review_status": "unreviewed",
+      "eligible_for_tax_calculation": false
+    },
+    {
+      "uf": "RR",
+      "candidate_id": "RR-RICMS2001-AN1-ART1-LXVII-V1",
+      "source_url": "https://www.sefaz.rr.gov.br/component/jdownloads/?Itemid=402&catid=494&id=26478&m=0&task=download.send",
+      "source_kind": "primary_or_official_legal_evidence_unreviewed",
+      "verification_note": "Compilado geral RR 2026 not sufficient to extend LXVII",
+      "review_status": "unreviewed",
+      "eligible_for_tax_calculation": false
+    }
+  ]
+}

@@ -1,0 +1,38 @@
+name: T09 Four-State Original Sources (SE AP PA RR)
+on:
+  workflow_dispatch:
+  pull_request:
+    branches:
+      - work/nfcore-closeout-20261119
+    paths:
+      - "docs/NFCORE_T09_PRIORITY_4UF_SOURCE_WORKSET_V1.json"
+      - ".github/workflows/nfcore-t09-4uf-original-sources.yml"
+      - "scripts/nfcore_t09_capture_alternatives.py"
+permissions:
+  contents: read
+jobs:
+  capture-priority-four:
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 9
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Capture official evidence with TLS validation
+        run: |
+          python scripts/nfcore_t09_capture_alternatives.py \
+            --catalog docs/NFCORE_T09_STATE_BENEFIT_DRAFT_CANDIDATES_V1.json \
+            --alternatives docs/NFCORE_T09_PRIORITY_4UF_SOURCE_WORKSET_V1.json \
+            --output t09-priority-4uf-evidence --timeout 24 --workers 6
+      - name: Preserve bytes and negative capture receipts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: t09-four-state-official-source-evidence-unreviewed
+          path: |
+            t09-priority-4uf-evidence/alternative_capture_manifest.json
+            t09-priority-4uf-evidence/nfcore_t09_official_alternatives_unreviewed.zip
+          if-no-files-found: error
+          retention-days: 30

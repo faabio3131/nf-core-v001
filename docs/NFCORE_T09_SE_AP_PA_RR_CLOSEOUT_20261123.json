@@ -1,0 +1,313 @@
+{
+  "schema_version": "nfcore.t09.se-ap-pa-rr-closeout/v1",
+  "as_of": "2026-11-23",
+  "revision_base": "9812c13cefd2b16e33d38c1f40ced2cf604ee998",
+  "legal_scope": "one researched candidate per state; no right to individual tax concession",
+  "certification_threshold": {
+    "official_original_sufficient": false,
+    "all_changes_by_competence": false,
+    "modal_confaz_verified": false,
+    "real_act_positive_negative_verified": false,
+    "independent_review": false
+  },
+  "approved_count": 0,
+  "authorized_for_import": false,
+  "case_studies": [
+    {
+      "uf": "SE",
+      "legacy_candidate_id": "SE-PSDI-LEI3140-DEC29935-V1",
+      "source_claims": [
+        {
+          "act": "Lei 3.140/1991, compilação ALESE até 9.943/2026",
+          "url": "https://aleselegis.al.se.leg.br/Arquivo/Documents/legislacao/html/l31401991.HTML",
+          "sha256": "520b1a1f93b9a1c6c8ec5d315d5d885ec436df4236f7c46dfbdc9a21b9c080a5",
+          "type": "OFFICIAL_COMPILED_HTML_USER_BYTES"
+        },
+        {
+          "act": "Decreto 29.935/2014 histórico PGE, 37pp",
+          "url": "https://pge.se.gov.br/wp-content/uploads/2025/02/DECRETO-29-935-1.pdf",
+          "sha256": "ca18358fccdfd93259819b1ab1d2fe7347b7084cde54d9660b3c8d0ffc67b3b8",
+          "type": "OFFICIAL_HISTORICAL_REPUBLICATION"
+        },
+        {
+          "act": "Lei 8.490/2018, art1 e Anexo Único item1",
+          "url": "https://aleselegis.al.se.leg.br/Arquivo/Documents/legislacao/html/l84902018.html",
+          "sha256": null,
+          "type": "OFFICIAL_LEGISLATIVE_TEXT_NOT_ARCHIVED_ORIGINAL_DOE"
+        }
+      ],
+      "chronology": [
+        {
+          "act": "Lei 8.490/2018",
+          "date": "2018-12-28",
+          "effect": "reinstituição dos atos listados no anexo, incluindo Lei 3.140/1991 conforme Certificado 13/2018"
+        },
+        {
+          "act": "Lei 9.494/2024",
+          "date": "2024",
+          "effect": "diferimento de matéria-prima interna e controles de crédito art3"
+        },
+        {
+          "act": "Decreto 820/2024",
+          "published": "2024-10-16",
+          "effects_from": "2024-07-23",
+          "type": "RETROACTIVE_REVIEW_REQUIRED"
+        },
+        {
+          "act": "Decreto 868/2024",
+          "published": "2024-11-26",
+          "effects_from": "2024-11-26",
+          "type": "INTRAMONTH_REVIEW_REQUIRED"
+        },
+        {
+          "act": "Lei 9.812/2025",
+          "date": "2025",
+          "effect": "estabelecimento desenquadrado Simples potencialmente novo, sob condições"
+        },
+        {
+          "act": "Lei 9.943/2026",
+          "date": "2026-04-01",
+          "effect": "CODISE/DESENVOLVE-SE executoras, CDI e SEDETEC"
+        }
+      ],
+      "confaz": {
+        "foundation": "LC 160/2017, Convênio ICMS 190/2017, Lei 8.490/2018 e Certificado SE/CONFAZ 13/2018",
+        "verified": "BASE_LAW_LISTED",
+        "specific_modal_scope_proven": false,
+        "missing": "original do certificado 13/2018 e depósito/planilha vinculada a cada modalidade e alterações"
+      },
+      "positive": "6 cenários sintéticos documentados no motor, sempre advisory, não produzem cálculo",
+      "negative": [
+        "optante atual do Simples",
+        "sem resolução CDI",
+        "8% aplicado como alíquota faturamento",
+        "6,2% sem condição específica",
+        "diferimento tratado como isenção",
+        "crédito de insumos vedado",
+        "mês integral de julho/novembro 2024",
+        "benefício revogado/suspenso",
+        "consumidor final ou ST fora das exceções"
+      ],
+      "material_replacement": null,
+      "external_client_documents_needed_for_internal_research": false,
+      "primary_source_all_sha_verified": false,
+      "complete_temporal_consolidation": false,
+      "independent_legal_review": false,
+      "technical_current_head_ci_green": false,
+      "legal_curadoria_certified": false,
+      "status": "BLOCKED_MODAL_CONFAZ_AND_DOE_AMENDMENT",
+      "next_exact_action": "Obter DOEs 820/868, certificado 13/2018 + planilha e reconciliar as seis modalidades; revisão contraditória independente."
+    },
+    {
+      "uf": "AP",
+      "legacy_candidate_id": "AP-REGIME-ESPECIAL-RICMS-ART415-V1",
+      "source_claims": [
+        {
+          "act": "Lei 3.395/2025, Anexo II item8, DOE 31/12/2025 nº 8.566, página do PDF 15",
+          "url": "https://diofe.portal.ap.gov.br/portal/edicoes/download/9794",
+          "sha256": "d4c6b485514ac97dc3bbe8418b07ff7324984e58670d056601be0d6c8a3fff44",
+          "type": "OFFICIAL_DOE_PDF_CAPTURE"
+        },
+        {
+          "act": "Decreto 2.656/2026, art5, 9 e 10, DOE 17/04/2026 nº 8.639",
+          "url": "https://diofe.portal.ap.gov.br/portal/edicoes/visualizar_pdf/9915/",
+          "sha256": "6b0c7f575d89cea05b7d031778a326d2a4d85f51458abf052a63720a576f7bd0",
+          "type": "OFFICIAL_DOE_PDF_CAPTURE"
+        },
+        {
+          "act": "Decreto 3.599/2001 originário",
+          "url": null,
+          "sha256": null,
+          "type": "NOT_YET_ARCHIVED_GOVERNMENT_ORIGINAL"
+        }
+      ],
+      "chronology": [
+        {
+          "act": "Lei 3.395/2025",
+          "published": "2025-12-31",
+          "effect": "Anexo II item8: Decreto 3.599/2001, pescado, 14/2018 item11"
+        },
+        {
+          "act": "Decreto 2.349/2026",
+          "published": "2026-04-07",
+          "effect": "revogado pelo Decreto 2.656 em 17/04; não generalizar abril"
+        },
+        {
+          "act": "Decreto 2.656/2026",
+          "published": "2026-04-17",
+          "effect": "ato concessório SEFAZ pós CONDI, modalidades individuais"
+        },
+        {
+          "act": "Lei 3.490/2026",
+          "published": "2026-05-20",
+          "effect": "prorrogação apenas de anexos/convênios demonstrados; pescado não presumido automaticamente"
+        }
+      ],
+      "confaz": {
+        "foundation": "Lei 3.395/2025 Anexo II item8 remete Certificado 14/2018 item11, Convênio 190/2017, LC160/2017",
+        "verified": "DOE_LISTED_HISTORIC_CRD",
+        "specific_modal_scope_proven": false,
+        "missing": "certificado/Anexo I original e validade atual da modalidade e Decreto 3.599/2001 integral e alterações"
+      },
+      "positive": "primeira venda interna de pescado destinada a estabelecimento industrializador, com CONDI e ato SEFAZ individual, apenas potencial sintético",
+      "negative": [
+        "art415 isolado é processual",
+        "sem CONDI/ato SEFAZ",
+        "operação interestadual",
+        "comprador não industrializa",
+        "incentivo de crédito presumido confundido com diferimento",
+        "abril 2026 sem cronologia diária",
+        "período de benefício estendido por lei genérica"
+      ],
+      "material_replacement": {
+        "candidate_id": "AP-PESCADO-DEC3599-LEI3395-MATERIAL-V1",
+        "replaces_procedural": "AP-REGIME-ESPECIAL-RICMS-ART415-V1",
+        "kind": "deferral",
+        "normative_reference": "Decreto 3.599/2001, Lei 3.395/2025 Anexo II item8",
+        "operation": "primeira operação interna com pescado destinado à industrialização",
+        "other_separate_mode": "crédito presumido na saída do pescado industrializado; NÃO confundir com diferimento",
+        "historical_certificate": "AP/CONFAZ 14/2018, Anexo I item11",
+        "status": "MATERIAL_SELECTED_REQUIRES_DECRETO_ORIGINAL_AND_CONFAZ_CERTIFICATE"
+      },
+      "external_client_documents_needed_for_internal_research": false,
+      "primary_source_all_sha_verified": false,
+      "complete_temporal_consolidation": false,
+      "independent_legal_review": false,
+      "technical_current_head_ci_green": false,
+      "legal_curadoria_certified": false,
+      "status": "MATERIAL_SELECTED_LEGAL_CHAIN_PENDING",
+      "next_exact_action": "Capturar Decreto 3.599/2001 integral, certificado 14/2018 item11 e verificar regime após revogação 2.349 e após 2.656/2026."
+    },
+    {
+      "uf": "PA",
+      "legacy_candidate_id": "PA-POLITICA-LEI6913-DEC2490-V1",
+      "source_claims": [
+        {
+          "act": "STF ADI 3779, julgamento 23–29/08/2019, DJ 04/12/2019",
+          "url": "https://portal.stf.jus.br/peticaoInicial/verPeticaoInicial.asp?base=ADI&numProcesso=3779",
+          "sha256": null,
+          "type": "OFFICIAL_STF_DECISION_ONLINE_NO_BYTES_ARCHIVED"
+        },
+        {
+          "act": "DOE/PA 23/03/2018 nº 33.584, Decreto 2.014/2018 Anexo Único Apêndice I itens 13 e 32",
+          "url": "https://www.ioepa.com.br/pages/2018/2018.03.23.DOE.pdf",
+          "sha256": null,
+          "type": "OFFICIAL_DOE_PDF_VISUALLY_CHECKED_NO_ARCHIVE_SHA"
+        },
+        {
+          "act": "Lei 8.930/2019, arts 2–8",
+          "url": "https://www.legispara.pa.gov.br/lei/5169",
+          "sha256": null,
+          "type": "OFFICIAL_LEGISLATION_TEXT_NO_SAVED_BYTES"
+        },
+        {
+          "act": "Decreto 2.490/2006, histórico disponível em ALEPA",
+          "url": "https://bancodeleis.alepa.pa.gov.br/arquivos/lei2490_2006_53513.pdf",
+          "sha256": "313fe0b074d55dedbff71ba148b7e703a96da1611341aee0ae074ceaa5278ad3",
+          "type": "OFFICIAL_HISTORICAL_DECREE_REPUBLISHED_UNREVIEWED"
+        }
+      ],
+      "chronology": [
+        {
+          "act": "Lei 6.913/2006, Decreto 2.490/2006",
+          "effect": "regime original indústria geral, individual e condicionado, posteriormente impugnado"
+        },
+        {
+          "act": "Decreto 2.014/2018",
+          "published": "2018-03-23",
+          "effect": "Apêndice I vigente em 08/08/2017 inclui Lei 6.913 item13 e Decreto 2.490 item32; INVENTÁRIO, não convalidação judicial"
+        },
+        {
+          "act": "STF ADI 3779",
+          "judgment": "2019-08-23–2019-08-29",
+          "published": "2019-12-04",
+          "effect": "inconstitucionalidade Leis 6.912–6.915/2006; proposta de modulação vencida; petição inicial exibe leis 6.882–6.885 mas dispositivo final cita 6.912–6.915"
+        },
+        {
+          "act": "Lei 8.930/2019",
+          "signed": "2019-11-14",
+          "effect": "art3 reinstitui apenas atos listados e ainda vigentes 01/01/2019; art4 não restabelece efeitos após expiração/revogação; arts5–8 preservam condições depósito, concessão e prazo"
+        }
+      ],
+      "confaz": {
+        "foundation": "LC160/2017, Convênio190/2017, Lei 8.930/2019 arts3–8, Decreto 2.014/2018 Anexo e STF ADI3779",
+        "verified": "GENERIC_POSSIBLE_SUCCESSOR_FOUNDED_BUT_NO_ACT_SPECIFIC_REVALIDATION",
+        "specific_modal_scope_proven": false,
+        "missing": "atualidade da ação/efeitos e relação entre anexo, depósito PNTT, ato individual, nova redação e ADI; não restaurar lei inconstitucional automaticamente"
+      },
+      "positive": "nenhum cenário real positivo apto; candidato original deve permanecer bloqueado, pesquisa sucessora em separado",
+      "negative": [
+        "invocar Lei 6.913/2006 como habilitação atual",
+        "ignorar ADI 3779",
+        "confundir inventário de 2018 com nova outorga",
+        "reinstituir ato expirado/revogado contra art4 Lei 8.930",
+        "benefício sem depósito/registro/ato válido",
+        "alíquota ou prazo por analogia"
+      ],
+      "material_replacement": null,
+      "external_client_documents_needed_for_internal_research": false,
+      "primary_source_all_sha_verified": false,
+      "complete_temporal_consolidation": false,
+      "independent_legal_review": false,
+      "technical_current_head_ci_green": false,
+      "legal_curadoria_certified": false,
+      "status": "ORIGINAL_INVALIDATED_SUCCESSOR_UNPROVEN",
+      "next_exact_action": "Obter DOE 2018 por SHA, confirmar depósitos no PNTT/CONFAZ e efeitos STF; selecionar modalidade sucessora juridicamente válida sem reviver 6.913."
+    },
+    {
+      "uf": "RR",
+      "legacy_candidate_id": "RR-RICMS2001-AN1-ART1-LXVII-V1",
+      "source_claims": [
+        {
+          "act": "RICMS/RR Decreto 4.335-E/2001 Anexo I art1 LXVII, redação Decreto 30.363-E/2021",
+          "url": "https://www.sefaz.rr.gov.br/downloads?catid=1404&id=25395&m=0&task=download.send",
+          "sha256": null,
+          "type": "OFFICIAL_SEFAZ_CONSULTATION_SOURCE_HTTP_403_FOR_CAPTURE"
+        },
+        {
+          "act": "SEFAZ/RR índice de legislação, não texto do inciso",
+          "url": "https://www.sefaz.rr.gov.br/downloads/legislacao?dir=02+-+LEGISLACAO+ESTADUAL",
+          "sha256": "38123a8b5e48d5a0b94c9884a0e7a59138b430172c9bdad6265ee0183e2f9ae8",
+          "type": "GOVERNMENT_SITE_CONTEXT_INDEX_ONLY"
+        }
+      ],
+      "chronology": [
+        {
+          "act": "Decreto 30.363-E/2021",
+          "effect": "inciso LXVII remete a Convênio ICMS100/97 e isenção em operações internas até 31/12/2025"
+        },
+        {
+          "act": "RICMS geral compilado até Decreto 39.893-E/2026",
+          "effect": "compilação geral de 2026 não prova extensão individual do art1 LXVII"
+        },
+        {
+          "act": "Consulta SEFAZ/RR",
+          "effect": "diferencia aquisições locais e situações específicas de importação com equivalência GATT; consulta não prorroga lei"
+        }
+      ],
+      "confaz": {
+        "foundation": "Convênio ICMS100/1997, internalização RR Decreto 30.363-E/2021",
+        "verified": "HISTORICAL_THROUGH_2025_ONLY",
+        "specific_modal_scope_proven": false,
+        "missing": "dispositivo estadual específico posterior estendendo inciso LXVII a 2026, DOE original e vigência"
+      },
+      "positive": "cenário sintético 2025 se operação interna, produto previsto, condições conferidas e consulta contextual; não estende a 2026",
+      "negative": [
+        "aplicar LXVII a qualquer operação em 2026 sem ato estadual",
+        "produto não discriminado no inciso",
+        "operação interestadual tratada como interna",
+        "confundir alteração DIESEL 2026 com extensão LXVII",
+        "tratar importações como automaticamente iguais a operações internas sem estudo GATT"
+      ],
+      "material_replacement": null,
+      "external_client_documents_needed_for_internal_research": false,
+      "primary_source_all_sha_verified": false,
+      "complete_temporal_consolidation": false,
+      "independent_legal_review": false,
+      "technical_current_head_ci_green": false,
+      "legal_curadoria_certified": false,
+      "status": "EXPIRED_2025_SPECIFIC_2026_EXTENSION_UNPROVEN",
+      "next_exact_action": "Comprovar ou refutar expressamente prorrogação estadual LXVII após 31/12/2025 em DOE/SEFAZ e revisar CONFAZ100/97 por operação."
+    }
+  ]
+}

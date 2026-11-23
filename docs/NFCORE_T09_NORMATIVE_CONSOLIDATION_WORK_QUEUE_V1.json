@@ -301,6 +301,13 @@
           "unavailable_count": 0,
           "normative_chain_consolidated": false,
           "independent_review_received": false
+        },
+        "priority_closeout_20261123": {
+          "material_replacement_id": "AP-PESCADO-DEC3599-LEI3395-MATERIAL-V1",
+          "legal_source_summary": "docs/NFCORE_T09_SE_AP_PA_RR_CLOSEOUT_20261123.json",
+          "missing_confaz_modal_binding": true,
+          "independent_review": false,
+          "internal_accepted": false
         }
       }
     },
@@ -905,6 +912,13 @@
           "unavailable_count": 1,
           "normative_chain_consolidated": false,
           "independent_review_received": false
+        },
+        "priority_closeout_20261123": {
+          "material_replacement_id": null,
+          "legal_source_summary": "docs/NFCORE_T09_SE_AP_PA_RR_CLOSEOUT_20261123.json",
+          "missing_confaz_modal_binding": true,
+          "independent_review": false,
+          "internal_accepted": false
         }
       }
     },
@@ -1412,6 +1426,13 @@
           "captured_ok": 1,
           "failed": 1,
           "curation_approved": false
+        },
+        "priority_closeout_20261123": {
+          "material_replacement_id": null,
+          "legal_source_summary": "docs/NFCORE_T09_SE_AP_PA_RR_CLOSEOUT_20261123.json",
+          "missing_confaz_modal_binding": true,
+          "independent_review": false,
+          "internal_accepted": false
         }
       }
     },
@@ -1618,6 +1639,13 @@
           "legal_2026_consolidated": false,
           "external_material_needed_from_owner": false,
           "internal_curation_accepted": false
+        },
+        "priority_closeout_20261123": {
+          "material_replacement_id": null,
+          "legal_source_summary": "docs/NFCORE_T09_SE_AP_PA_RR_CLOSEOUT_20261123.json",
+          "missing_confaz_modal_binding": true,
+          "independent_review": false,
+          "internal_accepted": false
         }
       }
     },
