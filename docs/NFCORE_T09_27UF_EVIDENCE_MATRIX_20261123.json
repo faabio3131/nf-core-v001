@@ -927,7 +927,14 @@
         "specific_modality_proven": false,
         "matched_deposit_act_by_mode": false,
         "certificate_scope": "atos concessivos outubro/2022",
-        "register_number": "125/2024"
+        "register_number": "125/2024",
+        "historical_reinstitution_act": "Lei 8.490/2018, arts.1–3, Anexo Único item1 (Lei 3.140/1991)",
+        "historical_reinstitution_official_url": "https://aleselegis.al.se.leg.br/Arquivo/Documents/legislacao/html/l84902018.html",
+        "historical_cert_id": "SE/CONFAZ 13/2018",
+        "historical_end_limit": "2032-12-31 (redação de 2018, sujeito a lei posterior)",
+        "historical_reinstitution_base_identified": true,
+        "original_certificate_and_annex_checked": false,
+        "modal_2024_2026_chain_unverified": true
       },
       "positive_negative_tests": {
         "synthetic_regression_cases_recorded": true,
@@ -939,7 +946,7 @@
       "internally_curated": false,
       "fiscally_importable": false,
       "fiscal_calculation_allowed": false,
-      "next_exact_action": "Conciliar o Anexo III e o DOE originais 820/868/2024; vincular LC160/Conv190 depósito por modalidade, vigência 2024/2026 e revisão contraditória."
+      "next_exact_action": "Obter original CONFAZ 13/2018 e planilha da Lei 8.490/2018; cruzar reinstituição por modalidade com alterações 2024 e DOE 820/868, aceitar somente após revisão."
     },
     {
       "uf": "SP",

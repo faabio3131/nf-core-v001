@@ -74,3 +74,17 @@ def test_8_and_6_2_are_of_icms_due_not_nominal_rates():
     assert modes["SE_PSDI_DOMESTIC_RAW_DEFERRAL"][
         "percentage_of_icms_due"
     ] is None
+
+
+def test_law_8490_2018_reinstitutes_3140_but_not_all_psdi_modalities():
+    record = _evidence()["specific_confaz_evidence"][
+        "base_law_reinstitution_2018"
+    ]
+    assert record["act"].startswith("Lei estadual 8.490/2018")
+    assert record["confaz_certificate"] == "SE/CONFAZ 13/2018"
+    assert "Lei 3.140/1991" in record["legal_institution"]
+    assert record["law_reinstitutes_benefits_existing_on"] == "2017-08-08"
+    assert record["original_doe_bytes_archived"] is False
+    assert record["cert_13_2018_original_obtained"] is False
+    assert record["specific_rules_8_6_2_and_deferral_2024_verified"] is False
+    assert _evidence()["import_authorized"] is False

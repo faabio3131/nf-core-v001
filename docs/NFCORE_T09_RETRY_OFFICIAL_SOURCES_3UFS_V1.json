@@ -1,6 +1,6 @@
 {
   "schema_version": "nfcore.t09.official-alternative-source-trial/v1",
-  "as_of": "2026-11-22",
+  "as_of": "2026-11-23",
   "authorized_for_import": false,
   "legal_validity_certified": false,
   "independent_approval_received": false,
@@ -84,6 +84,15 @@
       "source_url": "https://pge.se.gov.br/wp-content/uploads/2025/02/DECRETO-29-935-1.pdf",
       "source_kind": "official_psdi_legislative_or_service_reference_unreviewed",
       "verification_note": "Official state Procuradoria PDF of PSDI regulatory decree 29.935/2014, seek specific clauses",
+      "review_status": "unreviewed",
+      "eligible_for_tax_calculation": false
+    },
+    {
+      "uf": "SE",
+      "candidate_id": "SE-PSDI-LEI3140-DEC29935-V1",
+      "source_url": "https://aleselegis.al.se.leg.br/Arquivo/Documents/legislacao/html/l84902018.html",
+      "source_kind": "official_alese_2018_state_reinstitution_law_unreviewed",
+      "verification_note": "ALESE 8.490/2018 art1 Annex item1 reintroduces law 3140 and refers CONFAZ certificate 13/2018, not sufficient for modal legal certification",
       "review_status": "unreviewed",
       "eligible_for_tax_calculation": false
     }

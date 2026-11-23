@@ -2610,7 +2610,25 @@
         "all_modalities_tested_against_real_legal_originals": false,
         "independent_review": false,
         "internal_accepted": false,
-        "import_authorized": false
+        "import_authorized": false,
+        "reinstitution_2018_law_checkpoint": {
+          "act": "Lei estadual 8.490/2018, arts.1º–3º e Anexo Único item 1",
+          "official_compiled_url": "https://aleselegis.al.se.leg.br/Arquivo/Documents/legislacao/html/l84902018.html",
+          "publication_original_reported": "2019-01-02",
+          "legal_institution": "Lei 3.140/1991 incluída expressamente no item 1 do Anexo Único",
+          "confaz_certificate": "SE/CONFAZ 13/2018",
+          "lc160_conv190": "Lei Complementar 160/2017 e Convênio ICMS 190/2017, cláusulas oitava e nona",
+          "law_reinstitutes_benefits_existing_on": "2017-08-08",
+          "historical_end_date_fomento_industrial": "2032-12-31",
+          "historical_end_date_cannot_override_later_changes": true,
+          "original_doe_bytes_archived": false,
+          "cert_13_2018_original_obtained": false,
+          "specific_rules_8_6_2_and_deferral_2024_verified": false,
+          "source_hash_pending_current_capture": true,
+          "verified_by_official_legislative_page": true,
+          "legal_current_by_competence_2026_certified": false,
+          "legal_import_authorized": false
+        }
       }
     },
     {

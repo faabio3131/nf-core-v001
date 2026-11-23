@@ -46,3 +46,9 @@
 4. Revisão contraditória independente e resultado da CI do HEAD final.
 
 **Resultado:** texto legal-base e regulamento histórico com SHA, análise de dispositivos e motor de triagem implementados; **SE não certificada, não importada e não aplicável fiscalmente**.
+
+## Localização adicional da reinstituição estadual — 23/11/2026
+
+A **[Lei 8.490/2018 na ALESE](https://aleselegis.al.se.leg.br/Arquivo/Documents/legislacao/html/l84902018.html)**, art.1º e **Anexo Único item 1**, inclui expressamente a **Lei 3.140/1991** entre os atos reinstituídos na sistemática da LC 160/2017 e Convênio ICMS 190/2017, referindo o **Certificado SE/CONFAZ nº 13/2018**. A regra histórica contém teto 31/12/2032 para fomento industrial, condicionado às modificações supervenientes; não extrapolar automaticamente a extensão para todos os atos de 2026.
+
+**Avanço:** rota de reinstituição da **norma-base PSDI identificada** em fonte legislativa oficial. **Ainda sem prova** do certificado 13/2018 e planilha originais, das alterações de 2024/2026 ou do alcance de cada modalidade. Por isso, as modalidades permanecem em `PENDING_ACT_SPECIFIC_MATCH`, sem desbloqueio.

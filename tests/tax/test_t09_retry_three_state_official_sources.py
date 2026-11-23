@@ -20,7 +20,7 @@ def test_missing_three_state_sources_are_approved_for_capture_only():
         .read_text(encoding="utf-8")
     )
     sources = verify_workset(drafts, alt)
-    assert len(sources) == 9
+    assert len(sources) == 10
     assert {s["uf"] for s in sources} == {"AC", "RR", "SE"}
     assert all(s["source_url"].startswith("https://") for s in sources)
     assert all(s["review_status"] == "unreviewed" for s in sources)
