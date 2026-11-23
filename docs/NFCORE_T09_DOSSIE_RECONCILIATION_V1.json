@@ -384,6 +384,30 @@
           }
         ],
         "authorized_for_import": false
+      },
+      "retry_3_official_sources_20261122": {
+        "evidence_manifest": "docs/NFCORE_T09_RETRY_3UFS_CAPTURE_RECEIPT_20261122.json",
+        "attempts": 2,
+        "captured_ok": 1,
+        "failed": 1,
+        "official_source_sha256": [
+          {
+            "source_url": "https://seplan.ac.gov.br/wp-content/uploads/2025/06/PLDO-2026-ANEXO-I.pdf",
+            "sha256": "72784a411b8c9421d81e3b96cff554121b9e3d751e7da6b6a634d20e665a6b9d",
+            "size_bytes": 847743
+          }
+        ],
+        "technical_errors": [
+          {
+            "source_url": "https://sefaz.ac.gov.br/2021/?mdocs-file=3062",
+            "error": "<urlopen error timed out>"
+          }
+        ],
+        "actual_original_legal_statute_certified": false,
+        "complete_normative_chain_verified": false,
+        "individual_entitlement_approved": false,
+        "independent_counter_review": false,
+        "internal_curation_accepted": false
       }
     },
     {
@@ -2092,6 +2116,30 @@
           }
         ],
         "authorized_for_import": false
+      },
+      "retry_3_official_sources_20261122": {
+        "evidence_manifest": "docs/NFCORE_T09_RETRY_3UFS_CAPTURE_RECEIPT_20261122.json",
+        "attempts": 2,
+        "captured_ok": 1,
+        "failed": 1,
+        "official_source_sha256": [
+          {
+            "source_url": "https://www.sefaz.rr.gov.br/downloads/legislacao?dir=02+-+LEGISLACAO+ESTADUAL",
+            "sha256": "38123a8b5e48d5a0b94c9884a0e7a59138b430172c9bdad6265ee0183e2f9ae8",
+            "size_bytes": 39304
+          }
+        ],
+        "technical_errors": [
+          {
+            "source_url": "https://www.sefaz.rr.gov.br/component/jdownloads/?Itemid=402&catid=494&id=26478&m=0&task=download.send",
+            "error": "HTTP Error 404: Not Found"
+          }
+        ],
+        "actual_original_legal_statute_certified": false,
+        "complete_normative_chain_verified": false,
+        "individual_entitlement_approved": false,
+        "independent_counter_review": false,
+        "internal_curation_accepted": false
       }
     },
     {
@@ -2279,6 +2327,40 @@
           }
         ],
         "authorized_for_import": false
+      },
+      "retry_3_official_sources_20261122": {
+        "evidence_manifest": "docs/NFCORE_T09_RETRY_3UFS_CAPTURE_RECEIPT_20261122.json",
+        "attempts": 5,
+        "captured_ok": 0,
+        "failed": 5,
+        "official_source_sha256": [],
+        "technical_errors": [
+          {
+            "source_url": "https://legislacao.se.gov.br/",
+            "error": "<urlopen error timed out>"
+          },
+          {
+            "source_url": "https://pge.se.gov.br/wp-content/uploads/2025/02/DECRETO-29-935-1.pdf",
+            "error": "<urlopen error timed out>"
+          },
+          {
+            "source_url": "https://sedetec.se.gov.br/fai/legislacao-fai/",
+            "error": "<urlopen error timed out>"
+          },
+          {
+            "source_url": "https://sedetec.se.gov.br/psdi/",
+            "error": "<urlopen error timed out>"
+          },
+          {
+            "source_url": "https://www.sefaz.se.gov.br/SitePages/servicos_cidadao.aspx",
+            "error": "<urlopen error timed out>"
+          }
+        ],
+        "actual_original_legal_statute_certified": false,
+        "complete_normative_chain_verified": false,
+        "individual_entitlement_approved": false,
+        "independent_counter_review": false,
+        "internal_curation_accepted": false
       }
     },
     {

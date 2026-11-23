@@ -114,6 +114,12 @@
           "unavailable_count": 2,
           "normative_chain_consolidated": false,
           "independent_review_received": false
+        },
+        "retry_3_official_sources_20261122": {
+          "manifest": "docs/NFCORE_T09_RETRY_3UFS_CAPTURE_RECEIPT_20261122.json",
+          "captured_ok": 1,
+          "failed": 1,
+          "curation_approved": false
         }
       }
     },
@@ -1400,6 +1406,12 @@
           "unavailable_count": 1,
           "normative_chain_consolidated": false,
           "independent_review_received": false
+        },
+        "retry_3_official_sources_20261122": {
+          "manifest": "docs/NFCORE_T09_RETRY_3UFS_CAPTURE_RECEIPT_20261122.json",
+          "captured_ok": 1,
+          "failed": 1,
+          "curation_approved": false
         }
       }
     },
@@ -1571,6 +1583,12 @@
           "unavailable_count": 3,
           "normative_chain_consolidated": false,
           "independent_review_received": false
+        },
+        "retry_3_official_sources_20261122": {
+          "manifest": "docs/NFCORE_T09_RETRY_3UFS_CAPTURE_RECEIPT_20261122.json",
+          "captured_ok": 0,
+          "failed": 5,
+          "curation_approved": false
         }
       }
     },
