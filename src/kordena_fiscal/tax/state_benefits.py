@@ -12,6 +12,7 @@ from typing import Any
 
 from kordena_fiscal.domain import BrazilianJurisdiction, FiscalValidationError
 from kordena_fiscal.tax.regimes import FederalIncomeTaxRegime
+from kordena_fiscal.tax.se_psdi_advisory import assess_se_psdi_context
 
 RULE_SCHEMA = "nfcore.state-icms-benefit-rule/v1"
 FACTS_SCHEMA = "nfcore.state-icms-benefit-facts/v1"
@@ -154,6 +155,11 @@ def decode_rule(payload: object) -> dict[str, Any]:
     # Also rely on the existing fiscal jurisdiction authority, never a parallel UF.
     if BrazilianJurisdiction(uf).state_code != uf:
         raise FiscalValidationError("state benefit UF inconsistent with fiscal domain")
+    program_id = payload.get("program_id")
+    if program_id is not None and (
+        program_id != "SE_PSDI" or uf != "SE"
+    ):
+        raise FiscalValidationError("invalid state-specific program identity")
     kind = payload.get("benefit_kind")
     path = payload.get("legal_path")
     if (not isinstance(kind, str) or kind not in BENEFIT_KINDS
@@ -277,6 +283,7 @@ def decode_facts(payload: object) -> dict[str, Any]:
         "evidence": _evidence(payload.get("evidence")),
         "individual_concession": payload.get("individual_concession"),
         "review_reference": ref,
+        "psdi_context": payload.get("psdi_context"),
     }
 
 
@@ -338,6 +345,14 @@ def assess_state_rule(
     concession_gate = _assess_individual_concession(rule, facts, issuer, competence)
     if concession_gate is not None:
         return concession_gate
+    if rule.get("program_id") == "SE_PSDI":
+        state_check = assess_se_psdi_context(
+            facts.get("psdi_context"), competence,
+        )
+        if state_check["status"] != "potential":
+            return _result(
+                state_check["status"], tuple(state_check["reason_codes"]),
+            )
     return _result("potential", ("state_tax_expert_approval_required",))
 
 
