@@ -85,6 +85,30 @@ def assess_se_psdi_context(context: object, competence: date) -> dict[str, Any]:
         if (context.get("input_credit_accumulation") is True
                 and context.get("export_exception_applicable") is not True):
             return _advisory("not_applicable", "se_psdi_art3_5b_input_credit_prohibited")
+        # Dec. 868/2024 art. 5 §§5-C to 5-G: do not stack incentives;
+        # excess input credits are reversed per period/industrial consumption.
+        if context.get("other_fiscal_incentive_on_same_operation") is not False:
+            return _advisory(
+                "not_applicable", "se_psdi_868_5e_non_cumulative_incentive",
+            )
+        if context.get("period_credit_excess_reversal_reviewed") is not True:
+            return _advisory(
+                "insufficient_basis", "se_psdi_868_5c_excess_reversal_missing",
+            )
+        if context.get("reversal_proportional_to_material_used") is not True:
+            return _advisory(
+                "insufficient_basis", "se_psdi_868_5d_proportional_reversal_missing",
+            )
+        if context.get("deferred_tax_included_in_output_icms") is not True:
+            return _advisory(
+                "insufficient_basis", "se_psdi_868_5f_output_inclusion_missing",
+            )
+        if context.get("chemical_plastic_industry") is True and (
+            context.get("annex_iii_material_legally_classified") is not True
+        ):
+            return _advisory(
+                "not_applicable", "se_psdi_868_5g_annex_iii_scope_unverified",
+            )
         if context.get("regulatory_credit_reversal_checked") is not True:
             return _advisory("insufficient_basis", "se_psdi_art3_5b_credit_reversal_unverified")
         return _advisory("potential", "se_psdi_domestic_raw_deferral_expert_review")

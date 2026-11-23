@@ -58,6 +58,10 @@ def _context(mode="new_industry_8", **changes):
         "deferred_tax_due_at_output_acknowledged": True,
         "regulatory_credit_reversal_checked": True,
         "input_credit_accumulation": False,
+        "other_fiscal_incentive_on_same_operation": False,
+        "period_credit_excess_reversal_reviewed": True,
+        "reversal_proportional_to_material_used": True,
+        "deferred_tax_included_in_output_icms": True,
     }),
     ("domestic_raw_deferral", {
         "operation": "domestic_raw_material_input",
@@ -138,6 +142,10 @@ def test_9494_2024_internal_input_and_credit_guards(changes, reason):
         deferred_tax_due_at_output_acknowledged=True,
         regulatory_credit_reversal_checked=True,
         input_credit_accumulation=False,
+        other_fiscal_incentive_on_same_operation=False,
+        period_credit_excess_reversal_reviewed=True,
+        reversal_proportional_to_material_used=True,
+        deferred_tax_included_in_output_icms=True,
         **{k: v for k, v in changes.items() if k not in {
             "operation", "used_in_incentivized_industrial_process",
             "deferred_tax_due_at_output_acknowledged",
@@ -183,3 +191,55 @@ def test_wrong_context_types_are_rejected_without_crashing():
     c = _context()
     c["cdi_grant_status"] = []
     assert assess_se_psdi_context(c, MONTH)["status"] == "insufficient_basis"
+
+
+@pytest.mark.parametrize("changes,reason", [
+    ({"other_fiscal_incentive_on_same_operation": True},
+     "se_psdi_868_5e_non_cumulative_incentive"),
+    ({"period_credit_excess_reversal_reviewed": False},
+     "se_psdi_868_5c_excess_reversal_missing"),
+    ({"reversal_proportional_to_material_used": False},
+     "se_psdi_868_5d_proportional_reversal_missing"),
+    ({"deferred_tax_included_in_output_icms": False},
+     "se_psdi_868_5f_output_inclusion_missing"),
+    ({"chemical_plastic_industry": True},
+     "se_psdi_868_5g_annex_iii_scope_unverified"),
+])
+def test_decree_868_2024_negative_guards(changes, reason):
+    facts = _context(
+        mode="domestic_raw_deferral",
+        operation="domestic_raw_material_input",
+        used_in_incentivized_industrial_process=True,
+        deferred_tax_due_at_output_acknowledged=True,
+        regulatory_credit_reversal_checked=True,
+        input_credit_accumulation=False,
+        other_fiscal_incentive_on_same_operation=False,
+        period_credit_excess_reversal_reviewed=True,
+        reversal_proportional_to_material_used=True,
+        deferred_tax_included_in_output_icms=True,
+    )
+    facts.update(changes)
+    result = assess_se_psdi_context(facts, MONTH)
+    assert result["status"] != "potential"
+    assert result["reason_codes"] == [reason]
+    assert result["tax_calculation_authorized"] is False
+
+
+def test_decree_868_annex_iii_can_only_be_advisory_after_exact_review():
+    facts = _context(
+        mode="domestic_raw_deferral",
+        operation="domestic_raw_material_input",
+        used_in_incentivized_industrial_process=True,
+        deferred_tax_due_at_output_acknowledged=True,
+        regulatory_credit_reversal_checked=True,
+        input_credit_accumulation=False,
+        other_fiscal_incentive_on_same_operation=False,
+        period_credit_excess_reversal_reviewed=True,
+        reversal_proportional_to_material_used=True,
+        deferred_tax_included_in_output_icms=True,
+        chemical_plastic_industry=True,
+        annex_iii_material_legally_classified=True,
+    )
+    r = assess_se_psdi_context(facts, MONTH)
+    assert r["status"] == "potential"
+    assert r["tax_calculation_authorized"] is False
