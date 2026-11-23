@@ -102,6 +102,13 @@
         "captured": 0,
         "failed": 1,
         "legal_review_complete": false
+      },
+      "terminal_operational_decision_20261123": {
+        "assessment": "BASE_REINSTITUTION_IDENTIFIED_MODAL_PROOF_INCOMPLETE",
+        "decision": "BLOCK_ICMS_BENEFIT_CALCULATION_AND_FISCAL_IMPORT",
+        "final_for_current_evidence": true,
+        "legal_certification_awarded": false,
+        "reopen_only_if_new_primary_source": true
       }
     },
     {
@@ -202,6 +209,13 @@
         "not_proof_fish_itself_expired": true,
         "source_integrity_verified": true,
         "legal_review_of_other_fish_acts_complete": false
+      },
+      "terminal_operational_decision_20261123": {
+        "assessment": "FISH_DEFERRAL_IDENTIFIED_BUT_2026_EFFECT_NOT_PROVEN",
+        "decision": "BLOCK_ICMS_BENEFIT_CALCULATION_AND_FISCAL_IMPORT",
+        "final_for_current_evidence": true,
+        "legal_certification_awarded": false,
+        "reopen_only_if_new_primary_source": true
       }
     },
     {
@@ -296,6 +310,13 @@
         "final_publication": "2019-12-04",
         "majority_modulation_denied": true,
         "successor_8930_individual_legality_certified": false
+      },
+      "terminal_operational_decision_20261123": {
+        "assessment": "ORIGINAL_ACT_NOT_STANDALONE_BASIS_2026",
+        "decision": "BLOCK_ICMS_BENEFIT_CALCULATION_AND_FISCAL_IMPORT",
+        "final_for_current_evidence": true,
+        "legal_certification_awarded": false,
+        "reopen_only_if_new_primary_source": true
       }
     },
     {
@@ -365,6 +386,13 @@
         "compiled_2026_capture_error": "404",
         "gatt_direct_import_case_requires_separate_analysis": true,
         "2026_tax_benefit_permitted": false
+      },
+      "terminal_operational_decision_20261123": {
+        "assessment": "NO_VERIFIED_STATE_EXTENSION_IN_2026",
+        "decision": "BLOCK_ICMS_BENEFIT_CALCULATION_AND_FISCAL_IMPORT",
+        "final_for_current_evidence": true,
+        "legal_certification_awarded": false,
+        "reopen_only_if_new_primary_source": true
       }
     }
   ]

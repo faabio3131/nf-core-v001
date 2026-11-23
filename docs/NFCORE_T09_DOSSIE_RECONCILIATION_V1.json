@@ -827,6 +827,12 @@
         "complete_legal_chain_verified": false,
         "independent_review": false,
         "import_authorized": false
+      },
+      "terminal_operational_decision_20261123": {
+        "source": "docs/NFCORE_T09_FOUR_STATE_TERMINAL_OPERATIONS_20261123.json",
+        "assessment": "FISH_DEFERRAL_IDENTIFIED_BUT_2026_EFFECT_NOT_PROVEN",
+        "fiscal_blocked": true,
+        "legal_certification_awarded": false
       }
     },
     {
@@ -1665,6 +1671,12 @@
         "complete_legal_chain_verified": false,
         "independent_review": false,
         "import_authorized": false
+      },
+      "terminal_operational_decision_20261123": {
+        "source": "docs/NFCORE_T09_FOUR_STATE_TERMINAL_OPERATIONS_20261123.json",
+        "assessment": "ORIGINAL_ACT_NOT_STANDALONE_BASIS_2026",
+        "fiscal_blocked": true,
+        "legal_certification_awarded": false
       }
     },
     {
@@ -2439,6 +2451,12 @@
         "complete_legal_chain_verified": false,
         "independent_review": false,
         "import_authorized": false
+      },
+      "terminal_operational_decision_20261123": {
+        "source": "docs/NFCORE_T09_FOUR_STATE_TERMINAL_OPERATIONS_20261123.json",
+        "assessment": "NO_VERIFIED_STATE_EXTENSION_IN_2026",
+        "fiscal_blocked": true,
+        "legal_certification_awarded": false
       }
     },
     {
@@ -3021,6 +3039,12 @@
         "complete_legal_chain_verified": false,
         "independent_review": false,
         "import_authorized": false
+      },
+      "terminal_operational_decision_20261123": {
+        "source": "docs/NFCORE_T09_FOUR_STATE_TERMINAL_OPERATIONS_20261123.json",
+        "assessment": "BASE_REINSTITUTION_IDENTIFIED_MODAL_PROOF_INCOMPLETE",
+        "fiscal_blocked": true,
+        "legal_certification_awarded": false
       }
     },
     {
