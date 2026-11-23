@@ -14,7 +14,9 @@ from kordena_fiscal.domain import BrazilianJurisdiction, FiscalValidationError
 from kordena_fiscal.tax.regimes import FederalIncomeTaxRegime
 from kordena_fiscal.tax.se_psdi_advisory import assess_se_psdi_context
 from kordena_fiscal.tax.t09_priority_state_guards import (
-    PROGRAM_UF, assess_priority_state_context, expected_program,
+    PROGRAM_UF,
+    assess_priority_state_context,
+    expected_program,
 )
 
 RULE_SCHEMA = "nfcore.state-icms-benefit-rule/v1"
@@ -159,6 +161,8 @@ def decode_rule(payload: object) -> dict[str, Any]:
     if BrazilianJurisdiction(uf).state_code != uf:
         raise FiscalValidationError("state benefit UF inconsistent with fiscal domain")
     program_id = payload.get("program_id")
+    if program_id is not None and not isinstance(program_id, str):
+        raise FiscalValidationError("invalid state-specific program identity")
     priority = expected_program(
         uf, str(payload.get("state_normative_reference", "")),
     )

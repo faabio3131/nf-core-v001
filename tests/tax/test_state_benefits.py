@@ -515,3 +515,9 @@ def test_se_psdi_real_motor_does_not_grant_even_synthetic_program_status():
     )
     assert denied["status"] == "insufficient_basis"
     assert denied["reason_codes"] == ["se_psdi_grant_revoked"]
+
+
+@pytest.mark.parametrize("invalid", [[], {}, ["SE_PSDI"], 123])
+def test_invalid_unhashable_program_identity_fails_closed(invalid):
+    with pytest.raises(FiscalValidationError, match="program identity"):
+        decode_rule(policy("AP") | {"program_id": invalid})
