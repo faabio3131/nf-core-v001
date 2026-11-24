@@ -64,6 +64,7 @@ def bundle():
         for regime in ("lucro_presumido", "lucro_real"):
             m[regime]["employer_contributions"] = 80000
     return {"schema_version": "nfcore.annual-regime-comparison/v1", "review_status": "reviewed",
+            "data_basis": "reviewed_annual_scenarios",
             "baseline": base, "margin": margin, "payroll": payroll}
 
 

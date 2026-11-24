@@ -83,6 +83,7 @@ class Scenario(ContractModel):
 class AnnualComparison(ContractModel):
     schema_version: Literal["nfcore.annual-regime-comparison/v1"]
     review_status: Literal["reviewed"]
+    data_basis: Literal["reviewed_annual_scenarios"]
     baseline: Scenario
     margin: Scenario
     payroll: Scenario
@@ -119,6 +120,10 @@ def _year(scenario: Scenario) -> dict[str, Any]:
                  and quarter.trade_revenue == sum(m.trade_revenue for m in group)
                  and quarter.services_revenue == sum(m.service_revenue for m in group),
                  "quarter revenue or competence does not reconcile")
+        _require(quarter.irpj_other_taxable == quarter.csll_other_taxable == 0,
+                 "additional revenue requires broader reviewed comparison")
+        _require(quarter.irpj_loss_applied == quarter.csll_loss_applied == 0,
+                 "loss carry requires a reviewed annual reconciliation")
         for entry in quarter.months:
             for document in entry.documents:
                 _require(document.document_reference not in seen,
@@ -134,11 +139,10 @@ def _year(scenario: Scenario) -> dict[str, Any]:
             pos = start + offset
             m = months[pos]
             outside = scenario.outside[pos]
-            # This initial cell accepts ordinary full bases only. It does not
-            # silently approximate differential exclusions, carry or cross-tax credit.
-            _require(quarter.months[offset].cumulative_base == m.revenue
-                     and quarter.months[offset].noncumulative_base == m.revenue,
-                     "ordinary monthly federal bases must reconcile to revenue")
+            # Reviewed bases may exclude taxes; no additional revenue is supported.
+            _require(quarter.months[offset].cumulative_base <= m.revenue
+                     and quarter.months[offset].noncumulative_base <= m.revenue,
+                     "reviewed federal bases exceed the reconciled revenue")
             federal = monthly["noncumulative"]
             _require(federal["pis_balance"] >= 0 and federal["cofins_balance"] >= 0,
                      "unallocated federal credit requires additional review")
@@ -183,6 +187,10 @@ def _year(scenario: Scenario) -> dict[str, Any]:
                 "outside": outside.model_dump(), "monthly_tax_before_quarterly_income": monthly_tax,
                 "gross_rtc": monthly["regular_vat"],
             })
+    _require(all(0 <= amount <= 10**15 for amount in totals.values())
+             and abs(accounting_result) <= 10**15
+             and sum(m.payroll for m in months) <= 10**15,
+             "annual amounts exceed supported comparison precision")
     minimum = min(totals.values())
     cheapest = [regime for regime in REGIMES if totals[regime] == minimum]
     return {
@@ -223,7 +231,7 @@ def compare(facts: AnnualComparison) -> dict[str, Any]:
     baseline = results["baseline"]
     return {
         "schema_version": SCHEMA, "status": "compared", "year": 2026, "unit": "BRL_cent",
-        "scenarios": results,
+        "data_basis": facts.data_basis, "scenarios": results,
         "sensitivity_tax_delta_cents": {
             name: {regime: results[name]["annual_tax_cents"][regime]
                    - baseline["annual_tax_cents"][regime] for regime in REGIMES}

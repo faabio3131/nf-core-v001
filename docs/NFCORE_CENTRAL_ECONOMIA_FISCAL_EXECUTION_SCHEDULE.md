@@ -34,7 +34,7 @@ A folha T23–T33, a Trilha 2 H01–H06 e a reformulação Enterprise não integ
 | T09 | Catálogo estadual 27 UFs | Motor de triagem integrado. Curadoria e revisão independente acompanhadas na #593 |
 | T10 | Benefícios municipais e radar unificado | ENTREGUE — #596 integrada, CI pós-merge 45381597371 |
 | T11 | Simulação Presumido/Real e IVA | ENTREGUE — #598, CI pós-merge 45394058836 |
-| T12 | Comparador multi-regime | EM IMPLEMENTAÇÃO — #599, motor inicial; API, Portal, persistência e CI pendentes |
+| T12 | Comparador multi-regime | EM IMPLEMENTAÇÃO — #599, motor, importação, API e Portal candidatos; certificação pendente |
 | T13 | Aprovação contábil auditável | Bloqueado; referência anterior preservada |
 | T14 | Aplicação autorizada emissão | Bloqueado; protótipo de engenharia preservado |
 | T15 | Auditoria histórica 60 meses | Bloqueado |

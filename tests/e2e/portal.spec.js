@@ -673,3 +673,32 @@ test("quarterly simulator submits only the selected scope and period", async ({p
   await page.getByRole("button", {name: "Simular trimestre"}).click();
   await expect(page.getByText("Falta uma base contábil revisada para esta unidade e trimestre.")).toBeVisible();
 });
+
+test("annual regime comparison presents reviewed scenarios and insufficient basis", async ({page, context}) => {
+  await page.route("**/v1/portal/bootstrap", route => route.fulfill({json: {
+    tenant_id: "tenant-e2e", unit_ids: ["unit-a"], role: "owner",
+    permissions: ["portal.read", "document.query", "audit.read"], supported_documents: ["nfe"],
+    projection: {authorized_units: [{unit_id: "unit-a", display_name: "Unidade A", environments: ["homologation"]}]},
+  }}));
+  await context.addCookies([{name: "nfcore_csrf", value: "csrf-e2e", domain: "127.0.0.1", path: "/"}]);
+  await page.route("**/v1/portal/surfaces/**", route => route.fulfill({json: {rows: []}}));
+  let requests = 0;
+  await page.route("**/v1/portal/cognitive/economy/annual-regime-comparison", route => {
+    expect(route.request().postDataJSON()).toEqual({unit_id: "unit-a", environment: "homologation", competence: "2026-01-01"});
+    expect(route.request().headers()["x-csrf-token"]).toBe("csrf-e2e");
+    if (++requests > 1) return route.fulfill({json: {status: "insufficient_basis"}});
+    const totals = {simples_nacional: 1860000, lucro_presumido: 2079600, lucro_real: 2118000};
+    const delta = {simples_nacional: 0, lucro_presumido: 0, lucro_real: 72000};
+    return route.fulfill({json: {status: "compared",
+      scenarios: {baseline: {annual_tax_cents: totals, revenue_cents: 12000000, payroll_cents: 2400000, real_accounting_result_cents: 1200000}},
+      sensitivity_tax_delta_cents: {margin: delta, payroll: delta},
+      recommendation: {candidates: ["simples_nacional"]}}});
+  });
+  await page.goto("/");
+  await page.getByRole("button", {name: "Reforma Tributária", exact: true}).click();
+  await page.getByRole("button", {name: "Comparar regimes de 2026"}).click();
+  await expect(page.getByText(/Menor carga estimada: Simples Nacional/)).toBeVisible();
+  await expect(page.getByText(/Lucro Real trimestral · Carga anual/)).toBeVisible();
+  await page.getByRole("button", {name: "Comparar regimes de 2026"}).click();
+  await expect(page.getByText("Falta base revisada comparável para o ano e a unidade.")).toBeVisible();
+});

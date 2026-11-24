@@ -19,6 +19,7 @@ from kordena_fiscal.application.bling_operations import BlingOperationsService
 from kordena_fiscal.application.command_commercial import CommandCommercialReceiver
 from kordena_fiscal.application.commercial_acquisition import CommercialAcquisitionService
 from kordena_fiscal.application.service import FiscalApplicationService
+from kordena_fiscal.cognitive.annual_regime_comparison_api import build_annual_comparison_runner
 from kordena_fiscal.cognitive.composition import build_cognitive_router
 from kordena_fiscal.cognitive.durable_usage import DurableTokenQuotaStore
 from kordena_fiscal.cognitive.economy_reader import read_economy_evidence
@@ -1277,6 +1278,14 @@ def create_runtime_app(
                 ),
                 simulation_runner=(
                     build_simulation_runner(
+                        portal_executor, partial(runtime.database.economy, read_only=True),
+                        runtime.database,
+                    )
+                    if runtime.database is not None and portal_executor is not None
+                    and os.environ.get("NFCORE_ECONOMY_ENABLED") == "true" else None
+                ),
+                annual_comparison_runner=(
+                    build_annual_comparison_runner(
                         portal_executor, partial(runtime.database.economy, read_only=True),
                         runtime.database,
                     )

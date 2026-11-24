@@ -130,6 +130,7 @@ def create_cognitive_router(
     state_search_runner: StateSearchRunner | None = None,
     opportunity_runner: OpportunityRunner | None = None,
     simulation_runner: OpportunityRunner | None = None,
+    annual_comparison_runner: OpportunityRunner | None = None,
 ) -> APIRouter:
     router = APIRouter(prefix="/v1/portal/cognitive", tags=["cognitive-advisory"])
 
@@ -430,6 +431,15 @@ def create_cognitive_router(
         if simulation_runner is None:
             raise _bad("SIMULATION_UNAVAILABLE", "Simulation unavailable", 503)
         return await run_in_threadpool(simulation_runner, auth, unit, environment, month)
+
+    @router.post("/economy/annual-regime-comparison")
+    async def annual_regime_comparison(
+        request: Request, body: Annotated[dict[str, Any], Body()],
+    ) -> dict[str, Any]:
+        auth, unit, environment, month = authorized_month(request, body)
+        if annual_comparison_runner is None:
+            raise _bad("ANNUAL_COMPARISON_UNAVAILABLE", "Comparison unavailable", 503)
+        return await run_in_threadpool(annual_comparison_runner, auth, unit, environment, month)
 
     @router.get("/economy/schema")
     async def economy_schema(request: Request) -> dict[str, Any]:
