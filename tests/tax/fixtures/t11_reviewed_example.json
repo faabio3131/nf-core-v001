@@ -1,0 +1,92 @@
+{
+  "tenant": "economy-t11",
+  "unit": "unit-a",
+  "issuer_cnpj": "12345678000195",
+  "version": 1,
+  "facts": {
+    "schema_version": "nfcore.quarterly-regime-facts/v1",
+    "review_status": "reviewed",
+    "review_reference": "accounting-reference",
+    "period_start": "2026-01-01",
+    "scope": "consolidated_ordinary_nonfinancial_full_quarter_2026",
+    "hypothesis": "ordinary_trade_and_general_services",
+    "trade_revenue": 144000000,
+    "services_revenue": 36000000,
+    "irpj_ordinary_limit": 125000000,
+    "csll_ordinary_limit": 0,
+    "irpj_other_taxable": 0,
+    "csll_other_taxable": 0,
+    "real_accounting_result": 7000000,
+    "irpj_additions": 100000,
+    "irpj_exclusions": 50000,
+    "csll_additions": 0,
+    "csll_exclusions": 100000,
+    "irpj_loss_applied": 0,
+    "csll_loss_applied": 0,
+    "months": [
+      {
+        "competence": "2026-01-01",
+        "cumulative_base": 100000,
+        "noncumulative_base": 100000,
+        "pis_credit": 2000,
+        "cofins_credit": 6000,
+        "ibs_credits": 20,
+        "cbs_credits": 150,
+        "rtc_evidence": "reconciled-month",
+        "rtc_component": "app=1.7.2;db=V0073",
+        "documents": [
+          {
+            "document_reference": "doc-1",
+            "item_numbers": [
+              1
+            ],
+            "response": "{\"objetos\": [{\"nObj\": 1, \"estadoItem\": \"CALCULADO\", \"tribCalc\": {\"IBSCBS\": {\"CST\": \"000\", \"cClassTrib\": \"000001\", \"gIBSCBS\": {\"vBC\": \"1000.00\", \"gIBSUF\": {\"pIBSUF\": \"0.10\", \"vIBSUF\": \"1.00\"}, \"gIBSMun\": {\"pIBSMun\": \"0.00\", \"vIBSMun\": \"0.00\"}, \"vIBS\": \"1.00\", \"gCBS\": {\"pCBS\": \"0.90\", \"vCBS\": \"9.00\"}}}}}]}",
+            "response_sha256": "15d212f546061fc5b8b854b61d23ee70cb661f82e6791e686f254cec2f996adb"
+          }
+        ]
+      },
+      {
+        "competence": "2026-02-01",
+        "cumulative_base": 100000,
+        "noncumulative_base": 100000,
+        "pis_credit": 2000,
+        "cofins_credit": 6000,
+        "ibs_credits": 20,
+        "cbs_credits": 150,
+        "rtc_evidence": "reconciled-month",
+        "rtc_component": "app=1.7.2;db=V0073",
+        "documents": [
+          {
+            "document_reference": "doc-2",
+            "item_numbers": [
+              1
+            ],
+            "response": "{\"objetos\": [{\"nObj\": 1, \"estadoItem\": \"CALCULADO\", \"tribCalc\": {\"IBSCBS\": {\"CST\": \"000\", \"cClassTrib\": \"000001\", \"gIBSCBS\": {\"vBC\": \"1000.00\", \"gIBSUF\": {\"pIBSUF\": \"0.10\", \"vIBSUF\": \"1.00\"}, \"gIBSMun\": {\"pIBSMun\": \"0.00\", \"vIBSMun\": \"0.00\"}, \"vIBS\": \"1.00\", \"gCBS\": {\"pCBS\": \"0.90\", \"vCBS\": \"9.00\"}}}}}]}",
+            "response_sha256": "15d212f546061fc5b8b854b61d23ee70cb661f82e6791e686f254cec2f996adb"
+          }
+        ]
+      },
+      {
+        "competence": "2026-03-01",
+        "cumulative_base": 100000,
+        "noncumulative_base": 100000,
+        "pis_credit": 2000,
+        "cofins_credit": 6000,
+        "ibs_credits": 20,
+        "cbs_credits": 150,
+        "rtc_evidence": "reconciled-month",
+        "rtc_component": "app=1.7.2;db=V0073",
+        "documents": [
+          {
+            "document_reference": "doc-3",
+            "item_numbers": [
+              1
+            ],
+            "response": "{\"objetos\": [{\"nObj\": 1, \"estadoItem\": \"CALCULADO\", \"tribCalc\": {\"IBSCBS\": {\"CST\": \"000\", \"cClassTrib\": \"000001\", \"gIBSCBS\": {\"vBC\": \"1000.00\", \"gIBSUF\": {\"pIBSUF\": \"0.10\", \"vIBSUF\": \"1.00\"}, \"gIBSMun\": {\"pIBSMun\": \"0.00\", \"vIBSMun\": \"0.00\"}, \"vIBS\": \"1.00\", \"gCBS\": {\"pCBS\": \"0.90\", \"vCBS\": \"9.00\"}}}}}]}",
+            "response_sha256": "15d212f546061fc5b8b854b61d23ee70cb661f82e6791e686f254cec2f996adb"
+          }
+        ]
+      }
+    ]
+  }
+}

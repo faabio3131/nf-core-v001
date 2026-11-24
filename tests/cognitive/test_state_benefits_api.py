@@ -1,4 +1,5 @@
 """T09 state catalog HTTP must preserve session, RBAC, CSRF and scoped IDs."""
+import pytest
 from fastapi.testclient import TestClient
 
 from kordena_fiscal.cognitive.composition import build_cognitive_router
@@ -134,7 +135,8 @@ def test_state_api_fails_closed_when_unconfigured_or_unauthorized():
     ).status_code == 403
 
 
-def test_opportunity_radar_unit_csrf_and_month_authority():
+@pytest.mark.parametrize("path", ["opportunity-radar", "quarterly-simulation"])
+def test_economy_unit_csrf_and_month_authority(path):
     calls = []
 
     def scan(auth, unit, env, month):
@@ -144,10 +146,10 @@ def test_opportunity_radar_unit_csrf_and_month_authority():
     ident = identity(PortalRole.OWNER)
     executor = Executor()
     router = build_cognitive_router(ident, executor, {"NFCORE_COGNITIVE_ENABLED": "true"},
-                                    opportunity_runner=scan)
+                                    opportunity_runner=scan, simulation_runner=scan)
     web = TestClient(create_app(human_identity=ident, portal_executor=executor,
                                 cognitive_router=router), base_url="https://nfcore.test")
-    url = PREFIX + "/opportunity-radar"
+    url = PREFIX + "/" + path
     body = {"unit_id": "unit-a", "environment": "homologation", "competence": "2026-11-01"}
     assert web.post(url, json=body).status_code == 401
     assert web.post("/v1/auth/login", json={"email": "owner@example.com",

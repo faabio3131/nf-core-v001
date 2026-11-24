@@ -78,6 +78,7 @@ def test_real_postgres_economy_schema_scope_and_immutability(monkeypatch):
             _certify_t08_federal(database)
             _certify_t09_state(database, monkeypatch)
             _certify_t10_municipal(database)
+            _certify_t11(database)
             admin.execute(sql.SQL("SET search_path TO {}").format(sql.Identifier(schema_name)))
             # Explicitly add DML permissions only in this sandbox to prove
             # that the RLS policies, not solely GRANTs, deny mutation.
@@ -1088,3 +1089,31 @@ def _certify_t10_municipal(database):
         store.append_benefit(**args, version=2, valid_from=date(2026, 11, 15),
                              content={"schema_version": ISS_RULE, "review_status": "revoked"})
     assert not run(scope, city)
+
+
+def _certify_t11(database):
+    import json
+    from pathlib import Path
+
+    from kordena_fiscal.application.quarterly_simulation import import_quarter
+    from kordena_fiscal.tax.quarterly_simulation import SCHEMA, Quarter, simulate
+
+    bundle = json.loads((Path(__file__).parents[1] / "tax/fixtures/t11_reviewed_example.json"
+                         ).read_text())
+    scope = _scope(tenant=bundle["tenant"], unit=bundle["unit"])
+    month = date(2026, 1, 1)
+    issuer = Cnpj(bundle["issuer_cnpj"])
+    facts = Quarter.model_validate(bundle["facts"])
+    with database.economy(scope) as store:
+        digest = import_quarter(store, issuer, 1, facts)
+        assert import_quarter(store, issuer, 1, facts) == digest
+        with pytest.raises(FiscalValidationError):
+            import_quarter(store, issuer, 3, facts)
+    with database.economy(scope, read_only=True) as store:
+        row = store.unique_monthly_snapshot(issuer.value, month, SCHEMA)
+        assert row["digest"] == digest
+        result = simulate(month, Quarter.model_validate(row["content"]))
+        assert result["lucro_real"]["irpj"] == 1057500
+    for other in (_scope(tenant="other"), _scope(tenant=bundle["tenant"], unit="other")):
+        with database.economy(other, read_only=True) as store:
+            assert store.unique_monthly_snapshot(issuer.value, month, SCHEMA) is None

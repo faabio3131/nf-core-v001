@@ -3752,7 +3752,10 @@ async function renderSurface(viewId) {
     loading.remove();
     if (viewId === "tax-reform") {
       appendRtcIssuerSummary(article, rows);
-      if (bootstrapState?.permissions.includes("audit.read")) appendOpportunityRadar(article);
+      if (bootstrapState?.permissions.includes("audit.read")) {
+        appendOpportunityRadar(article);
+        appendQuarterlySimulation(article);
+      }
     } else {
       article.append(grid);
     }
@@ -4987,5 +4990,62 @@ function appendOpportunityRadar(article) {
     } catch (error) {
       result.textContent = error instanceof Error ? error.message : "Radar indisponível.";
     } finally { submit.disabled = false; month.disabled = false; }
+  });
+}
+
+/** @param {HTMLElement} article */
+function appendQuarterlySimulation(article) {
+  const form = document.createElement("form");
+  const heading = document.createElement("h3");
+  heading.textContent = "Simulação de Lucro Presumido e Lucro Real";
+  const label = document.createElement("label");
+  label.textContent = "Trimestre de 2026";
+  const quarter = document.createElement("select");
+  for (const [i, start] of ["01", "04", "07", "10"].entries()) {
+    quarter.add(new Option((i + 1) + "º trimestre", "2026-" + start + "-01"));
+  }
+  label.append(quarter);
+  const action = document.createElement("button");
+  action.textContent = "Simular trimestre";
+  const result = document.createElement("div");
+  result.setAttribute("role", "status");
+  form.append(heading, label, action, result);
+  article.append(form);
+  const money = new Intl.NumberFormat("pt-BR", {style: "currency", currency: "BRL"});
+  form.addEventListener("submit", async event => {
+    event.preventDefault();
+    if (!selectedFiscalUnit) { result.textContent = "Selecione uma unidade."; return; }
+    action.disabled = quarter.disabled = true;
+    result.textContent = "Consultando a base revisada…";
+    try {
+      const report = await api("/v1/portal/cognitive/economy/quarterly-simulation", {
+        method: "POST", headers: {"X-CSRF-Token": csrfToken()},
+        body: JSON.stringify({unit_id: selectedFiscalUnit, environment: selectedFiscalEnvironment,
+          competence: quarter.value}),
+      });
+      if (report.status === "insufficient_basis") {
+        result.textContent = "Falta uma base contábil revisada para esta unidade e trimestre.";
+        return;
+      }
+      const list = document.createElement("ul");
+      for (const [name, values] of [["Lucro Presumido", report.lucro_presumido], ["Lucro Real", report.lucro_real]]) {
+        const row = document.createElement("li");
+        row.textContent = name + " · IRPJ " + money.format(values.irpj / 100) +
+          " · Adicional " + money.format(values.additional_irpj / 100) + " · CSLL " + money.format(values.csll / 100);
+        list.append(row);
+      }
+      for (const month of report.months) {
+        const row = document.createElement("li");
+        row.textContent = month.competence.slice(0, 7) + " · PIS/Cofins cumulativos " +
+          money.format(month.cumulative.pis / 100) + " / " + money.format(month.cumulative.cofins / 100) +
+          " · Saldos não cumulativos " + money.format(month.noncumulative.pis_balance / 100) + " / " +
+          money.format(month.noncumulative.cofins_balance / 100) + " · Saldos simulados IBS/CBS " +
+          money.format(month.regular_vat.ibs_balance / 100) + " / " + money.format(month.regular_vat.cbs_balance / 100);
+        list.append(row);
+      }
+      result.replaceChildren(document.createTextNode("Cenários consultivos · Revisão " + report.review_reference), list);
+    } catch (error) {
+      result.textContent = error instanceof Error ? error.message : "Simulação indisponível.";
+    } finally { action.disabled = quarter.disabled = false; }
   });
 }

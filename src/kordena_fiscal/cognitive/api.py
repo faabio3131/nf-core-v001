@@ -129,6 +129,7 @@ def create_cognitive_router(
     state_benefit_runner: StateBenefitRunner | None = None,
     state_search_runner: StateSearchRunner | None = None,
     opportunity_runner: OpportunityRunner | None = None,
+    simulation_runner: OpportunityRunner | None = None,
 ) -> APIRouter:
     router = APIRouter(prefix="/v1/portal/cognitive", tags=["cognitive-advisory"])
 
@@ -391,10 +392,9 @@ def create_cognitive_router(
             body["snapshot_id"].strip(), body["snapshot_version"],
         )
 
-    @router.post("/economy/opportunity-radar")
-    async def opportunity_scan(
-        request: Request, body: Annotated[dict[str, Any], Body()],
-    ) -> dict[str, Any]:
+    def authorized_month(request: Request, body: dict[str, Any]) -> tuple[
+        AuthenticatedHuman, str, FiscalEnvironment, date,
+    ]:
         auth = _authenticated(request, identity, now=datetime.now(UTC))
         _reject_browser_authority(body)
         if set(body) != {"unit_id", "environment", "competence"}:
@@ -411,9 +411,25 @@ def create_cognitive_router(
                 raise ValueError
         except (ValueError, TypeError):
             raise _bad("INVALID_RADAR_PERIOD", "Invalid environment or competence") from None
+        return auth, unit, environment, month
+
+    @router.post("/economy/opportunity-radar")
+    async def opportunity_scan(
+        request: Request, body: Annotated[dict[str, Any], Body()],
+    ) -> dict[str, Any]:
+        auth, unit, environment, month = authorized_month(request, body)
         if opportunity_runner is None:
             raise _bad("RADAR_UNAVAILABLE", "Radar unavailable", 503)
         return await run_in_threadpool(opportunity_runner, auth, unit, environment, month)
+
+    @router.post("/economy/quarterly-simulation")
+    async def quarterly_simulation(
+        request: Request, body: Annotated[dict[str, Any], Body()],
+    ) -> dict[str, Any]:
+        auth, unit, environment, month = authorized_month(request, body)
+        if simulation_runner is None:
+            raise _bad("SIMULATION_UNAVAILABLE", "Simulation unavailable", 503)
+        return await run_in_threadpool(simulation_runner, auth, unit, environment, month)
 
     @router.get("/economy/schema")
     async def economy_schema(request: Request) -> dict[str, Any]:

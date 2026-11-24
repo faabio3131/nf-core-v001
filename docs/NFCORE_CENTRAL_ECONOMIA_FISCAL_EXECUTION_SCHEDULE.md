@@ -12,11 +12,9 @@ No radar, uma lacuna deve aparecer como cobertura indisponível ou base insufici
 
 A [PR #592](https://github.com/faabio3131/nf-core-v001/pull/592) integrou as sete PRs de T01–T09 na `main` pelo commit `f19122a8b158a3910271890a74a3f4f66a7d5852`. O responsável pelo projeto autorizou o merge após reavaliação técnica pelo agente. A árvore integrada é idêntica à da revisão `85ed8703`. [CI da revisão](https://github.com/faabio3131/nf-core-v001/actions/runs/45313958431) · [CI do merge](https://github.com/faabio3131/nf-core-v001/actions/runs/45316804802).
 
-**Trabalho atual — [T10 / #594](https://github.com/faabio3131/nf-core-v001/issues/594).** Branch `feat/nfcore-economy-t10-opportunity-radar`, base `9589fd19`. Candidata de engenharia com consulta por unidade e competência no Portal, testes de domínio, HTTP, PostgreSQL e interface. Acompanhar a certificação da revisão exata na #594. A T11 depende da entrega da T10.
+**T10 entregue e integrada.** A #596 foi mergeada em 24/11/2026 na main `8f48f5af241e02315800055477b8aeca1450b5b7`. A [CI pós-merge](https://github.com/faabio3131/nf-core-v001/actions/runs/45381597371) aprovou 6.979 testes Python e 82 E2E, com um teste Python ignorado. Registro na #594.
 
-A consulta do Portal resolve o emitente pelo cadastro da unidade e busca snapshots revisados por CNPJ, competência e esquema. O banco aplica RLS e leitura repetível. Para ISS, o escopo inicial é o município cadastrado, com incidência comprovada nesse município e modalidade de isenção, redução de base ou de alíquota. O ato citado deve cobrir toda a competência. Os cenários monetários vêm de avaliações revisadas vinculadas ao digest da regra. A ausência de valores mantém a oportunidade sem estimativa. A comparação é consultiva. Anistia, REFIS, transação e parcelamento são sinais públicos para revisão, sem valor atribuído. O código não cadastra benefícios municipais reais.
-
-Reprodução focal: `python -m pytest tests/application/test_opportunity_radar.py tests/cognitive/test_state_benefits_api.py tests/persistence/test_economy_schema_postgres.py` (PostgreSQL de teste configurado) e o cenário Playwright “radar uses selected unit”. Conferir também a CI cumulativa e a decisão de revisão antes de integrar.
+**T11 em revisão.** Branch `feat/nfcore-economy-t11-simulation`, base `8f48f5af`. O escopo da planilha inclui IRPJ, adicional, CSLL, PIS/Cofins cumulativo e não cumulativo e IVA Dual. Consultar a [issue #597](https://github.com/faabio3131/nf-core-v001/issues/597) para PR, HEAD e CI, e o [handoff de engenharia](NFCORE_T11_SIMULATION_HANDOFF.md) para o recorte, reprodução e fontes de referência. A T12 depende da integração e certificação pós-merge da T11.
 
 **Curadoria fiscal — [#593](https://github.com/faabio3131/nf-core-v001/issues/593).** O acompanhamento documental de AP, PA, RR e SE segue até 07/12/2026. Por modalidade e competência, registrar vigência, vínculo com registro e depósito quando aplicáveis e parecer independente. Até lá, as quatro candidatas seguem excluídas da importação e do cálculo. Essa pendência permite avançar na construção da T10. A expansão do catálogo de operações da T06 segue sujeita a revisão fiscal de cada nova regra.
 
@@ -34,8 +32,8 @@ A folha T23–T33, a Trilha 2 H01–H06 e a reformulação Enterprise não integ
 | T07 | Apuração/PGDAS segregada | Apuração consultiva integrada na #592 |
 | T08 | Catálogo federal | Catálogo consultivo integrado na #592, com seleção temporal e autoridade da T07 para IBS/CBS |
 | T09 | Catálogo estadual 27 UFs | Motor de triagem integrado. Curadoria e revisão independente acompanhadas na #593 |
-| T10 | Benefícios municipais e radar unificado | EM REVISÃO — implementação na branch de T10, evidências e decisão de integração na #594 |
-| T11 | Simulação Presumido/Real e IVA | Bloqueado |
+| T10 | Benefícios municipais e radar unificado | ENTREGUE — #596 integrada, CI pós-merge 45381597371 |
+| T11 | Simulação Presumido/Real e IVA | EM REVISÃO — #597, aceite de integração pendente |
 | T12 | Comparador multi-regime | Bloqueado |
 | T13 | Aprovação contábil auditável | Bloqueado; referência anterior preservada |
 | T14 | Aplicação autorizada emissão | Bloqueado; protótipo de engenharia preservado |
