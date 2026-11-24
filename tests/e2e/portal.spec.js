@@ -687,12 +687,12 @@ test("annual regime comparison presents reviewed scenarios and insufficient basi
     expect(route.request().postDataJSON()).toEqual({unit_id: "unit-a", environment: "homologation", competence: "2026-01-01"});
     expect(route.request().headers()["x-csrf-token"]).toBe("csrf-e2e");
     if (++requests > 1) return route.fulfill({json: {status: "insufficient_basis"}});
-    const totals = {simples_nacional: 1860000, lucro_presumido: 2079600, lucro_real: 2118000};
+    const totals = {simples_nacional: 1860012, lucro_presumido: 2079600, lucro_real: 2118000};
     const delta = {simples_nacional: 0, lucro_presumido: 0, lucro_real: 72000};
     return route.fulfill({json: {status: "compared",
       scenarios: {baseline: {annual_tax_cents: totals, revenue_cents: 12000000, payroll_cents: 2400000, real_accounting_result_cents: 1200000}},
       sensitivity_tax_delta_cents: {margin: delta, payroll: delta},
-      recommendation: {candidates: ["simples_nacional"]}}});
+      recommendation: {candidates: ["simples_nacional"], sensitivity_stable: true}}});
   });
   await page.goto("/");
   await page.getByRole("button", {name: "Reforma Tributária", exact: true}).click();

@@ -5,13 +5,14 @@ and general services, below the ICMS/ISS sublimit in both calendar years.
 Existing T07 and T11 remain the only tax calculation authorities.
 """
 from datetime import date
+from fractions import Fraction
 from typing import Annotated, Any, Literal
 
 from pydantic import Field
 
 from kordena_fiscal.cognitive.economy_contract import Cents, ContractModel
 from kordena_fiscal.domain import FiscalValidationError
-from kordena_fiscal.tax.quarterly_simulation import Quarter, Reference, simulate
+from kordena_fiscal.tax.quarterly_simulation import Quarter, Reference, rounded, simulate
 from kordena_fiscal.tax.simples_nacional import (
     SUBLIMIT,
     Activity,
@@ -74,6 +75,7 @@ class Scenario(ContractModel):
     accounting_scope: Literal["all_establishments_ordinary_domestic_accrual"]
     settlement_scope: Literal["reviewed_net_tax_burden_no_unallocated_credit"]
     uf: str
+    opened_month: str
     service_activity: Literal["service_iii", "service_iv", "service_factor_r"]
     history: Annotated[list[HistoryMonth], Field(min_length=24, max_length=24)]
     outside: Annotated[list[OutsideMonth], Field(min_length=12, max_length=12)]
@@ -95,6 +97,12 @@ def _require(condition: bool, message: str) -> None:
 
 
 def _year(scenario: Scenario) -> dict[str, Any]:
+    try:
+        opened = date.fromisoformat(scenario.opened_month)
+    except ValueError as exc:
+        raise FiscalValidationError("reviewed company opening month required") from exc
+    _require(opened.isoformat() == scenario.opened_month and opened.day == 1
+             and opened <= date(2025, 1, 1), "established company opening required")
     expected = [date(year, month, 1).isoformat()
                 for year in (2025, 2026) for month in range(1, 13)]
     _require([m.competence for m in scenario.history] == expected,
@@ -120,6 +128,9 @@ def _year(scenario: Scenario) -> dict[str, Any]:
                  and quarter.trade_revenue == sum(m.trade_revenue for m in group)
                  and quarter.services_revenue == sum(m.service_revenue for m in group),
                  "quarter revenue or competence does not reconcile")
+        _require(sum(m.revenue for m in group) <= quarter.irpj_ordinary_limit
+                 and (index == 0 or sum(m.revenue for m in group) <= quarter.csll_ordinary_limit),
+                 "reviewed presumption uplift requires broader annual reconciliation")
         _require(quarter.irpj_other_taxable == quarter.csll_other_taxable == 0,
                  "additional revenue requires broader reviewed comparison")
         _require(quarter.irpj_loss_applied == quarter.csll_loss_applied == 0,
@@ -147,7 +158,7 @@ def _year(scenario: Scenario) -> dict[str, Any]:
             _require(federal["pis_balance"] >= 0 and federal["cofins_balance"] >= 0,
                      "unallocated federal credit requires additional review")
             facts = SimplesFacts(
-                date.fromisoformat(m.competence), date(2025, 1, 1), scenario.uf,
+                date.fromisoformat(m.competence), opened, scenario.uf,
                 Activity.COMMERCE, history[:13 + pos], scenario.review_reference,
                 scenario.eligibility_reference, scenario.eligibility_reference,
             )
@@ -197,6 +208,9 @@ def _year(scenario: Scenario) -> dict[str, Any]:
         "review_reference": scenario.review_reference, "revenue_cents": revenue,
         "payroll_cents": sum(m.payroll for m in months),
         "real_accounting_result_cents": accounting_result,
+        "accounting_margin_bps": (1 if accounting_result >= 0 else -1) * rounded(
+            Fraction(abs(accounting_result) * 10000, revenue)),
+        "qualifying_payroll_bps": rounded(Fraction(sum(m.payroll for m in months) * 10000, revenue)),
         "annual_tax_cents": totals,
         "lowest_tax_burden": cheapest,
         "difference_to_lowest_cents": {regime: totals[regime] - minimum for regime in REGIMES},
@@ -207,6 +221,7 @@ def _year(scenario: Scenario) -> dict[str, Any]:
 def _same_revenue(base: Scenario, variant: Scenario) -> bool:
     return (
         base.uf == variant.uf and base.service_activity == variant.service_activity
+        and base.opened_month == variant.opened_month
         and [(m.competence, m.trade_revenue, m.service_revenue) for m in base.history]
         == [(m.competence, m.trade_revenue, m.service_revenue) for m in variant.history]
         and base.history[:12] == variant.history[:12]
@@ -242,6 +257,10 @@ def compare(facts: AnnualComparison) -> dict[str, Any]:
             "candidates": baseline["lowest_tax_burden"],
             "criterion": "lowest_reviewed_annual_tax_burden",
             "requires_accounting_review": True,
+            "sensitivity_stable": all(
+                results[name]["lowest_tax_burden"] == baseline["lowest_tax_burden"]
+                for name in ("margin", "payroll")
+            ),
         },
         "advisory_only": True, "issuance_authorized": False,
         "payment_authorized": False, "regime_change_authorized": False,

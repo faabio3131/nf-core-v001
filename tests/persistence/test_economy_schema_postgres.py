@@ -79,6 +79,7 @@ def test_real_postgres_economy_schema_scope_and_immutability(monkeypatch):
             _certify_t09_state(database, monkeypatch)
             _certify_t10_municipal(database)
             _certify_t11(database)
+            _certify_t12(database)
             admin.execute(sql.SQL("SET search_path TO {}").format(sql.Identifier(schema_name)))
             # Explicitly add DML permissions only in this sandbox to prove
             # that the RLS policies, not solely GRANTs, deny mutation.
@@ -1117,3 +1118,48 @@ def _certify_t11(database):
     for other in (_scope(tenant="other"), _scope(tenant=bundle["tenant"], unit="other")):
         with database.economy(other, read_only=True) as store:
             assert store.unique_monthly_snapshot(issuer.value, month, SCHEMA) is None
+
+
+def _certify_t12(database):
+    import json
+    from pathlib import Path
+
+    from kordena_fiscal.application.annual_regime_comparison import PERIOD, import_annual
+    from kordena_fiscal.tax.annual_regime_comparison import SCHEMA, AnnualComparison, compare
+
+    bundle = json.loads((Path(__file__).parents[1] / "tax/fixtures/t12_reviewed_annual_example.json")
+                         .read_text(encoding="utf-8"))
+    scope = _scope(tenant=bundle["tenant"], unit=bundle["unit"])
+    issuer = Cnpj(bundle["issuer_cnpj"])
+    facts = AnnualComparison.model_validate(bundle["facts"])
+    with database.economy(scope) as store:
+        digest = import_annual(store, issuer, 1, facts)
+        assert import_annual(store, issuer, 1, facts) == digest
+        with pytest.raises(FiscalValidationError):
+            import_annual(store, issuer, 3, facts)
+    updated = facts.model_dump()
+    updated["margin"]["quarters"][0]["real_accounting_result"] += 100000
+    revised = AnnualComparison.model_validate(updated)
+    with database.economy(scope) as store:
+        with pytest.raises(FiscalValidationError):
+            import_annual(store, issuer, 1, revised)
+        latest_digest = import_annual(store, issuer, 2, revised)
+        assert latest_digest != digest
+    with database.economy(scope, read_only=True) as store:
+        row = store.unique_monthly_snapshot(issuer.value, PERIOD, SCHEMA)
+        assert row["version"] == 2
+        assert row["digest"] == latest_digest
+        original = store.record("fm_economy_snapshots", row["record_id"], 1)
+        assert original["digest"] == digest
+        result = compare(AnnualComparison.model_validate(row["content"]))
+        assert result["scenarios"]["baseline"]["annual_tax_cents"]["simples_nacional"] == 1860012
+        assert result["sensitivity_tax_delta_cents"]["margin"]["lucro_real"] == 96000
+    for other in (
+        _scope(tenant="other", unit=bundle["unit"]),
+        _scope(tenant=bundle["tenant"], unit="other"),
+        _scope(tenant=bundle["tenant"], unit=bundle["unit"], host="other-host"),
+        _scope(tenant=bundle["tenant"], unit=bundle["unit"],
+               environment=FiscalEnvironment.PRODUCTION),
+    ):
+        with database.economy(other, read_only=True) as store:
+            assert store.unique_monthly_snapshot(issuer.value, PERIOD, SCHEMA) is None

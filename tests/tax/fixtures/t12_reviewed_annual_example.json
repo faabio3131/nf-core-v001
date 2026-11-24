@@ -1,0 +1,2240 @@
+{
+  "tenant": "tenant-t12",
+  "unit": "unit-t12",
+  "issuer_cnpj": "12345678000195",
+  "version": 1,
+  "facts": {
+    "schema_version": "nfcore.annual-regime-comparison/v1",
+    "review_status": "reviewed",
+    "data_basis": "reviewed_annual_scenarios",
+    "baseline": {
+      "review_reference": "baseline",
+      "eligibility_reference": "synthetic-eligibility-reviewed",
+      "accounting_scope": "all_establishments_ordinary_domestic_accrual",
+      "settlement_scope": "reviewed_net_tax_burden_no_unallocated_credit",
+      "uf": "SP",
+      "opened_month": "2024-01-01",
+      "service_activity": "service_factor_r",
+      "history": [
+        {
+          "competence": "2025-01-01",
+          "trade_revenue": 0,
+          "service_revenue": 1000000,
+          "payroll": 200000,
+          "evidence": "history-2025-1"
+        },
+        {
+          "competence": "2025-02-01",
+          "trade_revenue": 0,
+          "service_revenue": 1000000,
+          "payroll": 200000,
+          "evidence": "history-2025-2"
+        },
+        {
+          "competence": "2025-03-01",
+          "trade_revenue": 0,
+          "service_revenue": 1000000,
+          "payroll": 200000,
+          "evidence": "history-2025-3"
+        },
+        {
+          "competence": "2025-04-01",
+          "trade_revenue": 0,
+          "service_revenue": 1000000,
+          "payroll": 200000,
+          "evidence": "history-2025-4"
+        },
+        {
+          "competence": "2025-05-01",
+          "trade_revenue": 0,
+          "service_revenue": 1000000,
+          "payroll": 200000,
+          "evidence": "history-2025-5"
+        },
+        {
+          "competence": "2025-06-01",
+          "trade_revenue": 0,
+          "service_revenue": 1000000,
+          "payroll": 200000,
+          "evidence": "history-2025-6"
+        },
+        {
+          "competence": "2025-07-01",
+          "trade_revenue": 0,
+          "service_revenue": 1000000,
+          "payroll": 200000,
+          "evidence": "history-2025-7"
+        },
+        {
+          "competence": "2025-08-01",
+          "trade_revenue": 0,
+          "service_revenue": 1000000,
+          "payroll": 200000,
+          "evidence": "history-2025-8"
+        },
+        {
+          "competence": "2025-09-01",
+          "trade_revenue": 0,
+          "service_revenue": 1000000,
+          "payroll": 200000,
+          "evidence": "history-2025-9"
+        },
+        {
+          "competence": "2025-10-01",
+          "trade_revenue": 0,
+          "service_revenue": 1000000,
+          "payroll": 200000,
+          "evidence": "history-2025-10"
+        },
+        {
+          "competence": "2025-11-01",
+          "trade_revenue": 0,
+          "service_revenue": 1000000,
+          "payroll": 200000,
+          "evidence": "history-2025-11"
+        },
+        {
+          "competence": "2025-12-01",
+          "trade_revenue": 0,
+          "service_revenue": 1000000,
+          "payroll": 200000,
+          "evidence": "history-2025-12"
+        },
+        {
+          "competence": "2026-01-01",
+          "trade_revenue": 0,
+          "service_revenue": 1000000,
+          "payroll": 200000,
+          "evidence": "history-2026-1"
+        },
+        {
+          "competence": "2026-02-01",
+          "trade_revenue": 0,
+          "service_revenue": 1000000,
+          "payroll": 200000,
+          "evidence": "history-2026-2"
+        },
+        {
+          "competence": "2026-03-01",
+          "trade_revenue": 0,
+          "service_revenue": 1000000,
+          "payroll": 200000,
+          "evidence": "history-2026-3"
+        },
+        {
+          "competence": "2026-04-01",
+          "trade_revenue": 0,
+          "service_revenue": 1000000,
+          "payroll": 200000,
+          "evidence": "history-2026-4"
+        },
+        {
+          "competence": "2026-05-01",
+          "trade_revenue": 0,
+          "service_revenue": 1000000,
+          "payroll": 200000,
+          "evidence": "history-2026-5"
+        },
+        {
+          "competence": "2026-06-01",
+          "trade_revenue": 0,
+          "service_revenue": 1000000,
+          "payroll": 200000,
+          "evidence": "history-2026-6"
+        },
+        {
+          "competence": "2026-07-01",
+          "trade_revenue": 0,
+          "service_revenue": 1000000,
+          "payroll": 200000,
+          "evidence": "history-2026-7"
+        },
+        {
+          "competence": "2026-08-01",
+          "trade_revenue": 0,
+          "service_revenue": 1000000,
+          "payroll": 200000,
+          "evidence": "history-2026-8"
+        },
+        {
+          "competence": "2026-09-01",
+          "trade_revenue": 0,
+          "service_revenue": 1000000,
+          "payroll": 200000,
+          "evidence": "history-2026-9"
+        },
+        {
+          "competence": "2026-10-01",
+          "trade_revenue": 0,
+          "service_revenue": 1000000,
+          "payroll": 200000,
+          "evidence": "history-2026-10"
+        },
+        {
+          "competence": "2026-11-01",
+          "trade_revenue": 0,
+          "service_revenue": 1000000,
+          "payroll": 200000,
+          "evidence": "history-2026-11"
+        },
+        {
+          "competence": "2026-12-01",
+          "trade_revenue": 0,
+          "service_revenue": 1000000,
+          "payroll": 200000,
+          "evidence": "history-2026-12"
+        }
+      ],
+      "outside": [
+        {
+          "competence": "2026-01-01",
+          "simples_nacional": {
+            "icms": 0,
+            "iss": 0,
+            "employer_contributions": 0,
+            "other_mandatory_taxes": 0,
+            "rtc_net_increment": 0,
+            "evidence": "synthetic-review"
+          },
+          "lucro_presumido": {
+            "icms": 0,
+            "iss": 20000,
+            "employer_contributions": 40000,
+            "other_mandatory_taxes": 0,
+            "rtc_net_increment": 0,
+            "evidence": "synthetic-review"
+          },
+          "lucro_real": {
+            "icms": 0,
+            "iss": 20000,
+            "employer_contributions": 40000,
+            "other_mandatory_taxes": 0,
+            "rtc_net_increment": 0,
+            "evidence": "synthetic-review"
+          }
+        },
+        {
+          "competence": "2026-02-01",
+          "simples_nacional": {
+            "icms": 0,
+            "iss": 0,
+            "employer_contributions": 0,
+            "other_mandatory_taxes": 0,
+            "rtc_net_increment": 0,
+            "evidence": "synthetic-review"
+          },
+          "lucro_presumido": {
+            "icms": 0,
+            "iss": 20000,
+            "employer_contributions": 40000,
+            "other_mandatory_taxes": 0,
+            "rtc_net_increment": 0,
+            "evidence": "synthetic-review"
+          },
+          "lucro_real": {
+            "icms": 0,
+            "iss": 20000,
+            "employer_contributions": 40000,
+            "other_mandatory_taxes": 0,
+            "rtc_net_increment": 0,
+            "evidence": "synthetic-review"
+          }
+        },
+        {
+          "competence": "2026-03-01",
+          "simples_nacional": {
+            "icms": 0,
+            "iss": 0,
+            "employer_contributions": 0,
+            "other_mandatory_taxes": 0,
+            "rtc_net_increment": 0,
+            "evidence": "synthetic-review"
+          },
+          "lucro_presumido": {
+            "icms": 0,
+            "iss": 20000,
+            "employer_contributions": 40000,
+            "other_mandatory_taxes": 0,
+            "rtc_net_increment": 0,
+            "evidence": "synthetic-review"
+          },
+          "lucro_real": {
+            "icms": 0,
+            "iss": 20000,
+            "employer_contributions": 40000,
+            "other_mandatory_taxes": 0,
+            "rtc_net_increment": 0,
+            "evidence": "synthetic-review"
+          }
+        },
+        {
+          "competence": "2026-04-01",
+          "simples_nacional": {
+            "icms": 0,
+            "iss": 0,
+            "employer_contributions": 0,
+            "other_mandatory_taxes": 0,
+            "rtc_net_increment": 0,
+            "evidence": "synthetic-review"
+          },
+          "lucro_presumido": {
+            "icms": 0,
+            "iss": 20000,
+            "employer_contributions": 40000,
+            "other_mandatory_taxes": 0,
+            "rtc_net_increment": 0,
+            "evidence": "synthetic-review"
+          },
+          "lucro_real": {
+            "icms": 0,
+            "iss": 20000,
+            "employer_contributions": 40000,
+            "other_mandatory_taxes": 0,
+            "rtc_net_increment": 0,
+            "evidence": "synthetic-review"
+          }
+        },
+        {
+          "competence": "2026-05-01",
+          "simples_nacional": {
+            "icms": 0,
+            "iss": 0,
+            "employer_contributions": 0,
+            "other_mandatory_taxes": 0,
+            "rtc_net_increment": 0,
+            "evidence": "synthetic-review"
+          },
+          "lucro_presumido": {
+            "icms": 0,
+            "iss": 20000,
+            "employer_contributions": 40000,
+            "other_mandatory_taxes": 0,
+            "rtc_net_increment": 0,
+            "evidence": "synthetic-review"
+          },
+          "lucro_real": {
+            "icms": 0,
+            "iss": 20000,
+            "employer_contributions": 40000,
+            "other_mandatory_taxes": 0,
+            "rtc_net_increment": 0,
+            "evidence": "synthetic-review"
+          }
+        },
+        {
+          "competence": "2026-06-01",
+          "simples_nacional": {
+            "icms": 0,
+            "iss": 0,
+            "employer_contributions": 0,
+            "other_mandatory_taxes": 0,
+            "rtc_net_increment": 0,
+            "evidence": "synthetic-review"
+          },
+          "lucro_presumido": {
+            "icms": 0,
+            "iss": 20000,
+            "employer_contributions": 40000,
+            "other_mandatory_taxes": 0,
+            "rtc_net_increment": 0,
+            "evidence": "synthetic-review"
+          },
+          "lucro_real": {
+            "icms": 0,
+            "iss": 20000,
+            "employer_contributions": 40000,
+            "other_mandatory_taxes": 0,
+            "rtc_net_increment": 0,
+            "evidence": "synthetic-review"
+          }
+        },
+        {
+          "competence": "2026-07-01",
+          "simples_nacional": {
+            "icms": 0,
+            "iss": 0,
+            "employer_contributions": 0,
+            "other_mandatory_taxes": 0,
+            "rtc_net_increment": 0,
+            "evidence": "synthetic-review"
+          },
+          "lucro_presumido": {
+            "icms": 0,
+            "iss": 20000,
+            "employer_contributions": 40000,
+            "other_mandatory_taxes": 0,
+            "rtc_net_increment": 0,
+            "evidence": "synthetic-review"
+          },
+          "lucro_real": {
+            "icms": 0,
+            "iss": 20000,
+            "employer_contributions": 40000,
+            "other_mandatory_taxes": 0,
+            "rtc_net_increment": 0,
+            "evidence": "synthetic-review"
+          }
+        },
+        {
+          "competence": "2026-08-01",
+          "simples_nacional": {
+            "icms": 0,
+            "iss": 0,
+            "employer_contributions": 0,
+            "other_mandatory_taxes": 0,
+            "rtc_net_increment": 0,
+            "evidence": "synthetic-review"
+          },
+          "lucro_presumido": {
+            "icms": 0,
+            "iss": 20000,
+            "employer_contributions": 40000,
+            "other_mandatory_taxes": 0,
+            "rtc_net_increment": 0,
+            "evidence": "synthetic-review"
+          },
+          "lucro_real": {
+            "icms": 0,
+            "iss": 20000,
+            "employer_contributions": 40000,
+            "other_mandatory_taxes": 0,
+            "rtc_net_increment": 0,
+            "evidence": "synthetic-review"
+          }
+        },
+        {
+          "competence": "2026-09-01",
+          "simples_nacional": {
+            "icms": 0,
+            "iss": 0,
+            "employer_contributions": 0,
+            "other_mandatory_taxes": 0,
+            "rtc_net_increment": 0,
+            "evidence": "synthetic-review"
+          },
+          "lucro_presumido": {
+            "icms": 0,
+            "iss": 20000,
+            "employer_contributions": 40000,
+            "other_mandatory_taxes": 0,
+            "rtc_net_increment": 0,
+            "evidence": "synthetic-review"
+          },
+          "lucro_real": {
+            "icms": 0,
+            "iss": 20000,
+            "employer_contributions": 40000,
+            "other_mandatory_taxes": 0,
+            "rtc_net_increment": 0,
+            "evidence": "synthetic-review"
+          }
+        },
+        {
+          "competence": "2026-10-01",
+          "simples_nacional": {
+            "icms": 0,
+            "iss": 0,
+            "employer_contributions": 0,
+            "other_mandatory_taxes": 0,
+            "rtc_net_increment": 0,
+            "evidence": "synthetic-review"
+          },
+          "lucro_presumido": {
+            "icms": 0,
+            "iss": 20000,
+            "employer_contributions": 40000,
+            "other_mandatory_taxes": 0,
+            "rtc_net_increment": 0,
+            "evidence": "synthetic-review"
+          },
+          "lucro_real": {
+            "icms": 0,
+            "iss": 20000,
+            "employer_contributions": 40000,
+            "other_mandatory_taxes": 0,
+            "rtc_net_increment": 0,
+            "evidence": "synthetic-review"
+          }
+        },
+        {
+          "competence": "2026-11-01",
+          "simples_nacional": {
+            "icms": 0,
+            "iss": 0,
+            "employer_contributions": 0,
+            "other_mandatory_taxes": 0,
+            "rtc_net_increment": 0,
+            "evidence": "synthetic-review"
+          },
+          "lucro_presumido": {
+            "icms": 0,
+            "iss": 20000,
+            "employer_contributions": 40000,
+            "other_mandatory_taxes": 0,
+            "rtc_net_increment": 0,
+            "evidence": "synthetic-review"
+          },
+          "lucro_real": {
+            "icms": 0,
+            "iss": 20000,
+            "employer_contributions": 40000,
+            "other_mandatory_taxes": 0,
+            "rtc_net_increment": 0,
+            "evidence": "synthetic-review"
+          }
+        },
+        {
+          "competence": "2026-12-01",
+          "simples_nacional": {
+            "icms": 0,
+            "iss": 0,
+            "employer_contributions": 0,
+            "other_mandatory_taxes": 0,
+            "rtc_net_increment": 0,
+            "evidence": "synthetic-review"
+          },
+          "lucro_presumido": {
+            "icms": 0,
+            "iss": 20000,
+            "employer_contributions": 40000,
+            "other_mandatory_taxes": 0,
+            "rtc_net_increment": 0,
+            "evidence": "synthetic-review"
+          },
+          "lucro_real": {
+            "icms": 0,
+            "iss": 20000,
+            "employer_contributions": 40000,
+            "other_mandatory_taxes": 0,
+            "rtc_net_increment": 0,
+            "evidence": "synthetic-review"
+          }
+        }
+      ],
+      "quarters": [
+        {
+          "schema_version": "nfcore.quarterly-regime-facts/v1",
+          "review_status": "reviewed",
+          "review_reference": "baseline",
+          "period_start": "2026-01-01",
+          "scope": "consolidated_ordinary_nonfinancial_full_quarter_2026",
+          "hypothesis": "ordinary_trade_and_general_services",
+          "trade_revenue": 0,
+          "services_revenue": 3000000,
+          "irpj_ordinary_limit": 125000000,
+          "csll_ordinary_limit": 0,
+          "irpj_other_taxable": 0,
+          "csll_other_taxable": 0,
+          "real_accounting_result": 300000,
+          "irpj_additions": 0,
+          "irpj_exclusions": 0,
+          "csll_additions": 0,
+          "csll_exclusions": 0,
+          "irpj_loss_applied": 0,
+          "csll_loss_applied": 0,
+          "months": [
+            {
+              "competence": "2026-01-01",
+              "cumulative_base": 1000000,
+              "noncumulative_base": 1000000,
+              "pis_credit": 0,
+              "cofins_credit": 0,
+              "documents": [],
+              "ibs_credits": 0,
+              "cbs_credits": 0,
+              "rtc_evidence": "synthetic-no-rtc-debit",
+              "rtc_component": "app=1.7.2;db=V0073"
+            },
+            {
+              "competence": "2026-02-01",
+              "cumulative_base": 1000000,
+              "noncumulative_base": 1000000,
+              "pis_credit": 0,
+              "cofins_credit": 0,
+              "documents": [],
+              "ibs_credits": 0,
+              "cbs_credits": 0,
+              "rtc_evidence": "synthetic-no-rtc-debit",
+              "rtc_component": "app=1.7.2;db=V0073"
+            },
+            {
+              "competence": "2026-03-01",
+              "cumulative_base": 1000000,
+              "noncumulative_base": 1000000,
+              "pis_credit": 0,
+              "cofins_credit": 0,
+              "documents": [],
+              "ibs_credits": 0,
+              "cbs_credits": 0,
+              "rtc_evidence": "synthetic-no-rtc-debit",
+              "rtc_component": "app=1.7.2;db=V0073"
+            }
+          ]
+        },
+        {
+          "schema_version": "nfcore.quarterly-regime-facts/v1",
+          "review_status": "reviewed",
+          "review_reference": "baseline",
+          "period_start": "2026-04-01",
+          "scope": "consolidated_ordinary_nonfinancial_full_quarter_2026",
+          "hypothesis": "ordinary_trade_and_general_services",
+          "trade_revenue": 0,
+          "services_revenue": 3000000,
+          "irpj_ordinary_limit": 125000000,
+          "csll_ordinary_limit": 125000000,
+          "irpj_other_taxable": 0,
+          "csll_other_taxable": 0,
+          "real_accounting_result": 300000,
+          "irpj_additions": 0,
+          "irpj_exclusions": 0,
+          "csll_additions": 0,
+          "csll_exclusions": 0,
+          "irpj_loss_applied": 0,
+          "csll_loss_applied": 0,
+          "months": [
+            {
+              "competence": "2026-04-01",
+              "cumulative_base": 1000000,
+              "noncumulative_base": 1000000,
+              "pis_credit": 0,
+              "cofins_credit": 0,
+              "documents": [],
+              "ibs_credits": 0,
+              "cbs_credits": 0,
+              "rtc_evidence": "synthetic-no-rtc-debit",
+              "rtc_component": "app=1.7.2;db=V0073"
+            },
+            {
+              "competence": "2026-05-01",
+              "cumulative_base": 1000000,
+              "noncumulative_base": 1000000,
+              "pis_credit": 0,
+              "cofins_credit": 0,
+              "documents": [],
+              "ibs_credits": 0,
+              "cbs_credits": 0,
+              "rtc_evidence": "synthetic-no-rtc-debit",
+              "rtc_component": "app=1.7.2;db=V0073"
+            },
+            {
+              "competence": "2026-06-01",
+              "cumulative_base": 1000000,
+              "noncumulative_base": 1000000,
+              "pis_credit": 0,
+              "cofins_credit": 0,
+              "documents": [],
+              "ibs_credits": 0,
+              "cbs_credits": 0,
+              "rtc_evidence": "synthetic-no-rtc-debit",
+              "rtc_component": "app=1.7.2;db=V0073"
+            }
+          ]
+        },
+        {
+          "schema_version": "nfcore.quarterly-regime-facts/v1",
+          "review_status": "reviewed",
+          "review_reference": "baseline",
+          "period_start": "2026-07-01",
+          "scope": "consolidated_ordinary_nonfinancial_full_quarter_2026",
+          "hypothesis": "ordinary_trade_and_general_services",
+          "trade_revenue": 0,
+          "services_revenue": 3000000,
+          "irpj_ordinary_limit": 125000000,
+          "csll_ordinary_limit": 125000000,
+          "irpj_other_taxable": 0,
+          "csll_other_taxable": 0,
+          "real_accounting_result": 300000,
+          "irpj_additions": 0,
+          "irpj_exclusions": 0,
+          "csll_additions": 0,
+          "csll_exclusions": 0,
+          "irpj_loss_applied": 0,
+          "csll_loss_applied": 0,
+          "months": [
+            {
+              "competence": "2026-07-01",
+              "cumulative_base": 1000000,
+              "noncumulative_base": 1000000,
+              "pis_credit": 0,
+              "cofins_credit": 0,
+              "documents": [],
+              "ibs_credits": 0,
+              "cbs_credits": 0,
+              "rtc_evidence": "synthetic-no-rtc-debit",
+              "rtc_component": "app=1.7.2;db=V0073"
+            },
+            {
+              "competence": "2026-08-01",
+              "cumulative_base": 1000000,
+              "noncumulative_base": 1000000,
+              "pis_credit": 0,
+              "cofins_credit": 0,
+              "documents": [],
+              "ibs_credits": 0,
+              "cbs_credits": 0,
+              "rtc_evidence": "synthetic-no-rtc-debit",
+              "rtc_component": "app=1.7.2;db=V0073"
+            },
+            {
+              "competence": "2026-09-01",
+              "cumulative_base": 1000000,
+              "noncumulative_base": 1000000,
+              "pis_credit": 0,
+              "cofins_credit": 0,
+              "documents": [],
+              "ibs_credits": 0,
+              "cbs_credits": 0,
+              "rtc_evidence": "synthetic-no-rtc-debit",
+              "rtc_component": "app=1.7.2;db=V0073"
+            }
+          ]
+        },
+        {
+          "schema_version": "nfcore.quarterly-regime-facts/v1",
+          "review_status": "reviewed",
+          "review_reference": "baseline",
+          "period_start": "2026-10-01",
+          "scope": "consolidated_ordinary_nonfinancial_full_quarter_2026",
+          "hypothesis": "ordinary_trade_and_general_services",
+          "trade_revenue": 0,
+          "services_revenue": 3000000,
+          "irpj_ordinary_limit": 125000000,
+          "csll_ordinary_limit": 125000000,
+          "irpj_other_taxable": 0,
+          "csll_other_taxable": 0,
+          "real_accounting_result": 300000,
+          "irpj_additions": 0,
+          "irpj_exclusions": 0,
+          "csll_additions": 0,
+          "csll_exclusions": 0,
+          "irpj_loss_applied": 0,
+          "csll_loss_applied": 0,
+          "months": [
+            {
+              "competence": "2026-10-01",
+              "cumulative_base": 1000000,
+              "noncumulative_base": 1000000,
+              "pis_credit": 0,
+              "cofins_credit": 0,
+              "documents": [],
+              "ibs_credits": 0,
+              "cbs_credits": 0,
+              "rtc_evidence": "synthetic-no-rtc-debit",
+              "rtc_component": "app=1.7.2;db=V0073"
+            },
+            {
+              "competence": "2026-11-01",
+              "cumulative_base": 1000000,
+              "noncumulative_base": 1000000,
+              "pis_credit": 0,
+              "cofins_credit": 0,
+              "documents": [],
+              "ibs_credits": 0,
+              "cbs_credits": 0,
+              "rtc_evidence": "synthetic-no-rtc-debit",
+              "rtc_component": "app=1.7.2;db=V0073"
+            },
+            {
+              "competence": "2026-12-01",
+              "cumulative_base": 1000000,
+              "noncumulative_base": 1000000,
+              "pis_credit": 0,
+              "cofins_credit": 0,
+              "documents": [],
+              "ibs_credits": 0,
+              "cbs_credits": 0,
+              "rtc_evidence": "synthetic-no-rtc-debit",
+              "rtc_component": "app=1.7.2;db=V0073"
+            }
+          ]
+        }
+      ]
+    },
+    "margin": {
+      "review_reference": "margin",
+      "eligibility_reference": "synthetic-eligibility-reviewed",
+      "accounting_scope": "all_establishments_ordinary_domestic_accrual",
+      "settlement_scope": "reviewed_net_tax_burden_no_unallocated_credit",
+      "uf": "SP",
+      "opened_month": "2024-01-01",
+      "service_activity": "service_factor_r",
+      "history": [
+        {
+          "competence": "2025-01-01",
+          "trade_revenue": 0,
+          "service_revenue": 1000000,
+          "payroll": 200000,
+          "evidence": "history-2025-1"
+        },
+        {
+          "competence": "2025-02-01",
+          "trade_revenue": 0,
+          "service_revenue": 1000000,
+          "payroll": 200000,
+          "evidence": "history-2025-2"
+        },
+        {
+          "competence": "2025-03-01",
+          "trade_revenue": 0,
+          "service_revenue": 1000000,
+          "payroll": 200000,
+          "evidence": "history-2025-3"
+        },
+        {
+          "competence": "2025-04-01",
+          "trade_revenue": 0,
+          "service_revenue": 1000000,
+          "payroll": 200000,
+          "evidence": "history-2025-4"
+        },
+        {
+          "competence": "2025-05-01",
+          "trade_revenue": 0,
+          "service_revenue": 1000000,
+          "payroll": 200000,
+          "evidence": "history-2025-5"
+        },
+        {
+          "competence": "2025-06-01",
+          "trade_revenue": 0,
+          "service_revenue": 1000000,
+          "payroll": 200000,
+          "evidence": "history-2025-6"
+        },
+        {
+          "competence": "2025-07-01",
+          "trade_revenue": 0,
+          "service_revenue": 1000000,
+          "payroll": 200000,
+          "evidence": "history-2025-7"
+        },
+        {
+          "competence": "2025-08-01",
+          "trade_revenue": 0,
+          "service_revenue": 1000000,
+          "payroll": 200000,
+          "evidence": "history-2025-8"
+        },
+        {
+          "competence": "2025-09-01",
+          "trade_revenue": 0,
+          "service_revenue": 1000000,
+          "payroll": 200000,
+          "evidence": "history-2025-9"
+        },
+        {
+          "competence": "2025-10-01",
+          "trade_revenue": 0,
+          "service_revenue": 1000000,
+          "payroll": 200000,
+          "evidence": "history-2025-10"
+        },
+        {
+          "competence": "2025-11-01",
+          "trade_revenue": 0,
+          "service_revenue": 1000000,
+          "payroll": 200000,
+          "evidence": "history-2025-11"
+        },
+        {
+          "competence": "2025-12-01",
+          "trade_revenue": 0,
+          "service_revenue": 1000000,
+          "payroll": 200000,
+          "evidence": "history-2025-12"
+        },
+        {
+          "competence": "2026-01-01",
+          "trade_revenue": 0,
+          "service_revenue": 1000000,
+          "payroll": 200000,
+          "evidence": "history-2026-1"
+        },
+        {
+          "competence": "2026-02-01",
+          "trade_revenue": 0,
+          "service_revenue": 1000000,
+          "payroll": 200000,
+          "evidence": "history-2026-2"
+        },
+        {
+          "competence": "2026-03-01",
+          "trade_revenue": 0,
+          "service_revenue": 1000000,
+          "payroll": 200000,
+          "evidence": "history-2026-3"
+        },
+        {
+          "competence": "2026-04-01",
+          "trade_revenue": 0,
+          "service_revenue": 1000000,
+          "payroll": 200000,
+          "evidence": "history-2026-4"
+        },
+        {
+          "competence": "2026-05-01",
+          "trade_revenue": 0,
+          "service_revenue": 1000000,
+          "payroll": 200000,
+          "evidence": "history-2026-5"
+        },
+        {
+          "competence": "2026-06-01",
+          "trade_revenue": 0,
+          "service_revenue": 1000000,
+          "payroll": 200000,
+          "evidence": "history-2026-6"
+        },
+        {
+          "competence": "2026-07-01",
+          "trade_revenue": 0,
+          "service_revenue": 1000000,
+          "payroll": 200000,
+          "evidence": "history-2026-7"
+        },
+        {
+          "competence": "2026-08-01",
+          "trade_revenue": 0,
+          "service_revenue": 1000000,
+          "payroll": 200000,
+          "evidence": "history-2026-8"
+        },
+        {
+          "competence": "2026-09-01",
+          "trade_revenue": 0,
+          "service_revenue": 1000000,
+          "payroll": 200000,
+          "evidence": "history-2026-9"
+        },
+        {
+          "competence": "2026-10-01",
+          "trade_revenue": 0,
+          "service_revenue": 1000000,
+          "payroll": 200000,
+          "evidence": "history-2026-10"
+        },
+        {
+          "competence": "2026-11-01",
+          "trade_revenue": 0,
+          "service_revenue": 1000000,
+          "payroll": 200000,
+          "evidence": "history-2026-11"
+        },
+        {
+          "competence": "2026-12-01",
+          "trade_revenue": 0,
+          "service_revenue": 1000000,
+          "payroll": 200000,
+          "evidence": "history-2026-12"
+        }
+      ],
+      "outside": [
+        {
+          "competence": "2026-01-01",
+          "simples_nacional": {
+            "icms": 0,
+            "iss": 0,
+            "employer_contributions": 0,
+            "other_mandatory_taxes": 0,
+            "rtc_net_increment": 0,
+            "evidence": "synthetic-review"
+          },
+          "lucro_presumido": {
+            "icms": 0,
+            "iss": 20000,
+            "employer_contributions": 40000,
+            "other_mandatory_taxes": 0,
+            "rtc_net_increment": 0,
+            "evidence": "synthetic-review"
+          },
+          "lucro_real": {
+            "icms": 0,
+            "iss": 20000,
+            "employer_contributions": 40000,
+            "other_mandatory_taxes": 0,
+            "rtc_net_increment": 0,
+            "evidence": "synthetic-review"
+          }
+        },
+        {
+          "competence": "2026-02-01",
+          "simples_nacional": {
+            "icms": 0,
+            "iss": 0,
+            "employer_contributions": 0,
+            "other_mandatory_taxes": 0,
+            "rtc_net_increment": 0,
+            "evidence": "synthetic-review"
+          },
+          "lucro_presumido": {
+            "icms": 0,
+            "iss": 20000,
+            "employer_contributions": 40000,
+            "other_mandatory_taxes": 0,
+            "rtc_net_increment": 0,
+            "evidence": "synthetic-review"
+          },
+          "lucro_real": {
+            "icms": 0,
+            "iss": 20000,
+            "employer_contributions": 40000,
+            "other_mandatory_taxes": 0,
+            "rtc_net_increment": 0,
+            "evidence": "synthetic-review"
+          }
+        },
+        {
+          "competence": "2026-03-01",
+          "simples_nacional": {
+            "icms": 0,
+            "iss": 0,
+            "employer_contributions": 0,
+            "other_mandatory_taxes": 0,
+            "rtc_net_increment": 0,
+            "evidence": "synthetic-review"
+          },
+          "lucro_presumido": {
+            "icms": 0,
+            "iss": 20000,
+            "employer_contributions": 40000,
+            "other_mandatory_taxes": 0,
+            "rtc_net_increment": 0,
+            "evidence": "synthetic-review"
+          },
+          "lucro_real": {
+            "icms": 0,
+            "iss": 20000,
+            "employer_contributions": 40000,
+            "other_mandatory_taxes": 0,
+            "rtc_net_increment": 0,
+            "evidence": "synthetic-review"
+          }
+        },
+        {
+          "competence": "2026-04-01",
+          "simples_nacional": {
+            "icms": 0,
+            "iss": 0,
+            "employer_contributions": 0,
+            "other_mandatory_taxes": 0,
+            "rtc_net_increment": 0,
+            "evidence": "synthetic-review"
+          },
+          "lucro_presumido": {
+            "icms": 0,
+            "iss": 20000,
+            "employer_contributions": 40000,
+            "other_mandatory_taxes": 0,
+            "rtc_net_increment": 0,
+            "evidence": "synthetic-review"
+          },
+          "lucro_real": {
+            "icms": 0,
+            "iss": 20000,
+            "employer_contributions": 40000,
+            "other_mandatory_taxes": 0,
+            "rtc_net_increment": 0,
+            "evidence": "synthetic-review"
+          }
+        },
+        {
+          "competence": "2026-05-01",
+          "simples_nacional": {
+            "icms": 0,
+            "iss": 0,
+            "employer_contributions": 0,
+            "other_mandatory_taxes": 0,
+            "rtc_net_increment": 0,
+            "evidence": "synthetic-review"
+          },
+          "lucro_presumido": {
+            "icms": 0,
+            "iss": 20000,
+            "employer_contributions": 40000,
+            "other_mandatory_taxes": 0,
+            "rtc_net_increment": 0,
+            "evidence": "synthetic-review"
+          },
+          "lucro_real": {
+            "icms": 0,
+            "iss": 20000,
+            "employer_contributions": 40000,
+            "other_mandatory_taxes": 0,
+            "rtc_net_increment": 0,
+            "evidence": "synthetic-review"
+          }
+        },
+        {
+          "competence": "2026-06-01",
+          "simples_nacional": {
+            "icms": 0,
+            "iss": 0,
+            "employer_contributions": 0,
+            "other_mandatory_taxes": 0,
+            "rtc_net_increment": 0,
+            "evidence": "synthetic-review"
+          },
+          "lucro_presumido": {
+            "icms": 0,
+            "iss": 20000,
+            "employer_contributions": 40000,
+            "other_mandatory_taxes": 0,
+            "rtc_net_increment": 0,
+            "evidence": "synthetic-review"
+          },
+          "lucro_real": {
+            "icms": 0,
+            "iss": 20000,
+            "employer_contributions": 40000,
+            "other_mandatory_taxes": 0,
+            "rtc_net_increment": 0,
+            "evidence": "synthetic-review"
+          }
+        },
+        {
+          "competence": "2026-07-01",
+          "simples_nacional": {
+            "icms": 0,
+            "iss": 0,
+            "employer_contributions": 0,
+            "other_mandatory_taxes": 0,
+            "rtc_net_increment": 0,
+            "evidence": "synthetic-review"
+          },
+          "lucro_presumido": {
+            "icms": 0,
+            "iss": 20000,
+            "employer_contributions": 40000,
+            "other_mandatory_taxes": 0,
+            "rtc_net_increment": 0,
+            "evidence": "synthetic-review"
+          },
+          "lucro_real": {
+            "icms": 0,
+            "iss": 20000,
+            "employer_contributions": 40000,
+            "other_mandatory_taxes": 0,
+            "rtc_net_increment": 0,
+            "evidence": "synthetic-review"
+          }
+        },
+        {
+          "competence": "2026-08-01",
+          "simples_nacional": {
+            "icms": 0,
+            "iss": 0,
+            "employer_contributions": 0,
+            "other_mandatory_taxes": 0,
+            "rtc_net_increment": 0,
+            "evidence": "synthetic-review"
+          },
+          "lucro_presumido": {
+            "icms": 0,
+            "iss": 20000,
+            "employer_contributions": 40000,
+            "other_mandatory_taxes": 0,
+            "rtc_net_increment": 0,
+            "evidence": "synthetic-review"
+          },
+          "lucro_real": {
+            "icms": 0,
+            "iss": 20000,
+            "employer_contributions": 40000,
+            "other_mandatory_taxes": 0,
+            "rtc_net_increment": 0,
+            "evidence": "synthetic-review"
+          }
+        },
+        {
+          "competence": "2026-09-01",
+          "simples_nacional": {
+            "icms": 0,
+            "iss": 0,
+            "employer_contributions": 0,
+            "other_mandatory_taxes": 0,
+            "rtc_net_increment": 0,
+            "evidence": "synthetic-review"
+          },
+          "lucro_presumido": {
+            "icms": 0,
+            "iss": 20000,
+            "employer_contributions": 40000,
+            "other_mandatory_taxes": 0,
+            "rtc_net_increment": 0,
+            "evidence": "synthetic-review"
+          },
+          "lucro_real": {
+            "icms": 0,
+            "iss": 20000,
+            "employer_contributions": 40000,
+            "other_mandatory_taxes": 0,
+            "rtc_net_increment": 0,
+            "evidence": "synthetic-review"
+          }
+        },
+        {
+          "competence": "2026-10-01",
+          "simples_nacional": {
+            "icms": 0,
+            "iss": 0,
+            "employer_contributions": 0,
+            "other_mandatory_taxes": 0,
+            "rtc_net_increment": 0,
+            "evidence": "synthetic-review"
+          },
+          "lucro_presumido": {
+            "icms": 0,
+            "iss": 20000,
+            "employer_contributions": 40000,
+            "other_mandatory_taxes": 0,
+            "rtc_net_increment": 0,
+            "evidence": "synthetic-review"
+          },
+          "lucro_real": {
+            "icms": 0,
+            "iss": 20000,
+            "employer_contributions": 40000,
+            "other_mandatory_taxes": 0,
+            "rtc_net_increment": 0,
+            "evidence": "synthetic-review"
+          }
+        },
+        {
+          "competence": "2026-11-01",
+          "simples_nacional": {
+            "icms": 0,
+            "iss": 0,
+            "employer_contributions": 0,
+            "other_mandatory_taxes": 0,
+            "rtc_net_increment": 0,
+            "evidence": "synthetic-review"
+          },
+          "lucro_presumido": {
+            "icms": 0,
+            "iss": 20000,
+            "employer_contributions": 40000,
+            "other_mandatory_taxes": 0,
+            "rtc_net_increment": 0,
+            "evidence": "synthetic-review"
+          },
+          "lucro_real": {
+            "icms": 0,
+            "iss": 20000,
+            "employer_contributions": 40000,
+            "other_mandatory_taxes": 0,
+            "rtc_net_increment": 0,
+            "evidence": "synthetic-review"
+          }
+        },
+        {
+          "competence": "2026-12-01",
+          "simples_nacional": {
+            "icms": 0,
+            "iss": 0,
+            "employer_contributions": 0,
+            "other_mandatory_taxes": 0,
+            "rtc_net_increment": 0,
+            "evidence": "synthetic-review"
+          },
+          "lucro_presumido": {
+            "icms": 0,
+            "iss": 20000,
+            "employer_contributions": 40000,
+            "other_mandatory_taxes": 0,
+            "rtc_net_increment": 0,
+            "evidence": "synthetic-review"
+          },
+          "lucro_real": {
+            "icms": 0,
+            "iss": 20000,
+            "employer_contributions": 40000,
+            "other_mandatory_taxes": 0,
+            "rtc_net_increment": 0,
+            "evidence": "synthetic-review"
+          }
+        }
+      ],
+      "quarters": [
+        {
+          "schema_version": "nfcore.quarterly-regime-facts/v1",
+          "review_status": "reviewed",
+          "review_reference": "margin",
+          "period_start": "2026-01-01",
+          "scope": "consolidated_ordinary_nonfinancial_full_quarter_2026",
+          "hypothesis": "ordinary_trade_and_general_services",
+          "trade_revenue": 0,
+          "services_revenue": 3000000,
+          "irpj_ordinary_limit": 125000000,
+          "csll_ordinary_limit": 0,
+          "irpj_other_taxable": 0,
+          "csll_other_taxable": 0,
+          "real_accounting_result": 600000,
+          "irpj_additions": 0,
+          "irpj_exclusions": 0,
+          "csll_additions": 0,
+          "csll_exclusions": 0,
+          "irpj_loss_applied": 0,
+          "csll_loss_applied": 0,
+          "months": [
+            {
+              "competence": "2026-01-01",
+              "cumulative_base": 1000000,
+              "noncumulative_base": 1000000,
+              "pis_credit": 0,
+              "cofins_credit": 0,
+              "documents": [],
+              "ibs_credits": 0,
+              "cbs_credits": 0,
+              "rtc_evidence": "synthetic-no-rtc-debit",
+              "rtc_component": "app=1.7.2;db=V0073"
+            },
+            {
+              "competence": "2026-02-01",
+              "cumulative_base": 1000000,
+              "noncumulative_base": 1000000,
+              "pis_credit": 0,
+              "cofins_credit": 0,
+              "documents": [],
+              "ibs_credits": 0,
+              "cbs_credits": 0,
+              "rtc_evidence": "synthetic-no-rtc-debit",
+              "rtc_component": "app=1.7.2;db=V0073"
+            },
+            {
+              "competence": "2026-03-01",
+              "cumulative_base": 1000000,
+              "noncumulative_base": 1000000,
+              "pis_credit": 0,
+              "cofins_credit": 0,
+              "documents": [],
+              "ibs_credits": 0,
+              "cbs_credits": 0,
+              "rtc_evidence": "synthetic-no-rtc-debit",
+              "rtc_component": "app=1.7.2;db=V0073"
+            }
+          ]
+        },
+        {
+          "schema_version": "nfcore.quarterly-regime-facts/v1",
+          "review_status": "reviewed",
+          "review_reference": "margin",
+          "period_start": "2026-04-01",
+          "scope": "consolidated_ordinary_nonfinancial_full_quarter_2026",
+          "hypothesis": "ordinary_trade_and_general_services",
+          "trade_revenue": 0,
+          "services_revenue": 3000000,
+          "irpj_ordinary_limit": 125000000,
+          "csll_ordinary_limit": 125000000,
+          "irpj_other_taxable": 0,
+          "csll_other_taxable": 0,
+          "real_accounting_result": 300000,
+          "irpj_additions": 0,
+          "irpj_exclusions": 0,
+          "csll_additions": 0,
+          "csll_exclusions": 0,
+          "irpj_loss_applied": 0,
+          "csll_loss_applied": 0,
+          "months": [
+            {
+              "competence": "2026-04-01",
+              "cumulative_base": 1000000,
+              "noncumulative_base": 1000000,
+              "pis_credit": 0,
+              "cofins_credit": 0,
+              "documents": [],
+              "ibs_credits": 0,
+              "cbs_credits": 0,
+              "rtc_evidence": "synthetic-no-rtc-debit",
+              "rtc_component": "app=1.7.2;db=V0073"
+            },
+            {
+              "competence": "2026-05-01",
+              "cumulative_base": 1000000,
+              "noncumulative_base": 1000000,
+              "pis_credit": 0,
+              "cofins_credit": 0,
+              "documents": [],
+              "ibs_credits": 0,
+              "cbs_credits": 0,
+              "rtc_evidence": "synthetic-no-rtc-debit",
+              "rtc_component": "app=1.7.2;db=V0073"
+            },
+            {
+              "competence": "2026-06-01",
+              "cumulative_base": 1000000,
+              "noncumulative_base": 1000000,
+              "pis_credit": 0,
+              "cofins_credit": 0,
+              "documents": [],
+              "ibs_credits": 0,
+              "cbs_credits": 0,
+              "rtc_evidence": "synthetic-no-rtc-debit",
+              "rtc_component": "app=1.7.2;db=V0073"
+            }
+          ]
+        },
+        {
+          "schema_version": "nfcore.quarterly-regime-facts/v1",
+          "review_status": "reviewed",
+          "review_reference": "margin",
+          "period_start": "2026-07-01",
+          "scope": "consolidated_ordinary_nonfinancial_full_quarter_2026",
+          "hypothesis": "ordinary_trade_and_general_services",
+          "trade_revenue": 0,
+          "services_revenue": 3000000,
+          "irpj_ordinary_limit": 125000000,
+          "csll_ordinary_limit": 125000000,
+          "irpj_other_taxable": 0,
+          "csll_other_taxable": 0,
+          "real_accounting_result": 300000,
+          "irpj_additions": 0,
+          "irpj_exclusions": 0,
+          "csll_additions": 0,
+          "csll_exclusions": 0,
+          "irpj_loss_applied": 0,
+          "csll_loss_applied": 0,
+          "months": [
+            {
+              "competence": "2026-07-01",
+              "cumulative_base": 1000000,
+              "noncumulative_base": 1000000,
+              "pis_credit": 0,
+              "cofins_credit": 0,
+              "documents": [],
+              "ibs_credits": 0,
+              "cbs_credits": 0,
+              "rtc_evidence": "synthetic-no-rtc-debit",
+              "rtc_component": "app=1.7.2;db=V0073"
+            },
+            {
+              "competence": "2026-08-01",
+              "cumulative_base": 1000000,
+              "noncumulative_base": 1000000,
+              "pis_credit": 0,
+              "cofins_credit": 0,
+              "documents": [],
+              "ibs_credits": 0,
+              "cbs_credits": 0,
+              "rtc_evidence": "synthetic-no-rtc-debit",
+              "rtc_component": "app=1.7.2;db=V0073"
+            },
+            {
+              "competence": "2026-09-01",
+              "cumulative_base": 1000000,
+              "noncumulative_base": 1000000,
+              "pis_credit": 0,
+              "cofins_credit": 0,
+              "documents": [],
+              "ibs_credits": 0,
+              "cbs_credits": 0,
+              "rtc_evidence": "synthetic-no-rtc-debit",
+              "rtc_component": "app=1.7.2;db=V0073"
+            }
+          ]
+        },
+        {
+          "schema_version": "nfcore.quarterly-regime-facts/v1",
+          "review_status": "reviewed",
+          "review_reference": "margin",
+          "period_start": "2026-10-01",
+          "scope": "consolidated_ordinary_nonfinancial_full_quarter_2026",
+          "hypothesis": "ordinary_trade_and_general_services",
+          "trade_revenue": 0,
+          "services_revenue": 3000000,
+          "irpj_ordinary_limit": 125000000,
+          "csll_ordinary_limit": 125000000,
+          "irpj_other_taxable": 0,
+          "csll_other_taxable": 0,
+          "real_accounting_result": 300000,
+          "irpj_additions": 0,
+          "irpj_exclusions": 0,
+          "csll_additions": 0,
+          "csll_exclusions": 0,
+          "irpj_loss_applied": 0,
+          "csll_loss_applied": 0,
+          "months": [
+            {
+              "competence": "2026-10-01",
+              "cumulative_base": 1000000,
+              "noncumulative_base": 1000000,
+              "pis_credit": 0,
+              "cofins_credit": 0,
+              "documents": [],
+              "ibs_credits": 0,
+              "cbs_credits": 0,
+              "rtc_evidence": "synthetic-no-rtc-debit",
+              "rtc_component": "app=1.7.2;db=V0073"
+            },
+            {
+              "competence": "2026-11-01",
+              "cumulative_base": 1000000,
+              "noncumulative_base": 1000000,
+              "pis_credit": 0,
+              "cofins_credit": 0,
+              "documents": [],
+              "ibs_credits": 0,
+              "cbs_credits": 0,
+              "rtc_evidence": "synthetic-no-rtc-debit",
+              "rtc_component": "app=1.7.2;db=V0073"
+            },
+            {
+              "competence": "2026-12-01",
+              "cumulative_base": 1000000,
+              "noncumulative_base": 1000000,
+              "pis_credit": 0,
+              "cofins_credit": 0,
+              "documents": [],
+              "ibs_credits": 0,
+              "cbs_credits": 0,
+              "rtc_evidence": "synthetic-no-rtc-debit",
+              "rtc_component": "app=1.7.2;db=V0073"
+            }
+          ]
+        }
+      ]
+    },
+    "payroll": {
+      "review_reference": "payroll",
+      "eligibility_reference": "synthetic-eligibility-reviewed",
+      "accounting_scope": "all_establishments_ordinary_domestic_accrual",
+      "settlement_scope": "reviewed_net_tax_burden_no_unallocated_credit",
+      "uf": "SP",
+      "opened_month": "2024-01-01",
+      "service_activity": "service_factor_r",
+      "history": [
+        {
+          "competence": "2025-01-01",
+          "trade_revenue": 0,
+          "service_revenue": 1000000,
+          "payroll": 200000,
+          "evidence": "history-2025-1"
+        },
+        {
+          "competence": "2025-02-01",
+          "trade_revenue": 0,
+          "service_revenue": 1000000,
+          "payroll": 200000,
+          "evidence": "history-2025-2"
+        },
+        {
+          "competence": "2025-03-01",
+          "trade_revenue": 0,
+          "service_revenue": 1000000,
+          "payroll": 200000,
+          "evidence": "history-2025-3"
+        },
+        {
+          "competence": "2025-04-01",
+          "trade_revenue": 0,
+          "service_revenue": 1000000,
+          "payroll": 200000,
+          "evidence": "history-2025-4"
+        },
+        {
+          "competence": "2025-05-01",
+          "trade_revenue": 0,
+          "service_revenue": 1000000,
+          "payroll": 200000,
+          "evidence": "history-2025-5"
+        },
+        {
+          "competence": "2025-06-01",
+          "trade_revenue": 0,
+          "service_revenue": 1000000,
+          "payroll": 200000,
+          "evidence": "history-2025-6"
+        },
+        {
+          "competence": "2025-07-01",
+          "trade_revenue": 0,
+          "service_revenue": 1000000,
+          "payroll": 200000,
+          "evidence": "history-2025-7"
+        },
+        {
+          "competence": "2025-08-01",
+          "trade_revenue": 0,
+          "service_revenue": 1000000,
+          "payroll": 200000,
+          "evidence": "history-2025-8"
+        },
+        {
+          "competence": "2025-09-01",
+          "trade_revenue": 0,
+          "service_revenue": 1000000,
+          "payroll": 200000,
+          "evidence": "history-2025-9"
+        },
+        {
+          "competence": "2025-10-01",
+          "trade_revenue": 0,
+          "service_revenue": 1000000,
+          "payroll": 200000,
+          "evidence": "history-2025-10"
+        },
+        {
+          "competence": "2025-11-01",
+          "trade_revenue": 0,
+          "service_revenue": 1000000,
+          "payroll": 200000,
+          "evidence": "history-2025-11"
+        },
+        {
+          "competence": "2025-12-01",
+          "trade_revenue": 0,
+          "service_revenue": 1000000,
+          "payroll": 200000,
+          "evidence": "history-2025-12"
+        },
+        {
+          "competence": "2026-01-01",
+          "trade_revenue": 0,
+          "service_revenue": 1000000,
+          "payroll": 400000,
+          "evidence": "history-2026-1"
+        },
+        {
+          "competence": "2026-02-01",
+          "trade_revenue": 0,
+          "service_revenue": 1000000,
+          "payroll": 400000,
+          "evidence": "history-2026-2"
+        },
+        {
+          "competence": "2026-03-01",
+          "trade_revenue": 0,
+          "service_revenue": 1000000,
+          "payroll": 400000,
+          "evidence": "history-2026-3"
+        },
+        {
+          "competence": "2026-04-01",
+          "trade_revenue": 0,
+          "service_revenue": 1000000,
+          "payroll": 400000,
+          "evidence": "history-2026-4"
+        },
+        {
+          "competence": "2026-05-01",
+          "trade_revenue": 0,
+          "service_revenue": 1000000,
+          "payroll": 400000,
+          "evidence": "history-2026-5"
+        },
+        {
+          "competence": "2026-06-01",
+          "trade_revenue": 0,
+          "service_revenue": 1000000,
+          "payroll": 400000,
+          "evidence": "history-2026-6"
+        },
+        {
+          "competence": "2026-07-01",
+          "trade_revenue": 0,
+          "service_revenue": 1000000,
+          "payroll": 400000,
+          "evidence": "history-2026-7"
+        },
+        {
+          "competence": "2026-08-01",
+          "trade_revenue": 0,
+          "service_revenue": 1000000,
+          "payroll": 400000,
+          "evidence": "history-2026-8"
+        },
+        {
+          "competence": "2026-09-01",
+          "trade_revenue": 0,
+          "service_revenue": 1000000,
+          "payroll": 400000,
+          "evidence": "history-2026-9"
+        },
+        {
+          "competence": "2026-10-01",
+          "trade_revenue": 0,
+          "service_revenue": 1000000,
+          "payroll": 400000,
+          "evidence": "history-2026-10"
+        },
+        {
+          "competence": "2026-11-01",
+          "trade_revenue": 0,
+          "service_revenue": 1000000,
+          "payroll": 400000,
+          "evidence": "history-2026-11"
+        },
+        {
+          "competence": "2026-12-01",
+          "trade_revenue": 0,
+          "service_revenue": 1000000,
+          "payroll": 400000,
+          "evidence": "history-2026-12"
+        }
+      ],
+      "outside": [
+        {
+          "competence": "2026-01-01",
+          "simples_nacional": {
+            "icms": 0,
+            "iss": 0,
+            "employer_contributions": 0,
+            "other_mandatory_taxes": 0,
+            "rtc_net_increment": 0,
+            "evidence": "synthetic-review"
+          },
+          "lucro_presumido": {
+            "icms": 0,
+            "iss": 20000,
+            "employer_contributions": 80000,
+            "other_mandatory_taxes": 0,
+            "rtc_net_increment": 0,
+            "evidence": "synthetic-review"
+          },
+          "lucro_real": {
+            "icms": 0,
+            "iss": 20000,
+            "employer_contributions": 80000,
+            "other_mandatory_taxes": 0,
+            "rtc_net_increment": 0,
+            "evidence": "synthetic-review"
+          }
+        },
+        {
+          "competence": "2026-02-01",
+          "simples_nacional": {
+            "icms": 0,
+            "iss": 0,
+            "employer_contributions": 0,
+            "other_mandatory_taxes": 0,
+            "rtc_net_increment": 0,
+            "evidence": "synthetic-review"
+          },
+          "lucro_presumido": {
+            "icms": 0,
+            "iss": 20000,
+            "employer_contributions": 80000,
+            "other_mandatory_taxes": 0,
+            "rtc_net_increment": 0,
+            "evidence": "synthetic-review"
+          },
+          "lucro_real": {
+            "icms": 0,
+            "iss": 20000,
+            "employer_contributions": 80000,
+            "other_mandatory_taxes": 0,
+            "rtc_net_increment": 0,
+            "evidence": "synthetic-review"
+          }
+        },
+        {
+          "competence": "2026-03-01",
+          "simples_nacional": {
+            "icms": 0,
+            "iss": 0,
+            "employer_contributions": 0,
+            "other_mandatory_taxes": 0,
+            "rtc_net_increment": 0,
+            "evidence": "synthetic-review"
+          },
+          "lucro_presumido": {
+            "icms": 0,
+            "iss": 20000,
+            "employer_contributions": 80000,
+            "other_mandatory_taxes": 0,
+            "rtc_net_increment": 0,
+            "evidence": "synthetic-review"
+          },
+          "lucro_real": {
+            "icms": 0,
+            "iss": 20000,
+            "employer_contributions": 80000,
+            "other_mandatory_taxes": 0,
+            "rtc_net_increment": 0,
+            "evidence": "synthetic-review"
+          }
+        },
+        {
+          "competence": "2026-04-01",
+          "simples_nacional": {
+            "icms": 0,
+            "iss": 0,
+            "employer_contributions": 0,
+            "other_mandatory_taxes": 0,
+            "rtc_net_increment": 0,
+            "evidence": "synthetic-review"
+          },
+          "lucro_presumido": {
+            "icms": 0,
+            "iss": 20000,
+            "employer_contributions": 80000,
+            "other_mandatory_taxes": 0,
+            "rtc_net_increment": 0,
+            "evidence": "synthetic-review"
+          },
+          "lucro_real": {
+            "icms": 0,
+            "iss": 20000,
+            "employer_contributions": 80000,
+            "other_mandatory_taxes": 0,
+            "rtc_net_increment": 0,
+            "evidence": "synthetic-review"
+          }
+        },
+        {
+          "competence": "2026-05-01",
+          "simples_nacional": {
+            "icms": 0,
+            "iss": 0,
+            "employer_contributions": 0,
+            "other_mandatory_taxes": 0,
+            "rtc_net_increment": 0,
+            "evidence": "synthetic-review"
+          },
+          "lucro_presumido": {
+            "icms": 0,
+            "iss": 20000,
+            "employer_contributions": 80000,
+            "other_mandatory_taxes": 0,
+            "rtc_net_increment": 0,
+            "evidence": "synthetic-review"
+          },
+          "lucro_real": {
+            "icms": 0,
+            "iss": 20000,
+            "employer_contributions": 80000,
+            "other_mandatory_taxes": 0,
+            "rtc_net_increment": 0,
+            "evidence": "synthetic-review"
+          }
+        },
+        {
+          "competence": "2026-06-01",
+          "simples_nacional": {
+            "icms": 0,
+            "iss": 0,
+            "employer_contributions": 0,
+            "other_mandatory_taxes": 0,
+            "rtc_net_increment": 0,
+            "evidence": "synthetic-review"
+          },
+          "lucro_presumido": {
+            "icms": 0,
+            "iss": 20000,
+            "employer_contributions": 80000,
+            "other_mandatory_taxes": 0,
+            "rtc_net_increment": 0,
+            "evidence": "synthetic-review"
+          },
+          "lucro_real": {
+            "icms": 0,
+            "iss": 20000,
+            "employer_contributions": 80000,
+            "other_mandatory_taxes": 0,
+            "rtc_net_increment": 0,
+            "evidence": "synthetic-review"
+          }
+        },
+        {
+          "competence": "2026-07-01",
+          "simples_nacional": {
+            "icms": 0,
+            "iss": 0,
+            "employer_contributions": 0,
+            "other_mandatory_taxes": 0,
+            "rtc_net_increment": 0,
+            "evidence": "synthetic-review"
+          },
+          "lucro_presumido": {
+            "icms": 0,
+            "iss": 20000,
+            "employer_contributions": 80000,
+            "other_mandatory_taxes": 0,
+            "rtc_net_increment": 0,
+            "evidence": "synthetic-review"
+          },
+          "lucro_real": {
+            "icms": 0,
+            "iss": 20000,
+            "employer_contributions": 80000,
+            "other_mandatory_taxes": 0,
+            "rtc_net_increment": 0,
+            "evidence": "synthetic-review"
+          }
+        },
+        {
+          "competence": "2026-08-01",
+          "simples_nacional": {
+            "icms": 0,
+            "iss": 0,
+            "employer_contributions": 0,
+            "other_mandatory_taxes": 0,
+            "rtc_net_increment": 0,
+            "evidence": "synthetic-review"
+          },
+          "lucro_presumido": {
+            "icms": 0,
+            "iss": 20000,
+            "employer_contributions": 80000,
+            "other_mandatory_taxes": 0,
+            "rtc_net_increment": 0,
+            "evidence": "synthetic-review"
+          },
+          "lucro_real": {
+            "icms": 0,
+            "iss": 20000,
+            "employer_contributions": 80000,
+            "other_mandatory_taxes": 0,
+            "rtc_net_increment": 0,
+            "evidence": "synthetic-review"
+          }
+        },
+        {
+          "competence": "2026-09-01",
+          "simples_nacional": {
+            "icms": 0,
+            "iss": 0,
+            "employer_contributions": 0,
+            "other_mandatory_taxes": 0,
+            "rtc_net_increment": 0,
+            "evidence": "synthetic-review"
+          },
+          "lucro_presumido": {
+            "icms": 0,
+            "iss": 20000,
+            "employer_contributions": 80000,
+            "other_mandatory_taxes": 0,
+            "rtc_net_increment": 0,
+            "evidence": "synthetic-review"
+          },
+          "lucro_real": {
+            "icms": 0,
+            "iss": 20000,
+            "employer_contributions": 80000,
+            "other_mandatory_taxes": 0,
+            "rtc_net_increment": 0,
+            "evidence": "synthetic-review"
+          }
+        },
+        {
+          "competence": "2026-10-01",
+          "simples_nacional": {
+            "icms": 0,
+            "iss": 0,
+            "employer_contributions": 0,
+            "other_mandatory_taxes": 0,
+            "rtc_net_increment": 0,
+            "evidence": "synthetic-review"
+          },
+          "lucro_presumido": {
+            "icms": 0,
+            "iss": 20000,
+            "employer_contributions": 80000,
+            "other_mandatory_taxes": 0,
+            "rtc_net_increment": 0,
+            "evidence": "synthetic-review"
+          },
+          "lucro_real": {
+            "icms": 0,
+            "iss": 20000,
+            "employer_contributions": 80000,
+            "other_mandatory_taxes": 0,
+            "rtc_net_increment": 0,
+            "evidence": "synthetic-review"
+          }
+        },
+        {
+          "competence": "2026-11-01",
+          "simples_nacional": {
+            "icms": 0,
+            "iss": 0,
+            "employer_contributions": 0,
+            "other_mandatory_taxes": 0,
+            "rtc_net_increment": 0,
+            "evidence": "synthetic-review"
+          },
+          "lucro_presumido": {
+            "icms": 0,
+            "iss": 20000,
+            "employer_contributions": 80000,
+            "other_mandatory_taxes": 0,
+            "rtc_net_increment": 0,
+            "evidence": "synthetic-review"
+          },
+          "lucro_real": {
+            "icms": 0,
+            "iss": 20000,
+            "employer_contributions": 80000,
+            "other_mandatory_taxes": 0,
+            "rtc_net_increment": 0,
+            "evidence": "synthetic-review"
+          }
+        },
+        {
+          "competence": "2026-12-01",
+          "simples_nacional": {
+            "icms": 0,
+            "iss": 0,
+            "employer_contributions": 0,
+            "other_mandatory_taxes": 0,
+            "rtc_net_increment": 0,
+            "evidence": "synthetic-review"
+          },
+          "lucro_presumido": {
+            "icms": 0,
+            "iss": 20000,
+            "employer_contributions": 80000,
+            "other_mandatory_taxes": 0,
+            "rtc_net_increment": 0,
+            "evidence": "synthetic-review"
+          },
+          "lucro_real": {
+            "icms": 0,
+            "iss": 20000,
+            "employer_contributions": 80000,
+            "other_mandatory_taxes": 0,
+            "rtc_net_increment": 0,
+            "evidence": "synthetic-review"
+          }
+        }
+      ],
+      "quarters": [
+        {
+          "schema_version": "nfcore.quarterly-regime-facts/v1",
+          "review_status": "reviewed",
+          "review_reference": "payroll",
+          "period_start": "2026-01-01",
+          "scope": "consolidated_ordinary_nonfinancial_full_quarter_2026",
+          "hypothesis": "ordinary_trade_and_general_services",
+          "trade_revenue": 0,
+          "services_revenue": 3000000,
+          "irpj_ordinary_limit": 125000000,
+          "csll_ordinary_limit": 0,
+          "irpj_other_taxable": 0,
+          "csll_other_taxable": 0,
+          "real_accounting_result": 300000,
+          "irpj_additions": 0,
+          "irpj_exclusions": 0,
+          "csll_additions": 0,
+          "csll_exclusions": 0,
+          "irpj_loss_applied": 0,
+          "csll_loss_applied": 0,
+          "months": [
+            {
+              "competence": "2026-01-01",
+              "cumulative_base": 1000000,
+              "noncumulative_base": 1000000,
+              "pis_credit": 0,
+              "cofins_credit": 0,
+              "documents": [],
+              "ibs_credits": 0,
+              "cbs_credits": 0,
+              "rtc_evidence": "synthetic-no-rtc-debit",
+              "rtc_component": "app=1.7.2;db=V0073"
+            },
+            {
+              "competence": "2026-02-01",
+              "cumulative_base": 1000000,
+              "noncumulative_base": 1000000,
+              "pis_credit": 0,
+              "cofins_credit": 0,
+              "documents": [],
+              "ibs_credits": 0,
+              "cbs_credits": 0,
+              "rtc_evidence": "synthetic-no-rtc-debit",
+              "rtc_component": "app=1.7.2;db=V0073"
+            },
+            {
+              "competence": "2026-03-01",
+              "cumulative_base": 1000000,
+              "noncumulative_base": 1000000,
+              "pis_credit": 0,
+              "cofins_credit": 0,
+              "documents": [],
+              "ibs_credits": 0,
+              "cbs_credits": 0,
+              "rtc_evidence": "synthetic-no-rtc-debit",
+              "rtc_component": "app=1.7.2;db=V0073"
+            }
+          ]
+        },
+        {
+          "schema_version": "nfcore.quarterly-regime-facts/v1",
+          "review_status": "reviewed",
+          "review_reference": "payroll",
+          "period_start": "2026-04-01",
+          "scope": "consolidated_ordinary_nonfinancial_full_quarter_2026",
+          "hypothesis": "ordinary_trade_and_general_services",
+          "trade_revenue": 0,
+          "services_revenue": 3000000,
+          "irpj_ordinary_limit": 125000000,
+          "csll_ordinary_limit": 125000000,
+          "irpj_other_taxable": 0,
+          "csll_other_taxable": 0,
+          "real_accounting_result": 300000,
+          "irpj_additions": 0,
+          "irpj_exclusions": 0,
+          "csll_additions": 0,
+          "csll_exclusions": 0,
+          "irpj_loss_applied": 0,
+          "csll_loss_applied": 0,
+          "months": [
+            {
+              "competence": "2026-04-01",
+              "cumulative_base": 1000000,
+              "noncumulative_base": 1000000,
+              "pis_credit": 0,
+              "cofins_credit": 0,
+              "documents": [],
+              "ibs_credits": 0,
+              "cbs_credits": 0,
+              "rtc_evidence": "synthetic-no-rtc-debit",
+              "rtc_component": "app=1.7.2;db=V0073"
+            },
+            {
+              "competence": "2026-05-01",
+              "cumulative_base": 1000000,
+              "noncumulative_base": 1000000,
+              "pis_credit": 0,
+              "cofins_credit": 0,
+              "documents": [],
+              "ibs_credits": 0,
+              "cbs_credits": 0,
+              "rtc_evidence": "synthetic-no-rtc-debit",
+              "rtc_component": "app=1.7.2;db=V0073"
+            },
+            {
+              "competence": "2026-06-01",
+              "cumulative_base": 1000000,
+              "noncumulative_base": 1000000,
+              "pis_credit": 0,
+              "cofins_credit": 0,
+              "documents": [],
+              "ibs_credits": 0,
+              "cbs_credits": 0,
+              "rtc_evidence": "synthetic-no-rtc-debit",
+              "rtc_component": "app=1.7.2;db=V0073"
+            }
+          ]
+        },
+        {
+          "schema_version": "nfcore.quarterly-regime-facts/v1",
+          "review_status": "reviewed",
+          "review_reference": "payroll",
+          "period_start": "2026-07-01",
+          "scope": "consolidated_ordinary_nonfinancial_full_quarter_2026",
+          "hypothesis": "ordinary_trade_and_general_services",
+          "trade_revenue": 0,
+          "services_revenue": 3000000,
+          "irpj_ordinary_limit": 125000000,
+          "csll_ordinary_limit": 125000000,
+          "irpj_other_taxable": 0,
+          "csll_other_taxable": 0,
+          "real_accounting_result": 300000,
+          "irpj_additions": 0,
+          "irpj_exclusions": 0,
+          "csll_additions": 0,
+          "csll_exclusions": 0,
+          "irpj_loss_applied": 0,
+          "csll_loss_applied": 0,
+          "months": [
+            {
+              "competence": "2026-07-01",
+              "cumulative_base": 1000000,
+              "noncumulative_base": 1000000,
+              "pis_credit": 0,
+              "cofins_credit": 0,
+              "documents": [],
+              "ibs_credits": 0,
+              "cbs_credits": 0,
+              "rtc_evidence": "synthetic-no-rtc-debit",
+              "rtc_component": "app=1.7.2;db=V0073"
+            },
+            {
+              "competence": "2026-08-01",
+              "cumulative_base": 1000000,
+              "noncumulative_base": 1000000,
+              "pis_credit": 0,
+              "cofins_credit": 0,
+              "documents": [],
+              "ibs_credits": 0,
+              "cbs_credits": 0,
+              "rtc_evidence": "synthetic-no-rtc-debit",
+              "rtc_component": "app=1.7.2;db=V0073"
+            },
+            {
+              "competence": "2026-09-01",
+              "cumulative_base": 1000000,
+              "noncumulative_base": 1000000,
+              "pis_credit": 0,
+              "cofins_credit": 0,
+              "documents": [],
+              "ibs_credits": 0,
+              "cbs_credits": 0,
+              "rtc_evidence": "synthetic-no-rtc-debit",
+              "rtc_component": "app=1.7.2;db=V0073"
+            }
+          ]
+        },
+        {
+          "schema_version": "nfcore.quarterly-regime-facts/v1",
+          "review_status": "reviewed",
+          "review_reference": "payroll",
+          "period_start": "2026-10-01",
+          "scope": "consolidated_ordinary_nonfinancial_full_quarter_2026",
+          "hypothesis": "ordinary_trade_and_general_services",
+          "trade_revenue": 0,
+          "services_revenue": 3000000,
+          "irpj_ordinary_limit": 125000000,
+          "csll_ordinary_limit": 125000000,
+          "irpj_other_taxable": 0,
+          "csll_other_taxable": 0,
+          "real_accounting_result": 300000,
+          "irpj_additions": 0,
+          "irpj_exclusions": 0,
+          "csll_additions": 0,
+          "csll_exclusions": 0,
+          "irpj_loss_applied": 0,
+          "csll_loss_applied": 0,
+          "months": [
+            {
+              "competence": "2026-10-01",
+              "cumulative_base": 1000000,
+              "noncumulative_base": 1000000,
+              "pis_credit": 0,
+              "cofins_credit": 0,
+              "documents": [],
+              "ibs_credits": 0,
+              "cbs_credits": 0,
+              "rtc_evidence": "synthetic-no-rtc-debit",
+              "rtc_component": "app=1.7.2;db=V0073"
+            },
+            {
+              "competence": "2026-11-01",
+              "cumulative_base": 1000000,
+              "noncumulative_base": 1000000,
+              "pis_credit": 0,
+              "cofins_credit": 0,
+              "documents": [],
+              "ibs_credits": 0,
+              "cbs_credits": 0,
+              "rtc_evidence": "synthetic-no-rtc-debit",
+              "rtc_component": "app=1.7.2;db=V0073"
+            },
+            {
+              "competence": "2026-12-01",
+              "cumulative_base": 1000000,
+              "noncumulative_base": 1000000,
+              "pis_credit": 0,
+              "cofins_credit": 0,
+              "documents": [],
+              "ibs_credits": 0,
+              "cbs_credits": 0,
+              "rtc_evidence": "synthetic-no-rtc-debit",
+              "rtc_component": "app=1.7.2;db=V0073"
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

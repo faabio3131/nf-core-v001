@@ -5107,7 +5107,10 @@ function appendAnnualRegimeComparison(article) {
         ". Sujeita a revisão contábil. Receita anual " + money.format(baseline.revenue_cents / 100) +
         " · Folha " + money.format(baseline.payroll_cents / 100) +
         " · Resultado contábil " + money.format(baseline.real_accounting_result_cents / 100);
-      result.replaceChildren(summary, list);
+      const sensitivity = document.createElement("p");
+      sensitivity.textContent = "Ranking nos cenários alternativos: " +
+        (report.recommendation.sensitivity_stable ? "estável" : "variável — revisar margem e folha");
+      result.replaceChildren(summary, sensitivity, list);
     } catch (error) {
       result.textContent = error instanceof Error ? error.message : "Comparação indisponível.";
     } finally { action.disabled = false; }
