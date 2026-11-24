@@ -17,7 +17,8 @@
 - [x] **DOE-PA nº 33.584 de 23/03/2018**, Decreto **2.014/2018** Apêndice I itens **13 e 32**: original arquivado com SHA-256 `6dbf8fdb313e6673ce6105b9c6e74714070adaa220e39cbd2187840ef4abf0a0`.
 - [x] **Decreto 2.490/2006** histórico ALEPA, SHA-256 `313fe0b074d55dedbff71ba148b7e703a96da1611341aee0ae074ceaa5278ad3`; **STF ADI 3779** HTML de decisão SHA-256 `aede1b1a62bca6bdf677a8c0a54313a61785cd538a1b05ce6a91a96e2c0b5ac5`.
 - [ ] **Acórdão/dispositivo final e eventuais efeitos supervenientes da ADI 3779**, com fonte oficial e SHA-256, confrontando expressamente a Lei **6.913/2006**.
-- [ ] **Lei estadual 8.930/2019**, arts. 2º–8º, texto oficial original/DOE e SHA-256 (localizada em `https://www.legispara.pa.gov.br/lei/5169`, bytes ainda não arquivados).
+- [x] **Lei estadual 8.930/2019**, arts. 2º–8º. Original integral [DOE-PA 34.038, 19/11/2019, pp. 7–8](https://www.ioepa.com.br/arquivos/2019/2019.11.19.DOE.pdf), SHA-256 `8b47d30789c701bee2b51c9140cd9fc5d29cad92f29dc41f22d2d6febcebed95`.
+- [x] **Lei estadual 9.707/2022**, alteração do art. 6º da Lei 8.930/2019. Original integral [DOE-PA 35.121, 20/09/2022, p. 4](https://ioepa.com.br/pages/2022/2022.09.20.DOE.pdf), SHA-256 `ca540f47b920ccab76fe14715af34de93ec9316a7374beb339a0fc3dc574f402`. Falta vincular cada modalidade ao inventário e ao depósito.
 - [ ] **Certificado de Registro e Depósito / planilha PNTT-CONFAZ** vinculada ao inventário da Lei **6.913/2006** e do Decreto **2.490/2006**, incluindo o alcance material de cada modalidade e prazo/concessão após 2019.
 - [ ] Consolidar eventual **lei/decreto sucessor, alterações e outorgas vigentes na competência 2026**, sem revalidar automaticamente lei inconstitucional.
 - [ ] Revisão independente e testes positivos/negativos para eventual sucessão; manter **`NAO_APLICAVEL_CERTIFICADO` apenas quanto à utilização isolada da Lei 6.913/2006 original**, nunca à totalidade das possíveis sucessões.

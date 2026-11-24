@@ -1,0 +1,40 @@
+{
+  "version": 1,
+  "status": "aguarda_revisao_fiscal",
+  "scope": "Simples Nacional. Revenda interna paulista de maquiagem para os lábios, janeiro a março de 2026. Validar descrição, posição do revendedor na cadeia, retenção anterior e documento fiscal por item.",
+  "sources": [
+    {
+      "url": "https://legislacao.fazenda.sp.gov.br/paginas/Portaria-CAT-68-de-2019.aspx",
+      "provision": "Anexo XI, item 9",
+      "sha256": "61169997f37aac7c70073ec2a277a12f0bb460f599d099b7dc29a55533e356ba"
+    },
+    {
+      "url": "https://legislacao.fazenda.sp.gov.br/Paginas/Portaria-SRE-94-de-2025.aspx",
+      "provision": "Revogação do Anexo XI e data de efeitos",
+      "sha256": "80c9290048b616c3e5e72bfe6d367aeab918e62adb3274ccba3ff511fade8071"
+    },
+    {
+      "url": "https://www2.camara.leg.br/legin/fed/lei/2000/lei-10147-21-dezembro-2000-377630-normaatualizada-pl.html",
+      "provision": "Lei 10.147/2000, arts. 1º e 2º",
+      "sha256": "0302c7681410d0f6d616c24421ffa6be177b8cb5bb7b02646428d8f7bd873b88"
+    }
+  ],
+  "additional_reference": "https://normas.receita.fazenda.gov.br/sijut2consulta/anexoOutros.action?idArquivoBinario=36094",
+  "item_rules": [
+    {
+      "ncm": "33041000",
+      "cest": "2000900",
+      "cfop": "5405",
+      "uf": "SP",
+      "activity": "commerce",
+      "market": "domestic",
+      "operation_context": "revenda_interna_varejista_nao_industrial_nao_importador_st_retida_comprovada",
+      "valid_from": "2026-01-01",
+      "valid_until": "2026-04-01",
+      "federal": "monophase_downstream",
+      "local": "icms_substituted",
+      "rule_reference": "SP-MAQUIAGEM-LABIOS-2026T1-V1",
+      "source_url": "https://legislacao.fazenda.sp.gov.br/paginas/Portaria-CAT-68-de-2019.aspx"
+    }
+  ]
+}

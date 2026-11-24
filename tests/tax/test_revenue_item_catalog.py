@@ -1,4 +1,6 @@
+import json
 from datetime import date
+from pathlib import Path
 
 import pytest
 
@@ -7,7 +9,7 @@ from kordena_fiscal.tax.revenue_item_catalog import ReviewedItemCatalog
 
 MONTH = date(2026, 11, 1)
 SOURCE = "https://www.gov.br/synthetic-fixture"
-ITEM = dict(ncm="33041000", cest="2000100", cfop="5405", activity="commerce",
+ITEM = dict(ncm="33041000", cest="2000900", cfop="5405", activity="commerce",
             market="domestic", operation_context="reviewed-retail-product")
 RULE = dict(**ITEM, uf="SP", source_url=SOURCE, valid_from="2026-01-01",
             valid_until="2027-01-01", federal="monophase_downstream",
@@ -68,3 +70,16 @@ def test_transition_requires_reviewed_tax_vector():
     taxes = dict.fromkeys(("cbs", "ibs", "ipi", "icms", "iss"), "ordinary")
     catalog = ReviewedItemCatalog([rule | {"transition_treatments": taxes}], month, {SOURCE})
     assert catalog.resolve(ITEM, "SP")[3] == ("ordinary",) * 5
+
+
+def test_documented_sp_candidate_ends_before_april():
+    path = Path(__file__).resolve().parents[2] / "docs/NFCORE_T06_SP_REVENDA_2026T1.json"
+    data = json.loads(path.read_text())
+    rule, = data["item_rules"]
+    sources = {source["url"] for source in data["sources"]}
+    item = {k: rule[k] for k in ITEM}
+    for month in (1, 2, 3, 4):
+        catalog = ReviewedItemCatalog([rule], date(2026, month, 1), sources)
+        result = catalog.resolve(item, "SP")
+        assert result[1] == ("icms_substituted" if month < 4 else "unknown")
+        assert catalog.resolve(item | {"cfop": "5102"}, "SP")[0] == "unknown"

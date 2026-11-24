@@ -336,6 +336,8 @@ def _evaluate(
         )
         decoded = []
         for row in rows:
+            if not isinstance(row, dict):
+                raise FiscalValidationError("revenue line must be an object")
             if catalog is not None:
                 federal, local_treatment, reference, parts = catalog.resolve(row, facts.uf)
             else:

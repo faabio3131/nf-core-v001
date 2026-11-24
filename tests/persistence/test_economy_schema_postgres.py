@@ -423,7 +423,7 @@ def _certify_t06(database):
         line = coded["lines"][0]
         for field in ("federal", "local", "treatment_reference"):
             line.pop(field)
-        codes = dict(ncm="33041000", cest="2000100", cfop="5405", operation_context="fixture")
+        codes = dict(ncm="33041000", cest="2000900", cfop="5405", operation_context="fixture")
         line.update(codes)
         coded["lines"] = [line]
         coded.update(domestic_cents=100, export_cents=0)
