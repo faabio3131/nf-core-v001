@@ -418,7 +418,32 @@ def _certify_t06(database):
             )
         assert store.snapshot("invalid", 1) is None
         assert store.record("fm_economy_benefits", "t06-rule", 1) is not None
+    with database.economy(scope) as store:
+        coded = deepcopy(content)
+        line = coded["lines"][0]
+        for field in ("federal", "local", "treatment_reference"):
+            line.pop(field)
+        codes = dict(ncm="33041000", cest="2000100", cfop="5405", operation_context="fixture")
+        line.update(codes)
+        coded["lines"] = [line]
+        coded.update(domestic_cents=100, export_cents=0)
+        item_rule = dict(**codes, activity="commerce", market="domestic", uf="SP",
+                         valid_from="2026-01-01", valid_until="2027-01-01",
+                         federal="monophase_downstream", local="icms_substituted",
+                         source_url=SOURCE, rule_reference="fixture-coded-rule")
+        coded_refs = {**refs, "snapshot_id": "coded", "rule_id": "coded-policy"}
+        imported = import_reviewed_segregation(store, **{
+            **kwargs, **coded_refs, "content": coded, "rule_content": policy | {
+                "item_rules": [item_rule],
+            },
+        })
+        assert imported["buckets"] == [{"activity": "commerce", "market": "domestic",
+                                       "federal": "monophase_downstream",
+                                       "local": "icms_substituted", "cents": 100}]
     with database.economy(scope, read_only=True) as store:
+        assert imported == evaluate_segregation(store, **coded_refs)
+        assessed = evaluate_segregation(store, **coded_refs, assessment=True)
+        assert {"pis", "cofins", "icms"} <= set(assessed["buckets"][0]["excluded"])
         assert evaluate_segregation(store, **refs) == result
         assessment = evaluate_segregation(store, **refs, assessment=True)
         assert assessment["status"] == "estimated"
@@ -601,6 +626,11 @@ def _certify_t07_transition(database):
         result = import_reviewed_segregation(store, **kwargs)
         assert result["status"] == "classified"
         assert result == import_reviewed_segregation(store, **kwargs)
+        latest = store.unique_monthly_snapshot(profile.cnpj.value, competence, TRANSITION_SCHEMA)
+        assert latest is not None and latest["digest"] == result["snapshot_digest"]
+        assert store.unique_monthly_snapshot(
+            "09107283000140", competence, TRANSITION_SCHEMA,
+        ) is None
         forged = deepcopy(content)
         forged["ibs_cbs_election"]["scope_identity"][0] = "foreign"
         with pytest.raises(FiscalValidationError, match="scope/profile mismatch"):

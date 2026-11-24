@@ -1,0 +1,11 @@
+# NFCore PR 592 — saneamento de engenharia
+
+A T06 usa o importador de snapshots e políticas revisadas da Central. A política imutável recebe `item_rules`. Cada regra contém NCM (8 dígitos), CEST (7 dígitos ou null explícito), CFOP de saída, UF, atividade, mercado, contexto da operação, referência da regra, URL de uma das citações revisadas, início inclusivo e fim exclusivo. A referência de revisão, os dispositivos e os hashes das fontes constam em `legal_citations` da versão da política. Cabe à curadoria validar a correspondência material entre cada hipótese, dispositivo e jurisdição.
+
+Quando a política contém o catálogo, o importador exige os códigos e o contexto da operação em cada item e procura uma única hipótese que cobre a competência inteira. O retorno identifica a versão e o digest da política, a referência da regra por item e o digest do snapshot. Regras ambíguas, parciais ou ausentes bloqueiam o lote. Em 2027 a regra fornece também o tratamento revisado por tributo. Os contratos anteriores de fatos já revisados continuam disponíveis. Isenção e imunidade de ICMS podem ser identificadas na triagem de 2026. A quantificação dessas hipóteses requer análise específica. O teste PostgreSQL percorre importação, leitura e comparativo para monofásico e ICMS-ST. Os vetores usados nos testes são sintéticos. A cobertura comercial depende do conteúdo revisado importado para cada escopo.
+
+Na avaliação direta, na pesquisa e na importação federal, a T08 consulta o histórico da T07 para o emissor, escopo e mês. Exige um histórico único, lê sua última versão e aplica o mesmo resolvedor de eleição da T07, incluindo recibos e período de eficácia. O caminho cobre a opção Simples 2027. Autorização de outros regimes requer evidência própria.
+
+O job 138155781911 da CI anterior gerou o V0073 do commit oficial fixado e executou o teste de paridade. As duas falhas reportadas foram nos doubles de renderização PDF, que ainda exigiam o argumento depreciado. Os doubles agora exigem a assinatura efetivamente utilizada. O extra de desenvolvimento inclui o transporte httpx2 para o TestClient.
+
+A curadoria de benefícios estaduais segue o checklist de modalidades, dispositivos e vigência já aprovado. As quatro candidatas de SE, AP, PA e RR seguem bloqueadas para efeitos fiscais. A verificação técnica da candidata não concede incentivo.

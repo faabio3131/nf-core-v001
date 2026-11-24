@@ -55,6 +55,8 @@ class LocalTreatment(StrEnum):
     ICMS_SUBSTITUTED = "icms_substituted"
     ICMS_SUBSTITUTE = "icms_substitute"
     ICMS_FINAL_ADVANCE = "icms_final_advance"
+    ICMS_EXEMPT = "icms_exempt"
+    ICMS_IMMUNE = "icms_immune"
     ISS_WITHHELD = "iss_withheld"
     UNKNOWN = "unknown"
 
@@ -255,6 +257,9 @@ def assess_segregated(
     else:
         outstanding_classification = None
     reasons: list[str] = []
+    if any(line.local in (LocalTreatment.ICMS_EXEMPT, LocalTreatment.ICMS_IMMUNE)
+           for line in (*lines, *(local_outstanding or ()))):
+        reasons.append("reviewed_icms_relief_calculation_required")
     rows: list[dict[str, object]] = []
     direct_rows: list[dict[str, object]] = []
     direct_totals = {"icms": Fraction(0), "iss": Fraction(0)}

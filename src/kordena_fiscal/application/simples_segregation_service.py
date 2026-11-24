@@ -24,6 +24,7 @@ from kordena_fiscal.tax.regimes import (
     SimplesRenunciationReceipt2027H2,
     resolve_simples_ibs_cbs_mode,
 )
+from kordena_fiscal.tax.revenue_item_catalog import ReviewedItemCatalog
 from kordena_fiscal.tax.rfb_regime_regular_calculator import RfbRegimeRegularCalculatorClient
 from kordena_fiscal.tax.rfb_simples_calculator import RfbSimplesCalculatorClient
 from kordena_fiscal.tax.simples_cash import reconcile_cash_detail, verify_cash_continuity
@@ -102,16 +103,20 @@ def _verify_cash_predecessor(
     verify_cash_continuity(competence, register, previous["content"]["cash_register"])
 
 
-def _reviewed_mode(
+def reviewed_snapshot_mode(
     profile: FiscalProfile | None, snapshot: dict[str, Any], competence: date,
-    scope_identity: tuple[str, ...], facts: SimplesFacts,
+    scope_identity: tuple[str, ...],
 ) -> SimplesIbsCbsMode:
     if not isinstance(profile, FiscalProfile) or (
         tuple(profile.scope.identity_material) != scope_identity
         or profile.cnpj.value != snapshot["issuer_cnpj"]
     ):
         raise FiscalValidationError("canonical profile required for 2027 IBS/CBS election")
-    evidence = snapshot["content"]["ibs_cbs_election"]
+    content = snapshot["content"]
+    registered_on = (date.fromisoformat(content["registered_on"])
+                     if "registered_on" in content else None)
+    opened_month = date.fromisoformat(content["opened_month"])
+    evidence = content["ibs_cbs_election"]
 
     def bound(raw: dict[str, Any]) -> None:
         if (raw["scope_identity"] != list(scope_identity)
@@ -180,9 +185,9 @@ def _reviewed_mode(
             ),
             cancellation_reference=raw_opening.get("cancellation_reference"),
         )
-        if opening.registered_on != facts.registered_on:
+        if opening.registered_on != registered_on:
             raise FiscalValidationError("opening option does not match reviewed registration")
-    if facts.registered_on is not None:
+    if registered_on is not None:
         registration_ref = snapshot["content"].get("registration_reference")
         if (not isinstance(registration_ref, str) or not registration_ref.strip()
                 or opening is not None and registration_ref != opening.registration_reference):
@@ -210,9 +215,9 @@ def _reviewed_mode(
             raise FiscalValidationError("reviewed CGSN art. 40-E eligibility required")
     start = datetime.combine(competence, time.min, tzinfo=ZoneInfo("America/Sao_Paulo"))
     end = (start.replace(day=28) + timedelta(days=4)).replace(day=1)
-    if facts.registered_on is not None and facts.opened_month == competence:
-        start = datetime.combine(facts.registered_on, time.min, tzinfo=start.tzinfo)
-        if election.effective_from.astimezone(start.tzinfo).date() > facts.registered_on:
+    if registered_on is not None and opened_month == competence:
+        start = datetime.combine(registered_on, time.min, tzinfo=start.tzinfo)
+        if election.effective_from.astimezone(start.tzinfo).date() > registered_on:
             raise FiscalValidationError("opening election does not cover registration date")
         start = max(start, profile.effective_from)
         if opening is not None:
@@ -251,6 +256,10 @@ def evaluate_segregation(
     rule = store.record("fm_economy_benefits", rule_id, rule_version)
     if snapshot is None or rule is None:
         raise FiscalValidationError("scoped segregation evidence unavailable")
+    if "item_rules" in rule["content"] and store.benefit_version_at(
+        rule_id, date.fromisoformat(snapshot["competence"]),
+    ) != rule_version:
+        raise FiscalValidationError("item catalog version superseded for competence")
     _verify_cash_history(store, snapshot)
     return _evaluate(
         snapshot, rule, verify_issuer=verify_issuer, assessment=assessment,
@@ -311,7 +320,7 @@ def _evaluate(
         )
         profile = verify_issuer(snapshot["issuer_cnpj"], facts)
         mode = (
-            _reviewed_mode(profile, snapshot, competence, scope_identity, facts)
+            reviewed_snapshot_mode(profile, snapshot, competence, scope_identity)
             if transition else None
         )
         if transition and content["basis"] != "accrual":
@@ -321,12 +330,27 @@ def _evaluate(
         rows = content["lines"]
         if not isinstance(rows, list) or len(rows) > 10000:
             raise FiscalValidationError("bounded reviewed revenue lines required")
-        lines = tuple(RevenueLine(
-            row["line_id"], row["cents"], Activity(row["activity"]), Market(row["market"]),
-            FederalTreatment(row["federal"]), LocalTreatment(row["local"]),
-            row["evidence_reference"], row["treatment_reference"],
-            _transition_treatments(row) if transition or "transition_treatments" in row else None,
-        ) for row in rows)
+        catalog = (
+            ReviewedItemCatalog(policy["item_rules"], competence, {c.source_url for c in citations})
+            if "item_rules" in policy else None
+        )
+        decoded = []
+        for row in rows:
+            if catalog is not None:
+                federal, local_treatment, reference, parts = catalog.resolve(row, facts.uf)
+            else:
+                if {"ncm", "cest", "cfop", "operation_context"} & row.keys():
+                    raise FiscalValidationError("coded revenue requires a reviewed item catalog")
+                federal = FederalTreatment(row["federal"])
+                local_treatment = LocalTreatment(row["local"])
+                reference = row["treatment_reference"]
+                parts = (_transition_treatments(row)
+                         if transition or "transition_treatments" in row else None)
+            decoded.append(RevenueLine(
+                row["line_id"], row["cents"], Activity(row["activity"]), Market(row["market"]),
+                federal, local_treatment, row["evidence_reference"], reference, parts,
+            ))
+        lines = tuple(decoded)
         cash = content["basis"] == "cash"
         if content["basis"] not in {"cash", "accrual"}:
             raise FiscalValidationError("unknown recognition basis")
@@ -462,6 +486,10 @@ def import_reviewed_segregation(
         "jurisdiction": JURISDICTION, "normative_reference": normative,
         "content": rule_content, "digest": _digest(rule_content)[1],
     }
+    if "item_rules" in rule_content:
+        current = store.benefit_version_at(rule_id, competence)
+        if current is not None and current > rule_version:
+            raise FiscalValidationError("item catalog version superseded for competence")
     # Validate optional PGDAS evidence before inserting immutable records,
     # without revalidating the entire input snapshot a second time.
     result = _evaluate(

@@ -302,6 +302,29 @@ class EconomyStore:
         return record
 
 
+    def unique_monthly_snapshot(
+        self, issuer: str, competence: date, schema: str,
+    ) -> dict[str, Any] | None:
+        """Resolve a unique reviewed history; a superseding row may invalidate it."""
+        self._require_active()
+        scope = self._scope.identity_material
+        rows = self._conn.execute(
+            """SELECT DISTINCT record_id FROM fm_economy_snapshots
+               WHERE host_namespace=%s AND tenant_id=%s AND unit_id=%s AND environment=%s
+                 AND issuer_cnpj=%s AND competence=%s AND content->>'schema_version'=%s
+               LIMIT 2""",
+            (*scope, issuer, competence, schema),
+        ).fetchall()
+        if len(rows) != 1:
+            return None
+        record = self.record("fm_economy_snapshots", rows[0][0])
+        if (record is None or record["issuer_cnpj"] != issuer
+                or record["competence"] != competence.isoformat()
+                or record["content"].get("schema_version") != schema
+                or record["content"].get("review_status") != "reviewed"):
+            return None
+        return record
+
     def benefit_version_at(self, record_id: str, competence: date) -> int | None:
         """The latest amendment effective before the end of this competence.
 

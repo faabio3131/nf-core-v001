@@ -63,7 +63,7 @@ def main() -> None:
                 benefit_id=bundle["benefit_id"],
                 benefit_version=bundle["benefit_version"],
                 benefit_content=bundle["benefit_content"],
-                verify_issuer=build_federal_issuer_verifier(database, scope),
+                verify_issuer=build_federal_issuer_verifier(database, scope, store),
             )
         print(json.dumps({
             "snapshot_id": result["snapshot_id"],

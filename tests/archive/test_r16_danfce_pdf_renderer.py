@@ -42,8 +42,7 @@ def test_danfce_uses_local_renderer_on_authorized_model65(monkeypatch: pytest.Mo
         def __init__(self, *, xml: str) -> None:
             assert '<nfeProc' in xml and '<mod>65</mod>' in xml
 
-        def output(self, *, dest: str) -> bytearray:
-            assert dest == "S"
+        def output(self) -> bytearray:
             return bytearray(b"%PDF-1.7\nNFCore NFC-e model65")
 
     monkeypatch.setattr(module, "Danfce", FakeDanfce)
@@ -75,7 +74,7 @@ def test_danfce_fails_when_pdf_is_invalid(monkeypatch: pytest.MonkeyPatch) -> No
         def __init__(self, *, xml: str) -> None:
             assert xml
 
-        def output(self, *, dest: str) -> bytes:
+        def output(self) -> bytes:
             return b"not a pdf"
 
     monkeypatch.setattr(module, "Danfce", BrokenDanfce)

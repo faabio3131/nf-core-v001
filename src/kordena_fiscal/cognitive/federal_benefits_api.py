@@ -14,6 +14,10 @@ from kordena_fiscal.application.federal_benefits_service import (
     search_federal_benefits,
 )
 from kordena_fiscal.application.federal_regime_store import load_federal_regime_declarations
+from kordena_fiscal.application.simples_segregation_service import (
+    TRANSITION_SCHEMA,
+    reviewed_snapshot_mode,
+)
 from kordena_fiscal.domain import (
     ExecutionScope,
     FiscalEnvironment,
@@ -23,7 +27,7 @@ from kordena_fiscal.domain import (
 from kordena_fiscal.persistence.economy_store import EconomyStore
 from kordena_fiscal.security.human_identity import AuthenticatedHuman, PortalPermission
 from kordena_fiscal.tax.federal_benefits import ReviewedFederalIssuer
-from kordena_fiscal.tax.regimes import resolve_federal_regime_timeline
+from kordena_fiscal.tax.regimes import SimplesIbsCbsMode, resolve_federal_regime_timeline
 
 from .portal_evidence import SurfaceReader
 
@@ -37,6 +41,7 @@ FederalBenefitSearchRunner = Callable[
 
 def build_federal_issuer_verifier(
     uow_factory: Callable[[], AbstractContextManager[Any]], scope: ExecutionScope,
+    store: EconomyStore | None = None,
 ) -> Callable[[str, date], ReviewedFederalIssuer]:
     """Resolve the canonical issuer and effective federal regime for a whole month."""
     def verify(issuer: str, competence: date) -> ReviewedFederalIssuer:
@@ -69,9 +74,20 @@ def build_federal_issuer_verifier(
             first, declarations, end - timedelta(microseconds=1),
         ) is not regime:
             raise FiscalValidationError("federal regime changed during competence")
+        regular = None
+        if store is not None and competence.year == 2027:
+            snapshot = store.unique_monthly_snapshot(issuer, competence, TRANSITION_SCHEMA)
+            if snapshot is not None:
+                try:
+                    mode = reviewed_snapshot_mode(
+                        first, snapshot, competence, scope.identity_material,
+                    )
+                    regular = mode is SimplesIbsCbsMode.REGULAR_SEPARATE
+                except (TypeError, ValueError, KeyError, OverflowError):
+                    regular = None
         return ReviewedFederalIssuer(
             cnpj=issuer, cnae=first.primary_cnae.value, regime=regime,
-            scope_identity=scope.identity_material,
+            scope_identity=scope.identity_material, ibs_cbs_regular_authorized=regular,
         )
     return verify
 
@@ -87,8 +103,8 @@ def build_federal_benefit_runner(
     ) -> dict[str, Any]:
         scope = _authorized_federal_scope(reader, authority, unit_id, environment)
         try:
-            verify = build_federal_issuer_verifier(uow_factory, scope)
             with store_factory(scope) as store:
+                verify = build_federal_issuer_verifier(uow_factory, scope, store)
                 return evaluate_federal_benefit(
                     store, snapshot_id=snapshot_id, snapshot_version=snapshot_version,
                     benefit_id=benefit_id, benefit_version=benefit_version,
@@ -136,8 +152,8 @@ def build_federal_benefit_search_runner(
     ) -> dict[str, Any]:
         scope = _authorized_federal_scope(reader, authority, unit_id, environment)
         try:
-            verifier = build_federal_issuer_verifier(uow_factory, scope)
             with store_factory(scope) as store:
+                verifier = build_federal_issuer_verifier(uow_factory, scope, store)
                 return search_federal_benefits(
                     store, snapshot_id=snapshot_id, snapshot_version=snapshot_version,
                     verify_issuer=verifier,

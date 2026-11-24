@@ -142,3 +142,49 @@ def test_verifier_rejects_wrong_issuer_and_foreign_scope(monkeypatch):
     verifier = build_federal_issuer_verifier(_factory(_profile()), SCOPE)
     with pytest.raises(FiscalValidationError, match="canonical issuer"):
         verifier("12345678000195", MONTH)
+
+
+@pytest.mark.parametrize("mutation, expected", [
+    ("valid", True), ("absent", None), ("cancelled", None), ("foreign", None),
+    ("unified", False), ("partial", None),
+])
+def test_t08_reads_monthly_t07_option(monkeypatch, mutation, expected):
+    profile = replace(_profile(), tax_regime=TaxRegimeCode.SIMPLES_NACIONAL)
+    month = date(2027, 1, 1)
+    declaration = replace(
+        _declaration(FederalIncomeTaxRegime.LUCRO_REAL, profile.effective_from),
+        federal_income_tax_regime=FederalIncomeTaxRegime.SIMPLES_NACIONAL,
+        crt=profile.tax_regime,
+    )
+    monkeypatch.setattr(
+        "kordena_fiscal.cognitive.federal_benefits_api.load_federal_regime_declarations",
+        lambda factory, scope: (declaration,),
+    )
+    bound = dict(scope_identity=list(SCOPE.identity_material), issuer_cnpj=ISSUER.value,
+                 profile_id=profile.profile_id, profile_version=profile.version,
+                 crt=int(profile.tax_regime))
+    receipt = dict(**bound, submitted_at="2026-10-30T12:00:00+00:00",
+                   confirmed_at="2026-10-30T13:00:00+00:00", protocol_reference="TEST-RECEIPT")
+    election = dict(**bound, mode="regular_separate", effective_from="2027-01-01T03:00:00+00:00",
+                    regular_option_receipt_2027_h1=receipt, version=1, source_reference="fixture")
+    if mutation == "cancelled":
+        receipt["cancelled_at"] = "2026-11-03T12:00:00+00:00"
+    if mutation == "foreign":
+        receipt["issuer_cnpj"] = "12345678000195"
+    if mutation == "partial":
+        election["effective_to"] = "2027-01-16T03:00:00+00:00"
+    if mutation == "unified":
+        election.pop("regular_option_receipt_2027_h1")
+        election.update(mode="simples_unified", refund_restriction_clear=True)
+
+    class Store:
+        def unique_monthly_snapshot(self, issuer, competence, schema):
+            assert (issuer, competence) == (ISSUER.value, month)
+            if mutation == "absent":
+                return None
+            return {"issuer_cnpj": issuer, "content": {
+                "opened_month": "2025-01-01", "ibs_cbs_election": election,
+            }}
+
+    result = build_federal_issuer_verifier(_factory(profile), SCOPE, Store())(ISSUER.value, month)
+    assert result.ibs_cbs_regular_authorized is expected
