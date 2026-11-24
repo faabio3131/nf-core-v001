@@ -10,7 +10,7 @@ from __future__ import annotations
 import hashlib
 import uuid
 from collections.abc import Callable
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from typing import Annotated, Any, Protocol
 
 from fastapi import APIRouter, Body, HTTPException, Request, status
@@ -34,6 +34,7 @@ from kordena_fiscal.web.portal_api import (
 from .contracts import AdviceRequest, AdviceResult, AdviceStatus, Capability, Evidence, stable_hash
 from .economy_contract import CAPABILITIES, EconomyAdvice, project_economy
 from .federal_benefits_api import FederalBenefitRunner, FederalBenefitSearchRunner
+from .opportunity_radar_api import OpportunityRunner
 from .service import CognitiveAdviceService
 from .simples_diagnostic_api import DiagnosticRunner
 from .state_benefits_api import StateBenefitRunner, StateSearchRunner
@@ -127,6 +128,7 @@ def create_cognitive_router(
     federal_benefit_search_runner: FederalBenefitSearchRunner | None = None,
     state_benefit_runner: StateBenefitRunner | None = None,
     state_search_runner: StateSearchRunner | None = None,
+    opportunity_runner: OpportunityRunner | None = None,
 ) -> APIRouter:
     router = APIRouter(prefix="/v1/portal/cognitive", tags=["cognitive-advisory"])
 
@@ -388,6 +390,30 @@ def create_cognitive_router(
             state_search_runner, auth, unit_id, environment,
             body["snapshot_id"].strip(), body["snapshot_version"],
         )
+
+    @router.post("/economy/opportunity-radar")
+    async def opportunity_scan(
+        request: Request, body: Annotated[dict[str, Any], Body()],
+    ) -> dict[str, Any]:
+        auth = _authenticated(request, identity, now=datetime.now(UTC))
+        _reject_browser_authority(body)
+        if set(body) != {"unit_id", "environment", "competence"}:
+            raise _bad("INVALID_RADAR_REQUEST", "Expected unit, environment and month")
+        unit = body["unit_id"]
+        if not isinstance(unit, str) or not 1 <= len(unit.strip()) <= 128:
+            raise _bad("INVALID_RADAR_UNIT", "Invalid unit")
+        _authorized(auth, PortalPermission.AUDIT_READ, unit_id=unit)
+        _csrf(request, identity, auth)
+        try:
+            month = date.fromisoformat(body["competence"])
+            environment = FiscalEnvironment(body["environment"])
+            if month.day != 1 or month.isoformat() != body["competence"] or month.year >= 9999:
+                raise ValueError
+        except (ValueError, TypeError):
+            raise _bad("INVALID_RADAR_PERIOD", "Invalid environment or competence") from None
+        if opportunity_runner is None:
+            raise _bad("RADAR_UNAVAILABLE", "Radar unavailable", 503)
+        return await run_in_threadpool(opportunity_runner, auth, unit, environment, month)
 
     @router.get("/economy/schema")
     async def economy_schema(request: Request) -> dict[str, Any]:

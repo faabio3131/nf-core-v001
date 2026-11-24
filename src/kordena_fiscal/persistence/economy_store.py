@@ -399,6 +399,17 @@ class EconomyStore:
         self, *, jurisdiction: str, competence: date, schema_version: str,
         limit: int = 500,
     ) -> tuple[tuple[dict[str, Any], ...], bool]:
+        return self._regional_candidates(jurisdiction, competence, schema_version, limit, "ICMS")
+
+    def municipal_benefit_candidates(
+        self, *, jurisdiction: str, competence: date, schema_version: str,
+        limit: int = 500,
+    ) -> tuple[tuple[dict[str, Any], ...], bool]:
+        return self._regional_candidates(jurisdiction, competence, schema_version, limit, "ISS")
+
+    def _regional_candidates(
+        self, jurisdiction: str, competence: date, schema_version: str, limit: int, tax_code: str,
+    ) -> tuple[tuple[dict[str, Any], ...], bool]:
         """Select 1 effective candidate per T09 record before applying LIMIT.
 
         The latest version effective before next month wins, including revoked
@@ -408,7 +419,7 @@ class EconomyStore:
         if (
             type(competence) is not date or competence.day != 1
             or not isinstance(jurisdiction, str)
-            or not re.fullmatch(r"[A-Z]{2}", jurisdiction)
+            or not re.fullmatch(r"[A-Z]{2}" if tax_code == "ICMS" else r"[0-9]{7}", jurisdiction)
             or not isinstance(schema_version, str)
             or not re.fullmatch(r"[a-zA-Z0-9./_-]{1,128}", schema_version)
             or type(limit) is not int or not 1 <= limit <= 500
@@ -440,10 +451,10 @@ class EconomyStore:
                )
                SELECT payload FROM ranked WHERE rank_version=1
                  AND payload->>'jurisdiction'=%s
-                 AND payload->>'tax_code'='ICMS'
+                 AND payload->>'tax_code'=%s
                ORDER BY payload->>'record_id' LIMIT %s""",
             (*self._scope.identity_material, following, jurisdiction,
-             schema_version, jurisdiction, limit + 1),
+             schema_version, jurisdiction, tax_code, limit + 1),
         ).fetchall()
         truncated = len(rows) > limit
         results = tuple(dict(r[0]) for r in rows[:limit])

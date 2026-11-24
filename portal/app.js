@@ -3752,6 +3752,7 @@ async function renderSurface(viewId) {
     loading.remove();
     if (viewId === "tax-reform") {
       appendRtcIssuerSummary(article, rows);
+      if (bootstrapState?.permissions.includes("audit.read")) appendOpportunityRadar(article);
     } else {
       article.append(grid);
     }
@@ -4928,4 +4929,63 @@ function renderCognitiveAnswer(target, answer) {
     note.textContent = `${answer.disclaimer} Requer aprovação humana.`;
     target.append(note);
   }
+}
+
+/** @param {HTMLElement} article */
+function appendOpportunityRadar(article) {
+  const form = document.createElement("form");
+  const heading = document.createElement("h3");
+  heading.textContent = "Radar de oportunidades fiscais";
+  const label = document.createElement("label");
+  label.textContent = "Competência";
+  const month = document.createElement("input");
+  month.type = "month";
+  month.required = true;
+  label.append(month);
+  const submit = document.createElement("button");
+  submit.textContent = "Consultar oportunidades da unidade";
+  const result = document.createElement("div");
+  result.setAttribute("role", "status");
+  form.append(heading, label, submit, result);
+  article.append(form);
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    if (!selectedFiscalUnit) { result.textContent = "Selecione uma unidade."; return; }
+    submit.disabled = true;
+    month.disabled = true;
+    result.textContent = "Consultando catálogos e atos revisados…";
+    try {
+      const report = await api("/v1/portal/cognitive/economy/opportunity-radar", {
+        method: "POST", headers: {"X-CSRF-Token": csrfToken()},
+        body: JSON.stringify({unit_id: selectedFiscalUnit, environment: selectedFiscalEnvironment,
+          competence: month.value + "-01"}),
+      });
+      const list = document.createElement("ul");
+      for (const item of report.opportunities) {
+        const row = document.createElement("li");
+        const amount = item.estimated_cents === null ? "sem estimativa" :
+          (item.estimated_cents / 100).toLocaleString("pt-BR", {style: "currency", currency: "BRL"});
+        row.textContent = (item.legal_act || item.state_normative_reference || item.program_code || item.benefit_id) + " — " + amount;
+        list.append(row);
+      }
+      const names = {federal: "Federal", state: "Estadual", municipal: "Municipal", public_signals: "Anistias e editais"};
+      const statuses = {insufficient_basis: "faltam dados revisados", no_reviewed_catalog: "sem catálogo revisado",
+        advisory: "consultado", review_required: "revisão necessária", unavailable: "indisponível",
+        partial_or_unavailable: "fontes incompletas"};
+      for (const [source, value] of Object.entries(report.coverage)) {
+        const row = document.createElement("li");
+        row.textContent = (Reflect.get(names, source) || source) + " — " +
+          (Reflect.get(statuses, value.status) || value.status) + (value.coverage_truncated ? " (consulta limitada)" : "");
+        list.append(row);
+      }
+      for (const signal of report.public_signals) {
+        const row = document.createElement("li");
+        row.textContent = signal.category + " — " + signal.source + " (publicação para revisão)";
+        list.append(row);
+      }
+      result.replaceChildren(document.createTextNode(report.opportunities.length + " oportunidade(s) para revisão."), list);
+    } catch (error) {
+      result.textContent = error instanceof Error ? error.message : "Radar indisponível.";
+    } finally { submit.disabled = false; month.disabled = false; }
+  });
 }

@@ -620,3 +620,26 @@ test("RTC-02 owner declares Lucro Presumido explicitly and reads persisted statu
   await form.getByRole("button", {name: "Declarar regime federal"}).click();
   await expect(page.getByText("Regime federal declarado: Lucro Presumido, desde 2026-01-01 (versão 1).")).toBeVisible();
 });
+
+test("radar uses selected unit and shows missing estimates and coverage", async ({page, context}) => {
+  await page.route("**/v1/portal/bootstrap", route => route.fulfill({json: {
+    tenant_id: "tenant-e2e", unit_ids: ["unit-a"], role: "owner",
+    permissions: ["portal.read", "document.query", "audit.read"], supported_documents: ["nfse"],
+    projection: {authorized_units: [{unit_id: "unit-a", display_name: "Unidade A", environments: ["homologation"]}]},
+  }}));
+  await context.addCookies([{name: "nfcore_csrf", value: "csrf-e2e", domain: "127.0.0.1", path: "/"}]);
+  await page.route("**/v1/portal/surfaces/**", route => route.fulfill({json: {rows: []}}));
+  await page.route("**/v1/portal/cognitive/economy/opportunity-radar", route => {
+    expect(route.request().postDataJSON()).toEqual({unit_id: "unit-a", environment: "homologation", competence: "2026-11-01"});
+    expect(route.request().headers()["x-csrf-token"]).toBe("csrf-e2e");
+    return route.fulfill({json: {opportunities: [{legal_act: "Ato de teste", estimated_cents: null}],
+      coverage: {municipal: {status: "advisory"}, state: {status: "insufficient_basis"}},
+      public_signals: []}});
+  });
+  await page.goto("/");
+  await page.getByRole("button", {name: "Reforma Tributária", exact: true}).click();
+  await page.getByLabel("Competência", {exact: true}).fill("2026-11");
+  await page.getByRole("button", {name: "Consultar oportunidades da unidade"}).click();
+  await expect(page.getByText("Ato de teste — sem estimativa")).toBeVisible();
+  await expect(page.getByText("Estadual — faltam dados revisados")).toBeVisible();
+});

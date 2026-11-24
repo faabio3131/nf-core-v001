@@ -1,14 +1,22 @@
 # Central de Economia Fiscal — execução T01–T22
 
+## Diretriz do diretor em 24/11/2026 — construção do SaaS e expansão nacional
+
+A prioridade é concluir o SaaS e comprovar que suas jornadas funcionam de ponta a ponta no escopo implementado. A engenharia avança na sequência do cronograma, com os testes, a revisão, a integração e a certificação de cada bloco. A ausência de cobertura de uma UF, município, modalidade ou competência não bloqueia a construção nem a passagem à próxima tarefa após o aceite técnico do bloco atual.
+
+A cobertura territorial cresce conforme a programação de expansão. Registrar as lacunas para futura curadoria, com jurisdição, modalidade, competência e evidência pendente. Quando a plataforma estiver internamente pronta e funcionando, o foco passa a ser a expansão nacional sobre a mesma arquitetura.
+
+No radar, uma lacuna deve aparecer como cobertura indisponível ou base insuficiente. Uma regra sem comprovação continua excluída da estimativa e do cálculo naquele escopo. Para a T10, cadastrar um primeiro incentivo municipal real ou concluir a curadoria estadual da [#593](https://github.com/faabio3131/nf-core-v001/issues/593) não é pré-requisito para integrar o motor nem para iniciar a T11 após os gates de integração. A [#594](https://github.com/faabio3131/nf-core-v001/issues/594) acompanha a entrega técnica.
+
 ## Ponto de retomada em 24/11/2026
 
 A [PR #592](https://github.com/faabio3131/nf-core-v001/pull/592) integrou as sete PRs de T01–T09 na `main` pelo commit `f19122a8b158a3910271890a74a3f4f66a7d5852`. O responsável pelo projeto autorizou o merge após reavaliação técnica pelo agente. A árvore integrada é idêntica à da revisão `85ed8703`. [CI da revisão](https://github.com/faabio3131/nf-core-v001/actions/runs/45313958431) · [CI do merge](https://github.com/faabio3131/nf-core-v001/actions/runs/45316804802).
 
-**Trabalho atual — [T10 / #594](https://github.com/faabio3131/nf-core-v001/issues/594).** Etapa de preparação. Implementação e aceite do radar municipal e unificado seguem em aberto. A T11 depende da entrega da T10.
+**Trabalho atual — [T10 / #594](https://github.com/faabio3131/nf-core-v001/issues/594).** Branch `feat/nfcore-economy-t10-opportunity-radar`, base `9589fd19`. Candidata de engenharia com consulta por unidade e competência no Portal, testes de domínio, HTTP, PostgreSQL e interface. Acompanhar a certificação da revisão exata na #594. A T11 depende da entrega da T10.
 
-1. Partir da `main` integrada. Conferir o contrato da T02 em `src/kordena_fiscal/cognitive/economy_contract.py`, a leitura em `economy_reader.py` no mesmo diretório e os serviços `federal_benefits_service.py` e `state_benefits_service.py` em `src/kordena_fiscal/application/`. Identificar as anistias da T03 que podem entrar na varredura.
-2. Cobrir ISS por município (código IBGE), modalidade, competência e ato aplicável. Integrar as oportunidades elegíveis das três esferas e as anistias na consulta por empresa.
-3. Antes de entregar, testar isolamento por tenant e unidade, vigência, exclusão de candidatas bloqueadas e ordenação determinística por economia estimada. Registrar na #594 a PR, o SHA testado e a CI.
+A consulta do Portal resolve o emitente pelo cadastro da unidade e busca snapshots revisados por CNPJ, competência e esquema. O banco aplica RLS e leitura repetível. Para ISS, o escopo inicial é o município cadastrado, com incidência comprovada nesse município e modalidade de isenção, redução de base ou de alíquota. O ato citado deve cobrir toda a competência. Os cenários monetários vêm de avaliações revisadas vinculadas ao digest da regra. A ausência de valores mantém a oportunidade sem estimativa. A comparação é consultiva. Anistia, REFIS, transação e parcelamento são sinais públicos para revisão, sem valor atribuído. O código não cadastra benefícios municipais reais.
+
+Reprodução focal: `python -m pytest tests/application/test_opportunity_radar.py tests/cognitive/test_state_benefits_api.py tests/persistence/test_economy_schema_postgres.py` (PostgreSQL de teste configurado) e o cenário Playwright “radar uses selected unit”. Conferir também a CI cumulativa e a decisão de revisão antes de integrar.
 
 **Curadoria fiscal — [#593](https://github.com/faabio3131/nf-core-v001/issues/593).** O acompanhamento documental de AP, PA, RR e SE segue até 07/12/2026. Por modalidade e competência, registrar vigência, vínculo com registro e depósito quando aplicáveis e parecer independente. Até lá, as quatro candidatas seguem excluídas da importação e do cálculo. Essa pendência permite avançar na construção da T10. A expansão do catálogo de operações da T06 segue sujeita a revisão fiscal de cada nova regra.
 
@@ -26,7 +34,7 @@ A folha T23–T33, a Trilha 2 H01–H06 e a reformulação Enterprise não integ
 | T07 | Apuração/PGDAS segregada | Apuração consultiva integrada na #592 |
 | T08 | Catálogo federal | Catálogo consultivo integrado na #592, com seleção temporal e autoridade da T07 para IBS/CBS |
 | T09 | Catálogo estadual 27 UFs | Motor de triagem integrado. Curadoria e revisão independente acompanhadas na #593 |
-| T10 | Benefícios municipais e radar unificado | EM EXECUÇÃO — preparação e critérios de entrega na #594 |
+| T10 | Benefícios municipais e radar unificado | EM REVISÃO — implementação na branch de T10, evidências e decisão de integração na #594 |
 | T11 | Simulação Presumido/Real e IVA | Bloqueado |
 | T12 | Comparador multi-regime | Bloqueado |
 | T13 | Aprovação contábil auditável | Bloqueado; referência anterior preservada |

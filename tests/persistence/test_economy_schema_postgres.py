@@ -77,6 +77,7 @@ def test_real_postgres_economy_schema_scope_and_immutability(monkeypatch):
             _certify_t07_transition(database)
             _certify_t08_federal(database)
             _certify_t09_state(database, monkeypatch)
+            _certify_t10_municipal(database)
             admin.execute(sql.SQL("SET search_path TO {}").format(sql.Identifier(schema_name)))
             # Explicitly add DML permissions only in this sandbox to prove
             # that the RLS policies, not solely GRANTs, deny mutation.
@@ -1039,3 +1040,51 @@ def _certify_t09_state(database, monkeypatch):
     with database.economy(_scope(tenant="economy-t09-foreign"), read_only=True) as store:
         assert store.record("fm_economy_snapshots", "t09-state-facts", 1) is None
         assert store.record("fm_economy_benefits", "t09-sp-synthetic", 1) is None
+
+
+def _certify_t10_municipal(database):
+    from kordena_fiscal.application.opportunity_radar import ISS_FACTS, ISS_RULE, scan_benefits
+
+    city = "3509205"
+    issuer = Cnpj("12345678000195")
+    month = date(2026, 11, 1)
+    citation = {
+        "act": "Ato de teste", "provision": "Art. 1", "review_reference": "fixture-review",
+        "published_on": "2020-01-01", "valid_from": "2020-01-01", "valid_until": None,
+        "source_url": "https://example.gov.br/fixture", "source_sha256": "a" * 64,
+    }
+    policy = {"schema_version": ISS_RULE, "modality": "exemption", "review_status": "reviewed",
+              "review_reference": "fixture-review", "citation": citation}
+
+    def no_verifier(*args):
+        pytest.fail("Only the municipal snapshot exists in this test scope")
+
+    scope = _scope(tenant="tenant-t10")
+    args = dict(record_id="iss", tax_code="ISS", jurisdiction=city,
+                normative_reference="Ato de teste", valid_until=None)
+    with database.economy(scope) as store:
+        digest = store.append_benefit(**args, version=1, valid_from=date(2020, 1, 1),
+                                      content=policy)
+        store.append_snapshot(record_id="facts", version=1, competence=month, issuer=issuer,
+                              content={"schema_version": ISS_FACTS, "review_status": "reviewed",
+                                       "municipality_ibge_code": city,
+                                       "assessments": {"iss": {
+                                           "criteria_verified": True, "rule_digest": digest,
+                                           "iss_incidence_ibge_code": city, "modality": "exemption",
+                                           "review_reference": "fixture-issuer-review",
+                                           "ordinary_iss_cents": 1000, "incentivized_iss_cents": 0,
+                                       }}})
+
+    def run(scope, city):
+        with database.economy(scope, read_only=True) as store:
+            return scan_benefits(store, issuer.value, city, month, no_verifier,
+                                 no_verifier)["opportunities"]
+
+    assert [r["estimated_cents"] for r in run(scope, city)] == [1000]
+    assert not run(_scope(tenant="tenant-t10-other"), city)
+    assert not run(_scope(tenant="tenant-t10", unit="unit-b"), city)
+    assert not run(scope, "3550308")
+    with database.economy(scope) as store:
+        store.append_benefit(**args, version=2, valid_from=date(2026, 11, 15),
+                             content={"schema_version": ISS_RULE, "review_status": "revoked"})
+    assert not run(scope, city)
