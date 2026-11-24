@@ -643,3 +643,33 @@ test("radar uses selected unit and shows missing estimates and coverage", async 
   await expect(page.getByText("Ato de teste — sem estimativa")).toBeVisible();
   await expect(page.getByText("Estadual — faltam dados revisados")).toBeVisible();
 });
+
+test("quarterly simulator submits only the selected scope and period", async ({page, context}) => {
+  await page.route("**/v1/portal/bootstrap", route => route.fulfill({json: {
+    tenant_id: "tenant-e2e", unit_ids: ["unit-a"], role: "owner",
+    permissions: ["portal.read", "document.query", "audit.read"], supported_documents: ["nfe"],
+    projection: {authorized_units: [{unit_id: "unit-a", display_name: "Unidade A", environments: ["homologation"]}]},
+  }}));
+  await context.addCookies([{name: "nfcore_csrf", value: "csrf-e2e", domain: "127.0.0.1", path: "/"}]);
+  await page.route("**/v1/portal/surfaces/**", route => route.fulfill({json: {rows: []}}));
+  await page.route("**/v1/portal/cognitive/economy/quarterly-simulation", route => {
+    const body = route.request().postDataJSON();
+    expect(body).toEqual({unit_id: "unit-a", environment: "homologation", competence: expect.stringMatching(/^2026-(01|04)-01$/)});
+    expect(route.request().headers()["x-csrf-token"]).toBe("csrf-e2e");
+    if (body.competence === "2026-04-01") return route.fulfill({json: {status: "insufficient_basis"}});
+    const income = {irpj: 1057500, additional_irpj: 105000, csll: 621000};
+    return route.fulfill({json: {status: "simulated", review_reference: "trimestre-revisado",
+      lucro_presumido: income, lucro_real: income, months: [{competence: "2026-01-01",
+        cumulative: {pis: 650, cofins: 3000}, noncumulative: {pis_balance: -350, cofins_balance: 1600},
+        regular_vat: {ibs_balance: 80, cbs_balance: 750}}]}});
+
+  });
+  await page.goto("/");
+  await page.getByRole("button", {name: "Reforma Tributária", exact: true}).click();
+  await page.getByRole("button", {name: "Simular trimestre"}).click();
+  await expect(page.getByText("Cenários consultivos · Revisão trimestre-revisado")).toBeVisible();
+  await expect(page.getByText(/2026-01 · PIS\/Cofins cumulativos/)).toBeVisible();
+  await page.getByLabel("Trimestre de 2026").selectOption("2026-04-01");
+  await page.getByRole("button", {name: "Simular trimestre"}).click();
+  await expect(page.getByText("Falta uma base contábil revisada para esta unidade e trimestre.")).toBeVisible();
+});

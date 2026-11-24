@@ -1,0 +1,183 @@
+<?xml version='1.0' encoding='utf-8'?>
+<ss:Workbook xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">
+  <ss:Worksheet ss:Name="Conferência T11">
+    <ss:Table>
+      <ss:Row>
+        <ss:Cell>
+          <ss:Data ss:Type="String">lucro_presumido</ss:Data>
+        </ss:Cell>
+        <ss:Cell>
+          <ss:Data ss:Type="String">irpj_base</ss:Data>
+        </ss:Cell>
+        <ss:Cell ss:Formula="=(1000000*8%+440000*8.8%+250000*32%+110000*35.2%)*100">
+          <ss:Data ss:Type="Number">23744000</ss:Data>
+        </ss:Cell>
+      </ss:Row>
+      <ss:Row>
+        <ss:Cell>
+          <ss:Data ss:Type="String">lucro_presumido</ss:Data>
+        </ss:Cell>
+        <ss:Cell>
+          <ss:Data ss:Type="String">irpj</ss:Data>
+        </ss:Cell>
+        <ss:Cell ss:Formula="=ROUND(R[-1]C*15%,0)">
+          <ss:Data ss:Type="Number">3561600</ss:Data>
+        </ss:Cell>
+      </ss:Row>
+      <ss:Row>
+        <ss:Cell>
+          <ss:Data ss:Type="String">lucro_presumido</ss:Data>
+        </ss:Cell>
+        <ss:Cell>
+          <ss:Data ss:Type="String">additional_irpj</ss:Data>
+        </ss:Cell>
+        <ss:Cell ss:Formula="=ROUND(MAX(0,R[-2]C-6000000)*10%,0)">
+          <ss:Data ss:Type="Number">1774400</ss:Data>
+        </ss:Cell>
+      </ss:Row>
+      <ss:Row>
+        <ss:Cell>
+          <ss:Data ss:Type="String">lucro_presumido</ss:Data>
+        </ss:Cell>
+        <ss:Cell>
+          <ss:Data ss:Type="String">csll_base</ss:Data>
+        </ss:Cell>
+        <ss:Cell ss:Formula="=(1440000*12%+360000*32%)*100">
+          <ss:Data ss:Type="Number">28800000</ss:Data>
+        </ss:Cell>
+      </ss:Row>
+      <ss:Row>
+        <ss:Cell>
+          <ss:Data ss:Type="String">lucro_presumido</ss:Data>
+        </ss:Cell>
+        <ss:Cell>
+          <ss:Data ss:Type="String">csll</ss:Data>
+        </ss:Cell>
+        <ss:Cell ss:Formula="=ROUND(R[-1]C*9%,0)">
+          <ss:Data ss:Type="Number">2592000</ss:Data>
+        </ss:Cell>
+      </ss:Row>
+      <ss:Row>
+        <ss:Cell>
+          <ss:Data ss:Type="String">lucro_real</ss:Data>
+        </ss:Cell>
+        <ss:Cell>
+          <ss:Data ss:Type="String">irpj_base</ss:Data>
+        </ss:Cell>
+        <ss:Cell ss:Formula="=7000000+100000-50000">
+          <ss:Data ss:Type="Number">7050000</ss:Data>
+        </ss:Cell>
+      </ss:Row>
+      <ss:Row>
+        <ss:Cell>
+          <ss:Data ss:Type="String">lucro_real</ss:Data>
+        </ss:Cell>
+        <ss:Cell>
+          <ss:Data ss:Type="String">irpj</ss:Data>
+        </ss:Cell>
+        <ss:Cell ss:Formula="=ROUND(R[-1]C*15%,0)">
+          <ss:Data ss:Type="Number">1057500</ss:Data>
+        </ss:Cell>
+      </ss:Row>
+      <ss:Row>
+        <ss:Cell>
+          <ss:Data ss:Type="String">lucro_real</ss:Data>
+        </ss:Cell>
+        <ss:Cell>
+          <ss:Data ss:Type="String">additional_irpj</ss:Data>
+        </ss:Cell>
+        <ss:Cell ss:Formula="=ROUND(MAX(0,R[-2]C-6000000)*10%,0)">
+          <ss:Data ss:Type="Number">105000</ss:Data>
+        </ss:Cell>
+      </ss:Row>
+      <ss:Row>
+        <ss:Cell>
+          <ss:Data ss:Type="String">lucro_real</ss:Data>
+        </ss:Cell>
+        <ss:Cell>
+          <ss:Data ss:Type="String">csll_base</ss:Data>
+        </ss:Cell>
+        <ss:Cell ss:Formula="=7000000-100000">
+          <ss:Data ss:Type="Number">6900000</ss:Data>
+        </ss:Cell>
+      </ss:Row>
+      <ss:Row>
+        <ss:Cell>
+          <ss:Data ss:Type="String">lucro_real</ss:Data>
+        </ss:Cell>
+        <ss:Cell>
+          <ss:Data ss:Type="String">csll</ss:Data>
+        </ss:Cell>
+        <ss:Cell ss:Formula="=ROUND(R[-1]C*9%,0)">
+          <ss:Data ss:Type="Number">621000</ss:Data>
+        </ss:Cell>
+      </ss:Row>
+      <ss:Row>
+        <ss:Cell>
+          <ss:Data ss:Type="String">cumulative</ss:Data>
+        </ss:Cell>
+        <ss:Cell>
+          <ss:Data ss:Type="String">pis</ss:Data>
+        </ss:Cell>
+        <ss:Cell ss:Formula="=100000*0.65%">
+          <ss:Data ss:Type="Number">650</ss:Data>
+        </ss:Cell>
+      </ss:Row>
+      <ss:Row>
+        <ss:Cell>
+          <ss:Data ss:Type="String">cumulative</ss:Data>
+        </ss:Cell>
+        <ss:Cell>
+          <ss:Data ss:Type="String">cofins</ss:Data>
+        </ss:Cell>
+        <ss:Cell ss:Formula="=100000*3%">
+          <ss:Data ss:Type="Number">3000</ss:Data>
+        </ss:Cell>
+      </ss:Row>
+      <ss:Row>
+        <ss:Cell>
+          <ss:Data ss:Type="String">noncumulative</ss:Data>
+        </ss:Cell>
+        <ss:Cell>
+          <ss:Data ss:Type="String">pis_balance</ss:Data>
+        </ss:Cell>
+        <ss:Cell ss:Formula="=100000*1.65%-2000">
+          <ss:Data ss:Type="Number">-350</ss:Data>
+        </ss:Cell>
+      </ss:Row>
+      <ss:Row>
+        <ss:Cell>
+          <ss:Data ss:Type="String">noncumulative</ss:Data>
+        </ss:Cell>
+        <ss:Cell>
+          <ss:Data ss:Type="String">cofins_balance</ss:Data>
+        </ss:Cell>
+        <ss:Cell ss:Formula="=100000*7.6%-6000">
+          <ss:Data ss:Type="Number">1600</ss:Data>
+        </ss:Cell>
+      </ss:Row>
+      <ss:Row>
+        <ss:Cell>
+          <ss:Data ss:Type="String">regular_vat</ss:Data>
+        </ss:Cell>
+        <ss:Cell>
+          <ss:Data ss:Type="String">ibs_balance</ss:Data>
+        </ss:Cell>
+        <ss:Cell ss:Formula="=100-20">
+          <ss:Data ss:Type="Number">80</ss:Data>
+        </ss:Cell>
+      </ss:Row>
+      <ss:Row>
+        <ss:Cell>
+          <ss:Data ss:Type="String">regular_vat</ss:Data>
+        </ss:Cell>
+        <ss:Cell>
+          <ss:Data ss:Type="String">cbs_balance</ss:Data>
+        </ss:Cell>
+        <ss:Cell ss:Formula="=900-150">
+          <ss:Data ss:Type="Number">750</ss:Data>
+        </ss:Cell>
+      </ss:Row>
+    </ss:Table>
+  </ss:Worksheet>
+</ss:Workbook>

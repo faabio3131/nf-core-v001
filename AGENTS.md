@@ -1,4 +1,5 @@
-> **Retomada em 24/11/2026.** A #592 foi integrada na main. Comece pelo [cronograma de execução](docs/NFCORE_CENTRAL_ECONOMIA_FISCAL_EXECUTION_SCHEDULE.md) e pela #594 (T10). A #593 acompanha a pendência fiscal externa. Os registros datados abaixo preservam o histórico.
+> **Retomada em 24/11/2026 — T11.** A T10 foi integrada pela #596 e certificada na main em `8f48f5af`. Consulte o [cronograma](docs/NFCORE_CENTRAL_ECONOMIA_FISCAL_EXECUTION_SCHEDULE.md), a [issue #597](https://github.com/faabio3131/nf-core-v001/issues/597) e o [handoff T11](docs/NFCORE_T11_SIMULATION_HANDOFF.md). Confirme o HEAD e a CI antes da integração. A expansão territorial #593 prossegue em paralelo.
+
 
 > **T09 — DECISÃO DE GATE 22/11/2026 (CONFIRMAR CURRENT NO GITHUB):** o proprietário classificou o **aceite humano da curadoria** como **pendência EXTERNA de promoção**, não como dependência do DoD de engenharia interna. T09-INT fecha somente com fontes originais, consolidação normativa por UF e competência, CONFAZ, testes jurídicos, auditoria técnica independente, CI e evidências; o aceite humano, parecer contábil e concessões reais ficam em T09-EXT e preservam bloqueio fail-closed para importação/aplicação fiscal. Não declarar T09-INT concluída enquanto a pesquisa estiver incompleta. Fonte: `docs/NFCORE_T09_CURATORIAL_GATE_HANDOFF_20261122.md`. Nenhum merge/deploy implícito.
 
