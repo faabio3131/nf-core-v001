@@ -235,6 +235,12 @@ def map_bling_document(
     )
     if document.totals.net_amount.amount != expected:
         raise FiscalValidationError("canonical total differs from Bling reconciled amount")
+    if any(
+        line.tax_decision.outcome.nfe_rates is not None
+        and line.tax_decision.outcome.nfe_rates.icms_benefit is not None
+        for line in document.items
+    ):
+        raise FiscalValidationError("T14 benefit requires canonical authorized NF-e preparation")
     calculated_taxes = tuple(
         calculate_nfe_line(
             line.tax_decision,

@@ -26,7 +26,7 @@ from kordena_fiscal.tax import (
     TaxRuleOutcome,
     TaxRuleSelector,
 )
-from kordena_fiscal.tax.nfe_calculation import NfeRateParameters
+from kordena_fiscal.tax.nfe_calculation import NfeRateParameters, ReviewedIcmsBenefit
 
 
 def _unique(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
@@ -123,8 +123,32 @@ def parse_sale_rule(
         "rtc_cbs_reduction_rate",
         "pis_other_mode",
         "cofins_other_mode",
+        "icms_benefit",
     }:
         raise FiscalValidationError("unsupported fiscal calculation parameters")
+    benefit = None
+    if "icms_benefit" in rates:
+        raw = rates["icms_benefit"]
+        if not isinstance(raw, dict):
+            raise FiscalValidationError("ICMS benefit must be an object")
+        required = {"code", "reviewed_by", "approval_reference"}
+        optional = {
+            "deson_mode", "deson_rate", "deson_reason", "deduct_deson", "deferral_rate",
+            "benefit_id",
+        }
+        if not required <= set(raw) or set(raw) - required - optional:
+            raise FiscalValidationError("invalid ICMS benefit evidence fields")
+        benefit = ReviewedIcmsBenefit(
+            code=raw["code"], reviewed_by=raw["reviewed_by"],
+            benefit_id=raw.get("benefit_id"),
+            approval_reference=raw["approval_reference"],
+            deson_mode=raw.get("deson_mode"),
+            deson_rate=Decimal(str(raw["deson_rate"])) if "deson_rate" in raw else None,
+            deson_reason=raw.get("deson_reason"), deduct_deson=raw.get("deduct_deson"),
+            deferral_rate=(
+                Decimal(str(raw["deferral_rate"])) if "deferral_rate" in raw else None
+            ),
+        )
     return TaxRule(
         rule_id=data["rule_id"],
         version=data["version"],
@@ -233,6 +257,7 @@ def parse_sale_rule(
                 ),
                 pis_other_mode=rates.get("pis_other_mode"),
                 cofins_other_mode=rates.get("cofins_other_mode"),
+                icms_benefit=benefit,
             ),
         ),
     )

@@ -92,3 +92,15 @@ test("network ambiguity preserves the original request and key", async ({page, c
 test("viewer cannot see sale preparation", async ({page, context}) => {
   await expect(await openSale(page, context, false)).toHaveCount(0);
 });
+
+test("T14 reviewed ICMS configuration warns of mandatory server approval", async ({page, context}) => {
+  const form = await openSale(page, context);
+  await page.route("**/v1/portal/operations/reviewNativeSale", route => route.fulfill({json:{
+    policy_sha256:"a".repeat(64), products:[{product_id:"p1", description:"Synthetic", unit:"UN"}],
+    accounting_approval_required:[{benefit_id:"synthetic-benefit", benefit_code:"SP000001", rule_id:"r1"}],
+  }}));
+  await form.locator('[name="document_kind"]').selectOption("nfe");
+  await form.getByRole("button", {name:"Carregar configuração fiscal"}).click();
+  await expect(form.getByRole("status")).toContainText("SP000001 (synthetic-benefit)");
+  await expect(form.getByRole("status")).toContainText("sem parecer válido, a operação é bloqueada");
+});

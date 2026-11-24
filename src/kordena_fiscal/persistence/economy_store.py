@@ -145,6 +145,8 @@ class EconomyStore:
         self._require_active()
         if table not in TABLES:
             raise FiscalValidationError("unknown economy persistence table")
+        if table in {"fm_economy_snapshots", "fm_economy_benefits"}:
+            self.lock_accounting_issuance()
         names = (*SCOPE_COLUMNS.split(", "), *columns, "created_at")
         # Identifiers are composed by psycopg, values are always bound parameters.
         statement = sql.SQL("INSERT INTO {} ({}) VALUES ({})").format(
@@ -480,11 +482,20 @@ class EconomyStore:
             raise FiscalValidationError("duplicate accounting review request")
         return int(rows[0][0]) if rows else None
 
+    def lock_accounting_issuance(self) -> None:
+        """Serialize scoped evidence mutations with a T14 durable issuance claim."""
+        self._require_active()
+        key = "nfcore:t14:" + json.dumps(list(self._scope.identity_material))
+        self._conn.execute(
+            "SELECT pg_advisory_xact_lock(hashtextextended(%s, 0))", (key,),
+        )
+
     def lock_state_review_import(self, snapshot_id: str, benefit_id: str) -> None:
         """Serialize same-scope imports across PostgreSQL transactions."""
         self._require_active()
         self._identity(snapshot_id, 1)
         self._identity(benefit_id, 1)
+        self.lock_accounting_issuance()
         key = "|".join((*self._scope.identity_material, snapshot_id, benefit_id))
         self._conn.execute(
             "SELECT pg_advisory_xact_lock(hashtextextended(%s, 0))", (key,),

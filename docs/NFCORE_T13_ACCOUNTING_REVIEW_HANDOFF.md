@@ -29,3 +29,6 @@ Aprovar é registrar um parecer humano vinculado ao resultado, nunca aplicar ben
 ## Estado e continuidade
 
 Candidata em construção/certificação, sem merge, deploy ou promoção. Depois de testes locais e PR Draft, consultar CI exata, gerar pacote incremental e obter parecer independente Gemini. Só então solicitar autorização de merge; T14 permanece bloqueada até CI pós-merge e documentação final. Não transformar engenharia interna em aprovação fiscal real.
+
+## Fechamento certificado — 24/11/2026
+PR #603 MERGED por autorização expressa do diretor; merge 1d675ae9384c15d1b79012c4f07d3ef20ab501c4 com árvore idêntica ao HEAD 1d2e9defbb4353be836807672b2876d7be4bf514 aprovado pelo Gemini. CI pós-merge #45434601978 SUCCESS, 44/44, 7034 Python PASS, 1 SKIP (composição de produção exige PostgreSQL), 85 E2E PASS. Governança #45434601658 SUCCESS. Parecer integral no Drive https://drive.google.com/file/d/1Dd5kN1oWpzAs-C5jVSWLF31LA133E3HL/view. 0 P0/P1; #604 acompanha 2 P2 e 3 P3 não bloqueantes; verificar evidência nova antes de fechar refinamentos. T14 liberada por ordem expressa do diretor, issue #605. Nenhuma autorização de uso fiscal real.
