@@ -1,5 +1,13 @@
 # Central de Economia Fiscal — execução T01–T22
 
+## Diretriz do diretor em 24/11/2026 — construção do SaaS e expansão nacional
+
+A prioridade é concluir o SaaS e comprovar que suas jornadas funcionam de ponta a ponta no escopo implementado. A engenharia avança na sequência do cronograma, com os testes, a revisão, a integração e a certificação de cada bloco. A ausência de cobertura de uma UF, município, modalidade ou competência não bloqueia a construção nem a passagem à próxima tarefa após o aceite técnico do bloco atual.
+
+A cobertura territorial cresce conforme a programação de expansão. Registrar as lacunas para futura curadoria, com jurisdição, modalidade, competência e evidência pendente. Quando a plataforma estiver internamente pronta e funcionando, o foco passa a ser a expansão nacional sobre a mesma arquitetura.
+
+No radar, uma lacuna deve aparecer como cobertura indisponível ou base insuficiente. Uma regra sem comprovação continua excluída da estimativa e do cálculo naquele escopo. Para a T10, cadastrar um primeiro incentivo municipal real ou concluir a curadoria estadual da [#593](https://github.com/faabio3131/nf-core-v001/issues/593) não é pré-requisito para integrar o motor nem para iniciar a T11 após os gates de integração. A [#594](https://github.com/faabio3131/nf-core-v001/issues/594) acompanha a entrega técnica.
+
 ## Ponto de retomada em 24/11/2026
 
 A [PR #592](https://github.com/faabio3131/nf-core-v001/pull/592) integrou as sete PRs de T01–T09 na `main` pelo commit `f19122a8b158a3910271890a74a3f4f66a7d5852`. O responsável pelo projeto autorizou o merge após reavaliação técnica pelo agente. A árvore integrada é idêntica à da revisão `85ed8703`. [CI da revisão](https://github.com/faabio3131/nf-core-v001/actions/runs/45313958431) · [CI do merge](https://github.com/faabio3131/nf-core-v001/actions/runs/45316804802).
