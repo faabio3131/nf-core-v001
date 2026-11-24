@@ -378,7 +378,7 @@ def calculate_nfe_line(
             if code == "20" and benefit.deson_rate != policy.icms_rate:
                 raise FiscalValidationError("nominal desoneration requires the reviewed ICMS rate")
     elif code == "51":
-        raise FiscalValidationError("CST 51 requires reviewed benefit evidence")
+        raise FiscalValidationError("unsupported CST 51 without reviewed benefit evidence")
     taxable_icms = code in {"00", "10", "20", "51", "70"}
     if policy.fcp_rate is not None and not taxable_icms:
         raise FiscalValidationError("FCP configuration requires taxable ICMS group")
