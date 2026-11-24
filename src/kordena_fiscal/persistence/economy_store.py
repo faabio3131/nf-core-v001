@@ -30,7 +30,7 @@ def _validate_json(value: Any, depth: int = 0) -> None:
     if value is None or isinstance(value, bool):
         return
     if isinstance(value, str):
-        if "\\x00" in value:
+        if "\x00" in value:
             raise FiscalValidationError("economy record text contains a null byte")
         return
     if type(value) is int and -(2**63) <= value < 2**63:
@@ -324,6 +324,53 @@ class EconomyStore:
             (*self._scope.identity_material, record_id, following),
         ).fetchone()
         return int(row[0]) if row is not None else None
+
+    def federal_benefit_candidates(
+        self, *, competence: date, schema_version: str, limit: int = 500,
+    ) -> tuple[dict[str, Any], ...]:
+        """Rank effective amendments before checking schema or limiting records."""
+        self._require_active()
+        if (
+            type(competence) is not date or competence.day != 1
+            or not isinstance(schema_version, str)
+            or not re.fullmatch(r"[a-zA-Z0-9./_-]{1,128}", schema_version)
+            or type(limit) is not int or not 1 <= limit <= 500
+        ):
+            raise FiscalValidationError("invalid federal benefit catalog projection")
+        following = date(
+            competence.year + (competence.month == 12),
+            competence.month % 12 + 1, 1,
+        )
+        rows = self._conn.execute(
+            """WITH ranked AS (
+                 SELECT to_jsonb(r) AS payload,
+                        ROW_NUMBER() OVER (
+                            PARTITION BY r.record_id ORDER BY r.version DESC
+                        ) AS rank_version
+                   FROM fm_economy_benefits AS r
+                  WHERE r.host_namespace=%s AND r.tenant_id=%s AND r.unit_id=%s
+                    AND r.environment=%s AND r.valid_from < %s
+                    AND EXISTS (
+                        SELECT 1 FROM fm_economy_benefits AS anchor
+                         WHERE anchor.host_namespace=r.host_namespace
+                           AND anchor.tenant_id=r.tenant_id
+                           AND anchor.unit_id=r.unit_id
+                           AND anchor.environment=r.environment
+                           AND anchor.record_id=r.record_id
+                           AND anchor.jurisdiction='BR'
+                           AND anchor.content->>'schema_version'=%s
+                    )
+               )
+               SELECT payload FROM ranked WHERE rank_version=1
+               ORDER BY payload->>'record_id' LIMIT %s""",
+            (*self._scope.identity_material, following, schema_version, limit),
+        ).fetchall()
+        results = tuple(dict(row[0]) for row in rows)
+        for record in results:
+            content = record.get("content")
+            if not isinstance(content, dict) or _digest(content)[1] != record["digest"]:
+                raise FiscalValidationError("federal candidate record integrity mismatch")
+        return results
 
     def state_benefit_candidates(
         self, *, jurisdiction: str, competence: date, schema_version: str,

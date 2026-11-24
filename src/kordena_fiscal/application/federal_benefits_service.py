@@ -114,16 +114,9 @@ def evaluate_federal_benefit(
     benefit = store.record("fm_economy_benefits", benefit_id, benefit_version)
     if snapshot is None or benefit is None:
         raise FiscalValidationError("scoped federal facts or benefit version unavailable")
-    latest = store.record("fm_economy_benefits", benefit_id)
-    if latest is not None and latest["version"] > benefit_version:
-        month = date.fromisoformat(snapshot["competence"])
-        # A newer policy overlapping ANY part of this competence supersedes
-        # the old version for triage; partial-month revisions require review.
-        if date.fromisoformat(latest["valid_from"]) < _month_end(month) and (
-            latest["valid_until"] is None
-            or date.fromisoformat(latest["valid_until"]) >= month
-        ):
-            raise FiscalValidationError("federal benefit version superseded for competence")
+    month = date.fromisoformat(snapshot["competence"])
+    if store.benefit_version_at(benefit_id, month) != benefit_version:
+        raise FiscalValidationError("federal benefit version superseded for competence")
     return _evaluate(snapshot, benefit, store.scope_identity, verify_issuer)
 
 
@@ -161,6 +154,9 @@ def import_reviewed_federal_benefit(
         "valid_until": valid_until.isoformat() if valid_until is not None else None,
         "content": benefit_content, "digest": _digest(benefit_content)[1],
     }
+    effective_version = store.benefit_version_at(benefit_id, competence)
+    if effective_version is not None and effective_version > benefit_version:
+        raise FiscalValidationError("federal benefit version superseded for competence")
     result = _evaluate(snapshot, benefit, store.scope_identity, verify_issuer)
     old_snapshot = store.record("fm_economy_snapshots", snapshot_id, snapshot_version)
     old_benefit = store.record("fm_economy_benefits", benefit_id, benefit_version)
@@ -200,17 +196,10 @@ def search_federal_benefits(
     snapshot = store.record("fm_economy_snapshots", snapshot_id, snapshot_version)
     if snapshot is None:
         raise FiscalValidationError("scoped federal facts unavailable")
-    rows = store.records(
-        "fm_economy_benefits", limit=limit, schema_version=RULE_SCHEMA,
+    competence = date.fromisoformat(snapshot["competence"])
+    rows = store.federal_benefit_candidates(
+        competence=competence, schema_version=RULE_SCHEMA, limit=limit,
     )
-    latest: dict[str, dict[str, Any]] = {}
-    for row in rows:
-        policy = row.get("content")
-        if not isinstance(policy, dict) or policy.get("schema_version") != RULE_SCHEMA:
-            continue
-        key = str(row["record_id"])
-        if key not in latest or row["version"] > latest[key]["version"]:
-            latest[key] = row
     outcomes: list[dict[str, Any]] = []
     cache: dict[tuple[str, date], ReviewedFederalIssuer] = {}
 
@@ -220,12 +209,9 @@ def search_federal_benefits(
             cache[key] = verify_issuer(issuer, competence)
         return cache[key]
 
-    for benefit in sorted(latest.values(), key=lambda b: str(b["record_id"])):
+    for benefit in rows:
         policy = benefit["content"]
-        newest = store.record("fm_economy_benefits", benefit["record_id"])
-        # Do not resurrect an older rule if a newer version changed schema,
-        # was revoked, or is otherwise outside the filtered search page.
-        if newest is None or newest["version"] != benefit["version"]:
+        if policy.get("schema_version") != RULE_SCHEMA:
             outcomes.append({
                 "benefit_id": benefit["record_id"], "benefit_version": benefit["version"],
                 "status": "review_required", "reason_codes": ["newer_policy_not_reviewed"],

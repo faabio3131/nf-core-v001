@@ -729,6 +729,39 @@ def _certify_t08_federal(database):
         assert search["results"][0] == first
         assert search["coverage_truncated"] is False
         assert search["complete_national_coverage"] is False
+    # Regression NF592-01: a future amendment cannot conceal revocation.
+    with database.economy(scope) as store:
+        for version, start, review_status in (
+            (2, date(2026, 6, 1), "revoked"),
+            (3, date(2027, 1, 1), "reviewed"),
+        ):
+            store.append_benefit(
+                record_id="t08-benefit", version=version, tax_code=program.tax_code,
+                jurisdiction="BR", normative_reference=program.legal_act,
+                valid_from=start, valid_until=date(2028, 1, 1),
+                content=policy | {"review_status": review_status,
+                                  "valid_from": start.isoformat(),
+                                  "valid_until": "2028-01-01"},
+            )
+        with pytest.raises(FiscalValidationError, match="null byte"):
+            store.append_snapshot(
+                record_id="t08-nul", version=1, competence=date(2026, 11, 1),
+                issuer=Cnpj("12345678000195"), content={"invalid": "a\x00b"},
+            )
+        assert store.record("fm_economy_snapshots", "t08-nul", 1) is None
+    with database.economy(scope, read_only=True) as store:
+        assert store.benefit_version_at("t08-benefit", date(2026, 11, 1)) == 2
+        with pytest.raises(FiscalValidationError, match="superseded"):
+            evaluate_federal_benefit(
+                store, snapshot_id="t08-snapshot", snapshot_version=1,
+                benefit_id="t08-benefit", benefit_version=1, verify_issuer=verify,
+            )
+        result = search_federal_benefits(
+            store, snapshot_id="t08-snapshot", snapshot_version=1, verify_issuer=verify,
+        )
+        assert result["counts"]["potential"] == 0
+        assert result["results"][0]["benefit_version"] == 2
+        assert result["results"][0]["reason_codes"] == ["rule_not_reviewed"]
     with database.economy(_scope(tenant="economy-t08-foreign"), read_only=True) as store:
         assert store.record("fm_economy_snapshots", "t08-snapshot", 1) is None
         assert store.record("fm_economy_benefits", "t08-benefit", 1) is None

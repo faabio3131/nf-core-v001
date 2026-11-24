@@ -81,6 +81,29 @@ class FakeStore:
             return max(matches, key=lambda row: row["version"]) if matches else None
         return self.rows.get((table, record_id, version))
 
+    def benefit_version_at(self, record_id, competence):
+        following = date(competence.year + (competence.month == 12),
+                         competence.month % 12 + 1, 1)
+        return max((
+            version for (table, rid, version), row in self.rows.items()
+            if table == "fm_economy_benefits" and rid == record_id
+            and date.fromisoformat(row["valid_from"]) < following
+        ), default=None)
+
+    def federal_benefit_candidates(self, *, competence, schema_version, limit=500):
+        ids = {
+            rid for (table, rid, _), row in self.rows.items()
+            if table == "fm_economy_benefits"
+            and row["jurisdiction"] == "BR"
+            and row["content"].get("schema_version") == schema_version
+        }
+        result = []
+        for rid in sorted(ids):
+            version = self.benefit_version_at(rid, competence)
+            if version is not None:
+                result.append(self.record("fm_economy_benefits", rid, version))
+        return tuple(result[:limit])
+
     def records(self, table, *, limit=100, schema_version=None):
         return tuple(
             row for (name, _, _), row in self.rows.items()
@@ -375,3 +398,50 @@ def test_non_federal_noise_does_not_consume_federal_search_limit():
     assert result["counts"]["potential"] == 1
     assert result["coverage_truncated"] is False
     assert result["results"][0]["benefit_id"] == "lei-do-bem"
+
+
+
+@pytest.mark.parametrize("revoked", [True, False])
+def test_effective_version_is_not_hidden_by_future_version(revoked):
+    from kordena_fiscal.application.federal_benefits_service import search_federal_benefits
+
+    store = FakeStore()
+    first = import_reviewed_federal_benefit(store, **bundle(), verify_issuer=verify)
+    for version, start, status in (
+        (2, date(2026, 6, 1), "revoked"),
+        (3, date(2027, 1, 1), "reviewed"),
+    ):
+        if version == 2 and not revoked:
+            continue
+        store.append_benefit(
+            record_id="lei-do-bem", version=version, tax_code="IRPJ_CSLL",
+            jurisdiction="BR", normative_reference=PROGRAMS["LEI_DO_BEM"].legal_act,
+            valid_from=start, valid_until=date(2028, 1, 1),
+            content=bundle()["benefit_content"] | {
+                "review_status": status, "valid_from": start.isoformat(),
+                "valid_until": "2028-01-01",
+            },
+        )
+    args = dict(snapshot_id="federal-snapshot", snapshot_version=1, verify_issuer=verify)
+    if revoked:
+        with pytest.raises(FiscalValidationError, match="superseded"):
+            evaluate_federal_benefit(
+                store, **args, benefit_id="lei-do-bem", benefit_version=1,
+            )
+        with pytest.raises(FiscalValidationError, match="superseded"):
+            import_reviewed_federal_benefit(store, **bundle(), verify_issuer=verify)
+        result = search_federal_benefits(store, **args)
+        assert result["counts"]["potential"] == 0
+        assert result["results"][0]["benefit_version"] == 2
+    else:
+        assert evaluate_federal_benefit(
+            store, **args, benefit_id="lei-do-bem", benefit_version=1,
+        ) == first
+        assert search_federal_benefits(store, **args)["results"] == [first]
+
+
+def test_economy_json_rejects_real_nul_not_literal_escape():
+    for content in ({"value": "a\x00b"}, {"a\x00b": "value"}, {"nested": ["\x00"]}):
+        with pytest.raises(FiscalValidationError, match="null byte"):
+            _digest(content)
+    assert _digest({"value": r"a\x00b"})[1]
