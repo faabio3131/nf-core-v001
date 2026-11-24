@@ -1,0 +1,1729 @@
+{
+  "schema_version": "nfcore.t09.state-benefit-draft-candidates/v1",
+  "as_of": "2026-11-21",
+  "advisory_only": true,
+  "approved_for_eligibility": false,
+  "import_authorized": false,
+  "candidates": [
+    {
+      "candidate_id": "AC-INDUSTRIA-LEI1358-DEC4196-V1",
+      "candidate_version": 1,
+      "uf": "AC",
+      "review_status": "draft",
+      "benefit_kind": "special_regime",
+      "tax_code": "ICMS",
+      "normative_reference": "Lei 1.358/2000; Decreto 4.196/2001; Lei 3.460/2018; Decreto 11.618/2025",
+      "legal_path_research": "unresolved_pending_confaz_and_reinstitution_review",
+      "state_official_source_url": "https://www.legis.ac.gov.br/detalhar/1775",
+      "official_evidence_type": "official_tax_compliance_guidance",
+      "findings_verified_from_public_source": [
+        "A SEFAZ/AC identifica código EFD AC040002 vinculado a indústrias incentivadas pela Lei 1.358/2000 e Decreto 4.196/2001",
+        "Lei 1.358/2000 define incentivo em modalidade de financiamento direto ao contribuinte, com dedução limitada ao investimento e teto de até 95% do ICMS próprio; NÃO é crédito presumido automático.",
+        "Art.1º da lei prevê prazo textual até 31/12/2035, que não atesta duração da concessão individual.",
+        "Decreto 4.196/2001 registra alteração 11.618/2025 com requisitos de ampliação/modernização e regularidade perante COPIAI."
+      ],
+      "eligibility_predicates_to_confirm": [
+        "Exigir projeto e ato individual, regularidade de ICMS/Simples e verificar contribuições e alterações"
+      ],
+      "negative_eligibility_scenario": "Não é crédito presumido automático; financiamento depende de ato/projeto individual, limitado a investimento e sujeição à lei vigente.",
+      "legal_temporal_notes": "Regime de financiamento tributário vinculado ao ICMS da Lei 1.358/2000, NÃO crédito presumido universal; observar projeto, teto e prazo da concessão, alterações de 2025 e limite legal até 2035.",
+      "mandatory_missing": [
+        "conferir texto primário integral, dispositivo concessivo, redações, revogações e efeitos para cada competência",
+        "verificar CONFAZ/LC160, lei estadual e ato individual quando aplicáveis",
+        "determinar operações elegíveis, contribuintes, NCM/CNAE/CFOP, ST/DIFAL, escrituração e condições de manutenção",
+        "capturar bytes originais da publicação oficial e calcular SHA256 real",
+        "obter teste positivo/negativo jurídico específico e aprovação independente do contador"
+      ],
+      "schema_version": "nfcore.state-icms-benefit-rule/v1",
+      "source_sha256": null,
+      "legal_reviewer": null,
+      "approved_for_eligibility": false,
+      "import_authorized": false,
+      "eligibility_certified": false,
+      "primary_source_review_20261121": {
+        "inspection_type": "official_current_statutory_and_amended_regulation",
+        "legal_provision": "Lei AC 1.358/2000 art.1º e Decreto 4.196/2001 arts.1º, 2º, 8º-A",
+        "sources": [
+          "https://www.legis.ac.gov.br/detalhar/1775",
+          "https://sefaz.ac.gov.br/2021/?p=21869",
+          "https://sefaz.ac.gov.br/2021/?p=11726",
+          "https://sefaz.ac.gov.br/2021/?p=14786",
+          "https://legis.ac.gov.br/detalhar/2217",
+          "https://legis.ac.gov.br/detalhar/6259"
+        ],
+        "primary_findings": [
+          "Lei 1.358/2000 define incentivo em modalidade de financiamento direto ao contribuinte, com dedução limitada ao investimento e teto de até 95% do ICMS próprio; NÃO é crédito presumido automático.",
+          "Art.1º da lei prevê prazo textual até 31/12/2035, que não atesta duração da concessão individual.",
+          "Decreto 4.196/2001 registra alteração 11.618/2025 com requisitos de ampliação/modernização e regularidade perante COPIAI.",
+          "Texto primário da Lei 1.358/2000 indexado no portal oficial LEGIS/AC; verificar versões, atos e outorgas individuais.",
+          "Portaria SEFAZ 140/2025 retirada da âncora material: o índice oficial aponta autorregularização fiscal; conferir texto principal de Lei 3.460/2018 e Decreto 11.618/2025."
+        ],
+        "red_flags": [
+          "financiamento_nao_e_credito_presumido",
+          "projeto_ou_aprovacao_ausente",
+          "prazo_individual_nao_demonstrado",
+          "primary_source_capture_requires_sha_and_human_consolidation",
+          "portaria_sefaz_140_2025_e_autorregularizacao_fiscal_nao_e_norma_material_do_incentivo"
+        ],
+        "fully_consolidated_current_to_20261121": false,
+        "independent_accountant_opinion": false,
+        "publisher_bytes_sha256": null
+      }
+    },
+    {
+      "candidate_id": "AL-PRODESIN-LEI5671-DEC38394-V1",
+      "candidate_version": 1,
+      "uf": "AL",
+      "review_status": "draft",
+      "benefit_kind": "special_regime",
+      "tax_code": "ICMS",
+      "normative_reference": "Lei 5.671/1995, Decreto 38.394/2000",
+      "legal_path_research": "unresolved_pending_confaz_and_reinstitution_review",
+      "state_official_source_url": "https://sapl.al.al.leg.br/media/sapl/public/normajuridica/2015/1189/1189_texto_integral.pdf",
+      "official_evidence_type": "official_state_law_amendment_7770_2015_NOT_complete_PRODESIN_consolidation",
+      "findings_verified_from_public_source": [
+        "SEFAZ/AL identifica Lei 5.671/1995 e Decreto 38.394/2000 como base do PRODESIN"
+      ],
+      "eligibility_predicates_to_confirm": [
+        "Depende de enquadramento e comprovação de concessão e da recadastramento/regime vigente"
+      ],
+      "negative_eligibility_scenario": "FAQ não substitui dispositivo completo, alterações e ato individual",
+      "legal_temporal_notes": "Indicador jurídico para triagem; texto consolidado e alterações até a competência de 2026 não foram integralmente auditados neste pacote.",
+      "mandatory_missing": [
+        "conferir texto primário integral, dispositivo concessivo, redações, revogações e efeitos para cada competência",
+        "verificar CONFAZ/LC160, lei estadual e ato individual quando aplicáveis",
+        "determinar operações elegíveis, contribuintes, NCM/CNAE/CFOP, ST/DIFAL, escrituração e condições de manutenção",
+        "capturar bytes originais da publicação oficial e calcular SHA256 real",
+        "obter teste positivo/negativo jurídico específico e aprovação independente do contador"
+      ],
+      "schema_version": "nfcore.state-icms-benefit-rule/v1",
+      "source_sha256": null,
+      "legal_reviewer": null,
+      "approved_for_eligibility": false,
+      "import_authorized": false,
+      "eligibility_certified": false,
+      "primary_source_review_20261121": {
+        "inspection_type": "blocked_primary_source_research_only",
+        "legal_provision": "Lei estadual 5.671/1995; Decreto estadual 38.394/2000; alterações posteriores PRODESIN",
+        "sources": [
+          "https://sapl.al.al.leg.br/media/sapl/public/normajuridica/2015/1189/1189_texto_integral.pdf",
+          "https://www.sefaz.al.gov.br/nise/faq/",
+          "https://sapl.al.al.leg.br/norma/1189"
+        ],
+        "primary_findings": [
+          "Site de FAQ da SEFAZ/AL respondeu página de manutenção em acesso direto; esse HTML não é ato legal e não deve ser hashado como fonte.",
+          "ALE/AL mantém lei modificadora do PRODESIN e atos correlatos, porém este pacote não conseguiu obter texto original completo da Lei 5.671/1995 com todas as alterações, inclusive prorrogação discutida em 2026.",
+          "ALE/AL disponibiliza a Lei 7.770/2015 modificadora da Lei 5.671/1995 do PRODESIN; este PDF não substitui a lei-base e decreto nem prova a redação vigente em 2026."
+        ],
+        "red_flags": [
+          "primary_original_law_unavailable_in_reliable_access",
+          "official_faq_maintenance_html",
+          "2026_prodesin_extension_unconsolidated",
+          "source_is_historical_or_amending_not_consolidated_2026"
+        ],
+        "fully_consolidated_current_to_20261121": false,
+        "independent_accountant_opinion": false,
+        "publisher_bytes_sha256": null
+      }
+    },
+    {
+      "candidate_id": "AM-POLITICA-INDUSTRIAL-DEC47727-V1",
+      "candidate_version": 1,
+      "uf": "AM",
+      "review_status": "draft",
+      "benefit_kind": "special_regime",
+      "tax_code": "ICMS",
+      "normative_reference": "Lei 2.826/2003, Decreto 47.727/2023 e alterações de 2026",
+      "legal_path_research": "unresolved_pending_confaz_and_reinstitution_review",
+      "state_official_source_url": "https://sistemas.sefaz.am.gov.br/get/Normas.do?metodo=viewDoc&uuidDoc=c4fa0162-c63e-47ed-8fc6-fe61309ddc15",
+      "official_evidence_type": "official_normative_regulation",
+      "findings_verified_from_public_source": [
+        "Regulamento prevê crédito estímulo, diferimento, isenção, crédito presumido de regionalização e redução de base de ICMS",
+        "Concessão referendada por Resolução do CODAM só se efetiva por decreto governamental que identifica a sociedade empresária e o benefício e seu prazo.",
+        "Regra de terceirização do processo produtivo em outros estados requer autorização prévia em hipóteses expressas.",
+        "Texto registra alterações pelos Decretos 53.496/2026 e posteriores, exigindo consolidação por data e projeto."
+      ],
+      "eligibility_predicates_to_confirm": [
+        "CODAM, decreto individual, produto incentivado, projeto e obrigações fiscais devem corresponder ao contribuinte"
+      ],
+      "negative_eligibility_scenario": "Decretos 53.487/2026 e 53.496/2026 alteraram a norma-base: consolidar dispositivos específicos",
+      "legal_temporal_notes": "Indicador jurídico para triagem; texto consolidado e alterações até a competência de 2026 não foram integralmente auditados neste pacote.",
+      "mandatory_missing": [
+        "conferir texto primário integral, dispositivo concessivo, redações, revogações e efeitos para cada competência",
+        "verificar CONFAZ/LC160, lei estadual e ato individual quando aplicáveis",
+        "determinar operações elegíveis, contribuintes, NCM/CNAE/CFOP, ST/DIFAL, escrituração e condições de manutenção",
+        "capturar bytes originais da publicação oficial e calcular SHA256 real",
+        "obter teste positivo/negativo jurídico específico e aprovação independente do contador"
+      ],
+      "schema_version": "nfcore.state-icms-benefit-rule/v1",
+      "source_sha256": null,
+      "legal_reviewer": null,
+      "approved_for_eligibility": false,
+      "import_authorized": false,
+      "eligibility_certified": false,
+      "primary_source_review_20261121": {
+        "inspection_type": "official_amended_fiscal_incentive_regulation",
+        "legal_provision": "Decreto AM 47.727/2023 art.70 e arts.67 e 81, alterações 2026",
+        "sources": [
+          "https://sistemas.sefaz.am.gov.br/get/Normas.do?metodo=viewDoc&uuidDoc=c4fa0162-c63e-47ed-8fc6-fe61309ddc15"
+        ],
+        "primary_findings": [
+          "Concessão referendada por Resolução do CODAM só se efetiva por decreto governamental que identifica a sociedade empresária e o benefício e seu prazo.",
+          "Regra de terceirização do processo produtivo em outros estados requer autorização prévia em hipóteses expressas.",
+          "Texto registra alterações pelos Decretos 53.496/2026 e posteriores, exigindo consolidação por data e projeto."
+        ],
+        "red_flags": [
+          "resolucao_sem_decreto_individual",
+          "produto_nao_aprovado",
+          "terceirizacao_nao_autorizada"
+        ],
+        "fully_consolidated_current_to_20261121": false,
+        "independent_accountant_opinion": false,
+        "publisher_bytes_sha256": null
+      }
+    },
+    {
+      "candidate_id": "AP-REGIME-ESPECIAL-RICMS-ART415-V1",
+      "candidate_version": 1,
+      "uf": "AP",
+      "review_status": "draft",
+      "benefit_kind": "special_regime",
+      "tax_code": "ICMS",
+      "normative_reference": "Decreto 2.269/1998, art. 415 incisos VI e VII",
+      "legal_path_research": "unresolved_pending_confaz_and_reinstitution_review",
+      "state_official_source_url": "https://sefaz.portal.ap.gov.br/conteudo/orientacoes/coordenadoria-de-tributacao-cotri",
+      "official_evidence_type": "official_tax_authority_guidance",
+      "findings_verified_from_public_source": [
+        "SEFAZ/AP COTRI cita impedimento de concessão a inadimplente e Selo Sustentabilidade para certas modalidades",
+        "COTRI identifica Selo Sustentabilidade como requisito do art.415 VII em determinados regimes, com exceção para obrigações acessórias.",
+        "Processo de regime especial exige análise, ato declaratório ou termo, homologação e publicação; mero protocolo não é deferimento.",
+        "Confirmação de eventual suspensão temporária da exigência do selo e de normativos novos de 2026 permanece necessária."
+      ],
+      "eligibility_predicates_to_confirm": [
+        "Exigir concessão individual e Selo Sustentabilidade quando aplicável, além de ausência de impedimento fiscal"
+      ],
+      "negative_eligibility_scenario": "Orientação administrativa não enumera todos os regimes de benefício nem demonstra consolidação 2026",
+      "legal_temporal_notes": "Indicador jurídico para triagem; texto consolidado e alterações até a competência de 2026 não foram integralmente auditados neste pacote.",
+      "mandatory_missing": [
+        "conferir texto primário integral, dispositivo concessivo, redações, revogações e efeitos para cada competência",
+        "verificar CONFAZ/LC160, lei estadual e ato individual quando aplicáveis",
+        "determinar operações elegíveis, contribuintes, NCM/CNAE/CFOP, ST/DIFAL, escrituração e condições de manutenção",
+        "capturar bytes originais da publicação oficial e calcular SHA256 real",
+        "obter teste positivo/negativo jurídico específico e aprovação independente do contador"
+      ],
+      "schema_version": "nfcore.state-icms-benefit-rule/v1",
+      "source_sha256": null,
+      "legal_reviewer": null,
+      "approved_for_eligibility": false,
+      "import_authorized": false,
+      "eligibility_certified": false,
+      "primary_source_review_20261121": {
+        "inspection_type": "official_cotri_regime_authorization_procedure",
+        "legal_provision": "RICMS/AP art.415 VII — procedimento COTRI de regime especial",
+        "sources": [
+          "https://sefaz.portal.ap.gov.br/conteudo/orientacoes/coordenadoria-de-tributacao-cotri"
+        ],
+        "primary_findings": [
+          "COTRI identifica Selo Sustentabilidade como requisito do art.415 VII em determinados regimes, com exceção para obrigações acessórias.",
+          "Processo de regime especial exige análise, ato declaratório ou termo, homologação e publicação; mero protocolo não é deferimento.",
+          "Confirmação de eventual suspensão temporária da exigência do selo e de normativos novos de 2026 permanece necessária."
+        ],
+        "red_flags": [
+          "sem_ato_ou_termo_homologado",
+          "selo_ou_excecao_nao_verificados",
+          "alteracao_normativa_2026"
+        ],
+        "fully_consolidated_current_to_20261121": false,
+        "independent_accountant_opinion": false,
+        "publisher_bytes_sha256": null
+      },
+      "priority_closeout_20261123": {
+        "status": "MATERIAL_SELECTED_LEGAL_CHAIN_PENDING",
+        "material_replacement_id": "AP-PESCADO-DEC3599-LEI3395-MATERIAL-V1",
+        "unverified_original_sources": [],
+        "positive_ruling": false,
+        "import_authorized": false
+      }
+    },
+    {
+      "candidate_id": "BA-DESENVOLVE-DEC8205-V1",
+      "candidate_version": 1,
+      "uf": "BA",
+      "review_status": "draft",
+      "benefit_kind": "deferral",
+      "tax_code": "ICMS",
+      "normative_reference": "Lei 7.980/2001, Decreto 8.205/2002 e resoluções individualizadas de 2026",
+      "legal_path_research": "unresolved_pending_confaz_and_reinstitution_review",
+      "state_official_source_url": "https://mbusca.sefaz.ba.gov.br/DITRI/normas_complementares/decretos/decreto_2002_8205_desenvolve.pdf",
+      "official_evidence_type": "official_regulation_pdf_indexed",
+      "findings_verified_from_public_source": [
+        "Regulamento do DESENVOLVE disciplina financiamento/diferimento fiscal condicionado a habilitação",
+        "Art.2 autoriza diferimento de ICMS para contribuintes habilitados por resolução do Conselho DELIBERATIVO DESENVOLVE nas aquisições enumeradas, conforme origem, finalidade e demais exigências.",
+        "Art.3 autoriza dilação de até 72 meses para até 90% de saldo devedor mensal próprio relacionado a investimentos constantes de projetos aprovados — não se trata de crédito presumido universal.",
+        "Portal SEFAZ/Bahia apresenta Decreto 24.401/2026 na lista de atos alteradores; verificar efeitos exatos da modificação em 2026.",
+        "Concessão e período dependem do empreendimento e do conselho, e §6º art.3 ressalva adicional vinculado ao fundo social."
+      ],
+      "eligibility_predicates_to_confirm": [
+        "Exigir ato individual e prazo, contrapartidas e condição FECEP quando aplicável"
+      ],
+      "negative_eligibility_scenario": "Decreto geral ou resolução de outra empresa não autoriza fruição do projeto",
+      "legal_temporal_notes": "Indicador jurídico para triagem; texto consolidado e alterações até a competência de 2026 não foram integralmente auditados neste pacote.",
+      "mandatory_missing": [
+        "conferir texto primário integral, dispositivo concessivo, redações, revogações e efeitos para cada competência",
+        "verificar CONFAZ/LC160, lei estadual e ato individual quando aplicáveis",
+        "determinar operações elegíveis, contribuintes, NCM/CNAE/CFOP, ST/DIFAL, escrituração e condições de manutenção",
+        "capturar bytes originais da publicação oficial e calcular SHA256 real",
+        "obter teste positivo/negativo jurídico específico e aprovação independente do contador"
+      ],
+      "schema_version": "nfcore.state-icms-benefit-rule/v1",
+      "source_sha256": null,
+      "legal_reviewer": null,
+      "approved_for_eligibility": false,
+      "import_authorized": false,
+      "eligibility_certified": false,
+      "primary_source_review_20261121": {
+        "inspection_type": "official_current_decree_with_2026_amendment",
+        "legal_provision": "Decreto BA 8.205/2002 — DESENVOLVE art.2 e art.3, com alteração Decreto 24.401/2026 citada em texto oficial",
+        "sources": [
+          "https://mbusca.sefaz.ba.gov.br/DITRI/normas_complementares/decretos/decreto_2002_8205_desenvolve.pdf"
+        ],
+        "primary_findings": [
+          "Art.2 autoriza diferimento de ICMS para contribuintes habilitados por resolução do Conselho DELIBERATIVO DESENVOLVE nas aquisições enumeradas, conforme origem, finalidade e demais exigências.",
+          "Art.3 autoriza dilação de até 72 meses para até 90% de saldo devedor mensal próprio relacionado a investimentos constantes de projetos aprovados — não se trata de crédito presumido universal.",
+          "Portal SEFAZ/Bahia apresenta Decreto 24.401/2026 na lista de atos alteradores; verificar efeitos exatos da modificação em 2026.",
+          "Concessão e período dependem do empreendimento e do conselho, e §6º art.3 ressalva adicional vinculado ao fundo social."
+        ],
+        "red_flags": [
+          "concessao_do_conselho_ausente",
+          "operacao_nao_enumerada_no_art2",
+          "2026_decreto_24401_nao_conciliado",
+          "excecao_fecep_ignorada"
+        ],
+        "fully_consolidated_current_to_20261121": false,
+        "independent_accountant_opinion": false,
+        "publisher_bytes_sha256": null
+      }
+    },
+    {
+      "candidate_id": "CE-FDI-LEI10367-DEC34508-V1",
+      "candidate_version": 1,
+      "uf": "CE",
+      "review_status": "draft",
+      "benefit_kind": "deferral",
+      "tax_code": "ICMS",
+      "normative_reference": "Lei 10.367/1979; Decreto 34.508/2022 e alterações do FDI",
+      "legal_path_research": "unresolved_pending_confaz_and_reinstitution_review",
+      "state_official_source_url": "https://www.adece.ce.gov.br/wp-content/uploads/sites/98/2026/10/34.508-16-10-2026.pdf",
+      "official_evidence_type": "official_program_procedure",
+      "findings_verified_from_public_source": [
+        "ADECE identifica Decreto 34.508/2022 como regulamento do FDI e manutenção de projetos incentivados",
+        "ADECE descreve projetos vinculados ao FDI, com referência ao Decreto 34.508/2022, art.63.",
+        "Página de projetos não é benefício ou deliberação concessiva individual; é necessária aprovação/contrato vigente."
+      ],
+      "eligibility_predicates_to_confirm": [
+        "Necessário contrato/termo específico, deliberação CONDEC, percentual, prazo e monitoramento de execução"
+      ],
+      "negative_eligibility_scenario": "Percentuais promocionais de guias não substituem contrato individual aprovado",
+      "legal_temporal_notes": "Indicador jurídico para triagem; texto consolidado e alterações até a competência de 2026 não foram integralmente auditados neste pacote.",
+      "mandatory_missing": [
+        "conferir texto primário integral, dispositivo concessivo, redações, revogações e efeitos para cada competência",
+        "verificar CONFAZ/LC160, lei estadual e ato individual quando aplicáveis",
+        "determinar operações elegíveis, contribuintes, NCM/CNAE/CFOP, ST/DIFAL, escrituração e condições de manutenção",
+        "capturar bytes originais da publicação oficial e calcular SHA256 real",
+        "obter teste positivo/negativo jurídico específico e aprovação independente do contador"
+      ],
+      "schema_version": "nfcore.state-icms-benefit-rule/v1",
+      "source_sha256": null,
+      "legal_reviewer": null,
+      "approved_for_eligibility": false,
+      "import_authorized": false,
+      "eligibility_certified": false,
+      "primary_source_review_20261121": {
+        "inspection_type": "official_fdi_project_guidance",
+        "legal_provision": "Lei CE 10.367/1979 e Decreto 34.508/2022 (FDI), projetos",
+        "sources": [
+          "https://www.adece.ce.gov.br/wp-content/uploads/sites/98/2026/10/34.508-16-10-2026.pdf",
+          "https://www.adece.ce.gov.br/projetos/"
+        ],
+        "primary_findings": [
+          "ADECE descreve projetos vinculados ao FDI, com referência ao Decreto 34.508/2022, art.63.",
+          "Página de projetos não é benefício ou deliberação concessiva individual; é necessária aprovação/contrato vigente.",
+          "ADECE publica consolidação do Decreto 34.508/2022 datada de outubro de 2026; arts. 2º, 7º e 8º exigem exclusões, análise do projeto e deliberação/autorização individual, não benefício automático."
+        ],
+        "red_flags": [
+          "sem_concessao_fdi",
+          "projeto_nao_aprovado",
+          "simples_nacional_ou_atividade_vedada_e_projeto_nao_aprovado"
+        ],
+        "fully_consolidated_current_to_20261121": false,
+        "independent_accountant_opinion": false,
+        "publisher_bytes_sha256": null
+      }
+    },
+    {
+      "candidate_id": "DF-EMPREGA-DF-DEC39803-V1",
+      "candidate_version": 1,
+      "uf": "DF",
+      "review_status": "draft",
+      "benefit_kind": "presumed_credit",
+      "tax_code": "ICMS",
+      "normative_reference": "Decreto 39.803/2019, arts. 16 a 23 para modalidades especiais",
+      "legal_path_research": "unresolved_pending_confaz_and_reinstitution_review",
+      "state_official_source_url": "https://www.sinj.df.gov.br/sinj/Norma/2257f831264c4e06850f0248431427df/Decreto_39803_02_05_2019.html",
+      "official_evidence_type": "official_consolidated_state_decree",
+      "findings_verified_from_public_source": [
+        "Programa condiciona incentivos a investimento, manutenção e geração de empregos no DF",
+        "Art.7 condiciona a benefícios a projetos/atos nos termos do Decreto e sua aprovação; a negativa de requerimento não gera direito adquirido.",
+        "Art.8 prevê crédito presumido de até 67% (teto e não taxa automática) em saídas de fabricação própria, sujeito a enquadramento e cálculo pela legislação de ICMS.",
+        "§1º art.8 depende de critérios e ponderações para fixar percentual individual; há exceção de competência do Governador em modalidade art.23.",
+        "O decreto contempla adesão a normas do MS, LC 160/2017/Convênio 190/2017 e atos administrativos de 2026 que requerem compatibilidade."
+      ],
+      "eligibility_predicates_to_confirm": [
+        "Exige projeto PVTEFS de categoria pertinente e aceitação formal de condições"
+      ],
+      "negative_eligibility_scenario": "Benefícios industriais gerais e especiais não se confundem; verificar vedações e migração",
+      "legal_temporal_notes": "Art.8 do Decreto 39.803/2019 prevê teto de até 67% para saídas da fabricação própria, depende de ato concessivo e pontuação individual. Não ativar taxa universal.",
+      "mandatory_missing": [
+        "conferir texto primário integral, dispositivo concessivo, redações, revogações e efeitos para cada competência",
+        "verificar CONFAZ/LC160, lei estadual e ato individual quando aplicáveis",
+        "determinar operações elegíveis, contribuintes, NCM/CNAE/CFOP, ST/DIFAL, escrituração e condições de manutenção",
+        "capturar bytes originais da publicação oficial e calcular SHA256 real",
+        "obter teste positivo/negativo jurídico específico e aprovação independente do contador"
+      ],
+      "schema_version": "nfcore.state-icms-benefit-rule/v1",
+      "source_sha256": null,
+      "legal_reviewer": null,
+      "approved_for_eligibility": false,
+      "import_authorized": false,
+      "eligibility_certified": false,
+      "primary_source_review_20261121": {
+        "inspection_type": "official_compiled_state_decree",
+        "legal_provision": "Decreto DF 39.803/2019, EMPREGA DF art.7 e art.8, com alterações e atos correlatos 2026",
+        "sources": [
+          "https://www.sinj.df.gov.br/sinj/Norma/2257f831264c4e06850f0248431427df/Decreto_39803_02_05_2019.html"
+        ],
+        "primary_findings": [
+          "Art.7 condiciona a benefícios a projetos/atos nos termos do Decreto e sua aprovação; a negativa de requerimento não gera direito adquirido.",
+          "Art.8 prevê crédito presumido de até 67% (teto e não taxa automática) em saídas de fabricação própria, sujeito a enquadramento e cálculo pela legislação de ICMS.",
+          "§1º art.8 depende de critérios e ponderações para fixar percentual individual; há exceção de competência do Governador em modalidade art.23.",
+          "O decreto contempla adesão a normas do MS, LC 160/2017/Convênio 190/2017 e atos administrativos de 2026 que requerem compatibilidade."
+        ],
+        "red_flags": [
+          "pvtefs_nao_deferido",
+          "percentual_67_interpretado_como_fixo",
+          "atividade_industrial_excluida",
+          "fabricação_nao_propria"
+        ],
+        "fully_consolidated_current_to_20261121": false,
+        "independent_accountant_opinion": false,
+        "publisher_bytes_sha256": null
+      }
+    },
+    {
+      "candidate_id": "ES-COMPETE-DEC6116R-V1",
+      "candidate_version": 1,
+      "uf": "ES",
+      "review_status": "draft",
+      "benefit_kind": "special_regime",
+      "tax_code": "ICMS",
+      "normative_reference": "Programa COMPETE-ES; alteração RICMS Decreto 6.116-R",
+      "legal_path_research": "unresolved_pending_confaz_and_reinstitution_review",
+      "state_official_source_url": "https://sedes.es.gov.br/Media/aa/LEI%20N%C2%B0%2010.568%20-%20ATUALIZADA.pdf",
+      "official_evidence_type": "official_tax_authority_announcement",
+      "findings_verified_from_public_source": [
+        "SEFAZ/ES identificou códigos DUA específicos de arrecadação para contribuintes beneficiários COMPETE-ES",
+        "SEFAZ/ES publica orientação sobre códigos de recolhimento para contribuintes beneficiários COMPETE-ES.",
+        "Código de recolhimento não prova adesão ou autorização a um incentivo setorial."
+      ],
+      "eligibility_predicates_to_confirm": [
+        "Exigir termo de adesão/regime setorial e operação aplicável; conferir códigos de arrecadação e demais normas"
+      ],
+      "negative_eligibility_scenario": "Nota pública sobre DUA não é ato concessivo nem habilitação de todos os setores",
+      "legal_temporal_notes": "Indicador jurídico para triagem; texto consolidado e alterações até a competência de 2026 não foram integralmente auditados neste pacote.",
+      "mandatory_missing": [
+        "conferir texto primário integral, dispositivo concessivo, redações, revogações e efeitos para cada competência",
+        "verificar CONFAZ/LC160, lei estadual e ato individual quando aplicáveis",
+        "determinar operações elegíveis, contribuintes, NCM/CNAE/CFOP, ST/DIFAL, escrituração e condições de manutenção",
+        "capturar bytes originais da publicação oficial e calcular SHA256 real",
+        "obter teste positivo/negativo jurídico específico e aprovação independente do contador"
+      ],
+      "schema_version": "nfcore.state-icms-benefit-rule/v1",
+      "source_sha256": null,
+      "legal_reviewer": null,
+      "approved_for_eligibility": false,
+      "import_authorized": false,
+      "eligibility_certified": false,
+      "primary_source_review_20261121": {
+        "inspection_type": "official_compete_tax_collection_guidance",
+        "legal_provision": "COMPETE-ES e códigos de recolhimento no Decreto 6.116-R",
+        "sources": [
+          "https://sedes.es.gov.br/Media/aa/LEI%20N%C2%B0%2010.568%20-%20ATUALIZADA.pdf",
+          "https://sefaz.es.gov.br/Noticia/decreto-define-codigos-especificos-para-recolhimento-de-icms-no-ambito-do-compete-es"
+        ],
+        "primary_findings": [
+          "SEFAZ/ES publica orientação sobre códigos de recolhimento para contribuintes beneficiários COMPETE-ES.",
+          "Código de recolhimento não prova adesão ou autorização a um incentivo setorial.",
+          "SEDES publica Lei 10.568/2016 atualizada em 2024; adesão setorial/contrato e exclusões da lei exigem verificação com alterações e portarias até a competência de 2026."
+        ],
+        "red_flags": [
+          "sem_adesao_setorial",
+          "codigo_dua_sem_concessao",
+          "lei_consolidada_ate_2024_nao_basta_para_competencia_2026"
+        ],
+        "fully_consolidated_current_to_20261121": false,
+        "independent_accountant_opinion": false,
+        "publisher_bytes_sha256": null
+      }
+    },
+    {
+      "candidate_id": "GO-PROGOIAS-LEI20787-ART24-V1",
+      "candidate_version": 1,
+      "uf": "GO",
+      "review_status": "draft",
+      "benefit_kind": "presumed_credit",
+      "tax_code": "ICMS",
+      "normative_reference": "Lei 20.787/2020, arts. 5, 13, 14 e 24",
+      "legal_path_research": "unresolved_pending_confaz_and_reinstitution_review",
+      "state_official_source_url": "https://appasp.economia.go.gov.br/legislacao/arquivos/Leis/L_20787.htm",
+      "official_evidence_type": "official_statutory_text",
+      "findings_verified_from_public_source": [
+        "A Lei exige Termo de Enquadramento, recolhimentos regulares e não inscrição impeditiva em dívida ativa",
+        "A utilização do crédito outorgado depende da expedição do Termo de Enquadramento e somente vale a partir de seu período de apuração.",
+        "São previstas exigências de adimplência do ICMS próprio/ST e de contribuição aplicável ao PROTEGE GOIÁS.",
+        "Inadimplência no período pode ocasionar perda do benefício apenas naquele período; há possibilidades específicas de regularização antes da ação fiscal.",
+        "Inscrição em dívida ativa impede a utilização até o período anterior à regularização, ressalvadas hipóteses de exigibilidade suspensa ou penhora suficiente.",
+        "Exigências de investimento e regras do Programa permanecem cumulativas; apurar parâmetros e alterações de 2026."
+      ],
+      "eligibility_predicates_to_confirm": [
+        "Prazo e percentuais são por enquadramento; checar PROTEGE GOIÁS e operações próprias"
+      ],
+      "negative_eligibility_scenario": "Art. 24 prevê perda ou impedimento temporal do crédito conforme inadimplemento; não generalizar convalidação Lei 24.533/2026",
+      "legal_temporal_notes": "Indicador jurídico para triagem; texto consolidado e alterações até a competência de 2026 não foram integralmente auditados neste pacote.",
+      "mandatory_missing": [
+        "conferir texto primário integral, dispositivo concessivo, redações, revogações e efeitos para cada competência",
+        "verificar CONFAZ/LC160, lei estadual e ato individual quando aplicáveis",
+        "determinar operações elegíveis, contribuintes, NCM/CNAE/CFOP, ST/DIFAL, escrituração e condições de manutenção",
+        "capturar bytes originais da publicação oficial e calcular SHA256 real",
+        "obter teste positivo/negativo jurídico específico e aprovação independente do contador"
+      ],
+      "schema_version": "nfcore.state-icms-benefit-rule/v1",
+      "source_sha256": null,
+      "legal_reviewer": null,
+      "approved_for_eligibility": false,
+      "import_authorized": false,
+      "eligibility_certified": false,
+      "primary_source_review_20261121": {
+        "inspection_type": "official_statutory_text",
+        "legal_provision": "Lei GO 20.787/2020, art.11 e §4º — ProGoiás",
+        "sources": [
+          "https://appasp.economia.go.gov.br/legislacao/arquivos/Leis/L_20787.htm",
+          "https://legisla.casacivil.go.gov.br/pesquisa_legislacao/103201",
+          "https://goias.gov.br/industriaecomercio/lei-ordinaria-20-787-20-progoias/"
+        ],
+        "primary_findings": [
+          "A utilização do crédito outorgado depende da expedição do Termo de Enquadramento e somente vale a partir de seu período de apuração.",
+          "São previstas exigências de adimplência do ICMS próprio/ST e de contribuição aplicável ao PROTEGE GOIÁS.",
+          "Inadimplência no período pode ocasionar perda do benefício apenas naquele período; há possibilidades específicas de regularização antes da ação fiscal.",
+          "Inscrição em dívida ativa impede a utilização até o período anterior à regularização, ressalvadas hipóteses de exigibilidade suspensa ou penhora suficiente.",
+          "Exigências de investimento e regras do Programa permanecem cumulativas; apurar parâmetros e alterações de 2026.",
+          "Casa Civil publica texto da Lei 20.787/2020 PROGOIÁS e relaciona alterações em 2026; arts. 4º e seguintes condicionam empreendimento e projeto.",
+          "SEFAZ/GO publica o texto primário da Lei 20.787/2020, com alterações históricas e remissão à LC 160/2017; portal anterior retornava somente shell JavaScript, sem norma legível."
+        ],
+        "red_flags": [
+          "sem_termo_de_enquadramento",
+          "icms_inadimplente",
+          "divida_ativa_impeditiva",
+          "investimento_nao_comprovado",
+          "alteracoes_2026_e_aprovacao_de_projeto_pendentes",
+          "state_consolidated_text_requires_article_specific_review"
+        ],
+        "fully_consolidated_current_to_20261121": false,
+        "independent_accountant_opinion": false,
+        "publisher_bytes_sha256": null
+      }
+    },
+    {
+      "candidate_id": "MA-MAIS-EMPRESAS-LEI10690-2017-V1",
+      "candidate_version": 1,
+      "uf": "MA",
+      "review_status": "draft",
+      "benefit_kind": "rate_reduction",
+      "tax_code": "ICMS",
+      "normative_reference": "Lei Estadual MA 10.690/2017 — Programa Mais Empresas (processo de concessão)",
+      "legal_path_research": "legal_route_unresolved",
+      "state_official_source_url": "https://seinc.ma.gov.br/uploads/seinc/docs/Lei_N%C2%BA_1069026_Setembro_de_2017.pdf",
+      "findings_verified_from_public_source": [
+        "Secretaria de Indústria e Comércio divulga o programa como fomento mediante redução de ICMS",
+        "O benefício exige Carta Consulta e documentação de empresa e sócios",
+        "Decisão de aprovação passa pelo Conselho de Políticas Fiscais — CONDEP",
+        "Não há concessão automática, taxa de redução universal nem prazo de análise garantido",
+        "SEINC/MA identifica a Lei 10.690/2017 como fundamento e exige Carta Consulta e documentos empresariais.",
+        "A concessão fiscal depende de deliberação do Conselho de Políticas Fiscais — CONDEP; o procedimento não informa data garantida de reunião.",
+        "Protocolo, lei-base e documentos não equivalem ao ato concessivo e ao direito de uma empresa específica."
+      ],
+      "mandatory_missing": [
+        "obter texto primário da Lei 10.690/2017, atos regulamentadores e RICMS/MA vigente",
+        "identificar Convênio/LC160 aplicável ou outra rota jurídica, percentuais e prazo por ato individual",
+        "confirmar aprovação CONDEP e ato individual da empresa, CNAE/NCM/CFOP e regime",
+        "captura de bytes oficiais, hashes, revisão jurídico-fiscal independente",
+        "política por ato individual comprovado com ensaios de elegibilidade e vedação"
+      ],
+      "schema_version": "nfcore.state-icms-benefit-rule/v1",
+      "official_evidence_type": "official_reference_not_fully_consolidated",
+      "eligibility_predicates_to_confirm": [
+        "obter texto primário da Lei 10.690/2017, atos regulamentadores e RICMS/MA vigente",
+        "identificar Convênio/LC160 aplicável ou outra rota jurídica, percentuais e prazo por ato individual",
+        "confirmar aprovação CONDEP e ato individual da empresa, CNAE/NCM/CFOP e regime"
+      ],
+      "negative_eligibility_scenario": "Carta Consulta protocolada, sem aprovação CONDEP e ato individual, não confere redução.",
+      "source_sha256": null,
+      "legal_reviewer": null,
+      "approved_for_eligibility": false,
+      "import_authorized": false,
+      "eligibility_certified": false,
+      "primary_source_review_20261121": {
+        "inspection_type": "official_individual_program_procedure",
+        "legal_provision": "Lei MA 10.690/2017 e procedimento de Carta Consulta — Programa Mais Empresas",
+        "sources": [
+          "https://seinc.ma.gov.br/uploads/seinc/docs/Lei_N%C2%BA_1069026_Setembro_de_2017.pdf",
+          "https://seinc.ma.gov.br/servicos/solicitar-beneficios-do-programa-mais-empresas-emissao-de-carta-consulta"
+        ],
+        "primary_findings": [
+          "SEINC/MA identifica a Lei 10.690/2017 como fundamento e exige Carta Consulta e documentos empresariais.",
+          "A concessão fiscal depende de deliberação do Conselho de Políticas Fiscais — CONDEP; o procedimento não informa data garantida de reunião.",
+          "Protocolo, lei-base e documentos não equivalem ao ato concessivo e ao direito de uma empresa específica.",
+          "SEINC disponibiliza lei primária 10.690/2017 com histórico de alterações até 2022; concessão individual depende do CONDEP e documento do contribuinte."
+        ],
+        "red_flags": [
+          "sem_carta_consulta",
+          "nao_aprovado_pelo_condep",
+          "sem_ato_individual",
+          "prazo_nao_demonstrado",
+          "alteracoes_posteriores_a_2022_e_decisao_condep_ausentes"
+        ],
+        "fully_consolidated_current_to_20261121": false,
+        "independent_accountant_opinion": false,
+        "publisher_bytes_sha256": null
+      }
+    },
+    {
+      "candidate_id": "MG-RICMS2023-ANII-ITEM26-COHAB-V1",
+      "candidate_version": 1,
+      "uf": "MG",
+      "review_status": "draft",
+      "benefit_kind": "base_reduction",
+      "tax_code": "ICMS",
+      "normative_reference": "Decreto 48.589/2023, Anexo II, Parte 1 item 26; Convênio 136/97",
+      "legal_path_research": "unresolved_pending_confaz_and_reinstitution_review",
+      "state_official_source_url": "https://www.fazenda.mg.gov.br/empresas/legislacao_tributaria/ricms_2023_seco/anexoii2023_3.html",
+      "official_evidence_type": "official_consolidated_provision",
+      "findings_verified_from_public_source": [
+        "Anexo II item 26 restringe benefício a materiais empregados exclusivamente em moradias para população de baixa renda coordenadas pela Cohab Minas",
+        "O item 26 limita saída interna de materiais especificados à construção de moradias populares coordenada pela Cohab Minas.",
+        "Para operações sujeitas às alíquotas 18% e 12% aparecem percentuais de redução 61,11% e 41,66%, respectivamente, no dispositivo.",
+        "O subitem 26.1 exige desconto do imposto dispensado no preço e indicação expressa nas informações complementares do documento fiscal.",
+        "A página do regulamento informa vigência até 31/12/2026; há regulamentos e notas explicativas atualizados em outubro de 2026."
+      ],
+      "eligibility_predicates_to_confirm": [
+        "Exige operação interna de produtos nominados, coordenação Cohab, desconto do imposto dispensado na nota"
+      ],
+      "negative_eligibility_scenario": "Página aponta termo final 31/12/2026; revisar também eventual prorrogação posterior",
+      "legal_temporal_notes": "Indicador jurídico para triagem; texto consolidado e alterações até a competência de 2026 não foram integralmente auditados neste pacote.",
+      "mandatory_missing": [
+        "conferir texto primário integral, dispositivo concessivo, redações, revogações e efeitos para cada competência",
+        "verificar CONFAZ/LC160, lei estadual e ato individual quando aplicáveis",
+        "determinar operações elegíveis, contribuintes, NCM/CNAE/CFOP, ST/DIFAL, escrituração e condições de manutenção",
+        "capturar bytes originais da publicação oficial e calcular SHA256 real",
+        "obter teste positivo/negativo jurídico específico e aprovação independente do contador"
+      ],
+      "schema_version": "nfcore.state-icms-benefit-rule/v1",
+      "source_sha256": null,
+      "legal_reviewer": null,
+      "approved_for_eligibility": false,
+      "import_authorized": false,
+      "eligibility_certified": false,
+      "primary_source_review_20261121": {
+        "inspection_type": "official_current_ricms_item",
+        "legal_provision": "RICMS/MG 2023, Anexo II, Parte 1, item 26 e subitem 26.1",
+        "sources": [
+          "https://www.fazenda.mg.gov.br/empresas/legislacao_tributaria/ricms_2023_seco/anexoii2023_3.html",
+          "https://www.fazenda.mg.gov.br/empresas/legislacao_tributaria/ricms_2023_seco/sumario2023seco.html"
+        ],
+        "primary_findings": [
+          "O item 26 limita saída interna de materiais especificados à construção de moradias populares coordenada pela Cohab Minas.",
+          "Para operações sujeitas às alíquotas 18% e 12% aparecem percentuais de redução 61,11% e 41,66%, respectivamente, no dispositivo.",
+          "O subitem 26.1 exige desconto do imposto dispensado no preço e indicação expressa nas informações complementares do documento fiscal.",
+          "A página do regulamento informa vigência até 31/12/2026; há regulamentos e notas explicativas atualizados em outubro de 2026."
+        ],
+        "red_flags": [
+          "sem_coordenacao_cohab",
+          "mercadoria_nao_prevista",
+          "saida_interestadual",
+          "desconto_nao_repassado",
+          "documentacao_fiscal_insuficiente"
+        ],
+        "fully_consolidated_current_to_20261121": false,
+        "independent_accountant_opinion": false,
+        "publisher_bytes_sha256": null
+      }
+    },
+    {
+      "candidate_id": "MS-EMPREENDEDOR-LC93-TERMO-V1",
+      "candidate_version": 1,
+      "uf": "MS",
+      "review_status": "draft",
+      "benefit_kind": "presumed_credit",
+      "tax_code": "ICMS",
+      "normative_reference": "Lei Complementar 93/2001 e Termo de Acordo",
+      "legal_path_research": "unresolved_pending_confaz_and_reinstitution_review",
+      "state_official_source_url": "https://aacpdappls.net.ms.gov.br/appls/legislacao/secoge/govato.nsf/66ecc3cfb53d53ff04256b140049444b/3a836f159c1b161904256c000058e57a",
+      "official_evidence_type": "official_tax_service",
+      "findings_verified_from_public_source": [
+        "SEFAZ/MS oferece análise de investimento para fruição de crédito outorgado previsto em Termo de Acordo",
+        "SEFAZ/MS exige avaliação dos investimentos para fruição do crédito outorgado de Termo de Acordo.",
+        "Contrapartidas socioeconômicas (faturamento e empregos) exigem procedimento distinto do exame de investimento."
+      ],
+      "eligibility_predicates_to_confirm": [
+        "Exige termo válido, comprovação de investimento e cumprimento de obrigações socioeconômicas"
+      ],
+      "negative_eligibility_scenario": "Sem termo/sem investimento conferido não há crédito outorgado",
+      "legal_temporal_notes": "Indicador jurídico para triagem; texto consolidado e alterações até a competência de 2026 não foram integralmente auditados neste pacote.",
+      "mandatory_missing": [
+        "conferir texto primário integral, dispositivo concessivo, redações, revogações e efeitos para cada competência",
+        "verificar CONFAZ/LC160, lei estadual e ato individual quando aplicáveis",
+        "determinar operações elegíveis, contribuintes, NCM/CNAE/CFOP, ST/DIFAL, escrituração e condições de manutenção",
+        "capturar bytes originais da publicação oficial e calcular SHA256 real",
+        "obter teste positivo/negativo jurídico específico e aprovação independente do contador"
+      ],
+      "schema_version": "nfcore.state-icms-benefit-rule/v1",
+      "source_sha256": null,
+      "legal_reviewer": null,
+      "approved_for_eligibility": false,
+      "import_authorized": false,
+      "eligibility_certified": false,
+      "primary_source_review_20261121": {
+        "inspection_type": "official_credit_grant_verification_service",
+        "legal_provision": "Lei Complementar MS 93/2001 e Termo de Acordo de crédito outorgado",
+        "sources": [
+          "https://aacpdappls.net.ms.gov.br/appls/legislacao/secoge/govato.nsf/66ecc3cfb53d53ff04256b140049444b/3a836f159c1b161904256c000058e57a",
+          "https://www.sefaz.ms.gov.br/servicos-em-destaque/credito-outorgado-analise-dos-investimentos-necessaria-para-a-fruicao-do-beneficio-de-credito-outorgado-previsto-em-termo-de-acordo-lei-complementar-no-93-2001-2/"
+        ],
+        "primary_findings": [
+          "SEFAZ/MS exige avaliação dos investimentos para fruição do crédito outorgado de Termo de Acordo.",
+          "Contrapartidas socioeconômicas (faturamento e empregos) exigem procedimento distinto do exame de investimento.",
+          "Portal legislativo MS disponibiliza LC 93/2001 com alterações, restrições de adimplência, histórico de dispositivos discutidos em ADI 3794 e necessidade de ato individual."
+        ],
+        "red_flags": [
+          "sem_termo_de_acordo",
+          "investimento_nao_comprovado",
+          "metas_nao_demonstradas",
+          "adi_3794_e_dispositivos_invalidos_podem_alterar_beneficio"
+        ],
+        "fully_consolidated_current_to_20261121": false,
+        "independent_accountant_opinion": false,
+        "publisher_bytes_sha256": null
+      }
+    },
+    {
+      "candidate_id": "MT-RICMS2014-ANV-ART31A-AGRO-V1",
+      "candidate_version": 1,
+      "uf": "MT",
+      "review_status": "draft",
+      "benefit_kind": "base_reduction",
+      "tax_code": "ICMS",
+      "normative_reference": "Decreto 2.212/2014, Anexo V art. 31-A; Decreto 1.802/2025, Convênio 100/97",
+      "legal_path_research": "unresolved_pending_confaz_and_reinstitution_review",
+      "state_official_source_url": "https://www.sefaz.mt.gov.br/legislacao/Subindice.aspx?ID=259",
+      "official_evidence_type": "official_tax_consultation",
+      "findings_verified_from_public_source": [
+        "Consulta oficial SEFAZ/MT de 2026 analisa redução de base para fertilizante conforme classificação e destinação agrícola/pecuária",
+        "Informação SEFAZ/MT 124/2026 confirma prorrogação da redução de base do art.31-A até 31/12/2027 pelo Dec.1.802/2025.",
+        "A consulta descreve carga efetiva de 4% para fertilizantes abrangidos pelo dispositivo, conforme produto, destino e requisitos.",
+        "Diferimento opcional do Anexo VII é hipótese jurídica distinta da redução de base de 4%; não misturar CST, crédito ou regime."
+      ],
+      "eligibility_predicates_to_confirm": [
+        "Produto realmente qualificado para agricultura/pecuária, NCM e operação devem cumprir regra; revisar caso de diferimento"
+      ],
+      "negative_eligibility_scenario": "Ato de 2025 aponta vigência até 31/12/2027, mas a versão consolidada com alterações 2026 ainda não foi certificada",
+      "legal_temporal_notes": "Indicador jurídico para triagem; texto consolidado e alterações até a competência de 2026 não foram integralmente auditados neste pacote.",
+      "mandatory_missing": [
+        "conferir texto primário integral, dispositivo concessivo, redações, revogações e efeitos para cada competência",
+        "verificar CONFAZ/LC160, lei estadual e ato individual quando aplicáveis",
+        "determinar operações elegíveis, contribuintes, NCM/CNAE/CFOP, ST/DIFAL, escrituração e condições de manutenção",
+        "capturar bytes originais da publicação oficial e calcular SHA256 real",
+        "obter teste positivo/negativo jurídico específico e aprovação independente do contador"
+      ],
+      "schema_version": "nfcore.state-icms-benefit-rule/v1",
+      "source_sha256": null,
+      "legal_reviewer": null,
+      "approved_for_eligibility": false,
+      "import_authorized": false,
+      "eligibility_certified": false,
+      "primary_source_review_20261121": {
+        "inspection_type": "official_2026_normative_consultation",
+        "legal_provision": "RICMS/MT Anexo V art.31-A §6º, Dec.1.802/2025, Convênio 79/2025",
+        "sources": [
+          "https://www.sefaz.mt.gov.br/legislacao/Subindice.aspx?ID=259",
+          "https://app1.sefaz.mt.gov.br/sistema/legislacao/respostaconsulta.nsf/766feae0478e62780325673c0049468e/dfdffa903c8253dd03258e28005313b4",
+          "https://www.sefaz.mt.gov.br/legislacao/SubIndice.aspx?ID=471"
+        ],
+        "primary_findings": [
+          "Informação SEFAZ/MT 124/2026 confirma prorrogação da redução de base do art.31-A até 31/12/2027 pelo Dec.1.802/2025.",
+          "A consulta descreve carga efetiva de 4% para fertilizantes abrangidos pelo dispositivo, conforme produto, destino e requisitos.",
+          "Diferimento opcional do Anexo VII é hipótese jurídica distinta da redução de base de 4%; não misturar CST, crédito ou regime.",
+          "SEFAZ/MT publica índice textual do Anexo V do RICMS/2014, com histórico por dispositivo; a consulta oficial sobre art. 31-A não substitui decreto estadual e convênio."
+        ],
+        "red_flags": [
+          "fertilizante_ou_destino_incompativel",
+          "diferimento_confundido_reducao",
+          "convênio_sem_adoção_estadual",
+          "vigencia_2026_convenio_versus_adocao_estadual"
+        ],
+        "fully_consolidated_current_to_20261121": false,
+        "independent_accountant_opinion": false,
+        "publisher_bytes_sha256": null
+      }
+    },
+    {
+      "candidate_id": "PA-POLITICA-LEI6913-DEC2490-V1",
+      "candidate_version": 1,
+      "uf": "PA",
+      "review_status": "draft",
+      "benefit_kind": "special_regime",
+      "tax_code": "ICMS",
+      "normative_reference": "Lei 6.913/2006, Decreto 2.490/2006 e Comissão de Política de Incentivos",
+      "legal_path_research": "unresolved_pending_confaz_and_reinstitution_review",
+      "state_official_source_url": "https://www.sistemas.pa.gov.br/sisleis/legislacao/5827",
+      "official_evidence_type": "official_2020_amending_decree_990_NOT_original_decree_2490",
+      "findings_verified_from_public_source": [
+        "LEGIS-PA publica resolução de incentivo individual com referência à Lei 6.913/2006 e ao Decreto 2.490/2006",
+        "Resolução 21/2020 identifica exclusivamente ALUBAR METAIS E CABOS S/A em alteração da Resolução 020/2010.",
+        "A norma trata do diferimento na importação de vergalhão de alumínio condicionado ao desembaraço no Pará; nenhum direito geral a outra empresa.",
+        "Ato individual datado 2020 não comprova sua continuidade integral em 2026."
+      ],
+      "eligibility_predicates_to_confirm": [
+        "Exige resolução concedente por estabelecimento, projeto, prazo, obrigações e DEI quando cabível"
+      ],
+      "negative_eligibility_scenario": "Resolução de empresa terceira e decreto-base não conferem crédito a outro CNPJ",
+      "legal_temporal_notes": "Indicador jurídico para triagem; texto consolidado e alterações até a competência de 2026 não foram integralmente auditados neste pacote. ALERTA CONSTITUCIONAL: STF na ADI 3779 declarou inconstitucional a Lei 6.913/2006 (julgamento agosto/2019); efeitos temporais e eventual base superveniente/reinstituída exigem revisão específica antes de qualquer elegibilidade.",
+      "mandatory_missing": [
+        "conferir texto primário integral, dispositivo concessivo, redações, revogações e efeitos para cada competência",
+        "verificar CONFAZ/LC160, lei estadual e ato individual quando aplicáveis",
+        "determinar operações elegíveis, contribuintes, NCM/CNAE/CFOP, ST/DIFAL, escrituração e condições de manutenção",
+        "capturar bytes originais da publicação oficial e calcular SHA256 real",
+        "obter teste positivo/negativo jurídico específico e aprovação independente do contador",
+        "reconciliar efeitos e trânsito da ADI 3779/STF sobre Lei 6.913/2006, embargos, reinstituição e legislação superveniente por competência"
+      ],
+      "schema_version": "nfcore.state-icms-benefit-rule/v1",
+      "source_sha256": null,
+      "legal_reviewer": null,
+      "approved_for_eligibility": false,
+      "import_authorized": false,
+      "eligibility_certified": false,
+      "primary_source_review_20261121": {
+        "inspection_type": "official_individual_concession_resolution",
+        "legal_provision": "Lei PA 6.913/2006 / Decreto 2.490/2006 — Resolução 21/2020 de destinatário específico",
+        "sources": [
+          "https://www.sistemas.pa.gov.br/sisleis/legislacao/5827",
+          "https://www.cge.pa.gov.br/sites/default/files/2023-03/decreto_estadual_n_2490_de_06_10_2006.pdf",
+          "https://www.sistemas.pa.gov.br/sisleis/legislacao/5840"
+        ],
+        "primary_findings": [
+          "Resolução 21/2020 identifica exclusivamente ALUBAR METAIS E CABOS S/A em alteração da Resolução 020/2010.",
+          "A norma trata do diferimento na importação de vergalhão de alumínio condicionado ao desembaraço no Pará; nenhum direito geral a outra empresa.",
+          "Ato individual datado 2020 não comprova sua continuidade integral em 2026.",
+          "LEGIS-PA fornece Decreto 990/2020 modificador dos Decretos 2.489–2.492/2006 e critérios de projeto e declaração de empresa incentivada; NÃO é texto original consolidado Decreto 2490/2006."
+        ],
+        "red_flags": [
+          "concessao_de_outro_cnpj",
+          "operacao_importacao_nao_enquadrada",
+          "vigencia_2026_nao_consolidada",
+          "source_is_historical_or_amending_not_consolidated_2026"
+        ],
+        "fully_consolidated_current_to_20261121": false,
+        "independent_accountant_opinion": false,
+        "publisher_bytes_sha256": null
+      },
+      "constitutional_review_20261121": {
+        "status": "UNRESOLVED_STF_ADI_3779",
+        "classification": "binding_constitutional_decision_requires_full_temporal_reconciliation",
+        "primary_court_source_url": "https://portal.stf.jus.br/peticaoInicial/verPeticaoInicial.asp?base=ADI&numProcesso=3779",
+        "judgment_session": "2019-08-23/2019-08-29",
+        "verified_dispositive_summary": "STF decidiu pela inconstitucionalidade das Leis do PA 6.912/2006, 6.913/2006, 6.914/2006 e 6.915/2006. Ministro Barroso vencido quanto à modulação.",
+        "remaining_review": "Verificar acórdão, embargos/trânsito, eficácia temporal, eventuais regimes estaduais supervenientes e via específica de reinstituição LC 160/2017/Convênio 190/2017; não presumir manutenção do incentivo em 2026.",
+        "authorization_for_eligibility": false
+      },
+      "priority_closeout_20261123": {
+        "status": "ORIGINAL_INVALIDATED_SUCCESSOR_UNPROVEN",
+        "material_replacement_id": null,
+        "unverified_original_sources": [
+          "https://portal.stf.jus.br/peticaoInicial/verPeticaoInicial.asp?base=ADI&numProcesso=3779",
+          "https://www.ioepa.com.br/pages/2018/2018.03.23.DOE.pdf",
+          "https://www.legispara.pa.gov.br/lei/5169"
+        ],
+        "positive_ruling": false,
+        "import_authorized": false
+      }
+    },
+    {
+      "candidate_id": "PB-FAIN-DEC17252-ART3-V1",
+      "candidate_version": 1,
+      "uf": "PB",
+      "review_status": "draft",
+      "benefit_kind": "presumed_credit",
+      "tax_code": "ICMS",
+      "normative_reference": "Lei 6.000/1994; Decreto 17.252/1994, art. 3º; Decreto 47.898/2026",
+      "legal_path_research": "unresolved_pending_confaz_and_reinstitution_review",
+      "state_official_source_url": "https://portal.sefaz.pb.gov.br/legislacao/35-decretos-estaduais/59-icms/267-icms-1994/5391-decreto-n-17-252-de-27-de-dezembro-de-1994",
+      "official_evidence_type": "official_amended_state_decree",
+      "findings_verified_from_public_source": [
+        "RICMS/FAIN traz decisão vinculada a parecer SEFAZ/PB e definição de novo produto por diferença nos primeiros quatro dígitos NCM em alterações de 2026",
+        "Regulamento FAIN contempla estímulos e crédito presumido de ICMS condicionados a deliberação do Conselho Deliberativo.",
+        "Decreto 47.898/2026 altera regras sobre novo produto/NCM e prazo sob o Convênio 190/2017."
+      ],
+      "eligibility_predicates_to_confirm": [
+        "Necessário ato de concessão, enquadramento do produto, regularidade exigida e análise técnica"
+      ],
+      "negative_eligibility_scenario": "NCM isolada e parecer técnico contrário impedem presumir concessão",
+      "legal_temporal_notes": "Indicador jurídico para triagem; texto consolidado e alterações até a competência de 2026 não foram integralmente auditados neste pacote.",
+      "mandatory_missing": [
+        "conferir texto primário integral, dispositivo concessivo, redações, revogações e efeitos para cada competência",
+        "verificar CONFAZ/LC160, lei estadual e ato individual quando aplicáveis",
+        "determinar operações elegíveis, contribuintes, NCM/CNAE/CFOP, ST/DIFAL, escrituração e condições de manutenção",
+        "capturar bytes originais da publicação oficial e calcular SHA256 real",
+        "obter teste positivo/negativo jurídico específico e aprovação independente do contador"
+      ],
+      "schema_version": "nfcore.state-icms-benefit-rule/v1",
+      "source_sha256": null,
+      "legal_reviewer": null,
+      "approved_for_eligibility": false,
+      "import_authorized": false,
+      "eligibility_certified": false,
+      "primary_source_review_20261121": {
+        "inspection_type": "official_2026_amended_fain_regulation",
+        "legal_provision": "Decreto PB 17.252/1994, art.3º, Decreto 47.898/2026",
+        "sources": [
+          "https://portal.sefaz.pb.gov.br/legislacao/35-decretos-estaduais/59-icms/267-icms-1994/5391-decreto-n-17-252-de-27-de-dezembro-de-1994",
+          "https://sefaz.pb.gov.br/legislacao/397-decretos-estaduais/icms/icms-2026/17297-decreto-n-47-898-de-18-de-fevereiro-de-2026"
+        ],
+        "primary_findings": [
+          "Regulamento FAIN contempla estímulos e crédito presumido de ICMS condicionados a deliberação do Conselho Deliberativo.",
+          "Decreto 47.898/2026 altera regras sobre novo produto/NCM e prazo sob o Convênio 190/2017."
+        ],
+        "red_flags": [
+          "sem_resolucao_fain",
+          "ncm_produto_novo_incorreto",
+          "prazo_190_2017_excedido"
+        ],
+        "fully_consolidated_current_to_20261121": false,
+        "independent_accountant_opinion": false,
+        "publisher_bytes_sha256": null
+      }
+    },
+    {
+      "candidate_id": "PE-PRODEPE-LEI11675-DEC21959-V1",
+      "candidate_version": 1,
+      "uf": "PE",
+      "review_status": "draft",
+      "benefit_kind": "special_regime",
+      "tax_code": "ICMS",
+      "normative_reference": "Lei 11.675/1999, Decreto 21.959/1999, Portaria SF 239/2001",
+      "legal_path_research": "unresolved_pending_confaz_and_reinstitution_review",
+      "state_official_source_url": "https://www.sefaz.pe.gov.br/Legislacao/Tributaria/Documents/legislacao/decretos/1999/Dec21959_99.htm",
+      "official_evidence_type": "official_consolidated_program_index",
+      "findings_verified_from_public_source": [
+        "SEFAZ/PE reúne a legislação do PRODEPE por assunto e regras de escrituração",
+        "O Decreto 21.959/1999 regulamenta o Programa de Desenvolvimento do Estado de Pernambuco (PRODEPE) para indústria e comércio atacadista.",
+        "Decreto 61.000/2026 altera regras gerais de EFD/regularidade do Decreto 44.650/2017 e Programa Coopera, NÃO é ato modificador material do PRODEPE.",
+        "O regulamento geral não substitui ato de concessão individual do programa e condições do produto, CACEPE e competência."
+      ],
+      "eligibility_predicates_to_confirm": [
+        "Exige ato individual, produtos habilitados, CACEPE, obrigações fiscais e prazo de fruição"
+      ],
+      "negative_eligibility_scenario": "A não utilização no período próprio e acúmulo proibido dependem do regime e da regra específica",
+      "legal_temporal_notes": "Lei 11.675/1999 e Decreto 21.959/1999 são fundamentos da modalidade PRODEPE selecionada. Alterações materiais, períodos e atos concessivos individuais permanecem sem consolidação; Decreto 61.000/2026 é norma de EFD/Coopera, não altera especificamente percentual do benefício.",
+      "mandatory_missing": [
+        "conferir texto primário integral, dispositivo concessivo, redações, revogações e efeitos para cada competência",
+        "verificar CONFAZ/LC160, lei estadual e ato individual quando aplicáveis",
+        "determinar operações elegíveis, contribuintes, NCM/CNAE/CFOP, ST/DIFAL, escrituração e condições de manutenção",
+        "capturar bytes originais da publicação oficial e calcular SHA256 real",
+        "obter teste positivo/negativo jurídico específico e aprovação independente do contador"
+      ],
+      "schema_version": "nfcore.state-icms-benefit-rule/v1",
+      "source_sha256": null,
+      "legal_reviewer": null,
+      "approved_for_eligibility": false,
+      "import_authorized": false,
+      "eligibility_certified": false,
+      "primary_source_review_20261121": {
+        "inspection_type": "official_amended_regulation",
+        "legal_provision": "Decreto PE 21.959/1999 (PRODEPE) — alterações até Decreto 61.000/2026 indicadas pela SEFAZ",
+        "sources": [
+          "https://www.sefaz.pe.gov.br/Legislacao/Tributaria/Documents/legislacao/decretos/1999/Dec21959_99.htm",
+          "https://www.sefaz.pe.gov.br/Legislacao/Tributaria/Consolidada-Por-Assunto/Paginas/PRODEPE.aspx"
+        ],
+        "primary_findings": [
+          "O Decreto 21.959/1999 regulamenta o Programa de Desenvolvimento do Estado de Pernambuco (PRODEPE) para indústria e comércio atacadista.",
+          "A versão publicada na SEFAZ lista o Decreto 61.000/2026 como ato alterador; não usar versão consolidada anterior sem revisão.",
+          "O regulamento geral não substitui ato de concessão individual do programa e condições do produto, CACEPE e competência.",
+          "SEFAZ/PE disponibiliza texto oficial do Decreto 21.959/1999 que regulamenta o PRODEPE, com notas de alterações e requisitos de concessão individual; índice anterior não era norma primária."
+        ],
+        "red_flags": [
+          "ato_concessivo_ausente",
+          "vigencia_2026_nao_conciliada",
+          "produto_nao_habilitado",
+          "obrigacoes_fiscais_pendentes",
+          "prodepe_issuer_concession_and_temporal_amendments"
+        ],
+        "fully_consolidated_current_to_20261121": false,
+        "independent_accountant_opinion": false,
+        "publisher_bytes_sha256": null,
+        "superseded_on": "2026-11-22",
+        "supersession_notice": "A afirmação histórica de que Decreto 61.000/2026 é alterador material do PRODEPE estava incorreta. Não utilizar esse subregistro como fonte atual."
+      },
+      "corrected_source_scope_20261122": {
+        "act": "Decreto 61.000/2026",
+        "classification": "EFD_AND_COOPERA_NOT_PRODEPE_MATERIAL_AMENDMENT",
+        "government_source": "https://www.sefaz.pe.gov.br/Legislacao/Tributaria/Documents/Legislacao/Decretos/2026/Dec61000_2026.htm",
+        "verified_prodepe_anchors": [
+          "Lei 11.675/1999",
+          "Decreto 21.959/1999"
+        ],
+        "all_amendments_reconciled": false,
+        "review_status": "draft",
+        "approved": false
+      }
+    },
+    {
+      "candidate_id": "PI-RICMS2023-AN4-ART25A-BASIC-FOOD-V1",
+      "candidate_version": 1,
+      "uf": "PI",
+      "review_status": "draft",
+      "benefit_kind": "exemption",
+      "tax_code": "ICMS",
+      "normative_reference": "Decreto 21.866/2023, Anexo IV art. 25-A, acrescido pelo Decreto 23.672/2025; Convênio ICMS 224/2017",
+      "legal_path_research": "confaz_convention",
+      "state_official_source_url": "https://www.diario.pi.gov.br/doe/files/diarios/anexo/e1d8ee2a-5cf4-437f-93fa-393753b8574a/DOEPI_57_2025.pdf",
+      "findings_verified_from_public_source": [
+        "Comunicado UNATRI 1/2025 cita isenção de ICMS de saídas internas, desde 01/04/2025, de produtos listados da cesta básica",
+        "Lista expressa inclui arroz, feijão, farinha de mandioca, ovos em dispositivo separado e diversas outras mercadorias, com características específicas",
+        "Art.25-A do Anexo IV mencionado para conjunto específico; não generalizar isenção a toda cesta básica",
+        "Art.58 RICMS exige verificar estorno de crédito",
+        "Convênio ICMS 224/2017 consta no comunicado; vigência 2026 exige reconciliação de alterações posteriores",
+        "O comunicado de 27/03/2025 separa a isenção do art.25-A para uma lista específica de produtos internos, no contexto do Convênio ICMS 224/2017.",
+        "Redução de base para carga equivalente a 7% é descrita separadamente no art.178 XXXVIII, relacionada ao Convênio ICMS 128/94, com exclusões.",
+        "Ovos e caprinos/ovinos são mencionados pelo art.17 I e II do Anexo IV, e NÃO no rol do art.25-A.",
+        "Art.58 do RICMS exige atenção ao estorno de crédito; versões de 2026 do Decreto 21.866/2023 exigem nova conciliação."
+      ],
+      "mandatory_missing": [
+        "revisão texto consolidado 2026 do RICMS/PI, Decreto 23.672/2025 e alterações posteriores",
+        "verificação individual de produto/NCM/CFOP, operação interna e exclusões",
+        "revisar Convênio ICMS 224/2017, adesão, condições, estorno e eventuais requisitos de contribuinte",
+        "captura dos bytes oficiais com SHA-256; relatório independente por competência",
+        "casos positivos e negativos normativos sem criar elegibilidade automática"
+      ],
+      "schema_version": "nfcore.state-icms-benefit-rule/v1",
+      "official_evidence_type": "official_state_gazette_decree_23672_2025_not_consolidated_to_2026",
+      "eligibility_predicates_to_confirm": [
+        "revisão texto consolidado 2026 do RICMS/PI, Decreto 23.672/2025 e alterações posteriores",
+        "verificação individual de produto/NCM/CFOP, operação interna e exclusões",
+        "revisar Convênio ICMS 224/2017, adesão, condições, estorno e eventuais requisitos de contribuinte"
+      ],
+      "negative_eligibility_scenario": "Ovos (art.17), produto fora da lista do art.25-A, redução do art.178 XXXVIII ou operação interestadual não equivalem à isenção específica do art.25-A.",
+      "source_sha256": null,
+      "legal_reviewer": null,
+      "approved_for_eligibility": false,
+      "import_authorized": false,
+      "eligibility_certified": false,
+      "primary_source_review_20261121": {
+        "inspection_type": "official_tax_authority_communication_2025",
+        "legal_provision": "Comunicado UNATRI 1/2025 — RICMS/PI Anexo IV art.25-A, art.178 XXXVIII, art.17",
+        "sources": [
+          "https://www.diario.pi.gov.br/doe/files/diarios/anexo/e1d8ee2a-5cf4-437f-93fa-393753b8574a/DOEPI_57_2025.pdf",
+          "https://portal-admin.sefaz.pi.gov.br/wp-content/uploads/2025/03/SEI_GOV-PI-017374270-SEFAZ_-Comunicado-UNATRI.pdf"
+        ],
+        "primary_findings": [
+          "O comunicado de 27/03/2025 separa a isenção do art.25-A para uma lista específica de produtos internos, no contexto do Convênio ICMS 224/2017.",
+          "Redução de base para carga equivalente a 7% é descrita separadamente no art.178 XXXVIII, relacionada ao Convênio ICMS 128/94, com exclusões.",
+          "Ovos e caprinos/ovinos são mencionados pelo art.17 I e II do Anexo IV, e NÃO no rol do art.25-A.",
+          "Art.58 do RICMS exige atenção ao estorno de crédito; versões de 2026 do Decreto 21.866/2023 exigem nova conciliação.",
+          "DOE-PI 57/2025 publicado em 27/03/2025 contém Decreto 23.672/2025, art.2º, inciso I, que introduziu o art.25-A no Anexo IV do RICMS/PI, com efeitos a partir de 01/04/2025 e restrito a produtos e operações internas do texto e à vigência do Convênio 224/2017."
+        ],
+        "red_flags": [
+          "isencao_generalizada_cesta_basica",
+          "produto_art17_confundido_art25a",
+          "reducao_confundida_isencao",
+          "operacao_interestadual",
+          "alteracao_posterior_2026",
+          "conv_224_2017_vigencia_2026_nao_verificada",
+          "produto_ou_operacao_nao_contemplados"
+        ],
+        "fully_consolidated_current_to_20261121": false,
+        "independent_accountant_opinion": false,
+        "publisher_bytes_sha256": null
+      }
+    },
+    {
+      "candidate_id": "PR-PARANA-COMPETITIVO-DEC7721-V1",
+      "candidate_version": 1,
+      "uf": "PR",
+      "review_status": "draft",
+      "benefit_kind": "special_regime",
+      "tax_code": "ICMS",
+      "normative_reference": "Decreto 7.721/2024; NPF 2/2025 e alterações 2026",
+      "legal_path_research": "unresolved_pending_confaz_and_reinstitution_review",
+      "state_official_source_url": "https://www.legislacao.pr.gov.br/legislacao/pesquisarAto.do?action=exibir&codAto=341992",
+      "official_evidence_type": "official_current_program_regulatory_index",
+      "findings_verified_from_public_source": [
+        "SEFA/PR identifica revogação do Decreto 6.434/2017 pelo 7.721/2024 e resoluções de 2026",
+        "O Decreto 7.721/2024 substituiu o Decreto 6.434/2017, que consta expressamente como revogado no índice SEFA/PR.",
+        "Resolução SEFA 304/2025 republicou lista NCM impedidas no art.14 do Decreto 7.721/2024.",
+        "Resoluções 227, 228, 229 e 469/2026 disciplinam transferências de créditos para objetivos/setores específicos.",
+        "A NPF Conjunta REPR/CAET 002/2026 alterou procedimentos referentes ao Programa."
+      ],
+      "eligibility_predicates_to_confirm": [
+        "Projeto e concessão SEFA; verificar lista de NCM impedidas, contrapartidas e prazo"
+      ],
+      "negative_eligibility_scenario": "Decreto 6.434/2017 revogado pelo Decreto 7.721/2024: normas antigas não podem ser usadas como vigência atual; NCM impedida exclui fruição.",
+      "legal_temporal_notes": "Indicador jurídico para triagem; texto consolidado e alterações até a competência de 2026 não foram integralmente auditados neste pacote.",
+      "mandatory_missing": [
+        "conferir texto primário integral, dispositivo concessivo, redações, revogações e efeitos para cada competência",
+        "verificar CONFAZ/LC160, lei estadual e ato individual quando aplicáveis",
+        "determinar operações elegíveis, contribuintes, NCM/CNAE/CFOP, ST/DIFAL, escrituração e condições de manutenção",
+        "capturar bytes originais da publicação oficial e calcular SHA256 real",
+        "obter teste positivo/negativo jurídico específico e aprovação independente do contador"
+      ],
+      "schema_version": "nfcore.state-icms-benefit-rule/v1",
+      "source_sha256": null,
+      "legal_reviewer": null,
+      "approved_for_eligibility": false,
+      "import_authorized": false,
+      "eligibility_certified": false,
+      "primary_source_review_20261121": {
+        "inspection_type": "official_normative_index",
+        "legal_provision": "Decreto PR 7.721/2024 e Resoluções SEFA 227, 228, 229 e 469/2026",
+        "sources": [
+          "https://www.legislacao.pr.gov.br/legislacao/pesquisarAto.do?action=exibir&codAto=341992",
+          "https://www.fazenda.pr.gov.br/Pagina/Parana-Competitivo"
+        ],
+        "primary_findings": [
+          "O Decreto 7.721/2024 substituiu o Decreto 6.434/2017, que consta expressamente como revogado no índice SEFA/PR.",
+          "Resolução SEFA 304/2025 republicou lista NCM impedidas no art.14 do Decreto 7.721/2024.",
+          "Resoluções 227, 228, 229 e 469/2026 disciplinam transferências de créditos para objetivos/setores específicos.",
+          "A NPF Conjunta REPR/CAET 002/2026 alterou procedimentos referentes ao Programa.",
+          "Sistema oficial do Paraná publica decreto 7.721/2024 e alterações, inclusive posteriores; não presumir benefício apenas com protocolo sem deferimento."
+        ],
+        "red_flags": [
+          "decreto_antigo_revogado",
+          "ncm_impedida",
+          "projeto_nao_aprovado",
+          "modalidade_transferencia_nao_aplicavel",
+          "alteracoes_2025_2026_e_deferimento_individual"
+        ],
+        "fully_consolidated_current_to_20261121": false,
+        "independent_accountant_opinion": false,
+        "publisher_bytes_sha256": null
+      }
+    },
+    {
+      "candidate_id": "RJ-LEI6331-PORT345-ADESAO-V1",
+      "candidate_version": 1,
+      "uf": "RJ",
+      "review_status": "draft",
+      "benefit_kind": "presumed_credit",
+      "tax_code": "ICMS",
+      "normative_reference": "Lei 6.331/2012; Portaria SSER 345/2023; alterações 350/2024, 362/2024 e 431/2025",
+      "legal_path_research": "unresolved_pending_confaz_and_reinstitution_review",
+      "state_official_source_url": "https://www3.alerj.rj.gov.br/lotus_notes/default.asp?URL=L0NPTlRMRUkuTlNGL2M4YWEwOTAwMDI1ZmVlZjYwMzI1NjRlYzAwNjBkZmZmLzY4ZDI2ZWU1OThmMWFlNzI4MzI1N2E5OTAwNjNiMzcxP09wZW5Eb2N1bWVudA%3D%3D&id=2",
+      "official_evidence_type": "official_benefit_procedure_guide",
+      "findings_verified_from_public_source": [
+        "Roteiro SEFAZ/RJ diferencia benefícios gerais, condicionados e por adesão sujeitos à portaria subsidiária",
+        "A Lei 6.331/2012, art.1, é exclusivamente voltada à indústria têxtil, confecções e aviamentos; prazo textual de opção até 31/12/2032.",
+        "Art.2 na redação Lei 10.983/2025 é crédito presumido com carga efetiva de 2,5% sobre valor contábil de saídas definidas pela lei, NÃO crédito de 2,5% do valor da operação.",
+        "§1º art.2 veda aproveitamento de outros créditos ICMS; §4º limita operações consideradas e exclui saídas destinadas a consumidor final em certas hipóteses.",
+        "§9º art.2 veda a microempresa/empresa de pequeno porte em Regime Simplificado de ICMS; §3º exige estabelecimento distinto ao exercer outra atividade.",
+        "Antes de elegibilidade real verificar adesão individual, eventual cancelamento, status fiscal, alterações futuras e regime por CNPJ."
+      ],
+      "eligibility_predicates_to_confirm": [
+        "Exigir comunicação/termo ao órgão competente, prazo de eficácia e enquadramento do benefício específico",
+        "Conferir Portaria SSER 431/2025 e redações vigentes em cada competência, inclusive comunicação no SEI-RJ e início no mês subsequente quando aplicável."
+      ],
+      "negative_eligibility_scenario": "A fonte orientativa não supre a Lei 6.331/2012 atualizada; não aplicar termo geral a qualquer benefício",
+      "legal_temporal_notes": "Art.2 da Lei 6.331/2012 alterado pela Lei 10.983/2025: crédito presumido para carga efetiva de 2,5%, NÃO percentual de crédito de 2,5%. Aplicação somente com opt-in/regras e CNPJ elegível, sem aprovação deste catálogo.",
+      "mandatory_missing": [
+        "conferir texto primário integral, dispositivo concessivo, redações, revogações e efeitos para cada competência",
+        "verificar CONFAZ/LC160, lei estadual e ato individual quando aplicáveis",
+        "determinar operações elegíveis, contribuintes, NCM/CNAE/CFOP, ST/DIFAL, escrituração e condições de manutenção",
+        "capturar bytes originais da publicação oficial e calcular SHA256 real",
+        "obter teste positivo/negativo jurídico específico e aprovação independente do contador"
+      ],
+      "schema_version": "nfcore.state-icms-benefit-rule/v1",
+      "source_sha256": null,
+      "legal_reviewer": null,
+      "approved_for_eligibility": false,
+      "import_authorized": false,
+      "eligibility_certified": false,
+      "primary_source_review_20261121": {
+        "inspection_type": "official_state_legislative_text_amended_2025",
+        "legal_provision": "Lei RJ 6.331/2012 arts.1 e 2, redação Lei 10.983/2025 — regime indústria têxtil",
+        "sources": [
+          "https://www3.alerj.rj.gov.br/lotus_notes/default.asp?URL=L0NPTlRMRUkuTlNGL2M4YWEwOTAwMDI1ZmVlZjYwMzI1NjRlYzAwNjBkZmZmLzY4ZDI2ZWU1OThmMWFlNzI4MzI1N2E5OTAwNjNiMzcxP09wZW5Eb2N1bWVudA%3D%3D&id=2",
+          "https://portal.fazenda.rj.gov.br/transparencia-da-receita-estadual/wp-content/uploads/sites/5/2025/04/PORTAL-DA-TRANSPARENCIA-ROTEIRO-BF.pdf",
+          "https://www3.alerj.rj.gov.br/lotus_notes/default.asp?URL=L0NPTlRMRUkuTlNGL2M4YWEwOTAwMDI1ZmVlZjYwMzI1NjRlYzAwNjBkZmZmLzY4ZDI2ZWU1OThmMWFlNzI4MzI1N2E5OTAwNjNiMzcxP09wZW5Eb2N1bWVudA%3D%3D&amp=&id=2"
+        ],
+        "primary_findings": [
+          "A Lei 6.331/2012, art.1, é exclusivamente voltada à indústria têxtil, confecções e aviamentos; prazo textual de opção até 31/12/2032.",
+          "Art.2 na redação Lei 10.983/2025 é crédito presumido com carga efetiva de 2,5% sobre valor contábil de saídas definidas pela lei, NÃO crédito de 2,5% do valor da operação.",
+          "§1º art.2 veda aproveitamento de outros créditos ICMS; §4º limita operações consideradas e exclui saídas destinadas a consumidor final em certas hipóteses.",
+          "§9º art.2 veda a microempresa/empresa de pequeno porte em Regime Simplificado de ICMS; §3º exige estabelecimento distinto ao exercer outra atividade.",
+          "Antes de elegibilidade real verificar adesão individual, eventual cancelamento, status fiscal, alterações futuras e regime por CNPJ.",
+          "ALERJ publica Lei 6.331/2012, ementa, redações históricas, alterações e condições de adesão; observar dispositivos alterados antes de usar como norma vigente.",
+          "Portaria SSER 345/2023 sofreu alterações em 2024 e em 2025 (Portaria SSER 431/2025); exigir texto oficial e vigência por competência antes da aplicação."
+        ],
+        "red_flags": [
+          "produto_nao_textil",
+          "sem_adesao_individual",
+          "regime_simplificado_excluido",
+          "creditamento_cumulativo",
+          "aplicacao_para_consumidor_final",
+          "primary_source_capture_requires_sha_and_human_consolidation",
+          "alteracao_portaria_sser_431_2025_nao_consolidada"
+        ],
+        "fully_consolidated_current_to_20261121": false,
+        "independent_accountant_opinion": false,
+        "publisher_bytes_sha256": null
+      }
+    },
+    {
+      "candidate_id": "RN-RICMS2022-AN003-REDUCAO-V1",
+      "candidate_version": 1,
+      "uf": "RN",
+      "review_status": "draft",
+      "benefit_kind": "base_reduction",
+      "tax_code": "ICMS",
+      "normative_reference": "Decreto 31.825/2022, Anexo 003, arts. 1 a 6",
+      "legal_path_research": "unresolved_pending_confaz_and_reinstitution_review",
+      "state_official_source_url": "https://webdisk.diariooficial.rn.gov.br/Jornal/12022-08-19.pdf",
+      "official_evidence_type": "original_full_2022_doe_official_200_pages_NOT_2026_consolidated",
+      "findings_verified_from_public_source": [
+        "Regulamento RICMS/RN disciplina efeitos de base reduzida, crédito presumido e limites de crédito de aquisição com benefício",
+        "SEFAZ/RN Consulta 015/2023 aborda benefício de crédito presumido de produtores de peixes e camarões no Anexo 003 arts.1,2,5 e 6.",
+        "Consultoria oficial reconhece exceções para nota de baixa de estoque por perda, vedação ao crédito fiscal e circunstâncias específicas de estorno.",
+        "É resposta a contribuinte/caso de 2023; não comprova redação consolidada até novembro 2026 nem enquadramento da empresa do NFCore."
+      ],
+      "eligibility_predicates_to_confirm": [
+        "Exige apontar artigo/item exato e comprovar fruição conforme regime, período e FECOP quando incidente"
+      ],
+      "negative_eligibility_scenario": "Anexo e texto base não bastam para afirmar qual benefício específico está vigente em 2026",
+      "legal_temporal_notes": "Indicador jurídico para triagem; texto consolidado e alterações até a competência de 2026 não foram integralmente auditados neste pacote.",
+      "mandatory_missing": [
+        "conferir texto primário integral, dispositivo concessivo, redações, revogações e efeitos para cada competência",
+        "verificar CONFAZ/LC160, lei estadual e ato individual quando aplicáveis",
+        "determinar operações elegíveis, contribuintes, NCM/CNAE/CFOP, ST/DIFAL, escrituração e condições de manutenção",
+        "capturar bytes originais da publicação oficial e calcular SHA256 real",
+        "obter teste positivo/negativo jurídico específico e aprovação independente do contador"
+      ],
+      "schema_version": "nfcore.state-icms-benefit-rule/v1",
+      "source_sha256": null,
+      "legal_reviewer": null,
+      "approved_for_eligibility": false,
+      "import_authorized": false,
+      "eligibility_certified": false,
+      "primary_source_review_20261121": {
+        "inspection_type": "official_tax_authority_2023_consultation_index",
+        "legal_provision": "RICMS/RN Decreto 31.825/2022 Anexo 003 arts.1, 2, 5 e 6 — Consulta 015/2023 (peixes/camarões)",
+        "sources": [
+          "https://webdisk.diariooficial.rn.gov.br/Jornal/12022-08-19.pdf",
+          "https://diariooficial.rn.gov.br/dei/dorn3/documentos/00000001/20220819/783131.htm",
+          "https://www.sefaz.rn.gov.br/postagem/respostas-de-consultas-2023/"
+        ],
+        "primary_findings": [
+          "SEFAZ/RN Consulta 015/2023 aborda benefício de crédito presumido de produtores de peixes e camarões no Anexo 003 arts.1,2,5 e 6.",
+          "Consultoria oficial reconhece exceções para nota de baixa de estoque por perda, vedação ao crédito fiscal e circunstâncias específicas de estorno.",
+          "É resposta a contribuinte/caso de 2023; não comprova redação consolidada até novembro 2026 nem enquadramento da empresa do NFCore.",
+          "DOE-RN contém publicação originária do Decreto 31.825/2022 e exigência de opção/deferimento para situações do Anexo 003; texto de 2022 não é consolidação de 2026.",
+          "DOE/RN Ano 89 edição 15.247, de 19/08/2022, contém na página inicial o Decreto 31.825/2022 e Anexo 003; publicação original de 200 páginas não é consolidação de 2026."
+        ],
+        "red_flags": [
+          "atividade_nao_aquicultura",
+          "credito_vedado",
+          "operacao_nao_enquadrada",
+          "norma_2026_nao_consolidada",
+          "anexo_003_2026_e_opcao_deferida_nao_verificados",
+          "source_is_historical_or_amending_not_consolidated_2026"
+        ],
+        "fully_consolidated_current_to_20261121": false,
+        "independent_accountant_opinion": false,
+        "publisher_bytes_sha256": null
+      }
+    },
+    {
+      "candidate_id": "RO-INDS-LEI1558-DEC12988-V1",
+      "candidate_version": 1,
+      "uf": "RO",
+      "review_status": "draft",
+      "benefit_kind": "presumed_credit",
+      "tax_code": "ICMS",
+      "normative_reference": "Lei 1.558/2005, Decreto 12.988/2007 e Decreto 28.386/2023",
+      "legal_path_research": "unresolved_pending_confaz_and_reinstitution_review",
+      "state_official_source_url": "https://sapl.al.ro.leg.br/media/sapl/public/normajuridica/2005/3535/3535_texto_integral.pdf",
+      "official_evidence_type": "official_state_legislation_index",
+      "findings_verified_from_public_source": [
+        "SEFIN/RO identifica regime de incentivo industrial por crédito presumido sob concessão do CONDER",
+        "Decreto 30.916 de 18/11/2025 altera e revoga disposições do Regulamento de Incentivo Tributário Industrial do Decreto 12.988/2007.",
+        "Alteração do art.13 §2 impõe manifestação expressa da GITEC/CRE/SEFIN e CONSIC antes de o CONDER rever o enquadramento para faixas superiores, condicionada a geração de empregos.",
+        "Art.8 trata de atividades excluídas, cuja lista integral e alterações devem ser verificados no Decreto consolidado.",
+        "Texto publicado pela SEFIN declara que não substitui Diário Oficial e, sozinho, não prova vigência ou concessão individual."
+      ],
+      "eligibility_predicates_to_confirm": [
+        "Exigir decisão CONDER, atividade e projeto, termos de concessão e normas atualizadas"
+      ],
+      "negative_eligibility_scenario": "Decreto 28.386/2023 revogou dispositivo do Decreto 12.988/2007; não herdar condição revogada",
+      "legal_temporal_notes": "Indicador jurídico para triagem; texto consolidado e alterações até a competência de 2026 não foram integralmente auditados neste pacote.",
+      "mandatory_missing": [
+        "conferir texto primário integral, dispositivo concessivo, redações, revogações e efeitos para cada competência",
+        "verificar CONFAZ/LC160, lei estadual e ato individual quando aplicáveis",
+        "determinar operações elegíveis, contribuintes, NCM/CNAE/CFOP, ST/DIFAL, escrituração e condições de manutenção",
+        "capturar bytes originais da publicação oficial e calcular SHA256 real",
+        "obter teste positivo/negativo jurídico específico e aprovação independente do contador"
+      ],
+      "schema_version": "nfcore.state-icms-benefit-rule/v1",
+      "source_sha256": null,
+      "legal_reviewer": null,
+      "approved_for_eligibility": false,
+      "import_authorized": false,
+      "eligibility_certified": false,
+      "primary_source_review_20261121": {
+        "inspection_type": "official_2025_amendment_to_industrial_incentive_decree",
+        "legal_provision": "Decreto RO 30.916/2025 — alterações ao 12.988/2007, arts.8 e 13, §2",
+        "sources": [
+          "https://sapl.al.ro.leg.br/media/sapl/public/normajuridica/2005/3535/3535_texto_integral.pdf",
+          "https://www.sefin.ro.gov.br/lista.jsp?formato=166&page=9&tipo=lei",
+          "https://sapl.al.ro.leg.br/norma/3535",
+          "https://www.sefin.ro.gov.br/portalsefin/anexos/D25-30916---Altera%2C-acresce-e-revoga-dispositivos-do-Regulamento-de-Incentivo-Tributario-aprovado-pelo-D07_-12.988.pdf"
+        ],
+        "primary_findings": [
+          "Decreto 30.916 de 18/11/2025 altera e revoga disposições do Regulamento de Incentivo Tributário Industrial do Decreto 12.988/2007.",
+          "Alteração do art.13 §2 impõe manifestação expressa da GITEC/CRE/SEFIN e CONSIC antes de o CONDER rever o enquadramento para faixas superiores, condicionada a geração de empregos.",
+          "Art.8 trata de atividades excluídas, cuja lista integral e alterações devem ser verificados no Decreto consolidado.",
+          "Texto publicado pela SEFIN declara que não substitui Diário Oficial e, sozinho, não prova vigência ou concessão individual.",
+          "SAPL ALE/RO identifica Lei 1.558/2005 e registra 'Data Fim Vigência' de 17/12/2018, mesma data de norma 4.435/2018 que altera a lei. É preciso conciliar a aparente divergência do registro antes de qualquer alegação de vigência de benefício em 2026.",
+          "ALE/RO disponibiliza PDF de três páginas da Lei 1.558/2005, texto original; registro legislativo indica fim de vigência 17/12/2018 e histórico de alterações que impedem afirmar vigência de 2026."
+        ],
+        "red_flags": [
+          "sem_conder",
+          "sem_manifestacao_tecnica",
+          "geracao_emprego_nao_comprovada",
+          "atividade_excluida",
+          "data_fim_vigencia_sapl_2018_vs_lei_alteradora",
+          "original_law_may_be_expired_do_not_apply_2026"
+        ],
+        "fully_consolidated_current_to_20261121": false,
+        "independent_accountant_opinion": false,
+        "publisher_bytes_sha256": null
+      }
+    },
+    {
+      "candidate_id": "RR-RICMS2001-AN1-ART1-LXVII-V1",
+      "candidate_version": 1,
+      "uf": "RR",
+      "review_status": "draft",
+      "benefit_kind": "exemption",
+      "tax_code": "ICMS",
+      "normative_reference": "Decreto 4.335-E/2001, Anexo I art. 1º inciso LXVII",
+      "legal_path_research": "unresolved_pending_confaz_and_reinstitution_review",
+      "state_official_source_url": "https://www.sefaz.rr.gov.br/cidadao/downloads?catid=494&id=25462&m=0&task=download.send",
+      "official_evidence_type": "official_regulation_repository",
+      "findings_verified_from_public_source": [
+        "Repositório SEFAZ/RR disponibiliza Anexo I; consulta oficial menciona inciso LXVII de insumos agropecuários"
+      ],
+      "eligibility_predicates_to_confirm": [
+        "Exigir insumo qualificado, operação interna e prazo vigente; verificar Convênio ICMS 100/97"
+      ],
+      "negative_eligibility_scenario": "Não inferir isenção interestadual ou DIFAL a partir de isenção de operação interna",
+      "legal_temporal_notes": "Indicador jurídico para triagem; texto consolidado e alterações até a competência de 2026 não foram integralmente auditados neste pacote.",
+      "mandatory_missing": [
+        "conferir texto primário integral, dispositivo concessivo, redações, revogações e efeitos para cada competência",
+        "verificar CONFAZ/LC160, lei estadual e ato individual quando aplicáveis",
+        "determinar operações elegíveis, contribuintes, NCM/CNAE/CFOP, ST/DIFAL, escrituração e condições de manutenção",
+        "capturar bytes originais da publicação oficial e calcular SHA256 real",
+        "obter teste positivo/negativo jurídico específico e aprovação independente do contador"
+      ],
+      "schema_version": "nfcore.state-icms-benefit-rule/v1",
+      "source_sha256": null,
+      "legal_reviewer": null,
+      "approved_for_eligibility": false,
+      "import_authorized": false,
+      "eligibility_certified": false,
+      "primary_source_review_20261121": {
+        "inspection_type": "official_index_only_primary_source_not_captured",
+        "legal_provision": "Decreto 4.335-E/2001, Anexo I art. 1º inciso LXVII (insumos agropecuários)",
+        "sources": [
+          "https://www.sefaz.rr.gov.br/cidadao/downloads?catid=494&id=25462&m=0&task=download.send",
+          "https://www.sefaz.rr.gov.br/downloads/legislacao?dir=02+-+LEGISLACAO+ESTADUAL"
+        ],
+        "primary_findings": [
+          "SEFAZ/RR publica biblioteca de RICMS e Anexo I em downloads, mas o documento final do inciso LXVII não foi capturado em bytes verificáveis neste ambiente.",
+          "O arquivo de Regulamento encontrado por busca retornou falha no acesso direto à imagem/original; extratos indexados não permitem atribuir vigência ou elegibilidade.",
+          "SEFAZ/RR oferece PDF governamental do Decreto 4.335-E/2001 (RICMS) consolidado até Decreto 39.825-E de 13/01/2026; recorte do Anexo I e alterações pós-janeiro ainda exigem revisão."
+        ],
+        "red_flags": [
+          "official_pdf_download_not_captured",
+          "conv_100_1997_incorporation_not_confirmed",
+          "2026_eligibility_unconsolidated",
+          "partial_temporal_consolidation_to_2026_01_13"
+        ],
+        "fully_consolidated_current_to_20261121": false,
+        "independent_accountant_opinion": false,
+        "publisher_bytes_sha256": null
+      },
+      "priority_closeout_20261123": {
+        "status": "EXPIRED_2025_SPECIFIC_2026_EXTENSION_UNPROVEN",
+        "material_replacement_id": null,
+        "unverified_original_sources": [
+          "https://www.sefaz.rr.gov.br/downloads?catid=1404&id=25395&m=0&task=download.send"
+        ],
+        "positive_ruling": false,
+        "import_authorized": false
+      }
+    },
+    {
+      "candidate_id": "RS-RICMS1997-L1-ART32-CLXXXVI-METAL-V1",
+      "candidate_version": 1,
+      "uf": "RS",
+      "review_status": "draft",
+      "benefit_kind": "presumed_credit",
+      "tax_code": "ICMS",
+      "normative_reference": "Decreto 37.699/1997, Livro I, art. 32, inciso CLXXXVI",
+      "legal_path_research": "state_statute",
+      "state_official_source_url": "https://receita.fazenda.rs.gov.br/servicos-a-empresas/servicos?servico=1946",
+      "findings_verified_from_public_source": [
+        "Serviço oficial de opção de crédito presumido para fabricante de sistemas construtivos / estruturas metálicas",
+        "NCMs indicados no procedimento: 94069020 e 73082000, para os produtos respectivos",
+        "Exige protocolo eletrônico e análise de opção; deferimento não é automático",
+        "Se deferido, efeitos a partir do primeiro dia do mês seguinte à formalização",
+        "Prazo mínimo de permanência na opção de seis meses, segundo orientação do serviço",
+        "A opção de fabricantes de sistemas construtivos NCM 9406.90.20 e estruturas metálicas NCM 7308.20.00 é apresentada por protocolo eletrônico.",
+        "Contribuinte precisa ser inscrito no CGC/TE do RS.",
+        "Só o pedido DEFERIDO produz efeitos a partir do primeiro dia do mês subsequente à formalização da opção.",
+        "O prazo mínimo de permanência na opção é seis meses, segundo orientação oficial.",
+        "Documentos incluem formulário com assinatura digital, contrato social, CRF/FGTS e regularidade da seguridade social."
+      ],
+      "mandatory_missing": [
+        "confrontar redação atual integral do Livro I art. 32 CLXXXVI e IN 045/98",
+        "classificação de CNAE, CFOP, operação, percentual, limites, competência e regime",
+        "verificar habilitação específica da empresa e documentos obrigatórios",
+        "documento fonte salvo e SHA256 dos bytes reais, eventual CONFAZ/LC160",
+        "revisor jurídico-fiscal independente, assinatura humana, testes reais"
+      ],
+      "schema_version": "nfcore.state-icms-benefit-rule/v1",
+      "official_evidence_type": "official_reference_not_fully_consolidated",
+      "eligibility_predicates_to_confirm": [
+        "confrontar redação atual integral do Livro I art. 32 CLXXXVI e IN 045/98",
+        "classificação de CNAE, CFOP, operação, percentual, limites, competência e regime",
+        "verificar habilitação específica da empresa e documentos obrigatórios"
+      ],
+      "negative_eligibility_scenario": "Opção ainda não deferida, NCM diverso de 94069020/73082000 ou eficácia antes do mês subsequente não geram o benefício.",
+      "source_sha256": null,
+      "legal_reviewer": null,
+      "approved_for_eligibility": false,
+      "import_authorized": false,
+      "eligibility_certified": false,
+      "primary_source_review_20261121": {
+        "inspection_type": "official_option_service",
+        "legal_provision": "RICMS/RS Livro I art.32 CLXXXVI — procedimento de opção",
+        "sources": [
+          "https://receita.fazenda.rs.gov.br/servicos-a-empresas/servicos?servico=1946"
+        ],
+        "primary_findings": [
+          "A opção de fabricantes de sistemas construtivos NCM 9406.90.20 e estruturas metálicas NCM 7308.20.00 é apresentada por protocolo eletrônico.",
+          "Contribuinte precisa ser inscrito no CGC/TE do RS.",
+          "Só o pedido DEFERIDO produz efeitos a partir do primeiro dia do mês subsequente à formalização da opção.",
+          "O prazo mínimo de permanência na opção é seis meses, segundo orientação oficial.",
+          "Documentos incluem formulário com assinatura digital, contrato social, CRF/FGTS e regularidade da seguridade social."
+        ],
+        "red_flags": [
+          "opcao_indeferida_ou_pendente",
+          "efeito_antes_do_mes_subsequente",
+          "ncm_incompativel",
+          "registro_inexistente",
+          "fgts_irregular"
+        ],
+        "fully_consolidated_current_to_20261121": false,
+        "independent_accountant_opinion": false,
+        "publisher_bytes_sha256": null
+      }
+    },
+    {
+      "candidate_id": "SC-PROEMPREGO-LEI13992-DEC105-V1",
+      "candidate_version": 1,
+      "uf": "SC",
+      "review_status": "draft",
+      "benefit_kind": "special_regime",
+      "tax_code": "ICMS",
+      "normative_reference": "Lei 13.992/2007, Decreto 105/2007 e Resolução de Enquadramento",
+      "legal_path_research": "unresolved_pending_confaz_and_reinstitution_review",
+      "state_official_source_url": "https://legislacao.sef.sc.gov.br/html/leis/2007/lei_07_13992.htm",
+      "official_evidence_type": "official_tax_authority_procedure",
+      "findings_verified_from_public_source": [
+        "SEF/SC informa que enquadramento exige TTD, parecer do grupo gestor e decisão expressa por resolução",
+        "Enquadramento exige pedido pelo módulo TTD e resolução expedida pelo Secretário de Fazenda após parecer de Grupo Gestor.",
+        "O serviço menciona inadimplência e falta de EFD/Sintegra como impedimentos, e a resolução define tratamento e duração.",
+        "Cumulação de tratamentos na mesma operação depende de regra específica."
+      ],
+      "eligibility_predicates_to_confirm": [
+        "Exigir tratamento específico, resolução, prazo e vedações de acumulação na mesma operação"
+      ],
+      "negative_eligibility_scenario": "Protocolo TTD sem decisão e regime de terceiro não habilitam estabelecimento",
+      "legal_temporal_notes": "Indicador jurídico para triagem; texto consolidado e alterações até a competência de 2026 não foram integralmente auditados neste pacote.",
+      "mandatory_missing": [
+        "conferir texto primário integral, dispositivo concessivo, redações, revogações e efeitos para cada competência",
+        "verificar CONFAZ/LC160, lei estadual e ato individual quando aplicáveis",
+        "determinar operações elegíveis, contribuintes, NCM/CNAE/CFOP, ST/DIFAL, escrituração e condições de manutenção",
+        "capturar bytes originais da publicação oficial e calcular SHA256 real",
+        "obter teste positivo/negativo jurídico específico e aprovação independente do contador"
+      ],
+      "schema_version": "nfcore.state-icms-benefit-rule/v1",
+      "source_sha256": null,
+      "legal_reviewer": null,
+      "approved_for_eligibility": false,
+      "import_authorized": false,
+      "eligibility_certified": false,
+      "primary_source_review_20261121": {
+        "inspection_type": "official_ttd_approval_service",
+        "legal_provision": "Lei SC 13.992/2007 e Decreto 105/2007 — Pró-Emprego",
+        "sources": [
+          "https://legislacao.sef.sc.gov.br/html/leis/2007/lei_07_13992.htm",
+          "https://www.sef.sc.gov.br/saiba-mais/programa-pro-emprego"
+        ],
+        "primary_findings": [
+          "Enquadramento exige pedido pelo módulo TTD e resolução expedida pelo Secretário de Fazenda após parecer de Grupo Gestor.",
+          "O serviço menciona inadimplência e falta de EFD/Sintegra como impedimentos, e a resolução define tratamento e duração.",
+          "Cumulação de tratamentos na mesma operação depende de regra específica.",
+          "SEF/SC mantém a Lei 13.992/2007 em página identificada como 'Redação Passada'; não usar como redação vigente sem reconstrução de todos os atos e termos individuais.",
+          "SEF/SC publica Lei 13.992/2007 Pró-Emprego em acervo marcado REDAÇÃO PASSADA; conservar como texto histórico e não como norma vigente sem reconciliação da Lei 17.763/2019 e atos posteriores."
+        ],
+        "red_flags": [
+          "ttd_sem_resolucao",
+          "efds_omissas",
+          "empresa_inadimplente",
+          "pagina_redacao_passada_nao_vigente",
+          "historical_law_not_current_without_consolidation"
+        ],
+        "fully_consolidated_current_to_20261121": false,
+        "independent_accountant_opinion": false,
+        "publisher_bytes_sha256": null
+      }
+    },
+    {
+      "candidate_id": "SE-PSDI-LEI3140-DEC29935-V1",
+      "candidate_version": 1,
+      "uf": "SE",
+      "review_status": "draft",
+      "benefit_kind": "special_regime",
+      "tax_code": "ICMS",
+      "normative_reference": "Lei 3.140/1991, Decreto 29.935/2014 e decisão CDI",
+      "legal_path_research": "unresolved_pending_confaz_and_reinstitution_review",
+      "state_official_source_url": "https://pge.se.gov.br/wp-content/uploads/2025/02/DECRETO-29-935-1.pdf",
+      "official_evidence_type": "official_original_decree_29935_2014_NOT_2026_consolidated",
+      "findings_verified_from_public_source": [
+        "Portal SE/PSDI exige projeto industrial com compromisso de emprego/renda e apreciação CDI",
+        "Requer projeto com compromisso formal de empregos e renda, análise pela Codise, deliberação do CDI e publicação no DOE.",
+        "Serviço público informa não elegibilidade de MEI ou empresa optante do Simples Nacional.",
+        "Orientação não substitui parecer independente sobre lei vigente e concessão individual."
+      ],
+      "eligibility_predicates_to_confirm": [
+        "Exigir publicação da decisão, condições e contrapartidas; vedação MEI e optante Simples no serviço oficial"
+      ],
+      "negative_eligibility_scenario": "Candidatura em andamento e MEI/Simples não configuram incentivo aprovado",
+      "legal_temporal_notes": "Indicador jurídico para triagem; texto consolidado e alterações até a competência de 2026 não foram integralmente auditados neste pacote.",
+      "mandatory_missing": [
+        "conferir texto primário integral, dispositivo concessivo, redações, revogações e efeitos para cada competência",
+        "verificar CONFAZ/LC160, lei estadual e ato individual quando aplicáveis",
+        "determinar operações elegíveis, contribuintes, NCM/CNAE/CFOP, ST/DIFAL, escrituração e condições de manutenção",
+        "capturar bytes originais da publicação oficial e calcular SHA256 real",
+        "obter teste positivo/negativo jurídico específico e aprovação independente do contador"
+      ],
+      "schema_version": "nfcore.state-icms-benefit-rule/v1",
+      "source_sha256": null,
+      "legal_reviewer": null,
+      "approved_for_eligibility": false,
+      "import_authorized": false,
+      "eligibility_certified": false,
+      "primary_source_review_20261121": {
+        "inspection_type": "official_psdi_program_service",
+        "legal_provision": "Lei SE 3.140/1991 e PSDI, processo CDI",
+        "sources": [
+          "https://pge.se.gov.br/wp-content/uploads/2025/02/DECRETO-29-935-1.pdf",
+          "https://www.pge.se.gov.br/wp-content/uploads/2015/01/DECRETO-29-935.pdf",
+          "https://sedetec.se.gov.br/wp-content/uploads/2019/09/1.-Lei-n.%C2%BA-3.140-de-23-de-dezembro-de-1991-Institui-o-Programa-Sergipano-de-Desenvolvimento-Industrial-PSDI-e-cria-o-FAI.pdf",
+          "https://www.se.gov.br/servicos/623",
+          "https://www.se.gov.br/servicos/658"
+        ],
+        "primary_findings": [
+          "Requer projeto com compromisso formal de empregos e renda, análise pela Codise, deliberação do CDI e publicação no DOE.",
+          "Serviço público informa não elegibilidade de MEI ou empresa optante do Simples Nacional.",
+          "Orientação não substitui parecer independente sobre lei vigente e concessão individual.",
+          "SEDETEC arquiva cópia da Lei 3.140/1991 PSDI, com alterações; confirmar redação atual, Decreto 29.935/2014 e ato de aprovação do CDI.",
+          "PGE/SE arquiva o Decreto 29.935/2014 que regulamenta PSDI/FAI; arquivo original de 2014 não constitui consolidação integral até 2026.",
+          "PGE/SE publica Decreto 29.935/2014, consolidando regulamentação PSDI/FAI à data original; é necessária comparação dos decretos de alteração posteriores até a competência de 2026."
+        ],
+        "red_flags": [
+          "mei_ou_simples",
+          "sem_publicacao_decisao",
+          "contrapartida_nao_comprovada",
+          "consolidacao_2026_e_deliberacao_cdi_ausentes",
+          "primary_source_capture_requires_sha_and_human_consolidation",
+          "source_is_historical_or_amending_not_consolidated_2026"
+        ],
+        "fully_consolidated_current_to_20261121": false,
+        "independent_accountant_opinion": false,
+        "publisher_bytes_sha256": null
+      },
+      "priority_closeout_20261123": {
+        "status": "BLOCKED_MODAL_CONFAZ_AND_DOE_AMENDMENT",
+        "material_replacement_id": null,
+        "unverified_original_sources": [
+          "https://aleselegis.al.se.leg.br/Arquivo/Documents/legislacao/html/l84902018.html"
+        ],
+        "positive_ruling": false,
+        "import_authorized": false
+      }
+    },
+    {
+      "candidate_id": "SP-RICMS2000-AN3-ART41-TEXTILE-V1",
+      "candidate_version": 1,
+      "uf": "SP",
+      "review_status": "draft",
+      "benefit_kind": "presumed_credit",
+      "tax_code": "ICMS",
+      "normative_reference": "Decreto 45.490/2000, Anexo III, art. 41 (redação Decreto 67.524/2023, prazo Decreto 69.292/2025)",
+      "legal_path_research": "lc160_reinstituted",
+      "state_official_source_url": "https://legislacao.fazenda.sp.gov.br/Paginas/an3art041.aspx",
+      "findings_verified_from_public_source": [
+        "Operação: saída INTERNA de produtos têxteis por estabelecimento localizado em SP",
+        "Dependência expressa: redução da base de cálculo do art. 52 do Anexo II",
+        "Percentual nominal do art. 41: 12% sobre o valor da saída, não redução automática de ICMS",
+        "É condicionado à tributação da saída; saídas com posterior retorno real/simbólico excluídas",
+        "A opção substitui o aproveitamento de outros créditos; escrituração em Outros Créditos",
+        "Prazo textual apontado na página: até 2026-12-31",
+        "Crédito do art.41 nominal de 12% do valor da saída interna, desde que operação esteja beneficiada pela redução de base do art.52 do Anexo II.",
+        "Art.52 §4º exclui saídas internas destinadas a consumidor ou usuário final na redação em vigor.",
+        "Art.52 identifica posições e capítulos NCM com exclusões expressas e condição para terceirização da fabricação.",
+        "Art.41 §4º substitui aproveitamento de demais créditos e §3º exclui saída com retorno posterior real/simbólico.",
+        "Art.41 e art.52 §5º têm termo previsto 31/12/2026; verificar alterações futuras.",
+        "RC33644/2026 analisa opção RUDFTO e créditos extemporâneos em caso específico, não certifica a elegibilidade de qualquer empresa."
+      ],
+      "legal_temporal_notes": "Página contém redações históricas superadas. Não usar percentual sem competência e revisão posterior. Art41 effective 12% since 15/01/2023 overrides stale CAT35 9% textual reference; RC33644/2026 is interpretive, not proof of compliance. Single-state vertical research remains draft pending primary official original and independent review.",
+      "mandatory_missing": [
+        "revisão independente do texto consolidado e atos modificadores para cada competência",
+        "art. 52 Anexo II e Portaria CAT 35/2017, opção/estorno e eventual credenciamento",
+        "NCM exato, CFOP, CNAE, regime ICMS e regime federal; não inferir listas",
+        "documento fonte salvo e SHA256 de bytes reais, status CONFAZ/LC160 por ato",
+        "revisor jurídico-fiscal, assinatura humana, pacote de testes positivos/negativos de regra real"
+      ],
+      "schema_version": "nfcore.state-icms-benefit-rule/v1",
+      "official_evidence_type": "official_reference_not_fully_consolidated",
+      "eligibility_predicates_to_confirm": [
+        "revisão independente do texto consolidado e atos modificadores para cada competência",
+        "art. 52 Anexo II e Portaria CAT 35/2017, opção/estorno e eventual credenciamento",
+        "NCM exato, CFOP, CNAE, regime ICMS e regime federal; não inferir listas"
+      ],
+      "negative_eligibility_scenario": "Saída interestadual, consumidor ou usuário final, produto excluído do art. 52 Anexo II, falta de opção RUDFTO ou acumulação indevida de créditos não autorizam crédito outorgado.",
+      "source_sha256": null,
+      "legal_reviewer": null,
+      "approved_for_eligibility": false,
+      "import_authorized": false,
+      "eligibility_certified": false,
+      "primary_source_review_20261121": {
+        "inspection_type": "official_consolidated_provision",
+        "legal_provision": "RICMS/2000 Anexo III art.41 c/c Anexo II art.52 §§1º e 4º",
+        "sources": [
+          "https://legislacao.fazenda.sp.gov.br/Paginas/an3art041.aspx",
+          "https://legislacao.fazenda.sp.gov.br/Paginas/an2art052.aspx",
+          "https://legislacao.fazenda.sp.gov.br/Paginas/RC33644_2026.aspx"
+        ],
+        "primary_findings": [
+          "Crédito do art.41 nominal de 12% do valor da saída interna, desde que operação esteja beneficiada pela redução de base do art.52 do Anexo II.",
+          "Art.52 §4º exclui saídas internas destinadas a consumidor ou usuário final na redação em vigor.",
+          "Art.52 identifica posições e capítulos NCM com exclusões expressas e condição para terceirização da fabricação.",
+          "Art.41 §4º substitui aproveitamento de demais créditos e §3º exclui saída com retorno posterior real/simbólico.",
+          "Art.41 e art.52 §5º têm termo previsto 31/12/2026; verificar alterações futuras.",
+          "RC33644/2026 analisa opção RUDFTO e créditos extemporâneos em caso específico, não certifica a elegibilidade de qualquer empresa.",
+          "O art.41 Anexo III depende expressamente do art.52 Anexo II: observar fabricante/saída interna, NCM têxtil, regularidade tributária e exclusão de consumidor final; a hipótese de 12% não autoriza crédito automaticamente."
+        ],
+        "red_flags": [
+          "consumidor_final",
+          "ncm_excluido",
+          "operacao_interestadual",
+          "terceirizacao_sem_credenciamento_quando_exigido",
+          "sem_opcao_formal",
+          "cumulo_creditos_incompativel",
+          "anexo_ii_art52_nao_comprovado",
+          "consumidor_final_ou_ncm_excluido"
+        ],
+        "fully_consolidated_current_to_20261121": false,
+        "independent_accountant_opinion": false,
+        "publisher_bytes_sha256": null
+      }
+    },
+    {
+      "candidate_id": "TO-PROINDUSTRIA-LEI1385-ART6-V1",
+      "candidate_version": 1,
+      "uf": "TO",
+      "review_status": "draft",
+      "benefit_kind": "presumed_credit",
+      "tax_code": "ICMS",
+      "normative_reference": "Lei 1.385/2003, art. 6º e alterações",
+      "legal_path_research": "unresolved_pending_confaz_and_reinstitution_review",
+      "state_official_source_url": "https://www.al.to.leg.br/arquivo/65595",
+      "official_evidence_type": "official_state_assembly_law_document_not_2026_consolidated",
+      "findings_verified_from_public_source": [
+        "Art. 6º exige aprovação da carta-consulta pela Secretaria-Executiva do Conselho Estadual de Desenvolvimento Econômico"
+      ],
+      "eligibility_predicates_to_confirm": [
+        "Exigir carta-consulta deferida, projeto, setor/atividade e controle das alterações por competência"
+      ],
+      "negative_eligibility_scenario": "Consulta de benefício de transporte revogado não pode ser generalizada",
+      "legal_temporal_notes": "Indicador jurídico para triagem; texto consolidado e alterações até a competência de 2026 não foram integralmente auditados neste pacote.",
+      "mandatory_missing": [
+        "conferir texto primário integral, dispositivo concessivo, redações, revogações e efeitos para cada competência",
+        "verificar CONFAZ/LC160, lei estadual e ato individual quando aplicáveis",
+        "determinar operações elegíveis, contribuintes, NCM/CNAE/CFOP, ST/DIFAL, escrituração e condições de manutenção",
+        "capturar bytes originais da publicação oficial e calcular SHA256 real",
+        "obter teste positivo/negativo jurídico específico e aprovação independente do contador"
+      ],
+      "schema_version": "nfcore.state-icms-benefit-rule/v1",
+      "source_sha256": null,
+      "legal_reviewer": null,
+      "approved_for_eligibility": false,
+      "import_authorized": false,
+      "eligibility_certified": false,
+      "primary_source_review_20261121": {
+        "inspection_type": "official_legislative_publication_with_prior_amendment_annotations",
+        "legal_provision": "Lei TO 1.385/2003 arts. 3º e 4º (redações históricas)",
+        "sources": [
+          "https://www.al.to.leg.br/arquivo/65595"
+        ],
+        "primary_findings": [
+          "Art. 3º condiciona os incentivos à aprovação de projeto industrial de instalação ou expansão.",
+          "Art. 4º contém hipóteses condicionadas e redações anteriores revogadas; não autoriza crédito sem comprovação individual."
+        ],
+        "red_flags": [
+          "projeto_individual_nao_demonstrado",
+          "historico_e_redacoes_2026_nao_consolidados"
+        ],
+        "fully_consolidated_current_to_20261121": false,
+        "independent_accountant_opinion": false,
+        "publisher_bytes_sha256": null
+      }
+    }
+  ],
+  "curation_scope": "one representative public ICMS benefit or program per UF; not all state tax benefits",
+  "curation_research_count": 27,
+  "curation_internal_stage": "representative_norms_mapped_as_drafts",
+  "all_state_benefits_legally_consolidated": false,
+  "accountant_signoff_received": false,
+  "legal_source_bytes_archived": false,
+  "warning": "27 studied rules do NOT mean all state benefits are legally checked. No reviewed rule, tax benefit, taxpayer entitlement or rate is active."
+}

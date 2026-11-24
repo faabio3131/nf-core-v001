@@ -1,0 +1,405 @@
+{
+  "schema_version": "nfcore.t09.priority-four-terminal-operational-decision/v1",
+  "record_date": "2026-11-23",
+  "ci_base_approved": "45202030139",
+  "base_sha": "45b178c97e1a352440642c4e0258a3a507597bba",
+  "scope": "selected candidate and tax calculation only; not other legislation for same UF",
+  "technical_decision_final_for_this_evidence": "DENY_BENEFIT_ALL_FOUR",
+  "legal_certification_status": "NO_VALID_BINARY_CERTIFICATION_POSSIBLE_WITH_RECEIPTS",
+  "why": "Positive certification requires official complete per-modal route; negative certification requires affirmative evidence of expiry/invalidation/no valid successor or comprehensive official current enactment. Lack of discovery cannot establish legal nonexistence.",
+  "independent_contradictory_review_received": false,
+  "certified_positive": 0,
+  "certified_negative": 0,
+  "not_certified": 4,
+  "external_director_files_prerequisite": false,
+  "cases": [
+    {
+      "uf": "RR",
+      "decision_scope": "single historical or selected material candidate; does NOT judge all incentives in the state",
+      "decision_effect": "BLOCK_ICMS_BENEFIT_CALCULATION_AND_FISCAL_IMPORT",
+      "internal_curatorial_accepted": false,
+      "legal_certification_awarded": false,
+      "no_further_proactive_capture_retries": true,
+      "reopen_condition": "new authentic original or binding consolidated official evidence demonstrably changes legal scope",
+      "production_enabled": false,
+      "candidate": "Anexo I art.1 LXVII RICMS-RR; isenção interna de insumos agropecuários",
+      "assessment": "NO_VERIFIED_STATE_EXTENSION_IN_2026",
+      "legal_negative_certifiable": false,
+      "why_not_certifiable": "Uma consulta 2024 e a consolidação publicada até fevereiro/2026 não provam, sozinhas, inexistência de decreto entre março e novembro/2026.",
+      "material_evidence": [
+        {
+          "doc": "SEFAZ/RR Consulta 24/2024, norma estadual até 2025-12-31",
+          "url": "https://www.sefaz.rr.gov.br/downloads?catid=1404&id=25395&m=0&task=download.send",
+          "sha256": null,
+          "kind": "OFFICIAL_CONSULTATION_HTTP_WAF"
+        },
+        {
+          "doc": "RICMS/RR consolidado até Decreto 39.893-E/2026",
+          "url": "https://www.sefaz.rr.gov.br/component/jdownloads/?Itemid=402&catid=494&id=26478&m=0&task=download.send",
+          "sha256": null,
+          "kind": "OFFICIAL_SEARCH_TEXT_NOT_ARCHIVED_HMAC"
+        }
+      ],
+      "source_limit": "No primary state extension with SHA for Nov/2026; federal Convênio 79/2025 extends 100/1997 but does not establish state's own amendment.",
+      "conclusive_for_fiscal_engine": true,
+      "tests": [
+        "rr_lxvii_2026_specific_state_extension_not_proven",
+        "test_rr_historical_end_2025_does_not_imply_2026_extension"
+      ],
+      "precise_manual_document": "Decreto de Roraima publicado no DOE-RR em 2025–2026 que ALTERE EXPRESSAMENTE o inciso LXVII do art.1º do Anexo I do Decreto 4.335-E/2001; caso inexistente, certidão/compilação oficial atualizada até 23/11/2026.",
+      "manual_portal": "https://imprensaoficial.rr.gov.br/",
+      "provisional_external_required": false,
+      "2026_lxvii_scoped_fiscal_denial": {
+        "status": "NO_EXPLICIT_2026_STATE_EXTENSION_CONFIRMED",
+        "historical_expiry": "2025-12-31",
+        "negative_nonexistence_certified": false,
+        "non_import_authorized": true,
+        "retrieved_official_indexes_sha256": [
+          {
+            "url": "https://www.sefaz.rr.gov.br/downloads/legislacao?dir=02+-+LEGISLACAO+ESTADUAL%2F07+-+DECRETOS%2F2025",
+            "sha256": "d7600ddf41154aca82336f9ba97a2754532628ceaf21f2dd70d0e611460534c7"
+          },
+          {
+            "url": "https://www.sefaz.rr.gov.br/downloads/legislacao?dir=02+-+LEGISLACAO+ESTADUAL%2F07+-+DECRETOS%2F2026",
+            "sha256": "378dd46a6ae8beaad7088479f17e49de9cee3a7a82f4fd62a0467e48f86a8e7a"
+          },
+          {
+            "url": "https://www.sefaz.rr.gov.br/downloads/legislacao?dir=03+-+NORMAS+RECENTES",
+            "sha256": "be32de99d01d3db3c2bcb16c8ed5e62d64c33053a3fdd6b351b47be078f753e3"
+          }
+        ]
+      }
+    },
+    {
+      "uf": "PA",
+      "decision_scope": "single historical or selected material candidate; does NOT judge all incentives in the state",
+      "decision_effect": "BLOCK_ICMS_BENEFIT_CALCULATION_AND_FISCAL_IMPORT",
+      "internal_curatorial_accepted": false,
+      "legal_certification_awarded": false,
+      "no_further_proactive_capture_retries": true,
+      "reopen_condition": "new authentic original or binding consolidated official evidence demonstrably changes legal scope",
+      "production_enabled": false,
+      "candidate": "Lei PA 6.913/2006, original declarada inconstitucional na ADI 3779",
+      "assessment": "ORIGINAL_ACT_NOT_STANDALONE_BASIS_2026",
+      "legal_negative_certifiable": false,
+      "why_not_certifiable": "A invalidação do ato original é comprovável; Lei 8.930/2019 prevê reinstituição de atos listados e vigentes sob depósito, exigindo verificar o alcance e a sucessão para concluir inaplicabilidade de todo o candidato material.",
+      "material_evidence": [
+        {
+          "doc": "STF ADI 3779 official HTML decision",
+          "url": "https://portal.stf.jus.br/peticaoInicial/verPeticaoInicial.asp?base=ADI&numProcesso=3779",
+          "sha256": "aede1b1a62bca6bdf677a8c0a54313a61785cd538a1b05ce6a91a96e2c0b5ac5",
+          "kind": "OFFICIAL_STF_HTML_ARCHIVED"
+        },
+        {
+          "doc": "Decreto 2.014/2018 inventory, DOE-PA 33.584, 2018-03-23",
+          "url": "https://www.ioepa.com.br/pages/2018/2018.03.23.DOE.pdf",
+          "sha256": "6dbf8fdb313e6673ce6105b9c6e74714070adaa220e39cbd2187840ef4abf0a0",
+          "kind": "OFFICIAL_DOE_PDF_ARCHIVED_SHA_VERIFIED"
+        },
+        {
+          "doc": "Lei 8.930/2019, arts.2-8, LegisPará",
+          "url": "https://www.legispara.pa.gov.br/lei/5169",
+          "sha256": null,
+          "kind": "OFFICIAL_COMPILED_TEXT_ACCESSIBLE_NOT_ARCHIVED"
+        },
+        {
+          "doc": "ALEPA Decreto 2.490/2006 (historical, 8pp)",
+          "url": "https://bancodeleis.alepa.pa.gov.br/arquivos/lei2490_2006_53513.pdf",
+          "sha256": "313fe0b074d55dedbff71ba148b7e703a96da1611341aee0ae074ceaa5278ad3",
+          "kind": "OFFICIAL_ALEPA_HISTORICAL_PDF_SHA_VERIFIED"
+        }
+      ],
+      "source_limit": "Original 6.913/2006 cannot be imported on its own. Unknown whether an eligible provision was expressly reinstituted, deposited in PNTT and survived subsequent acts.",
+      "conclusive_for_fiscal_engine": true,
+      "tests": [
+        "pa_adi3779_original_law_invalid_successor_not_certified",
+        "test_pa_stf_captured_dispositive_not_confused_with_initial_petition"
+      ],
+      "precise_manual_document": "DOE-PA nº 33.584, 23/03/2018 (Decreto 2.014/2018, Apêndice I itens 13 e 32); Lei 8.930/2019 publicada em 2019; PNTT/CONFAZ certificado de registro e depósito que associe Lei 6.913/2006 / Decreto 2.490/2006 à reinstituição válida após a ADI 3779.",
+      "manual_portal": "https://www.ioepa.com.br/pages/2018/2018.03.23.DOE.pdf",
+      "provisional_external_required": false,
+      "scoped_standalone_original_law_final": {
+        "decision": "NAO_APLICAVEL_CERTIFICADO",
+        "scope": "invocation of original Law 6913/2006 without certified successor",
+        "evidence_sha256": "aede1b1a62bca6bdf677a8c0a54313a61785cd538a1b05ce6a91a96e2c0b5ac5",
+        "underlying_successor_chain_certified": false
+      }
+    },
+    {
+      "uf": "SE",
+      "decision_scope": "single historical or selected material candidate; does NOT judge all incentives in the state",
+      "decision_effect": "BLOCK_ICMS_BENEFIT_CALCULATION_AND_FISCAL_IMPORT",
+      "internal_curatorial_accepted": false,
+      "legal_certification_awarded": false,
+      "no_further_proactive_capture_retries": true,
+      "reopen_condition": "new authentic original or binding consolidated official evidence demonstrably changes legal scope",
+      "production_enabled": false,
+      "candidate": "PSDI Lei 3.140/1991 e Decreto 29.935/2014 em seis modalidades",
+      "assessment": "BASE_REINSTITUTION_IDENTIFIED_MODAL_PROOF_INCOMPLETE",
+      "legal_negative_certifiable": false,
+      "why_not_certifiable": "O art.1º da Lei 8.490/2018 reinstitui a norma-base no item1 Anexo; isso é evidência POSITIVA contra alegação de inexistência geral. A vigência e aderência CONFAZ precisam de provas por modalidade.",
+      "material_evidence": [
+        {
+          "doc": "ALESE Lei 3.140/1991 compilada com alterações até 2026",
+          "url": "https://aleselegis.al.se.leg.br/Arquivo/Documents/legislacao/html/l31401991.HTML",
+          "sha256": "520b1a1f93b9a1c6c8ec5d315d5d885ec436df4236f7c46dfbdc9a21b9c080a5",
+          "kind": "OFFICIAL_COMPILED_HTML_ARCHIVED"
+        },
+        {
+          "doc": "PGE Decreto 29.935/2014 histórico 37pp",
+          "url": "https://pge.se.gov.br/wp-content/uploads/2025/02/DECRETO-29-935-1.pdf",
+          "sha256": "ca18358fccdfd93259819b1ab1d2fe7347b7084cde54d9660b3c8d0ffc67b3b8",
+          "kind": "OFFICIAL_HISTORIC_REPUBLISH_ARCHIVED"
+        },
+        {
+          "doc": "ALESE Lei 8.490/2018 art1 Anexo item1",
+          "url": "https://aleselegis.al.se.leg.br/Arquivo/Documents/legislacao/html/l84902018.html",
+          "sha256": null,
+          "kind": "OFFICIAL_LEGISLATIVE_TEXT_NOT_HASHED"
+        },
+        {
+          "doc": "SE/CONFAZ Certificado 126/2024, atos outubro/2022 APENAS",
+          "url": "https://www.confaz.fazenda.gov.br/legislacao/certificado-registro-deposito-cv-icms-190-17-1/sergipe/2024/126-certificado-de-registro-e-deposito-se-an-e-ac-alteracao-e-extensao.pdf",
+          "sha256": null,
+          "kind": "OFFICIAL_CERT_OTHER_SCOPE"
+        }
+      ],
+      "source_limit": "Faltam CRD SE13/2018 original e planilha; Decreto 820/2024 DOE 16/10/2024 com efeito 23/07/2024 e Decreto 868/2024 DOE 26/11/2024.",
+      "conclusive_for_fiscal_engine": true,
+      "tests": [
+        "se_psdi_8_not_in_cdi_resolution",
+        "se_psdi_6_2_specific_condition_missing",
+        "se_psdi_art3_5b_input_credit_prohibited"
+      ],
+      "precise_manual_document": "Certificado de Registro e Depósito SE/CONFAZ nº 13/2018 e planilha de atos depositados; DOE-SE de 16/10/2024 (Decreto 820/2024); DOE-SE de 26/11/2024 (Decreto 868/2024).",
+      "manual_portal": "https://legislacao.se.gov.br/",
+      "provisional_external_required": false,
+      "2026_status_by_mode": {
+        "rows": [
+          {
+            "id": "SE_PSDI_NEW_INDUSTRY_8",
+            "legal_normative_reference_found": true,
+            "original_cert13_and_2024_amendments_all_archived": false,
+            "qualified_taxpayer_concession": false,
+            "certified": false,
+            "import_enabled": false
+          },
+          {
+            "id": "SE_PSDI_NEW_INDUSTRY_6_2",
+            "legal_normative_reference_found": true,
+            "original_cert13_and_2024_amendments_all_archived": false,
+            "qualified_taxpayer_concession": false,
+            "certified": false,
+            "import_enabled": false
+          },
+          {
+            "id": "SE_PSDI_DOMESTIC_RAW_DEFERRAL",
+            "legal_normative_reference_found": true,
+            "original_cert13_and_2024_amendments_all_archived": false,
+            "qualified_taxpayer_concession": false,
+            "certified": false,
+            "import_enabled": false
+          },
+          {
+            "id": "SE_PSDI_CAPITAL_GOODS_DEFERRAL",
+            "legal_normative_reference_found": true,
+            "original_cert13_and_2024_amendments_all_archived": false,
+            "qualified_taxpayer_concession": false,
+            "certified": false,
+            "import_enabled": false
+          },
+          {
+            "id": "SE_PSDI_IMPORTED_RAW_DEFERRAL",
+            "legal_normative_reference_found": true,
+            "original_cert13_and_2024_amendments_all_archived": false,
+            "qualified_taxpayer_concession": false,
+            "certified": false,
+            "import_enabled": false
+          },
+          {
+            "id": "SE_PSDI_EXISTING_INDUSTRY_GROWTH",
+            "legal_normative_reference_found": true,
+            "original_cert13_and_2024_amendments_all_archived": false,
+            "qualified_taxpayer_concession": false,
+            "certified": false,
+            "import_enabled": false
+          }
+        ]
+      }
+    },
+    {
+      "uf": "AP",
+      "decision_scope": "single historical or selected material candidate; does NOT judge all incentives in the state",
+      "decision_effect": "BLOCK_ICMS_BENEFIT_CALCULATION_AND_FISCAL_IMPORT",
+      "internal_curatorial_accepted": false,
+      "legal_certification_awarded": false,
+      "no_further_proactive_capture_retries": true,
+      "reopen_condition": "new authentic original or binding consolidated official evidence demonstrably changes legal scope",
+      "production_enabled": false,
+      "candidate": "Decreto AP 3.599/2001 art1, diferimento da primeira operação interna de pescado",
+      "assessment": "FISH_DEFERRAL_IDENTIFIED_BUT_2026_EFFECT_NOT_PROVEN",
+      "legal_negative_certifiable": false,
+      "why_not_certifiable": "Decreto 3.599/2001 permanece listado na Lei 3.395/2025 Anexo II item8; não figurar no Anexo Único da Lei 3.490/2026 prova apenas que esta prorrogação específica não se aplica, NÃO que o benefício originário acabou.",
+      "material_evidence": [
+        {
+          "doc": "DOE AP nº8.566 31/12/2025 Lei 3.395/2025 Anexo II item8",
+          "url": "https://diofe.portal.ap.gov.br/portal/edicoes/download/9794",
+          "sha256": "d4c6b485514ac97dc3bbe8418b07ff7324984e58670d056601be0d6c8a3fff44",
+          "kind": "OFFICIAL_DOE_PDF_ARCHIVED"
+        },
+        {
+          "doc": "DOE AP nº8.639 17/04/2026 Decreto 2.656/2026 revoga 2.349/2026",
+          "url": "https://diofe.portal.ap.gov.br/portal/edicoes/visualizar_pdf/9915/",
+          "sha256": "6b0c7f575d89cea05b7d031778a326d2a4d85f51458abf052a63720a576f7bd0",
+          "kind": "OFFICIAL_DOE_PDF_ARCHIVED"
+        },
+        {
+          "doc": "DOE AP nº8.659 20/05/2026 Lei 3.490/2026 Anexo sem Decreto 3599",
+          "url": "https://diofe.portal.ap.gov.br/portal/edicoes/download/9949",
+          "sha256": "9180d91856bd3d955cc99a1a1e5b9c5f789131253e97a947e2d2f3ffde3f9523",
+          "kind": "OFFICIAL_DOE_PDF_ARCHIVED"
+        },
+        {
+          "doc": "DOE AP 8.631 07/04/2026 Decreto 2.349/2026 (later repealed by 2.656/2026)",
+          "url": "https://diofe.portal.ap.gov.br/portal/edicoes/download/9901",
+          "sha256": "8db2b8901a3774739846444691b8caced5bd549759537e28182fc19782bcf9c5",
+          "kind": "OFFICIAL_DOE_PDF_ARCHIVED_SHA_VERIFIED"
+        },
+        {
+          "doc": "DOE AP nº8.639 17/04/2026 Decreto 2.656 PDF via download oficial",
+          "url": "https://diofe.portal.ap.gov.br/portal/edicoes/download/9915",
+          "sha256": "6b0c7f575d89cea05b7d031778a326d2a4d85f51458abf052a63720a576f7bd0",
+          "kind": "OFFICIAL_DOE_PDF_SHA_VERIFIED"
+        }
+      ],
+      "source_limit": "Faltam publicação/alterações completas do Decreto 3.599/2001 e certificado de depósito AP14/2018 Anexo I item11 e comprovação de efeitos em 2026.",
+      "conclusive_for_fiscal_engine": true,
+      "tests": [
+        "ap_fish_credit_claim_not_this_mode",
+        "ap_3490_annex_does_not_extend_fish_3599",
+        "ap_individual_act_not_active"
+      ],
+      "precise_manual_document": "DOE-AP nº2.669 de 21/11/2001, Decreto 3.599/2001, incluindo republicação; Certificado SE/CONFAZ nº14/2018 e Anexo I item11; DOE-AP nº8.631 de 07/04/2026, Decreto 2.349/2026.",
+      "manual_portal": "https://diofe.portal.ap.gov.br/",
+      "provisional_external_required": false,
+      "2026_material_counterevidence": {
+        "doe": "8631",
+        "source_sha256": "8db2b8901a3774739846444691b8caced5bd549759537e28182fc19782bcf9c5",
+        "decree_2349_article27_fish_included": true,
+        "decree_2349_article29_deferral": true,
+        "decree_2656_article3_fish_included": true,
+        "decree_2656_article9_revokes_2349": true,
+        "old_3599_not_found_in_2349_text": true,
+        "proves_no_fish_incentive_in_2026": false,
+        "enable_fiscal": false,
+        "decree_2656_pdf_verified_sha256": "6b0c7f575d89cea05b7d031778a326d2a4d85f51458abf052a63720a576f7bd0"
+      }
+    }
+  ],
+  "latest_primary_source_capture": {
+    "run_id": 45255832367,
+    "sha_at_capture": "c0693b468b870451bc41a2ea0a02ec3642728e0d",
+    "artifact_id": 14858011494,
+    "outer_artifact_sha256": "d8dabfff0d4351f52a3284d0e4469f2ddb960ef46e4c434a722c21db2a4d4bb0",
+    "attempted": 16,
+    "raw_captured": 7,
+    "unavailable": 9,
+    "formats": {
+      "pdf": 5,
+      "html": 2
+    },
+    "archive_verified": true,
+    "library_path": "/NFCore Commercial Launch/T09 Legal Evidence/NFCORE_T09_4UF_PRIMARY_20261123_HEAD_c0693b46.zip",
+    "legal_approval": false,
+    "independent_legal_approval": false,
+    "tax_import_authorized": false
+  },
+  "additional_legal_cross_examination_20261123": {
+    "ci_prerequisite": {
+      "run_id": 45256835394,
+      "head_sha": "161743ce577c3d7f99bc51441af53e66cdcd0721",
+      "conclusion": "success",
+      "python_tests_and_e2e_green": true
+    },
+    "binary_classification_scope": "candidate-as-defined; never generalize to all ICMS exemptions of a state",
+    "scoped_negative_certifiable": [
+      {
+        "uf": "PA",
+        "norm": "Lei 6.913/2006 as standalone source",
+        "decision": "NAO_APLICAVEL_CERTIFICADO",
+        "court": "ADI 3779 (STF)",
+        "court_source_sha256": "aede1b1a62bca6bdf677a8c0a54313a61785cd538a1b05ce6a91a96e2c0b5ac5",
+        "invalidates_only_standalone_2006_statute": true,
+        "does_not_rule_out_law8930_conditional_reinstitution": true
+      }
+    ],
+    "normative_non_import_2026": [
+      {
+        "uf": "RR",
+        "legacy_source": "Decreto 30.363-E/2021 / RICMS-RR art1 LXVII",
+        "stated_last_day": "2025-12-31",
+        "official_2026_extension_positively_proven": false,
+        "cannot_claim_exhaustive_nonexistence_without_full_state_archive": true,
+        "tax_benefit_blocked": true
+      },
+      {
+        "uf": "AP",
+        "finding": "2026 law 3395 and Decree 2656 include fish industry; absence of 3599 from Law 3490 annex is not proof of extinction",
+        "doe_8631_sha256": "8db2b8901a3774739846444691b8caced5bd549759537e28182fc19782bcf9c5",
+        "decree_2349_repealed_by_2656": true,
+        "decree_2656_official_source": "https://diofe.portal.ap.gov.br/portal/edicoes/download/9915",
+        "new_law_grant_individual_required": true,
+        "tax_benefit_blocked": true
+      },
+      {
+        "uf": "SE",
+        "finding": "Law 8490/2018 art1 annex1 explicitly reinstates Law 3140; no general negative legal verdict",
+        "legal_modalities": 6,
+        "modalities_certified": 0,
+        "required_confaz": "SE/CONFAZ 13/2018 plus original deposited schedules",
+        "tax_benefit_blocked": true
+      }
+    ],
+    "full_four_state_positive_certified": 0,
+    "full_four_state_negative_certified": 0,
+    "legally_proven_invalidation_of_legacy_pa": true,
+    "fiscal_import_authorized": false
+  },
+  "latest_archived_4uf_official_capture_20261123": {
+    "schema_version": "nfcore.t09.4uf-new-original-bytes-20261123/v1",
+    "head_at_collection": "e131e883b0294691a7c115ddf5dd1ebcd9651218",
+    "github_actions_run": 45260593829,
+    "artifact_id": 14861655000,
+    "archive_sha256": "b34daa62df013d99808a8cd2d56b2b6471a0fce8b805789702d7e212b5d5647a",
+    "library_path": "/NFCore Commercial Launch/T09 Legal Evidence/NFCORE_T09_4UF_SOURCE_CAPTURE_e131e883_20261123.zip",
+    "attempted": 20,
+    "captured": 11,
+    "unavailable": 9,
+    "new_verified_sources": [
+      {
+        "uf": "AP",
+        "sha256": "6b0c7f575d89cea05b7d031778a326d2a4d85f51458abf052a63720a576f7bd0",
+        "url": "https://diofe.portal.ap.gov.br/portal/edicoes/download/9915"
+      },
+      {
+        "uf": "RR",
+        "sha256": "d7600ddf41154aca82336f9ba97a2754532628ceaf21f2dd70d0e611460534c7",
+        "url": "https://www.sefaz.rr.gov.br/downloads/legislacao?dir=02+-+LEGISLACAO+ESTADUAL%2F07+-+DECRETOS%2F2025"
+      },
+      {
+        "uf": "RR",
+        "sha256": "378dd46a6ae8beaad7088479f17e49de9cee3a7a82f4fd62a0467e48f86a8e7a",
+        "url": "https://www.sefaz.rr.gov.br/downloads/legislacao?dir=02+-+LEGISLACAO+ESTADUAL%2F07+-+DECRETOS%2F2026"
+      },
+      {
+        "uf": "RR",
+        "sha256": "be32de99d01d3db3c2bcb16c8ed5e62d64c33053a3fdd6b351b47be078f753e3",
+        "url": "https://www.sefaz.rr.gov.br/downloads/legislacao?dir=03+-+NORMAS+RECENTES"
+      }
+    ],
+    "official_document_capture_not_legal_approval": true,
+    "legal_verdict_positive_count": 0,
+    "full_four_state_negative_certification_count": 0,
+    "fiscal_import_authorized": false
+  }
+}

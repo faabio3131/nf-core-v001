@@ -1,0 +1,12 @@
+# NFCore Contabo: compatibilidade opt-in do Worker com o Compose real do host.
+# O host usa o servico `db` (container_name: nfcore-db) na rede nfcore_internal.
+# Carregar somente apos o compose.worker.opt-in.yml e autorizacao humana.
+# Nao renomeia nem recria o banco, e nao habilita o Worker por padrao.
+# Reinicio automatico so vale apos ativacao humana opt-in. Docker host confirmado
+# em execucao saudavel e com policy unless-stopped por inspect de 12/11/2026.
+services:
+  nfcore-worker:
+    restart: unless-stopped
+    depends_on: !override
+      db:
+        condition: service_healthy

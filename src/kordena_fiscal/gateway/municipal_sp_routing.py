@@ -7,14 +7,23 @@ No second authorization state, persistence, or fiscal gateway is introduced.
 
 Municipal (São Paulo city) routing guard -- Simples Nacional / Emissor Nacional
 --------------------------------------------------------------------------------
-The São Paulo Secretaria Municipal da Fazenda made the national NFS-e emitter
-(Emissor Nacional, https://www.gov.br/nfse) mandatory for Simples Nacional
-taxpayers as of 2026-09-01 (and for self-employed/liberal professionals as of
-2026-08-01); see https://prefeitura.sp.gov.br/web/fazenda/w/usoemissornacional.
-From that date, the legacy municipal webservice (`lotenfe.asmx` /
-`nfews.prefeitura.sp.gov.br/lotenfe.asmx`, built by
-`gateway/nfse_paulistana_envelope.py`) only serves consultation and
-retroactive issuance for Simples Nacional issuers -- NOT new issuance.
+Official São Paulo City notice updated 13/08/2026 and Resolution CGSN
+191/2026 moved the ME/EPP Simples transition from 01/09/2026 to
+**01/11/2026**. The legal criterion is the SERVICE COMPETENCE DATE, not
+the date of HTTP request or document issuance. Municipal legacy issuance
+for retrospective competences through 31/10/2026 remains permissible
+subject to the complete municipal provider contract and fiscal validation.
+For competences from 01/11/2026, issuance by ME/EPP Simples must use
+the National NFS-e issuer regardless of the municipality's own emitter.
+
+This guard covers the corporate Simples classification. It does not certify
+the MEI or autonomous professional channel or grant any positive provider
+approval. For São Paulo city the autonomous cutoff is 03/08/2026 and
+requires a separate scoped taxpayer classification, not inferred here.
+
+Sources:
+https://prefeitura.sp.gov.br/web/fazenda/w/usoemissornacional
+https://www.gov.br/receitafederal/pt-br/assuntos/noticias/2026/agosto/simples-nacional-nfs-e-nacional-sera-obrigatoria-para-me-e-epp-a-partir-de-1o-de-novembro-de-2026
 
 ``ensure_municipal_sp_transport_permitted`` is a structural fail-closed guard,
 not a routing decision: it does not pick a provider, does not call the
@@ -26,12 +35,18 @@ longer accept new issuance for that regime.
 """
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from dataclasses import dataclass
+from datetime import date, datetime
 
 from kordena_fiscal.domain import (
     BrazilianJurisdiction,
     ExecutionScope,
     FiscalDocumentKind,
+    FiscalValidationError,
+    TaxRegimeCode,
+)
+from kordena_fiscal.gateway.nfse_nacional_homologation import (
+    NACIONAL_HOMOLOGATION_PROVIDER_ID,
 )
 from kordena_fiscal.gateway.provider import (
     ProviderOperation,
@@ -40,9 +55,12 @@ from kordena_fiscal.gateway.provider import (
 )
 from kordena_fiscal.tax.regimes import FederalIncomeTaxRegime
 
-# Published by the São Paulo Secretaria Municipal da Fazenda; see the module
-# docstring. This is a sourced regulatory date, not an engineering estimate.
-SIMPLES_NACIONAL_EMISSOR_NACIONAL_MANDATORY_FROM = datetime(2026, 9, 1, tzinfo=UTC)
+# 2026-08-13 updated municipal statement and CGSN Res. 191/2026.
+# UTC clock is checked for execution-safety only; competence controls
+# the fiscal cutoff for new issuance, including retroactive operations.
+SIMPLES_NACIONAL_EMISSOR_NACIONAL_MANDATORY_FROM = date(2026, 11, 1)
+# Keep the newer canonical SP classification name for existing callers.
+SP_ME_EPP_NATIONAL_MANDATORY_COMPETENCE = SIMPLES_NACIONAL_EMISSOR_NACIONAL_MANDATORY_FROM
 
 
 class MunicipalTransportNotPermittedError(UnsupportedProviderError):
@@ -53,29 +71,193 @@ def ensure_municipal_sp_transport_permitted(
     federal_income_tax_regime: FederalIncomeTaxRegime,
     *,
     issuer_ibge_code: str,
+    competence_date: date,
     as_of: datetime,
 ) -> None:
-    """Fail closed before any new-issuance call to the legacy SP webservice.
+    """Block an ineligible legacy city NFS-e issue without choosing any provider.
 
-    Only São Paulo city (IBGE 3550308) is affected by this specific municipal
-    deadline; other SP municipalities are untouched by this guard. A Simples
-    Nacional issuer on or after the mandatory date must be routed to the
-    Emissor Nacional instead -- this function never does that routing itself,
-    it only refuses the legacy path so a caller cannot reach it by omission.
+    Fail closed on missing competence or untrusted clocks. This is a negative
+    regulatory gate, not proof that municipal transport, A1, and ISS rules
+    are otherwise available. Integrations MUST call it before SOAP I/O.
     """
+    if (
+        type(federal_income_tax_regime) is not FederalIncomeTaxRegime
+        or type(competence_date) is not date
+        or not isinstance(as_of, datetime)
+        or as_of.tzinfo is None
+        or as_of.utcoffset() is None
+    ):
+        raise UnsupportedProviderError(
+            "SP municipal legacy requires reviewed regime, competence and timezone-aware clock"
+        )
     if issuer_ibge_code != "3550308":
         return
-    if as_of.tzinfo is None:
-        raise UnsupportedProviderError("as_of must be timezone-aware")
     if (
         federal_income_tax_regime is FederalIncomeTaxRegime.SIMPLES_NACIONAL
-        and as_of >= SIMPLES_NACIONAL_EMISSOR_NACIONAL_MANDATORY_FROM
+        and competence_date >= SIMPLES_NACIONAL_EMISSOR_NACIONAL_MANDATORY_FROM
     ):
         raise MunicipalTransportNotPermittedError(
-            "Simples Nacional issuers in São Paulo city must use the national "
-            "NFS-e emitter (Emissor Nacional) for new issuance on or after "
-            "2026-09-01; the legacy municipal webservice no longer accepts it"
+            "São Paulo city ME/EPP Simples must use National NFS-e "
+            "for competences on or after 2026-11-01 (CGSN 191/2026); "
+            "retroactive services before this date require reviewed municipal eligibility"
         )
+
+
+# A national NFS-e legal channel does NOT imply the National API is
+# configured for this CNPJ, tenant or operation. This is only a strict
+# federal eligibility classification for all SP issuer municipalities.
+_MEI_NATIONAL_FROM = date(2023, 9, 1)
+
+
+@dataclass(frozen=True, slots=True)
+class SpNationalNfseEligibility:
+    """Non-authorizing regulatory channel intent; never a provider binding."""
+
+    municipality_ibge: str
+    channel: str = "nfse-national"
+    requires_official_homologation: bool = True
+    is_runtime_authority: bool = False
+
+
+def classify_sp_national_nfse_eligibility(
+    *,
+    issuer_jurisdiction: BrazilianJurisdiction,
+    tax_regime: TaxRegimeCode,
+    competence_date: date,
+) -> SpNationalNfseEligibility:
+    """Classify MEI and ME/EPP Simples only; all other cases fail closed.
+
+    Unlike the 3-city pilot catalog, this federal rule applies to *any*
+    valid SP issuer municipality. It never registers adapters or transmits
+    a fiscal document, and must not be used as a proof of 22 certified cities.
+    """
+    if (
+        not isinstance(issuer_jurisdiction, BrazilianJurisdiction)
+        or issuer_jurisdiction.state_code != "SP"
+        or not isinstance(issuer_jurisdiction.municipality_ibge_code, str)
+        or not issuer_jurisdiction.municipality_ibge_code.startswith("35")
+        or type(tax_regime) is not TaxRegimeCode
+        or type(competence_date) is not date
+    ):
+        raise FiscalValidationError("Invalid SP National NFS-e issuer and fiscal context")
+    is_mei = tax_regime is TaxRegimeCode.MEI and competence_date >= _MEI_NATIONAL_FROM
+    is_simples = (
+        tax_regime in (
+            TaxRegimeCode.SIMPLES_NACIONAL,
+            TaxRegimeCode.SIMPLES_NACIONAL_EXCESS_SUBLIMIT,
+        )
+        and competence_date >= SIMPLES_NACIONAL_EMISSOR_NACIONAL_MANDATORY_FROM
+    )
+    if not (is_mei or is_simples):
+        raise FiscalValidationError(
+            "SP NFS-e channel is not nationally established for this regime/competence"
+        )
+    return SpNationalNfseEligibility(
+        municipality_ibge=issuer_jurisdiction.municipality_ibge_code,
+    )
+
+
+
+def require_sp_municipal_nfse_issuance_permitted(
+    *, issuer_jurisdiction: BrazilianJurisdiction,
+    tax_regime: TaxRegimeCode, competence_date: date,
+) -> None:
+    """Negative-only federal guard shared by all SP municipal emitters.
+
+    A provider binding cannot overrule the national compulsory channel.
+    A successful check never certifies that the municipal API is available.
+    """
+    if (
+        not isinstance(issuer_jurisdiction, BrazilianJurisdiction)
+        or issuer_jurisdiction.state_code != "SP"
+        or type(tax_regime) is not TaxRegimeCode
+        or type(competence_date) is not date
+    ):
+        raise FiscalValidationError("SP municipal issuance requires reviewed fiscal facts")
+    try:
+        classify_sp_national_nfse_eligibility(
+            issuer_jurisdiction=issuer_jurisdiction,
+            tax_regime=tax_regime, competence_date=competence_date,
+        )
+    except FiscalValidationError:
+        # No national obligation established for this regime/competence.
+        # Municipal authority must still be independently verified.
+        return
+    raise FiscalValidationError(
+        "National NFS-e is mandatory for this regime and competence"
+    )
+
+
+# Guarulhos migrated its non-Simples municipal emission to GissOnline V2 on
+# 2026-07-01. Federal CGSN 191/2026 moves Simples ME/EPP competences from
+# 2026-11-01 to Emissor Nacional, irrespective of the municipal provider.
+# This is a NEGATIVE REGIME/COMPETENCE CHECK, never a provider authority.
+# Official municipal vendor: https://guarulhos.giss.com.br/giss-ajuda/desenvolvedores.html
+GUARULHOS_IBGE = "3518800"
+GUARULHOS_GISS_V2_PROVIDER_ID = "guarulhos-giss-v2-homologation"
+GUARULHOS_GISS_V2_FROM = date(2026, 7, 1)
+
+
+def require_guarulhos_nfse_channel(
+    *,
+    issuer_jurisdiction: BrazilianJurisdiction,
+    tax_regime: TaxRegimeCode,
+    competence_date: date,
+    provider_id: str,
+) -> None:
+    """Guard the SAME canonical binding against Guarulhos 2026 issuer regime.
+
+    There is no automatic fallback: older municipal competences need an
+    independently certified historical contract, while current non-Simples
+    emissions still require reviewed GissOnline V2 ports and exact bindings.
+    This guard never opens a web service, issues an invoice or grants RBAC.
+    """
+    if (
+        not isinstance(issuer_jurisdiction, BrazilianJurisdiction)
+        or type(tax_regime) is not TaxRegimeCode
+        or type(competence_date) is not date
+        or not isinstance(provider_id, str)
+    ):
+        raise FiscalValidationError("Guarulhos fiscal channel requires reviewed facts")
+    if (
+        issuer_jurisdiction.state_code != "SP"
+        or issuer_jurisdiction.municipality_ibge_code != GUARULHOS_IBGE
+    ):
+        return
+    # Reuse the federal classification instead of duplicating its MEI/Simples
+    # regime cutoffs as a second rule in the municipal adapter.
+    try:
+        classify_sp_national_nfse_eligibility(
+            issuer_jurisdiction=issuer_jurisdiction,
+            tax_regime=tax_regime,
+            competence_date=competence_date,
+        )
+    except FiscalValidationError:
+        national_mandatory = False
+    else:
+        national_mandatory = True
+    if national_mandatory:
+        required = NACIONAL_HOMOLOGATION_PROVIDER_ID
+    elif (
+        competence_date >= GUARULHOS_GISS_V2_FROM
+        and (
+            tax_regime is TaxRegimeCode.NORMAL
+            or tax_regime in (
+                TaxRegimeCode.SIMPLES_NACIONAL,
+                TaxRegimeCode.SIMPLES_NACIONAL_EXCESS_SUBLIMIT,
+            )
+        )
+    ):
+        required = GUARULHOS_GISS_V2_PROVIDER_ID
+    else:
+        raise FiscalValidationError(
+            "Guarulhos pre-V2/MEI legacy channel has no certified provider contract"
+        )
+    if provider_id != required:
+        raise FiscalValidationError(
+            "Guarulhos NFS-e provider conflicts with tax regime and competence"
+        )
+
 
 # Candidate migration/UX catalog: NOT approved municipal provider bindings.
 # Source: executive research candidates; current municipal contracts require
@@ -85,13 +267,15 @@ SP_MUNICIPAL_CANDIDATES: dict[str, tuple[str, tuple[str, ...]]] = {
     "3550308": ("São Paulo", ("nota-paulistana", "nfse-nacional")),
     "3509502": ("Campinas", ("dsf", "nfse-nacional")),
     "3552205": ("Sorocaba", ("dsf", "nfse-nacional")),
-    "3518800": ("Guarulhos", ("ginfes", "nfse-nacional")),
+    "3518800": ("Guarulhos", ("gissonline-v2", "nfse-nacional")),
     "3548500": ("Santos", ("ginfes", "nfse-nacional")),
     "3548807": ("São Caetano do Sul", ("ginfes", "nfse-nacional")),
-    "3525904": ("Jundiaí", ("ginfes", "nfse-nacional")),
+    "3525904": ("Jundiaí", ("gissonline", "nfse-nacional")),
     "3552502": ("Suzano", ("ginfes", "nfse-nacional")),
-    "3547304": ("Santana de Parnaíba", ("smarapd", "municipal-proprio")),
-    "3534401": ("Osasco", ("sigiss", "betha", "e-receita", "nfse-nacional")),
+    "3547304": ("Santana de Parnaíba", ("simpliss", "municipal-proprio")),
+    # Prefeitura Osasco operates its own EissNfe/RTC WebService; historical
+    # generic SigISS/Betha labels are not contracts and mislead onboarding.
+    "3534401": ("Osasco", ("osasco-proprio-rtc", "nfse-nacional")),
     "3522505": ("Itapevi", ("sigiss", "betha", "e-receita", "nfse-nacional")),
     "3525003": ("Jandira", ("sigiss", "betha", "e-receita", "nfse-nacional")),
     "3528502": ("Mairiporã", ("sigiss", "betha", "e-receita", "nfse-nacional")),

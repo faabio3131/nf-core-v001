@@ -29,7 +29,9 @@ autorização do deploy** (decisão do Diretor, 26/10/2026). Nenhum agente entra
 7. Sobe API e Portal; exige `/health/ready` (API) e Portal respondendo por até 2 min.
 8. Falha depois do gate de schema: rollback **somente de imagens/commit**. Não restaura o banco produtivo. O commit que falhou vai para `.failed-sha`.
 
-**Atenção:** o fluxo contém apenas API e Portal. Worker/GSM não está nesse compose; não declarar publicação completa por este deploy. A restauração do banco exige runbook manual com ensaio isolado, sem `DROP SCHEMA public CASCADE` automático.
+**Atenção:** o cron não pode declarar release parcial quando existir Worker produtivo. Nesse caso bloqueia antes de build/backup e exige execução coordenada explicitamente aprovada no SHA de production, com todos os Workers já autorizados e saudáveis presentes no Compose efetivo. Nenhum Worker ausente/parado será ativado. O Worker Bling mantém seu fluxo opt-in separado; se estiver ativo, este runner bloqueia para coordenação explícita por sua autoridade existente, sem recriá-lo. O código-only valida compatibilidade do schema para o código anterior e novo, IDs das imagens, label OCI do SHA, readiness e recuperação de todas as imagens por digest. Falha de recuperação permanece NO_GO, sem alegar restauração. A transição v21→v23 segue o runbook separado; este script NÃO aplica DDL nem restaura banco.
+
+Para manutenção code-only futura, após aprovação e verificação do Compose efetivo (incluindo perfis/overlays já ativos), executar com o lock canônico: `NFCORE_COORDINATED_DEPLOY_APPROVED_SHA=<SHA autorizado> flock -n /tmp/nfcore-deploy.lock /opt/fm/nfcore/deploy.sh --coordinated`. Não usar para o cutover v21→v23; não habilitar Bling por conveniência.
 
 ## Trial público opt-in (`/v1/public/trial-plans`)
 
@@ -143,3 +145,79 @@ alertas, retenção e prova de destino efetivamente offsite antes de GO.
 
 Checklist completo e N3 aprovado:
 `docs/checkpoints/NFCORE_A1_N3_OPERATIONAL_READINESS_2026-11-13.md`.
+
+
+## Confiança SEFIN Nacional — XML autorizado e eventos
+
+`compose.nfse-trust.api.yml` completa a configuração da mesma API para o
+validador de recibos e eventos nacionais. É opt-in e compatível com o overlay
+`compose.nfse-policy.api.yml`. Não habilita emissão, não altera o ambiente
+fiscal da unidade e não substitui o A1 Vault.
+
+Antes da ativação, obter os arquivos **públicos oficiais** da cadeia ICP e
+as CRLs assinadas e vigentes, e validar independentemente a procedência
+dos certificados folha usados pela SEFIN para NFSe e para eventos.
+Registrar origem, data de coleta, fingerprints e aprovação. Não obter pins
+a partir de um retorno fiscal não confiável e não usar o A1 do contribuinte
+como certificado assinante do órgão. Os dados oficiais não estão embutidos
+neste overlay.
+
+No host existente e após aprovação, definir os seguintes nomes no ambiente
+privado de composição:
+
+- `NFCORE_NFSE_TRUST_HOST_DIR`: diretório preexistente fora do Git contendo
+  `ca-bundle.pem`, `crl-bundle.pem`, `invoice-signers.pem` e
+  `event-signers.pem` legíveis pela API UID 10001, sem symlinks.
+  O mount é somente leitura, sem criação automática; manter escrita restrita
+  ao operador autorizado. Não colocar chaves privadas neste diretório.
+- `NFCORE_NFSE_RECEIPT_ROOT_SHA256`: hash SHA-256 DER da raiz ICP aprovada.
+- `NFCORE_NFSE_RECEIPT_SIGNER_SHA256`: fingerprints DER das folhas de NFSe,
+  1 a 8 hashes hex, separados por vírgula.
+- `NFCORE_NFSE_EVENT_SIGNER_SHA256`: lista própria de fingerprints dos
+  assinantes de eventos oficiais, com a mesma sintaxe.
+
+Reconciliar o overlay com o Compose efetivo, preservando integralmente
+o bind do A1 Vault, policies por tenant, configurações sale/Bling e outros
+mounts. Não substituir o override efetivo pelo arquivo novo.
+
+Preflight **somente leitura**, executado no container candidato que contém
+os três validadores, sem rede fiscal e sem consultar certificados de clientes:
+
+```sh
+docker compose exec -T nfcore-api python -c '
+from kordena_fiscal.gateway.nfse_national_receipt import require_national_receipt_signer_pins
+from kordena_fiscal.gateway.nfse_nacional_event_homologation import require_national_event_signer_pins
+from kordena_fiscal.gateway.nfse_receipt_pki import (
+    INVOICE_SIGNER_BUNDLE, EVENT_SIGNER_BUNDLE, require_national_signer_pki_ready,
+)
+require_national_signer_pki_ready(
+    require_national_receipt_signer_pins(), bundle_env=INVOICE_SIGNER_BUNDLE,
+)
+require_national_signer_pki_ready(
+    require_national_event_signer_pins(), bundle_env=EVENT_SIGNER_BUNDLE,
+)
+print("SEFIN_TRUST_CONFIG_PASS_ONLY")
+'
+```
+
+O comando verifica também todos os certificados folha previamente obtidos
+e aprovados, exigindo conjunto exato de hashes, validade e não revogação.
+Não prova por si só a procedência oficial, finalidade do signatário nem
+autorização fiscal. Obter os certificados de forma independente é obrigatório.
+Qualquer erro mantém envio e confirmação de evento nacional bloqueados.
+Planejar atualização governada de CRLs antes do vencimento e rotação de
+pins, com verificação de rollback; não desativar validação em falha.
+A emissão continua dependente de política revisada, vínculo do provedor,
+A1 autorizado, schema e consulta/cancelamento oficiais.
+
+Teste reproduzível sem ativar containers: `bash deploy/contabo/test-nfse-trust-opt-in.sh`.
+
+## Trilha de auditoria do A1 (E5)
+
+A aplicação grava `a1-audit.jsonl` dentro do diretório do cofre (`/var/lib/nfcore/vault`, bind mount do host). Cada envio, leitura, uso e retirada do certificado vira uma linha JSON, com sucesso ou falha, encadeada por SHA-256 à linha anterior. A linha guarda quando, o escopo, o CNPJ, o fingerprint e o ator. Nunca guarda senha, conteúdo do PKCS#12 ou chave. Se a trilha não puder ser gravada, o envio e a retirada falham antes de alterar o cofre.
+
+`a1-vault-ops.py` aceita esse único arquivo extra, que precisa ser regular e com permissão 0600. Ele vai junto no backup remoto, que copia o diretório inteiro, mas fica fora da paridade de registros cifrados e do export offline. Qualquer outro arquivo ou link no diretório continua bloqueando o backup.
+
+Para verificar a integridade da trilha no container:
+
+    python -c "from kordena_fiscal.vault.a1_audit import verify_a1_audit_chain as v; print(v('/var/lib/nfcore/vault/a1-audit.jsonl'))"

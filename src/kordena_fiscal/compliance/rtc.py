@@ -56,6 +56,23 @@ class TechnicalValidationMode(StrEnum):
     TOLERANT = "tolerant"
 
 
+class RtcNfseSupplyCategory(StrEnum):
+    """Reviewed category from Act 4/2026 art. 1 III as amended by Act 7/2026.
+
+    Never infer legal classification from cTribNac or free-text browser inputs.
+    The category must be supplied by independently reviewed fiscal policy.
+    """
+
+    ISS_GENERAL_D = "iss_general_d"
+    DIGITAL_PLATFORM_A = "digital_platform_a"
+    ISS_SOFTWARE_B = "iss_software_b"
+    ISS_TRANSPORT_C = "iss_transport_c"
+    INTANGIBLE_E = "intangible_e"
+    CONDOMINIUM_F = "condominium_f"
+    LEASE_G = "lease_g"
+    OTHER_H = "other_h"
+
+
 def _required(value: str, field_name: str, max_length: int = 256) -> str:
     normalized = value.strip()
     if not normalized:
@@ -93,13 +110,11 @@ def _percent(value: Decimal, field_name: str) -> Decimal:
 def _sha256_optional(value: str | None) -> str | None:
     if value is None:
         return None
-    normalized = value.strip().lower()
-    if len(normalized) != 64:
+    if not isinstance(value, str):
         raise FiscalValidationError("checksum_sha256 must be SHA-256 hex")
-    try:
-        int(normalized, 16)
-    except ValueError as exc:
-        raise FiscalValidationError("checksum_sha256 must be hexadecimal") from exc
+    normalized = value.strip().lower()
+    if not re.fullmatch(r"[0-9a-f]{64}", normalized):
+        raise FiscalValidationError("checksum_sha256 must be SHA-256 hex")
     return normalized
 
 
@@ -279,6 +294,7 @@ class RtcEmissionPolicyRule:
     tax_regime: TaxRegimeCode | None = None
     effective_to: datetime | None = None
     priority: int = 0
+    nfse_supply_category: RtcNfseSupplyCategory | None = None
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "rule_id", _required(self.rule_id, "rule_id", 128))
@@ -297,6 +313,11 @@ class RtcEmissionPolicyRule:
             raise FiscalValidationError("validation_mode must be TechnicalValidationMode")
         if self.tax_regime is not None and not isinstance(self.tax_regime, TaxRegimeCode):
             raise FiscalValidationError("tax_regime must be TaxRegimeCode")
+        if self.nfse_supply_category is not None and (
+            not isinstance(self.nfse_supply_category, RtcNfseSupplyCategory)
+            or self.document_kind is not FiscalDocumentKind.NFSE
+        ):
+            raise FiscalValidationError("NFS-e supply category requires canonical NFS-e kind")
         object.__setattr__(
             self,
             "source_normative",
@@ -315,11 +336,16 @@ class RtcEmissionPolicyRule:
         document_kind: FiscalDocumentKind,
         tax_regime: TaxRegimeCode,
         instant: datetime,
+        nfse_supply_category: RtcNfseSupplyCategory | None = None,
     ) -> bool:
         _aware(instant, "instant")
         if self.document_kind is not document_kind:
             return False
         if self.tax_regime is not None and self.tax_regime is not tax_regime:
+            return False
+        if self.nfse_supply_category is not None and (
+            self.nfse_supply_category is not nfse_supply_category
+        ):
             return False
         if instant < self.effective_from:
             return False
@@ -344,11 +370,17 @@ class RtcEmissionPolicyResolver:
         document_kind: FiscalDocumentKind,
         tax_regime: TaxRegimeCode,
         instant: datetime,
+        nfse_supply_category: RtcNfseSupplyCategory | None = None,
     ) -> RtcEmissionPolicyRule:
         if not isinstance(document_kind, FiscalDocumentKind):
             raise FiscalValidationError("document_kind must be FiscalDocumentKind")
         if not isinstance(tax_regime, TaxRegimeCode):
             raise FiscalValidationError("tax_regime must be TaxRegimeCode")
+        if nfse_supply_category is not None and (
+            not isinstance(nfse_supply_category, RtcNfseSupplyCategory)
+            or document_kind is not FiscalDocumentKind.NFSE
+        ):
+            raise FiscalValidationError("reviewed NFS-e supply category is invalid")
         _aware(instant, "instant")
         matches = [
             rule
@@ -357,6 +389,7 @@ class RtcEmissionPolicyResolver:
                 document_kind=document_kind,
                 tax_regime=tax_regime,
                 instant=instant,
+                nfse_supply_category=nfse_supply_category,
             )
         ]
         if not matches:

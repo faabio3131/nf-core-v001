@@ -9,6 +9,7 @@ pytest.importorskip("opentelemetry.sdk")
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import SimpleSpanProcessor
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
+from opentelemetry.sdk.trace.sampling import ALWAYS_ON
 
 from kordena_fiscal.runtime.observability import SafeTracer, TraceContext
 from kordena_fiscal.runtime.otel_trace_sink import OtelTraceSink
@@ -16,7 +17,7 @@ from kordena_fiscal.runtime.otel_trace_sink import OtelTraceSink
 
 def test_real_sdk_exports_bounded_span_without_context_or_secret() -> None:
     exporter = InMemorySpanExporter()
-    provider = TracerProvider()
+    provider = TracerProvider(sampler=ALWAYS_ON)
     provider.add_span_processor(SimpleSpanProcessor(exporter))
     safe_tracer = SafeTracer(OtelTraceSink(provider.get_tracer("nfcore.runtime")))
     safe_tracer.record(

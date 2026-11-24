@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import hashlib
 import uuid
+from collections.abc import Callable
 from datetime import UTC, datetime
 from typing import Annotated, Any, Protocol
 
@@ -21,6 +22,8 @@ from kordena_fiscal.security.human_identity import (
     HumanIdentityService,
     PortalPermission,
 )
+from kordena_fiscal.tax.federal_benefits import PROGRAMS
+from kordena_fiscal.tax.state_benefits import state_index
 from kordena_fiscal.web.portal_api import (
     _authenticated,
     _authorized,
@@ -28,8 +31,12 @@ from kordena_fiscal.web.portal_api import (
     _reject_browser_authority,
 )
 
-from .contracts import AdviceRequest, AdviceResult, AdviceStatus, Capability, Evidence
+from .contracts import AdviceRequest, AdviceResult, AdviceStatus, Capability, Evidence, stable_hash
+from .economy_contract import CAPABILITIES, EconomyAdvice, project_economy
+from .federal_benefits_api import FederalBenefitRunner, FederalBenefitSearchRunner
 from .service import CognitiveAdviceService
+from .simples_diagnostic_api import DiagnosticRunner
+from .state_benefits_api import StateBenefitRunner, StateSearchRunner
 
 HOST_NAMESPACE = "fm-nfcore"
 
@@ -38,6 +45,9 @@ CAPABILITY_PERMISSIONS: dict[Capability, PortalPermission] = {
     Capability.EXPLAIN_RECONCILIATION: PortalPermission.DOCUMENT_QUERY,
     Capability.ANSWER_ACCOUNTANT_QUESTION: PortalPermission.DOCUMENT_QUERY,
     Capability.SUGGEST_CLASSIFICATION: PortalPermission.CONFIGURATION_WRITE,
+    Capability.OPPORTUNITY_RADAR: PortalPermission.AUDIT_READ,
+    Capability.CREDIT_RECOVERY: PortalPermission.AUDIT_READ,
+    Capability.TAX_SIMULATION: PortalPermission.AUDIT_READ,
 }
 
 
@@ -51,6 +61,24 @@ class EvidenceProvider(Protocol):
         environment: FiscalEnvironment,
         subject_id: str | None,
     ) -> tuple[Evidence, ...]: ...
+
+
+def _scoped_advice_request_id(
+    *, tenant_id: str, unit_id: str, account_id: str,
+    environment: FiscalEnvironment, capability: Capability,
+    subject_id: str | None, key: str,
+) -> str:
+    """Prevent cross-account/unit/capability replay collisions in usage accounting."""
+    return stable_hash({
+        "version": "cognitive-idempotency/v2",
+        "tenant": tenant_id,
+        "unit": unit_id,
+        "account": account_id,
+        "environment": environment.value,
+        "capability": capability.value,
+        "subject": subject_id,
+        "key": key,
+    })
 
 
 def _bad(code: str, message: str, http: int = status.HTTP_400_BAD_REQUEST) -> HTTPException:
@@ -90,8 +118,282 @@ def create_cognitive_router(
     evidence: EvidenceProvider | None,
     *,
     ai_enabled: bool = False,
+    normative_radar: Callable[[AuthenticatedHuman, str, FiscalEnvironment], dict[str, Any]]
+    | None = None,
+    diagnostic_runner: DiagnosticRunner | None = None,
+    segregation_runner: DiagnosticRunner | None = None,
+    assessment_runner: DiagnosticRunner | None = None,
+    federal_benefit_runner: FederalBenefitRunner | None = None,
+    federal_benefit_search_runner: FederalBenefitSearchRunner | None = None,
+    state_benefit_runner: StateBenefitRunner | None = None,
+    state_search_runner: StateSearchRunner | None = None,
 ) -> APIRouter:
     router = APIRouter(prefix="/v1/portal/cognitive", tags=["cognitive-advisory"])
+
+    @router.get("/economy/normative-alerts")
+    async def normative_alerts(
+        request: Request, unit_id: str,
+        environment: FiscalEnvironment = FiscalEnvironment.HOMOLOGATION,
+    ) -> dict[str, Any]:
+        auth = _authenticated(request, identity, now=datetime.now(UTC))
+        _authorized(auth, PortalPermission.AUDIT_READ, unit_id=unit_id)
+        if normative_radar is None:
+            raise _bad("NORMATIVE_RADAR_NOT_CONFIGURED", "Normative radar unavailable", 503)
+        return await run_in_threadpool(normative_radar, auth, unit_id, environment)
+
+    @router.post("/economy/simples-diagnostic")
+    async def simples_diagnostic(
+        request: Request, body: Annotated[dict[str, Any], Body()],
+    ) -> dict[str, Any]:
+        auth = _authenticated(request, identity, now=datetime.now(UTC))
+        _reject_browser_authority(body)
+        fields = {"unit_id", "environment", "snapshot_id", "snapshot_version",
+                  "rule_id", "rule_version"}
+        if set(body) != fields:
+            raise _bad("INVALID_SIMPLES_INPUT", "Only scoped record references are accepted")
+        for key in ("unit_id", "snapshot_id", "rule_id"):
+            if not isinstance(body[key], str) or not 1 <= len(body[key].strip()) <= 128:
+                raise _bad("INVALID_SIMPLES_REFERENCE", "Invalid record reference")
+        for key in ("snapshot_version", "rule_version"):
+            if type(body[key]) is not int or not 1 <= body[key] <= 2147483647:
+                raise _bad("INVALID_SIMPLES_VERSION", "Invalid record version")
+        unit_id = body["unit_id"].strip()
+        _authorized(auth, PortalPermission.AUDIT_READ, unit_id=unit_id)
+        _csrf(request, identity, auth)
+        try:
+            environment = FiscalEnvironment(body["environment"])
+        except (TypeError, ValueError) as exc:
+            raise _bad("INVALID_ENVIRONMENT", "Unknown environment") from exc
+        if diagnostic_runner is None:
+            raise _bad("SIMPLES_NOT_CONFIGURED", "Simples diagnosis unavailable", 503)
+        return await run_in_threadpool(
+            diagnostic_runner, auth, unit_id, environment,
+            body["snapshot_id"].strip(), body["snapshot_version"],
+            body["rule_id"].strip(), body["rule_version"],
+        )
+
+    @router.post("/economy/simples-segregation")
+    async def simples_segregation(
+        request: Request, body: Annotated[dict[str, Any], Body()],
+    ) -> dict[str, Any]:
+        auth = _authenticated(request, identity, now=datetime.now(UTC))
+        _reject_browser_authority(body)
+        fields = {"unit_id", "environment", "snapshot_id", "snapshot_version",
+                  "rule_id", "rule_version"}
+        if set(body) != fields:
+            raise _bad("INVALID_SIMPLES_INPUT", "Only scoped record references are accepted")
+        for key in ("unit_id", "snapshot_id", "rule_id"):
+            if not isinstance(body[key], str) or not 1 <= len(body[key].strip()) <= 128:
+                raise _bad("INVALID_SIMPLES_REFERENCE", "Invalid record reference")
+        for key in ("snapshot_version", "rule_version"):
+            if type(body[key]) is not int or not 1 <= body[key] <= 2147483647:
+                raise _bad("INVALID_SIMPLES_VERSION", "Invalid record version")
+        unit_id = body["unit_id"].strip()
+        _authorized(auth, PortalPermission.AUDIT_READ, unit_id=unit_id)
+        _csrf(request, identity, auth)
+        try:
+            environment = FiscalEnvironment(body["environment"])
+        except (TypeError, ValueError) as exc:
+            raise _bad("INVALID_ENVIRONMENT", "Unknown environment") from exc
+        if segregation_runner is None:
+            raise _bad("SIMPLES_NOT_CONFIGURED", "Simples segregation unavailable", 503)
+        return await run_in_threadpool(
+            segregation_runner, auth, unit_id, environment,
+            body["snapshot_id"].strip(), body["snapshot_version"],
+            body["rule_id"].strip(), body["rule_version"],
+        )
+
+    @router.post("/economy/simples-assessment")
+    async def simples_assessment(
+        request: Request, body: Annotated[dict[str, Any], Body()],
+    ) -> dict[str, Any]:
+        auth = _authenticated(request, identity, now=datetime.now(UTC))
+        _reject_browser_authority(body)
+        fields = {"unit_id", "environment", "snapshot_id", "snapshot_version",
+                  "rule_id", "rule_version"}
+        if set(body) != fields:
+            raise _bad("INVALID_SIMPLES_INPUT", "Only scoped record references are accepted")
+        for key in ("unit_id", "snapshot_id", "rule_id"):
+            if not isinstance(body[key], str) or not 1 <= len(body[key].strip()) <= 128:
+                raise _bad("INVALID_SIMPLES_REFERENCE", "Invalid record reference")
+        for key in ("snapshot_version", "rule_version"):
+            if type(body[key]) is not int or not 1 <= body[key] <= 2147483647:
+                raise _bad("INVALID_SIMPLES_VERSION", "Invalid record version")
+        unit_id = body["unit_id"].strip()
+        _authorized(auth, PortalPermission.AUDIT_READ, unit_id=unit_id)
+        _csrf(request, identity, auth)
+        try:
+            environment = FiscalEnvironment(body["environment"])
+        except (TypeError, ValueError) as exc:
+            raise _bad("INVALID_ENVIRONMENT", "Unknown environment") from exc
+        if assessment_runner is None:
+            raise _bad("SIMPLES_NOT_CONFIGURED", "Simples assessment unavailable", 503)
+        return await run_in_threadpool(
+            assessment_runner, auth, unit_id, environment,
+            body["snapshot_id"].strip(), body["snapshot_version"],
+            body["rule_id"].strip(), body["rule_version"],
+        )
+
+    @router.get("/economy/federal-programs")
+    async def federal_programs(request: Request, unit_id: str) -> dict[str, Any]:
+        """Published registry is a SOURCE INDEX, not a granted fiscal incentive."""
+        auth = _authenticated(request, identity, now=datetime.now(UTC))
+        _authorized(auth, PortalPermission.AUDIT_READ, unit_id=unit_id)
+        return {
+            "schema_version": "nfcore.federal-program-index/v1",
+            "advisory_only": True, "eligibility_certified": False,
+            "issuance_authorized": False, "complete_national_coverage": False,
+            "programs": [
+                {
+                    "program_code": item.code, "tax_code": item.tax_code,
+                    "operation": item.operation, "legal_act": item.legal_act,
+                    "official_source": item.official_url,
+                    "requires_reviewed_policy": True,
+                }
+                for item in sorted(PROGRAMS.values(), key=lambda x: x.code)
+            ],
+        }
+
+    @router.post("/economy/federal-benefit")
+    async def federal_benefit(
+        request: Request, body: Annotated[dict[str, Any], Body()],
+    ) -> dict[str, Any]:
+        auth = _authenticated(request, identity, now=datetime.now(UTC))
+        _reject_browser_authority(body)
+        required = {"unit_id", "environment", "snapshot_id", "snapshot_version",
+                    "benefit_id", "benefit_version"}
+        if set(body) != required:
+            raise _bad("INVALID_FEDERAL_BENEFIT_INPUT", "Only scoped references allowed")
+        for key in ("unit_id", "snapshot_id", "benefit_id"):
+            if not isinstance(body[key], str) or not 1 <= len(body[key].strip()) <= 128:
+                raise _bad("INVALID_FEDERAL_BENEFIT_REFERENCE", "Invalid record reference")
+        for key in ("snapshot_version", "benefit_version"):
+            if type(body[key]) is not int or not 1 <= body[key] <= 2147483647:
+                raise _bad("INVALID_FEDERAL_BENEFIT_VERSION", "Invalid record version")
+        unit_id = body["unit_id"].strip()
+        _authorized(auth, PortalPermission.AUDIT_READ, unit_id=unit_id)
+        _csrf(request, identity, auth)
+        try:
+            environment = FiscalEnvironment(body["environment"])
+        except (TypeError, ValueError) as exc:
+            raise _bad("INVALID_ENVIRONMENT", "Unknown environment") from exc
+        if federal_benefit_runner is None:
+            raise _bad("FEDERAL_BENEFIT_NOT_CONFIGURED",
+                       "Federal benefit catalog unavailable", 503)
+        return await run_in_threadpool(
+            federal_benefit_runner, auth, unit_id, environment,
+            body["snapshot_id"].strip(), body["snapshot_version"],
+            body["benefit_id"].strip(), body["benefit_version"],
+        )
+
+    @router.post("/economy/federal-benefit-search")
+    async def federal_benefit_search(
+        request: Request, body: Annotated[dict[str, Any], Body()],
+    ) -> dict[str, Any]:
+        auth = _authenticated(request, identity, now=datetime.now(UTC))
+        _reject_browser_authority(body)
+        fields = {"unit_id", "environment", "snapshot_id", "snapshot_version"}
+        if set(body) != fields:
+            raise _bad("INVALID_FEDERAL_BENEFIT_SEARCH",
+                       "Only scoped reviewed snapshot references are accepted")
+        for key in ("unit_id", "snapshot_id"):
+            if not isinstance(body[key], str) or not 1 <= len(body[key].strip()) <= 128:
+                raise _bad("INVALID_FEDERAL_BENEFIT_REFERENCE", "Invalid record reference")
+        if type(body["snapshot_version"]) is not int or not 1 <= body[
+            "snapshot_version"
+        ] <= 2147483647:
+            raise _bad("INVALID_FEDERAL_BENEFIT_VERSION", "Invalid record version")
+        unit_id = body["unit_id"].strip()
+        _authorized(auth, PortalPermission.AUDIT_READ, unit_id=unit_id)
+        _csrf(request, identity, auth)
+        try:
+            environment = FiscalEnvironment(body["environment"])
+        except (TypeError, ValueError) as exc:
+            raise _bad("INVALID_ENVIRONMENT", "Unknown environment") from exc
+        if federal_benefit_search_runner is None:
+            raise _bad("FEDERAL_BENEFIT_NOT_CONFIGURED",
+                       "Federal benefit search unavailable", 503)
+        return await run_in_threadpool(
+            federal_benefit_search_runner, auth, unit_id, environment,
+            body["snapshot_id"].strip(), body["snapshot_version"],
+        )
+
+    @router.get("/economy/state-jurisdictions")
+    async def state_jurisdictions(request: Request, unit_id: str) -> dict[str, Any]:
+        auth = _authenticated(request, identity, now=datetime.now(UTC))
+        _authorized(auth, PortalPermission.AUDIT_READ, unit_id=unit_id)
+        return state_index()
+
+    @router.post("/economy/state-benefit")
+    async def state_benefit(
+        request: Request, body: Annotated[dict[str, Any], Body()],
+    ) -> dict[str, Any]:
+        auth = _authenticated(request, identity, now=datetime.now(UTC))
+        _reject_browser_authority(body)
+        fields = {
+            "unit_id", "environment", "snapshot_id", "snapshot_version",
+            "benefit_id", "benefit_version",
+        }
+        if set(body) != fields:
+            raise _bad("INVALID_STATE_BENEFIT_INPUT", "Only scoped IDs are accepted")
+        for key in ("unit_id", "snapshot_id", "benefit_id"):
+            if not isinstance(body[key], str) or not 1 <= len(body[key].strip()) <= 128:
+                raise _bad("INVALID_STATE_BENEFIT_REFERENCE", "Invalid scoped reference")
+        for key in ("snapshot_version", "benefit_version"):
+            if type(body[key]) is not int or not 1 <= body[key] <= 2147483647:
+                raise _bad("INVALID_STATE_BENEFIT_VERSION", "Invalid record version")
+        unit_id = body["unit_id"].strip()
+        _authorized(auth, PortalPermission.AUDIT_READ, unit_id=unit_id)
+        _csrf(request, identity, auth)
+        try:
+            environment = FiscalEnvironment(body["environment"])
+        except (TypeError, ValueError) as exc:
+            raise _bad("INVALID_ENVIRONMENT", "Unknown environment") from exc
+        if state_benefit_runner is None:
+            raise _bad("STATE_BENEFIT_NOT_CONFIGURED",
+                       "State catalog unavailable", 503)
+        return await run_in_threadpool(
+            state_benefit_runner, auth, unit_id, environment,
+            body["snapshot_id"].strip(), body["snapshot_version"],
+            body["benefit_id"].strip(), body["benefit_version"],
+        )
+
+    @router.post("/economy/state-benefit-search")
+    async def state_benefit_search(
+        request: Request, body: Annotated[dict[str, Any], Body()],
+    ) -> dict[str, Any]:
+        auth = _authenticated(request, identity, now=datetime.now(UTC))
+        _reject_browser_authority(body)
+        fields = {"unit_id", "environment", "snapshot_id", "snapshot_version"}
+        if set(body) != fields:
+            raise _bad("INVALID_STATE_BENEFIT_SEARCH", "Only scoped IDs are accepted")
+        for key in ("unit_id", "snapshot_id"):
+            if not isinstance(body[key], str) or not 1 <= len(body[key].strip()) <= 128:
+                raise _bad("INVALID_STATE_BENEFIT_REFERENCE", "Invalid scoped reference")
+        if type(body["snapshot_version"]) is not int or not 1 <= body[
+            "snapshot_version"
+        ] <= 2147483647:
+            raise _bad("INVALID_STATE_BENEFIT_VERSION", "Invalid record version")
+        unit_id = body["unit_id"].strip()
+        _authorized(auth, PortalPermission.AUDIT_READ, unit_id=unit_id)
+        _csrf(request, identity, auth)
+        try:
+            environment = FiscalEnvironment(body["environment"])
+        except (TypeError, ValueError) as exc:
+            raise _bad("INVALID_ENVIRONMENT", "Unknown environment") from exc
+        if state_search_runner is None:
+            raise _bad("STATE_BENEFIT_NOT_CONFIGURED",
+                       "State search unavailable", 503)
+        return await run_in_threadpool(
+            state_search_runner, auth, unit_id, environment,
+            body["snapshot_id"].strip(), body["snapshot_version"],
+        )
+
+    @router.get("/economy/schema")
+    async def economy_schema(request: Request) -> dict[str, Any]:
+        auth = _authenticated(request, identity, now=datetime.now(UTC))
+        _authorized(auth, PortalPermission.AUDIT_READ)
+        return EconomyAdvice.model_json_schema()
 
     @router.post("/advise")
     async def advise(
@@ -117,8 +419,14 @@ def create_cognitive_router(
             raise _bad("INVALID_ENVIRONMENT", "Unknown environment") from exc
         subject_id = body.get("subject_id")
         question = body.get("question", "")
-        if subject_id is not None and not isinstance(subject_id, str):
-            raise _bad("INVALID_SUBJECT", "subject_id must be text")
+        if subject_id is not None:
+            if (
+                not isinstance(subject_id, str)
+                or not subject_id.strip()
+                or len(subject_id) > 128
+            ):
+                raise _bad("INVALID_SUBJECT", "subject_id must be 1-128 nonblank characters")
+            subject_id = subject_id.strip()
         if not isinstance(question, str) or len(question) > 1000:
             raise _bad("INVALID_QUESTION", "question must be text up to 1000 characters")
         if advisor is None or evidence is None:
@@ -127,6 +435,11 @@ def create_cognitive_router(
                 "Cognitive advisory is not configured",
                 status.HTTP_503_SERVICE_UNAVAILABLE,
             )
+        if capability in CAPABILITIES:
+            if subject_id is None:
+                raise _bad("SUBJECT_REQUIRED", "Economy advice requires an evaluation id")
+            if set(body) - {"capability", "unit_id", "environment", "subject_id", "question"}:
+                raise _bad("INVALID_ECONOMY_INPUT", "Fiscal evidence is server controlled")
         facts = await run_in_threadpool(
             evidence.collect,
             authority=auth,
@@ -148,19 +461,32 @@ def create_cognitive_router(
         )
         advice = AdviceRequest(
             scope=scope,
-            # Scoped by tenant so two tenants can never collide on usage idempotency.
-            request_id=hashlib.sha256(f"{auth.tenant_id}\x00{key}".encode()).hexdigest(),
+            # The browser key is not the scope authority; bind all server-derived
+            # identity and request dimensions before checking usage idempotency.
+            request_id=_scoped_advice_request_id(
+                tenant_id=auth.tenant_id,
+                unit_id=unit_id.strip(),
+                account_id=auth.account.account_id,
+                environment=environment,
+                capability=capability,
+                subject_id=subject_id,
+                key=key,
+            ),
             actor_id="portal-" + hashlib.sha256(auth.account.account_id.encode()).hexdigest()[:24],
             granted_capabilities=granted,
             capability=capability,
             evidence=facts,
             question=question,
+            subject_id=subject_id,
         )
         result = await run_in_threadpool(advisor.advise, advice)
         if result.status is AdviceStatus.DENIED:
             raise _bad(
                 "COGNITIVE_FORBIDDEN", "Operation is not permitted", status.HTTP_403_FORBIDDEN
             )
-        return project_result(result, ai_enabled=ai_enabled)
+        response = project_result(result, ai_enabled=ai_enabled)
+        if capability in CAPABILITIES:
+            response["economy"] = project_economy(advice, result).model_dump(mode="json")
+        return response
 
     return router

@@ -5,6 +5,7 @@ from __future__ import annotations
 from .baseline import BaselineFn, RejectionBaseline
 from .classification import ClassificationBaseline
 from .contracts import Capability
+from .economy_contract import economy_baseline
 from .knowledge import (
     ClassificationCatalog,
     default_classification_catalog,
@@ -26,4 +27,7 @@ def default_baselines(
             default_reconciliation_knowledge_base()
         ),
         Capability.ANSWER_ACCOUNTANT_QUESTION: AccountantQuestionBaseline(),
+        Capability.OPPORTUNITY_RADAR: economy_baseline,
+        Capability.CREDIT_RECOVERY: economy_baseline,
+        Capability.TAX_SIMULATION: economy_baseline,
     }

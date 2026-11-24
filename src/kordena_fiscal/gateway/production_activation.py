@@ -358,6 +358,15 @@ class ProductionExecutionAuthority:
     def production_activated(self) -> bool:
         return self.active_count > 0
 
+    def require_key(self, key: ProductionActivationKey) -> ProductionActivationRecord:
+        """Exact-cell lookup for transports that do not build a ProviderRequest."""
+        record = self._latest.get(key)
+        if record is None or record.state is not ProductionActivationState.ACTIVE:
+            raise FiscalProductionActivationRequiredError(
+                "no exact active fiscal production grant was explicitly injected"
+            )
+        return record
+
     def require(
         self,
         request: ProviderRequest,

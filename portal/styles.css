@@ -37,7 +37,8 @@
 html {
   width: 100%;
   max-width: 100%;
-  overflow-x: hidden;
+  /* clip (not hidden): hidden turns html/body into scroll containers and breaks the sticky sidebar */
+  overflow-x: clip;
   background: var(--ink-950);
   scroll-behavior: smooth;
 }
@@ -45,7 +46,7 @@ body {
   width: 100%;
   max-width: 100%;
   min-width: 0;
-  overflow-x: hidden;
+  overflow-x: clip;
   margin: 0;
   min-height: 100vh;
   background:
@@ -624,12 +625,13 @@ dialog::backdrop { background: rgba(2,7,13,.75); backdrop-filter: blur(7px); }
   .topbar {
     align-items: stretch;
     flex-direction: column;
-    gap: 9px;
+    gap: 4px;
     margin-bottom: 11px;
   }
   .topbar .eyebrow {
-    margin-bottom: 5px;
+    margin-bottom: 3px;
     font-size: 8px;
+    line-height: 1.2;
     letter-spacing: .105em;
   }
   .top-actions {
@@ -637,24 +639,26 @@ dialog::backdrop { background: rgba(2,7,13,.75); backdrop-filter: blur(7px); }
     max-width: 100%;
     min-width: 0;
     display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    gap: 8px;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 4px;
   }
   .top-actions > * {
     min-width: 0;
     max-width: 100%;
   }
-  .environment-control {
+  .top-actions .environment-control {
+    grid-column: 1 / -1;
     width: 100%;
-    min-height: 38px;
-    padding: 8px 11px;
+    min-height: 24px;
+    padding: 2px 8px;
     font-size: 13px;
     line-height: 1.2;
     white-space: normal;
+    overflow-wrap: anywhere;
   }
   .top-actions button {
-    min-height: 38px;
-    padding: 8px 14px;
+    min-height: 44px;
+    padding: 8px 8px;
     font-size: 13px;
     white-space: nowrap;
   }
@@ -707,11 +711,6 @@ dialog::backdrop { background: rgba(2,7,13,.75); backdrop-filter: blur(7px); }
   .version-pill { display: none; }
   .brand-copy strong { font-size: 13px; }
   .brand-copy small { font-size: 8px; }
-  .top-actions {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-  }
-  .top-actions button { width: auto; }
   .topbar h1 {
     font-size: 30px;
     line-height: .98;
@@ -895,6 +894,9 @@ html[data-theme="light"] .shell .row { background: #f6f9fd; border: 1px solid #d
 html[data-theme="light"] .shell .row:hover { background: #eef4fc; border-color: #9db8e0; }
 html[data-theme="light"] .shell .row strong { color: #0f1f33; }
 html[data-theme="light"] .shell .row span { color: #44586f; }
+/* Record details (dt/dd) were white-on-light and invisible in the light theme. */
+html[data-theme="light"] .shell .row dt { color: #44586f; }
+html[data-theme="light"] .shell .row dd { color: #0f1f33; }
 html[data-theme="light"] .shell .row summary,
 html[data-theme="light"] .shell .row details { color: #1d3350; }
 html[data-theme="light"] .shell .eyebrow { color: #2563eb; }
@@ -916,8 +918,10 @@ html[data-theme="light"] dialog textarea { background: #ffffff; color: #0f1f33; 
 html[data-theme="light"] dialog { background: #ffffff; border: 1px solid #d5e0ee; }
 html[data-theme="light"] .product-footer { color: #5b6f87; border-top-color: #d5e0ee; }
 
-@media (max-width: 720px) {
-  .top-actions { grid-template-columns: minmax(0, 1fr) auto auto; }
+/* The session context owns a full-width row on mobile. Only the three
+   interactive controls share columns; the 44px targets are preserved. */
+@media (max-width: 360px) {
+  .top-actions button { padding-inline: 6px; }
 }
 
 /* Legibilidade: textos secundários e selos maiores, rótulos de filtro com contraste. */
@@ -1024,3 +1028,13 @@ html[data-theme="light"] .rtc-status { color: #153453; }
     padding: 12px;
   }
 }
+
+/* MFA (TOTP) */
+.mfa-qr { display: flex; justify-content: center; margin: 12px 0; }
+.mfa-qr img { width: 196px; height: 196px; background: #ffffff; border-radius: 8px; padding: 6px; }
+.mfa-recovery-list { columns: 2; font-family: ui-monospace, monospace; font-size: 15px; padding-left: 22px; }
+.mfa-recovery-list li { margin: 4px 0; }
+.check-row { display: flex; gap: 8px; align-items: center; }
+.check-row input { width: auto; }
+.security-actions { flex-wrap: wrap; justify-content: flex-start; }
+#mfa-secret { word-break: break-all; }

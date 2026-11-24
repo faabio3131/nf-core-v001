@@ -101,6 +101,39 @@ def test_wrong_scope_never_touches_vault_or_transport(fiscal_request):
     exchange.assert_not_called()
 
 
+@pytest.mark.parametrize("wrong", [
+    _request("35", ElectronicInvoiceModel.NFCE),
+    _request("31", ElectronicInvoiceModel.NFE),
+    replace(
+        _request("35"),
+        signed_xml=_request("35").signed_xml.replace(b"<mod>55", b"<mod>65"),
+    ),
+    replace(
+        _request("35"),
+        signed_xml=_request("35").signed_xml.replace(b"<cUF>35", b"<cUF>31"),
+    ),
+    replace(
+        _request("35"),
+        signed_xml=_request("35").signed_xml.replace(
+            CNPJ.encode(), b"99999999999999",
+        ),
+    ),
+])
+def test_sp_model55_authorizer_blocks_wrong_fiscal_model_before_a1(
+    wrong: AuthorizationRequest,
+) -> None:
+    """NF-e SP55 cannot send NFC-e 65 or tampered UF/issuer to its endpoint."""
+    certificate = Mock(side_effect=AssertionError("A1 must not be touched"))
+    sender = Mock(side_effect=AssertionError("SEFAZ must not be called"))
+    gateway = SefazSpHomologationGateway(
+        resolve_certificate=certificate, exchange=sender,
+    )
+    with pytest.raises(OfficialNfeTransportError, match="SEFAZ SP NF-e"):
+        gateway.authorize(wrong)
+    certificate.assert_not_called()
+    sender.assert_not_called()
+
+
 def test_mg_requires_explicit_target_and_schema_validator():
     with pytest.raises(ValueError, match="XSD"):
         SefazHomologationAuthorizationGateway(

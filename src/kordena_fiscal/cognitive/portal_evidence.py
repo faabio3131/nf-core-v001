@@ -16,7 +16,7 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from typing import Any, Protocol
 
-from kordena_fiscal.domain import FiscalEnvironment
+from kordena_fiscal.domain import ExecutionScope, FiscalEnvironment
 from kordena_fiscal.security.human_identity import AuthenticatedHuman
 
 from .contracts import (
@@ -25,6 +25,8 @@ from .contracts import (
     Evidence,
     EvidenceKind,
 )
+from .economy_contract import CAPABILITIES
+from .economy_reader import EconomyReader
 
 _MAX_ROWS = 25
 
@@ -47,8 +49,11 @@ def _s(value: object) -> str:
 
 
 class PortalSurfaceEvidenceProvider:
-    def __init__(self, reader: SurfaceReader) -> None:
+    def __init__(
+        self, reader: SurfaceReader, *, economy_reader: EconomyReader | None = None,
+    ) -> None:
         self._reader = reader
+        self._economy_reader = economy_reader
 
     def collect(
         self,
@@ -71,7 +76,40 @@ class PortalSurfaceEvidenceProvider:
                 offset=0,
             )
 
+        if capability in CAPABILITIES:
+            if self._economy_reader is None or subject_id is None:
+                return ()
+            # Resolve actual establishment and environment from the canonical
+            # portal before creating a database scope, even for unrestricted owners.
+            authorized = any(
+                row.get("unit_id") == unit_id
+                and row.get("tenant_id", tenant) == tenant
+                and environment.value in (row.get("enabled_environments") or ())
+                for row in rows("units")
+            )
+            if not authorized:
+                return ()
+            return self._economy_reader(
+                ExecutionScope(
+                    tenant_id=tenant, unit_id=unit_id, environment=environment,
+                    correlation_id="economy-advice", host_namespace="fm-nfcore",
+                ), capability, subject_id,
+            )
+
         def matches(row: Mapping[str, Any]) -> bool:
+            # Defence in depth: a faulty projection must never elevate data
+            # bearing an explicit foreign tenant/unit marker into trusted facts.
+            if row.get("tenant_id") is not None and str(row["tenant_id"]) != tenant:
+                return False
+            if row.get("unit_id") is not None and str(row["unit_id"]) != unit_id:
+                return False
+            # Explicit environment markers must not cross homologation/production.
+            # Legacy rows without this field remain scoped by reader.surface().
+            if (
+                row.get("environment") is not None
+                and str(row["environment"]) != environment.value
+            ):
+                return False
             if subject_id is None:
                 return True
             return subject_id in {
@@ -108,10 +146,17 @@ class PortalSurfaceEvidenceProvider:
                                     EvidenceKind.RECONCILIATION_ISSUE,
                                     "portal:reconciliation", data))
         elif capability is Capability.ANSWER_ACCOUNTANT_QUESTION:
-            for index, row in enumerate(rows("reconciliation")[:5]):
+            # A document-specific question may not silently borrow evidence
+            # from other documents in the same authorized tenant/unit.
+            # Keep the unfiltered behaviour only for an explicit general question.
+            for index, row in enumerate(
+                [r for r in rows("reconciliation") if matches(r)][:5]
+            ):
                 out.append(make(f"rec:{index}", EvidenceKind.RECONCILIATION_ISSUE,
                                 "portal:reconciliation", {"status": _s(row.get("status", ""))}))
-            for index, row in enumerate(rows("errors")[:5]):
+            for index, row in enumerate(
+                [r for r in rows("errors") if matches(r)][:5]
+            ):
                 if row.get("state"):
                     out.append(make(f"doc:{index}", EvidenceKind.DOCUMENT_STATE,
                                     "portal:errors", {"state": _s(row["state"])}))

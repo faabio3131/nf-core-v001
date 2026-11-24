@@ -1,0 +1,100 @@
+{
+  "schema_version": "nfcore.t09.official-alternative-source-trial/v1",
+  "as_of": "2026-11-23",
+  "authorized_for_import": false,
+  "legal_validity_certified": false,
+  "independent_approval_received": false,
+  "scope": "Supplemental HTTPS attempt for 3 official jurisdictions whose first capture failed: AC RR SE; no entitlement",
+  "entries": [
+    {
+      "uf": "AC",
+      "candidate_id": "AC-INDUSTRIA-LEI1358-DEC4196-V1",
+      "source_url": "https://sefaz.ac.gov.br/2021/?mdocs-file=3062",
+      "source_kind": "official_secondary_or_primary_context_unreviewed",
+      "verification_note": "Official normative deposit inventory under Convênio 190/2017; source index is not dispositive grant",
+      "review_status": "unreviewed",
+      "eligible_for_tax_calculation": false
+    },
+    {
+      "uf": "AC",
+      "candidate_id": "AC-INDUSTRIA-LEI1358-DEC4196-V1",
+      "source_url": "https://seplan.ac.gov.br/wp-content/uploads/2025/06/PLDO-2026-ANEXO-I.pdf",
+      "source_kind": "official_secondary_or_primary_context_unreviewed",
+      "verification_note": "Budget reporting may use 2032 term, while Lei 1.358/2000 textual term 2035; conflict must be reviewed",
+      "review_status": "unreviewed",
+      "eligible_for_tax_calculation": false
+    },
+    {
+      "uf": "RR",
+      "candidate_id": "RR-RICMS2001-AN1-ART1-LXVII-V1",
+      "source_url": "https://www.sefaz.rr.gov.br/downloads/legislacao?dir=02+-+LEGISLACAO+ESTADUAL",
+      "source_kind": "official_secondary_or_primary_context_unreviewed",
+      "verification_note": "Official regulatory catalog index; NOT evidence for art.1 LXVII extension",
+      "review_status": "unreviewed",
+      "eligible_for_tax_calculation": false
+    },
+    {
+      "uf": "RR",
+      "candidate_id": "RR-RICMS2001-AN1-ART1-LXVII-V1",
+      "source_url": "https://www.sefaz.rr.gov.br/component/jdownloads/?Itemid=402&catid=494&id=26478&m=0&task=download.send",
+      "source_kind": "official_secondary_or_primary_context_unreviewed",
+      "verification_note": "2026 general RICMS compilation; does not automatically extend selected LXVII exemption",
+      "review_status": "unreviewed",
+      "eligible_for_tax_calculation": false
+    },
+    {
+      "uf": "SE",
+      "candidate_id": "SE-PSDI-LEI3140-DEC29935-V1",
+      "source_url": "https://sedetec.se.gov.br/psdi/",
+      "source_kind": "official_secondary_or_primary_context_unreviewed",
+      "verification_note": "PSDI official program description; not formal individual grant",
+      "review_status": "unreviewed",
+      "eligible_for_tax_calculation": false
+    },
+    {
+      "uf": "SE",
+      "candidate_id": "SE-PSDI-LEI3140-DEC29935-V1",
+      "source_url": "https://sedetec.se.gov.br/fai/legislacao-fai/",
+      "source_kind": "official_secondary_or_primary_context_unreviewed",
+      "verification_note": "Official legal inventory for FAI and PSDI, act chronology to research",
+      "review_status": "unreviewed",
+      "eligible_for_tax_calculation": false
+    },
+    {
+      "uf": "SE",
+      "candidate_id": "SE-PSDI-LEI3140-DEC29935-V1",
+      "source_url": "https://www.sefaz.se.gov.br/SitePages/servicos_cidadao.aspx",
+      "source_kind": "official_psdi_legislative_or_service_reference_unreviewed",
+      "verification_note": "Official SEFAZ description of request for PSDI support with expert assessment/CDI decision",
+      "review_status": "unreviewed",
+      "eligible_for_tax_calculation": false
+    },
+    {
+      "uf": "SE",
+      "candidate_id": "SE-PSDI-LEI3140-DEC29935-V1",
+      "source_url": "https://legislacao.se.gov.br/",
+      "source_kind": "official_psdi_legislative_or_service_reference_unreviewed",
+      "verification_note": "Official legislative index: not the material PDF of Lei 3140 or Decreto 29935",
+      "review_status": "unreviewed",
+      "eligible_for_tax_calculation": false
+    },
+    {
+      "uf": "SE",
+      "candidate_id": "SE-PSDI-LEI3140-DEC29935-V1",
+      "source_url": "https://pge.se.gov.br/wp-content/uploads/2025/02/DECRETO-29-935-1.pdf",
+      "source_kind": "official_psdi_legislative_or_service_reference_unreviewed",
+      "verification_note": "Official state Procuradoria PDF of PSDI regulatory decree 29.935/2014, seek specific clauses",
+      "review_status": "unreviewed",
+      "eligible_for_tax_calculation": false
+    },
+    {
+      "uf": "SE",
+      "candidate_id": "SE-PSDI-LEI3140-DEC29935-V1",
+      "source_url": "https://aleselegis.al.se.leg.br/Arquivo/Documents/legislacao/html/l84902018.html",
+      "source_kind": "official_alese_2018_state_reinstitution_law_unreviewed",
+      "verification_note": "ALESE 8.490/2018 art1 Annex item1 reintroduces law 3140 and refers CONFAZ certificate 13/2018, not sufficient for modal legal certification",
+      "review_status": "unreviewed",
+      "eligible_for_tax_calculation": false
+    }
+  ]
+}

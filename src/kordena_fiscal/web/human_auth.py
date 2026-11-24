@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from datetime import UTC, datetime
-from typing import Annotated, Any
+from typing import TYPE_CHECKING, Annotated, Any
 
 from fastapi import APIRouter, Body, HTTPException, Request, Response, status
 
@@ -15,7 +15,11 @@ from kordena_fiscal.security.human_identity import (
     HumanAuthenticationError,
     HumanIdentityService,
     HumanRateLimitError,
+    IssuedWebSession,
 )
+
+if TYPE_CHECKING:
+    from kordena_fiscal.security.human_mfa import HumanMfaService
 
 SESSION_COOKIE = "nfcore_session"
 CSRF_COOKIE = "nfcore_csrf"
@@ -39,6 +43,7 @@ def create_human_auth_router(
     *,
     on_login: Callable[[str, datetime], None] | None = None,
     now: Callable[[], datetime] | None = None,
+    mfa: HumanMfaService | None = None,
 ) -> APIRouter:
     """Create cookie-session routes without accepting tenant authority from headers."""
 
@@ -78,35 +83,9 @@ def create_human_auth_router(
             ) from exc
         return auth
 
-    @router.post("/login")
-    async def login(
-        response: Response,
-        payload: Annotated[dict[str, Any], Body()],
+    def start_session(
+        response: Response, issued: IssuedWebSession, instant: datetime,
     ) -> dict[str, Any]:
-        email = payload.get("email")
-        password = payload.get("password")
-        if not isinstance(email, str) or not isinstance(password, str):
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail={
-                    "code": "INVALID_LOGIN_PAYLOAD",
-                    "message": "Email and password are required",
-                },
-            )
-        instant = now_provider()
-        try:
-            issued = identity.login(email=email, password=password, now=instant)
-        except HumanRateLimitError as exc:
-            raise HTTPException(
-                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-                detail={"code": "LOGIN_RATE_LIMITED", "message": "Try again later"},
-            ) from exc
-        except (HumanAuthenticationError, ValueError) as exc:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={"code": "INVALID_CREDENTIALS", "message": "Invalid email or password"},
-            ) from exc
-
         if on_login is not None:
             try:
                 on_login(issued.account.account_id, instant)
@@ -138,13 +117,72 @@ def create_human_auth_router(
             "expires_at": issued.expires_at.isoformat(),
         }
 
+    if mfa is not None:
+        from kordena_fiscal.web.human_mfa_routes import add_human_mfa_routes
+
+        add_human_mfa_routes(
+            router, identity=identity, mfa=mfa, now=now_provider,
+            authenticated=authenticated, csrf_authenticated=csrf_authenticated,
+            start_session=start_session,
+        )
+
+    @router.post("/login")
+    async def login(
+        request: Request,
+        response: Response,
+        payload: Annotated[dict[str, Any], Body()],
+    ) -> dict[str, Any]:
+        email = payload.get("email")
+        password = payload.get("password")
+        if not isinstance(email, str) or not isinstance(password, str):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={
+                    "code": "INVALID_LOGIN_PAYLOAD",
+                    "message": "Email and password are required",
+                },
+            )
+        instant = now_provider()
+        try:
+            account = identity.authenticate_password(email=email, password=password, now=instant)
+        except HumanRateLimitError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail={"code": "LOGIN_RATE_LIMITED", "message": "Try again later"},
+            ) from exc
+        except (HumanAuthenticationError, ValueError) as exc:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail={"code": "INVALID_CREDENTIALS", "message": "Invalid email or password"},
+            ) from exc
+        if mfa is not None:
+            from kordena_fiscal.web.human_mfa_routes import (
+                TRUSTED_DEVICE_COOKIE,
+                second_factor_due,
+            )
+
+            challenge = second_factor_due(
+                mfa, account, request.cookies.get(TRUSTED_DEVICE_COOKIE), instant,
+            )
+            if challenge is not None:
+                return {"mfa": challenge}
+        return start_session(response, identity.issue_session(account, now=instant), instant)
+
     @router.get("/me")
     async def me(request: Request) -> dict[str, Any]:
         auth = authenticated(request)
-        return {
+        body: dict[str, Any] = {
             "account": _account_payload(auth.account),
             "expires_at": auth.expires_at.isoformat(),
         }
+        if mfa is not None:
+            current = mfa.status(auth.account)
+            body["mfa"] = {
+                "required": current.required, "enrolled": current.enrolled,
+                "recovery_codes_remaining": current.recovery_codes_remaining,
+                "tenant_requires_all": current.tenant_requires_all,
+            }
+        return body
 
     @router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
     async def logout(request: Request, response: Response) -> Response:

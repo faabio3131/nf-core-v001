@@ -93,30 +93,32 @@ def _route(city: str, document: str) -> SpPilotRoute:
 
 @pytest.mark.parametrize("city", CITIES)
 @pytest.mark.parametrize("document", ("nfe", "nfce"))
-def test_sp_inutilization_denied_after_november_cutover(
+def test_sp_inutilization_remains_available_during_official_transition(
     city: str, document: str,
 ) -> None:
-    with pytest.raises(FiscalValidationError, match="no longer applies"):
-        require_sp_pilot_operation_policy(
-            route=_route(city, document),
-            operation=ProviderOperation.INUTILIZE,
-            requested_at=datetime(2026, 11, 4, tzinfo=UTC),
-        )
+    # Legal dispensation is not a prohibition: transmission authority is separate.
+    assert require_sp_pilot_operation_policy(
+        route=_route(city, document),
+        operation=ProviderOperation.INUTILIZE,
+        requested_at=datetime(2026, 11, 4, tzinfo=UTC),
+    ) is None
 
 
 @pytest.mark.parametrize("document", ("nfe", "nfce"))
-def test_sp_inutilization_uses_sp_local_date_boundary(document: str) -> None:
+def test_sp_inutilization_transition_does_not_create_fake_midnight_cutoff(
+    document: str,
+) -> None:
     route = _route("3550308", document)
-    # Just before midnight SP, not a proof that the provider would authorize.
-    require_sp_pilot_operation_policy(
-        route=route, operation=ProviderOperation.INUTILIZE,
-        requested_at=datetime(2026, 11, 1, 2, 59, tzinfo=UTC),
-    )
-    with pytest.raises(FiscalValidationError, match="no longer applies"):
-        require_sp_pilot_operation_policy(
-            route=route, operation=ProviderOperation.INUTILIZE,
-            requested_at=datetime(2026, 11, 1, 0, 0, tzinfo=timezone(timedelta(hours=-3))),
-        )
+    for instant in (
+        datetime(2026, 11, 1, 2, 59, tzinfo=UTC),
+        datetime(2026, 11, 1, 0, 0, tzinfo=timezone(timedelta(hours=-3))),
+        datetime(2027, 3, 1, 12, tzinfo=UTC),
+    ):
+        assert require_sp_pilot_operation_policy(
+            route=route,
+            operation=ProviderOperation.INUTILIZE,
+            requested_at=instant,
+        ) is None
 
 
 def test_sp_nfse_inutilization_not_supported() -> None:

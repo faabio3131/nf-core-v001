@@ -1,4 +1,85 @@
+> **Entrega incremental 19/11/2026 — REC-03:** verificação OCSP offline complementar à LCR, CertID exato, resposta GOOD válida, assinatura da AC emissora ou responder delegado com EKU e revogação verificadas, mount existente opt-in. Nenhum endpoint externo ativado; materiais oficiais/identidade, LTV e certificação permanecem abertos. Código/testes no mesmo commit sobre `8cc67ababe091db76cf85b04d9636995aebf0f62`, sem execução de testes, nova CI, PR ou deploy. Fonte: RFC 6960. Dossiê `docs/operations/NFCORE_NATIONAL_RECEIPT_TRUST_SIGNER_PINS.md`.
+
+> **Entrega incremental 19/11/2026 — REC-03:** verificação criptográfica do DPS antes de POST, vínculo com fingerprint do A1 do Vault e verificação do arquivo histórico usando seu instante de observação somente para a assinatura DPS. Signatário oficial da NFS-e continua sujeito à confiança atual; não equivale a LTV/OCSP. Mudança e testes no mesmo commit desta nota sobre `22a0c7da9d2f8b334d61ed606882cbbd64e764a1`, testes não executados. Sem nova CI, PR, promoção ou deploy. Dossiê: `docs/operations/NFCORE_NATIONAL_DPS_DISPATCH_EVIDENCE.md`.
+
+> **Entrega incremental 19/11/2026 — REC-04:** contrato de deduções ampliado às espécies NFSeMun, NFNFS, nDocFisc e nDoc do XSD de fevereiro e docFiscalOutro/docOutro do NT009, com identificação de fornecedor, escolha por perfil, fingerprint/archive e reserva por identidade e hash contra alias na mesma unidade/emitente. Código e testes no mesmo commit desta nota, sobre `04305538178a097fdccd56273201c5257b39aea8`; testes não executados por ordem de construção. Política revisada e legitimidade dos comprovantes originais continuam obrigatórias; não promover REC-04/SP22/MG20 ou homologação a DONE. Detalhes em `docs/operations/NFCORE_REVIEWED_DOCUMENTARY_DEDUCTIONS.md`. Próxima dependência: integridade criptográfica e legado, lacunas municipais e gates de aceitação. Sem nova CI, PR, deploy ou expansão.
+
+> **CURRENT complementar — 19/11/2026:** branch `work/nfcore-closeout-20261119`, HEAD de engenharia `2224b3d0d6fca49029afa4fd41b194f65ac6562a`. As dez entregas registradas por commit em [cronograma executivo REC](audit/NFCORE_RECONCILIATION_CLOSEOUT_SCHEDULE_2026-11-17.md), [pendências CURRENT](audit/NFCORE_PENDING_REGISTER_CURRENT_2026-11-17.md) e [ledger de PRs](audit/NFCORE_PR_RECONCILIATION_LEDGER_CURRENT.md) reconciliam os avanços fiscais/municipais/Web/IRON desde 17/11. Incluem deduções documentais, reserva durável de comprovantes, DPS histórico, correção GISS, PKI e composição de release. Seis PRs Draft; zero runs na branch consolidada. Sem novo teste executado, EGM, promoção main/production, deploy ou aceite fiscal. Preservados os 59 IDs e seus checkboxes, critérios, ordem e independência dos gates BUILD/produção. As notas anteriores são históricas; não reutilizar CI de outro SHA. Não considerar SP22/MG20 completos.
+
+---
+
+> **CONTINUIDADE CURRENT — 17/11/2026:** os 59 IDs, sua ordem e respectivos estados de aceite permanecem governados neste ledger e no cronograma mestre; nenhum estado foi alterado. Para o fechamento da reconciliação fiscal/Web em novembro, consultar [cronograma complementar REC-20261117](audit/NFCORE_RECONCILIATION_CLOSEOUT_SCHEDULE_2026-11-17.md) e [registro único de pendências](audit/NFCORE_PENDING_REGISTER_CURRENT_2026-11-17.md). Esse anexo é mapa de execução e não cria tarefas numeradas paralelas aos 59 IDs, não transforma BUILD em homologação e não certifica produção. Conferir sempre HEAD/CI/ambiente antes de atualizar progresso.
+
 # FM NFCORE V1 — LEDGER CANÔNICO DE EXECUÇÃO
+
+## CURRENT superior — mapa de aceite 59 IDs por dimensão (23/11/2026)
+
+**Este registro não altera nenhuma das 59 caixas históricas nem o validador.** 32/59 constam marcadas com aceite histórico; 27/59 ainda sem aceite formal individual. Os **149 caminhos referenciados** nos 59 IDs estão na árvore da #592, o que prova existência de arquivos, **não implementação completa de uma tarefa**. `#45273717614` = SUCCESS somente no HEAD `c083595b`; a candidata final e eventual merge exigem gates próprios. `PRODUCTION_APPROVED=NO` em todos os 59 IDs (nenhum Go/No-Go). [Mapa Git/PRs](audit/NFCORE_7PRS_ZERO_LOSS_CANDIDATE_20261123.md) e [manifesto de arquivos](audit/NFCORE_7PRS_ZERO_LOSS_149_PATHS_20261123.json).
+
+| ID | CODE_IMPLEMENTED | INTEGRATED | CERTIFIED_INTERNAL | BLOCKED_EXTERNAL | PRODUCTION_APPROVED |
+|---|---|---|---|---|---|
+| NFV1-P00-T01 | CODE_IMPLEMENTED_HISTORIC | IN_MAIN_HISTORIC | CERTIFIED_INTERNAL_HISTORIC | NO_EXTERNAL_PRECONDITION_ASSUMED | NO |
+| NFV1-P00-T02 | CODE_IMPLEMENTED_HISTORIC | IN_MAIN_HISTORIC | CERTIFIED_INTERNAL_HISTORIC | NO_EXTERNAL_PRECONDITION_ASSUMED | NO |
+| NFV1-P00-T03 | CODE_IMPLEMENTED_HISTORIC | IN_MAIN_HISTORIC | CERTIFIED_INTERNAL_HISTORIC | NO_EXTERNAL_PRECONDITION_ASSUMED | NO |
+| NFV1-P01-T01 | CODE_IMPLEMENTED_HISTORIC | IN_MAIN_HISTORIC | CERTIFIED_INTERNAL_HISTORIC | NO_EXTERNAL_PRECONDITION_ASSUMED | NO |
+| NFV1-P01-T02 | CODE_IMPLEMENTED_HISTORIC | IN_MAIN_HISTORIC | CERTIFIED_INTERNAL_HISTORIC | NO_EXTERNAL_PRECONDITION_ASSUMED | NO |
+| NFV1-P01-T03 | CODE_IMPLEMENTED_HISTORIC | IN_MAIN_HISTORIC | CERTIFIED_INTERNAL_HISTORIC | NO_EXTERNAL_PRECONDITION_ASSUMED | NO |
+| NFV1-P01-T04 | CODE_IMPLEMENTED_HISTORIC | IN_MAIN_HISTORIC | CERTIFIED_INTERNAL_HISTORIC | NO_EXTERNAL_PRECONDITION_ASSUMED | NO |
+| NFV1-P02-T01 | CODE_IMPLEMENTED_HISTORIC | IN_MAIN_HISTORIC | CERTIFIED_INTERNAL_HISTORIC | NO_EXTERNAL_PRECONDITION_ASSUMED | NO |
+| NFV1-P02-T02 | CODE_IMPLEMENTED_HISTORIC | IN_MAIN_HISTORIC | CERTIFIED_INTERNAL_HISTORIC | NO_EXTERNAL_PRECONDITION_ASSUMED | NO |
+| NFV1-P02-T03 | CODE_IMPLEMENTED_HISTORIC | IN_MAIN_HISTORIC | CERTIFIED_INTERNAL_HISTORIC | NO_EXTERNAL_PRECONDITION_ASSUMED | NO |
+| NFV1-P02-T04 | CODE_IMPLEMENTED_HISTORIC | IN_MAIN_HISTORIC | CERTIFIED_INTERNAL_HISTORIC | NO_EXTERNAL_PRECONDITION_ASSUMED | NO |
+| NFV1-P02-T05 | CODE_IMPLEMENTED_HISTORIC | IN_MAIN_HISTORIC | CERTIFIED_INTERNAL_HISTORIC | NO_EXTERNAL_PRECONDITION_ASSUMED | NO |
+| NFV1-P02-T06 | CODE_IMPLEMENTED_HISTORIC | IN_MAIN_HISTORIC | CERTIFIED_INTERNAL_HISTORIC | NO_EXTERNAL_PRECONDITION_ASSUMED | NO |
+| NFV1-P02-T07 | CODE_IMPLEMENTED_HISTORIC | IN_MAIN_HISTORIC | CERTIFIED_INTERNAL_HISTORIC | NO_EXTERNAL_PRECONDITION_ASSUMED | NO |
+| NFV1-P03-T01 | CODE_IMPLEMENTED_HISTORIC | IN_MAIN_HISTORIC | CERTIFIED_INTERNAL_HISTORIC | NO_EXTERNAL_PRECONDITION_ASSUMED | NO |
+| NFV1-P03-T02 | CODE_IMPLEMENTED_HISTORIC | IN_MAIN_HISTORIC | CERTIFIED_INTERNAL_HISTORIC | NO_EXTERNAL_PRECONDITION_ASSUMED | NO |
+| NFV1-P03-T03 | CODE_IMPLEMENTED_HISTORIC | IN_MAIN_HISTORIC | CERTIFIED_INTERNAL_HISTORIC | NO_EXTERNAL_PRECONDITION_ASSUMED | NO |
+| NFV1-P03-T04 | CODE_IMPLEMENTED_HISTORIC | IN_MAIN_HISTORIC | CERTIFIED_INTERNAL_HISTORIC | NO_EXTERNAL_PRECONDITION_ASSUMED | NO |
+| NFV1-P03-T05 | CODE_IMPLEMENTED_HISTORIC | IN_MAIN_HISTORIC | CERTIFIED_INTERNAL_HISTORIC | NO_EXTERNAL_PRECONDITION_ASSUMED | NO |
+| NFV1-P04-T01 | CODE_IMPLEMENTED_HISTORIC | IN_MAIN_HISTORIC | CERTIFIED_INTERNAL_HISTORIC | NO_EXTERNAL_PRECONDITION_ASSUMED | NO |
+| NFV1-P04-T02 | CODE_IMPLEMENTED_HISTORIC | IN_MAIN_HISTORIC | CERTIFIED_INTERNAL_HISTORIC | NO_EXTERNAL_PRECONDITION_ASSUMED | NO |
+| NFV1-P04-T03 | CODE_IMPLEMENTED_HISTORIC | IN_MAIN_HISTORIC | CERTIFIED_INTERNAL_HISTORIC | NO_EXTERNAL_PRECONDITION_ASSUMED | NO |
+| NFV1-P04-T04 | CODE_IMPLEMENTED_HISTORIC | IN_MAIN_HISTORIC | CERTIFIED_INTERNAL_HISTORIC | NO_EXTERNAL_PRECONDITION_ASSUMED | NO |
+| NFV1-P06-T01 | CODE_IMPLEMENTED_HISTORIC | IN_MAIN_HISTORIC | CERTIFIED_INTERNAL_HISTORIC | NO_EXTERNAL_PRECONDITION_ASSUMED | NO |
+| NFV1-P06-T02 | CODE_IMPLEMENTED_HISTORIC | IN_MAIN_HISTORIC | CERTIFIED_INTERNAL_HISTORIC | NO_EXTERNAL_PRECONDITION_ASSUMED | NO |
+| NFV1-P06-T03 | CODE_IMPLEMENTED_HISTORIC | IN_MAIN_HISTORIC | CERTIFIED_INTERNAL_HISTORIC | NO_EXTERNAL_PRECONDITION_ASSUMED | NO |
+| NFV1-P06-T04 | CODE_IMPLEMENTED_HISTORIC | IN_MAIN_HISTORIC | CERTIFIED_INTERNAL_HISTORIC | NO_EXTERNAL_PRECONDITION_ASSUMED | NO |
+| NFV1-P09-T01 | CODE_IMPLEMENTED_HISTORIC | IN_MAIN_HISTORIC | CERTIFIED_INTERNAL_HISTORIC | NO_EXTERNAL_PRECONDITION_ASSUMED | NO |
+| NFV1-P09-T02 | CODE_IMPLEMENTED_HISTORIC | IN_MAIN_HISTORIC | CERTIFIED_INTERNAL_HISTORIC | NO_EXTERNAL_PRECONDITION_ASSUMED | NO |
+| NFV1-P09-T03 | CODE_IMPLEMENTED_HISTORIC | IN_MAIN_HISTORIC | CERTIFIED_INTERNAL_HISTORIC | NO_EXTERNAL_PRECONDITION_ASSUMED | NO |
+| NFV1-P05-T01 | CODE_IMPLEMENTED_HISTORIC | IN_MAIN_HISTORIC | CERTIFIED_INTERNAL_HISTORIC | NO_EXTERNAL_PRECONDITION_ASSUMED | NO |
+| NFV1-P05-T02 | CODE_IMPLEMENTED_HISTORIC | IN_MAIN_HISTORIC | CERTIFIED_INTERNAL_HISTORIC | NO_EXTERNAL_PRECONDITION_ASSUMED | NO |
+| NFV1-P05-T03 | CODE_PRESENT_PARTIAL_NOT_ACCEPTED | NOT_INTEGRATED_AS_COMPLETE_TASK | NOT_CERTIFIED_TASK_COMPLETE | NO_EXTERNAL_PRECONDITION_ASSUMED | NO |
+| NFV1-P05-T04 | CODE_PRESENT_PARTIAL_NOT_ACCEPTED | NOT_INTEGRATED_AS_COMPLETE_TASK | NOT_CERTIFIED_TASK_COMPLETE | NO_EXTERNAL_PRECONDITION_ASSUMED | NO |
+| NFV1-P05-T05 | CODE_PRESENT_PARTIAL_NOT_ACCEPTED | NOT_INTEGRATED_AS_COMPLETE_TASK | NOT_CERTIFIED_TASK_COMPLETE | NO_EXTERNAL_PRECONDITION_ASSUMED | NO |
+| NFV1-P07-T01 | CODE_PRESENT_PARTIAL_NOT_ACCEPTED | NOT_INTEGRATED_AS_COMPLETE_TASK | NOT_CERTIFIED_TASK_COMPLETE | NO_EXTERNAL_PRECONDITION_ASSUMED | NO |
+| NFV1-P07-T02 | CODE_PRESENT_PARTIAL_NOT_ACCEPTED | NOT_INTEGRATED_AS_COMPLETE_TASK | NOT_CERTIFIED_TASK_COMPLETE | NO_EXTERNAL_PRECONDITION_ASSUMED | NO |
+| NFV1-P07-T03 | CODE_PRESENT_PARTIAL_NOT_ACCEPTED | NOT_INTEGRATED_AS_COMPLETE_TASK | NOT_CERTIFIED_TASK_COMPLETE | NO_EXTERNAL_PRECONDITION_ASSUMED | NO |
+| NFV1-P07-T04 | CODE_PRESENT_PARTIAL_NOT_ACCEPTED | NOT_INTEGRATED_AS_COMPLETE_TASK | NOT_CERTIFIED_TASK_COMPLETE | NO_EXTERNAL_PRECONDITION_ASSUMED | NO |
+| NFV1-P08-T01 | CODE_PRESENT_PARTIAL_NOT_ACCEPTED | NOT_INTEGRATED_AS_COMPLETE_TASK | NOT_CERTIFIED_TASK_COMPLETE | EXTERNAL_PREREQUISITES | NO |
+| NFV1-P08-T02 | CODE_PRESENT_PARTIAL_NOT_ACCEPTED | NOT_INTEGRATED_AS_COMPLETE_TASK | NOT_CERTIFIED_TASK_COMPLETE | EXTERNAL_PREREQUISITES | NO |
+| NFV1-P08-T03 | CODE_PRESENT_PARTIAL_NOT_ACCEPTED | NOT_INTEGRATED_AS_COMPLETE_TASK | NOT_CERTIFIED_TASK_COMPLETE | EXTERNAL_PREREQUISITES | NO |
+| NFV1-P08-T04 | CODE_PRESENT_PARTIAL_NOT_ACCEPTED | NOT_INTEGRATED_AS_COMPLETE_TASK | NOT_CERTIFIED_TASK_COMPLETE | EXTERNAL_PREREQUISITES | NO |
+| NFV1-P09-T04 | CODE_PRESENT_PARTIAL_NOT_ACCEPTED | NOT_INTEGRATED_AS_COMPLETE_TASK | NOT_CERTIFIED_TASK_COMPLETE | NO_EXTERNAL_PRECONDITION_ASSUMED | NO |
+| NFV1-P09-T05 | CODE_PRESENT_PARTIAL_NOT_ACCEPTED | NOT_INTEGRATED_AS_COMPLETE_TASK | NOT_CERTIFIED_TASK_COMPLETE | NO_EXTERNAL_PRECONDITION_ASSUMED | NO |
+| NFV1-P10-T01 | CODE_PRESENT_PARTIAL_NOT_ACCEPTED | NOT_INTEGRATED_AS_COMPLETE_TASK | NOT_CERTIFIED_TASK_COMPLETE | EXTERNAL_PREREQUISITES | NO |
+| NFV1-P10-T02 | CODE_PRESENT_PARTIAL_NOT_ACCEPTED | NOT_INTEGRATED_AS_COMPLETE_TASK | NOT_CERTIFIED_TASK_COMPLETE | EXTERNAL_PREREQUISITES | NO |
+| NFV1-P10-T03 | CODE_PRESENT_PARTIAL_NOT_ACCEPTED | NOT_INTEGRATED_AS_COMPLETE_TASK | NOT_CERTIFIED_TASK_COMPLETE | EXTERNAL_PREREQUISITES | NO |
+| NFV1-P10-T04 | CODE_PRESENT_PARTIAL_NOT_ACCEPTED | NOT_INTEGRATED_AS_COMPLETE_TASK | NOT_CERTIFIED_TASK_COMPLETE | EXTERNAL_PREREQUISITES | NO |
+| NFV1-P11-T01 | CODE_PRESENT_PARTIAL_NOT_ACCEPTED | NOT_INTEGRATED_AS_COMPLETE_TASK | NOT_CERTIFIED_TASK_COMPLETE | EXTERNAL_PREREQUISITES | NO |
+| NFV1-P11-T02 | CODE_PRESENT_PARTIAL_NOT_ACCEPTED | NOT_INTEGRATED_AS_COMPLETE_TASK | NOT_CERTIFIED_TASK_COMPLETE | EXTERNAL_PREREQUISITES | NO |
+| NFV1-P11-T03 | CODE_PRESENT_PARTIAL_NOT_ACCEPTED | NOT_INTEGRATED_AS_COMPLETE_TASK | NOT_CERTIFIED_TASK_COMPLETE | EXTERNAL_PREREQUISITES | NO |
+| NFV1-P11-T04 | CODE_PRESENT_PARTIAL_NOT_ACCEPTED | NOT_INTEGRATED_AS_COMPLETE_TASK | NOT_CERTIFIED_TASK_COMPLETE | EXTERNAL_PREREQUISITES | NO |
+| NFV1-P12-T01 | CODE_PRESENT_PARTIAL_NOT_ACCEPTED | NOT_INTEGRATED_AS_COMPLETE_TASK | NOT_CERTIFIED_TASK_COMPLETE | NO_EXTERNAL_PRECONDITION_ASSUMED | NO |
+| NFV1-P12-T02 | CODE_PRESENT_PARTIAL_NOT_ACCEPTED | NOT_INTEGRATED_AS_COMPLETE_TASK | NOT_CERTIFIED_TASK_COMPLETE | NO_EXTERNAL_PRECONDITION_ASSUMED | NO |
+| NFV1-P12-T03 | CODE_PRESENT_PARTIAL_NOT_ACCEPTED | NOT_INTEGRATED_AS_COMPLETE_TASK | NOT_CERTIFIED_TASK_COMPLETE | NO_EXTERNAL_PRECONDITION_ASSUMED | NO |
+| NFV1-P12-T04 | CODE_PRESENT_PARTIAL_NOT_ACCEPTED | NOT_INTEGRATED_AS_COMPLETE_TASK | NOT_CERTIFIED_TASK_COMPLETE | NO_EXTERNAL_PRECONDITION_ASSUMED | NO |
+| NFV1-P12-T05 | CODE_PRESENT_PARTIAL_NOT_ACCEPTED | NOT_INTEGRATED_AS_COMPLETE_TASK | NOT_CERTIFIED_TASK_COMPLETE | EXTERNAL_PREREQUISITES | NO |
+| NFV1-P12-T06 | CODE_PRESENT_PARTIAL_NOT_ACCEPTED | NOT_INTEGRATED_AS_COMPLETE_TASK | NOT_CERTIFIED_TASK_COMPLETE | NO_EXTERNAL_PRECONDITION_ASSUMED | NO |
+
+**Interpretação obrigatória:** `IN_MAIN_HISTORIC` refere-se somente à **tarefa original** certificada na época; não certifica correções novas em branch, ambiente atual ou produto comercial. `CODE_PRESENT_PARTIAL_NOT_ACCEPTED` significa que há caminhos de código, mas os requisitos completos da tarefa não estão aceitos. `EXTERNAL_PREREQUISITES` não exime lacunas internas. As 59 tarefas não são a mesma numeração da Central de Economia T01–T22: não converter a CI da Economia em fechamento operacional P05–P12. T10 de Economia continua travada até merge autorizado na `main` e aceite T01–T09.
+
 
 > Este arquivo registra **estado e prova** das tarefas definidas em `docs/NFCORE_V1_COMPLETION_MASTER_EXECUTION_SCHEDULE_2026-10-05.md`. Ele não redefine escopo. O cronograma continua sendo a autoridade de escopo, dependências, critérios e gates. O validador exige correspondência exata de IDs e ordem.
 
@@ -917,3 +998,15 @@ Ao concluir o plano, registrar: entregas por tarefa; PRs e commits de merge; CI 
 **NFV1-P09-T02 — `INTERNAL_COMPLETE` (nível construção/validação controlada).** Produtores existentes de HTTP/error/latency, commercial events, fulfillment, worker backlog/retries/dead-letter, erro de gateway NFC-e, rejeição NFC-e, reconciliação fiscal/Cakto e activation; 31 testes dirigidos PASS cobrindo subset de contratos T01/T02; CI da PR #207 pré/pós-merge SUCCESS. **`EXTERNAL_HOMOLOGATION_PENDING`**: cobertura de cada integração fiscal real configurada em campo e aferição de volumes/limiares em tráfego verdadeiro. Não afirmar certificação operacional de toda família fiscal/provider sem runtime correspondente.
 
 **Regra de status:** `INTERNAL_COMPLETE` não equivale a `PRODUCTION_APPROVED`, `EXTERNAL_CERTIFIED` ou check global `[x]`; testes reais permanecem em registro externo separado. O próximo bloco interno é P09-T03, já aberto na PR #209; ele deve seguir sem reabrir P09-T01/T02, salvo regressão comprovada. A PR #208 ainda é draft e sua CI no HEAD exato precisa concluir verde antes do merge autorizado.
+
+> **2026-11-19 — REC-04 — incremento de evidência documental (base `d38c872dba2c`).** Nesta entrega: bytes originais previamente revisados, em diretório de política por escopo `<sale_policy_key>.evidence/<sha256>.bin`, máximo 2 MiB por arquivo/16 MiB por decisão, verificação do SHA-256 na resolução/instalação, retenção no arquivo fiscal canônico na mesma UoW da reserva e revalidação na recuperação. Sem segunda persistência ou aceitação de upload do navegador como autoridade. Requer provisionamento autorizado dos documentos e revisão fiscal; não equivale à comprovação de autenticidade/aceitação externa. Testes escritos, não executados; sem CI, merge ou deploy; REC-04 segue aberto até certificação normativa e operacional.
+
+
+## CURRENT reconciliado em 19/11/2026 — 59 IDs + SP-22/MG-20 + Cajamar
+
+[Reconciliação individual do código CURRENT](audit/NFCORE_CURRENT_RECONCILIATION_59_TASKS_42_MUNICIPALITIES_2026-11-19.md), auditoria commit `f97ba0aacc5d11b6af7cf786f99b3184e80a7d39`, SHA de engenharia auditado `79bee7c64e3b2e984fb9517d190d2ca6b128a573`. Preservados IDs/ordem e provas históricas. As dimensões de engenharia, certificação, operação e dependências externas são independentes. Não reimplementar por checklist antigo. Cajamar é célula adicional; corrigidas jurisdição do candidato de substituição e montagem Contabo, permanecem GAP-CAJ-01/02/03. Inventário inicial individualizado, não auditoria exaustiva das operações. Nenhuma CI, merge ou deploy nesta rodada.
+
+
+## CURRENT 19/11/2026 — delta de Cajamar após reconciliação 59/43
+
+**SHA de engenharia:** `0cdd034a293696e376aafd70923a42bfe7dced0f`, ver `docs/operations/CAJAMAR_GEISWEB_RUNTIME_PROVISIONING.md`. Preservadas emissão/consulta de lote/cancelamento/XML e autoridade canônica. GAP-CAJ-01 avançou: intent durável, códigos incertos fail-closed e ConsultaNfse por nota original conectada a Portal/arquivo (`5430c180`, `c3c80feb`, `b129fe6e`, `b52ab1eb`). Sem status oficial inequívoco no manual público, confirmação final de cancelamento incerto depende de contrato/prova autenticada adicional; consulta não muda lifecycle. GAP-CAJ-02: revisão humana agora arquivada, sem simular substituição; integração da confirmação municipal exige formato/contrato comprovado. GAP-CAJ-03: indisponibilidade de impressão oficial em homologação documentada e refletida no Portal; PDF municipal não fabricado (`0cdd034a`). Testes novos escritos, ainda não executados. **IMPLEMENTED_NOT_CERTIFIED** no escopo entregue; não declarar Cajamar nem NFCore completo. Sem CI, merge ou deploy. Não reabrir construção existente sem evidência de regressão.

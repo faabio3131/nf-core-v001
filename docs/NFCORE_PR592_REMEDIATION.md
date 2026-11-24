@@ -1,0 +1,19 @@
+# NFCore PR 592 — saneamento de engenharia
+
+A T06 usa o importador de snapshots e políticas revisadas da Central. A política imutável recebe `item_rules`. Cada regra contém NCM (8 dígitos), CEST (7 dígitos ou null explícito), CFOP de saída, UF, atividade, mercado, contexto da operação, referência da regra, URL de uma das citações revisadas, início inclusivo e fim exclusivo. A referência de revisão, os dispositivos e os hashes das fontes constam em `legal_citations` da versão da política. Cabe à curadoria validar a correspondência material entre cada hipótese, dispositivo e jurisdição.
+
+Quando a política contém o catálogo, o importador exige os códigos e o contexto da operação em cada item e procura uma única hipótese que cobre a competência inteira. O retorno identifica a versão e o digest da política, a referência da regra por item e o digest do snapshot. Regras ambíguas, parciais ou ausentes bloqueiam o lote. Em 2027 a regra fornece também o tratamento revisado por tributo. Os contratos anteriores de fatos já revisados continuam disponíveis. Isenção e imunidade de ICMS podem ser identificadas na triagem de 2026. A quantificação dessas hipóteses requer análise específica. O teste PostgreSQL percorre importação, leitura e comparativo para monofásico e ICMS-ST. Os vetores usados nos testes são sintéticos. A cobertura comercial depende do conteúdo revisado importado para cada escopo.
+
+Na avaliação direta, na pesquisa e na importação federal, a T08 consulta o histórico da T07 para o emissor, escopo e mês. Exige um histórico único, lê sua última versão e aplica o mesmo resolvedor de eleição da T07, incluindo recibos e período de eficácia. O caminho cobre a opção Simples 2027. Autorização de outros regimes requer evidência própria.
+
+O job 138155781911 da CI anterior gerou o V0073 do commit oficial fixado e executou o teste de paridade. As duas falhas reportadas foram nos doubles de renderização PDF, que ainda exigiam o argumento depreciado. Os doubles agora exigem a assinatura efetivamente utilizada. O extra de desenvolvimento inclui o transporte httpx2 para o TestClient.
+
+A curadoria de benefícios estaduais segue o checklist de modalidades, dispositivos e vigência já aprovado. As quatro candidatas de SE, AP, PA e RR seguem bloqueadas para efeitos fiscais. A verificação técnica da candidata não concede incentivo.
+
+## Catálogo T06 entregue para SP no primeiro semestre de 2026
+
+A versão `SP-2026S1-v1` contém 15 hipóteses documentadas, oito NCM e três CFOP. Seis cosméticos têm regras distintas antes e depois de abril. As demais hipóteses cobrem revenda de tomate fresco em estado natural a consumidor final, revenda interna de livro literário impresso e exportação direta comprovada de tomate. Os campos materiais constam em cada regra. A triagem de ICMS isento e imune continua sem quantificação de benefício.
+
+No importador operacional existente, o responsável inclui em `rule_content.item_catalog_sha256` o digest dos bytes do arquivo [sp_2026s1_v1.json](../src/kordena_fiscal/tax/official/sp_2026s1_v1.json), junto às citações revisadas da competência, inclusive CGSN 140. Na versão 1 o digest é `79c378d3e93389368a7a11053bad8f21cea8a85afd3a29aaf02013b59d7b8a62`. Para cada chave em `sources` das regras vigentes, a URL e o SHA-256 da citação devem coincidir com os do catálogo. O importador grava as regras vigentes na versão imutável. Use outra versão da política a partir de abril. A inclusão do digest é explícita e exige o fluxo de revisão existente. O material foi conferido em pesquisa interna. A ativação comercial e a aplicação a um contribuinte específico dependem da política revisada e dos documentos do item.
+
+A matriz jurídica da T09 incorpora os certificados do CONFAZ de AP, PA e SE, o julgamento e trânsito da ADI 3779 e a consolidação oficial de RR até outubro. A decisão de encerramento técnico da T09 e os bloqueios tributários por modalidade seguem o termo do Diretor.

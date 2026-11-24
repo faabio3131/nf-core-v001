@@ -156,6 +156,57 @@ def test_reconciliation_pending_never_presumes_success() -> None:
     assert "Não presumir sucesso" in text and "doc-9" in text
 
 
+def test_foreign_scope_evidence_is_not_promoted_into_cognitive_facts() -> None:
+    suspicious = {
+        "errors": [
+            {"entry_id": "foreign-tenant", "unit_id": "unit-a",
+             "tenant_id": "another-tenant", "rejection_code": "204", "state": "rejected"},
+            {"entry_id": "foreign-unit", "unit_id": "unit-b",
+             "tenant_id": "tenant-authoritative", "rejection_code": "204", "state": "rejected"},
+        ],
+        "reconciliation": [
+            {"source_id": "foreign-tenant", "tenant_id": "another-tenant",
+             "unit_id": "unit-a", "status": "divergent"},
+        ],
+    }
+    web = client(Executor(suspicious))
+    for capability in (
+        "cognitive.explain_rejection",
+        "cognitive.explain_reconciliation",
+        "cognitive.answer_accountant_question",
+    ):
+        request = {"capability": capability, "unit_id": "unit-a",
+                   "question": "O que ocorreu?"}
+        response = post(web, request, key=capability)
+        assert response.status_code == 200
+        assert response.json()["status"] == "insufficient_basis"
+
+
+def test_accountant_question_cannot_borrow_evidence_from_another_subject() -> None:
+    web = client(Executor(REJECTION_ROWS))
+    request = {
+        "capability": "cognitive.answer_accountant_question",
+        "unit_id": "unit-a",
+        "question": "Qual é a situação deste documento?",
+    }
+    missing = post(web, {**request, "subject_id": "unknown-document"})
+    assert missing.status_code == 200
+    assert missing.json()["status"] == "insufficient_basis"
+    assert "não há base suficiente" in " ".join(
+        section["text"] for section in missing.json()["sections"]
+    ).lower()
+
+    matching = post(web, {**request, "subject_id": "op-1"}, key="subject-op-1")
+    assert matching.status_code == 200
+    assert matching.json()["status"] == "baseline_only"
+    assert matching.json()["sections"][0]["evidenceIds"] == ["rec:0"]
+
+    other = post(web, {**request, "subject_id": "doc-1"}, key="subject-doc-1")
+    assert other.status_code == 200
+    assert other.json()["status"] == "baseline_only"
+    assert other.json()["sections"][0]["evidenceIds"] == ["doc:0"]
+
+
 def test_classification_without_evidence_declares_insufficient_basis() -> None:
     web = client(Executor(REJECTION_ROWS))
     data = post(web, {"capability": "cognitive.suggest_classification",
@@ -169,6 +220,15 @@ def test_validation_errors_and_not_configured() -> None:
     assert unknown.json()["detail"]["code"] == "UNKNOWN_CAPABILITY"
     no_unit = post(web, {"capability": "cognitive.explain_rejection"})
     assert no_unit.json()["detail"]["code"] == "UNIT_REQUIRED"
+    for invalid_subject in ("", " ", "x" * 129, 11):
+        bad = post(web, {
+            "capability": "cognitive.answer_accountant_question",
+            "unit_id": "unit-a",
+            "question": "Como está o documento?",
+            "subject_id": invalid_subject,
+        }, key="invalid-subject-test")
+        assert bad.status_code == 400
+        assert bad.json()["detail"]["code"] == "INVALID_SUBJECT"
     long_q = {"capability": "cognitive.answer_accountant_question", "unit_id": "unit-a",
               "question": "x" * 1001}
     assert post(web, long_q).json()["detail"]["code"] == "INVALID_QUESTION"
@@ -224,3 +284,23 @@ def test_command_metrics_route_is_always_mounted_but_advisory_is_opt_in() -> Non
     metrics_mounted, advisory_mounted = mounted_paths(full)
     assert metrics_mounted
     assert advisory_mounted
+
+
+def test_economy_contract_api_schema_and_authority():
+    web = client(Executor())
+    schema = web.get("/v1/portal/cognitive/economy/schema")
+    assert schema.status_code == 200
+    assert schema.json()["properties"]["schema_version"]["const"] == "nfcore.cognitive.economy/v1"
+    for capability in ("opportunity_radar", "credit_recovery", "tax_simulation"):
+        body = {"capability": "cognitive." + capability, "unit_id": "unit-a",
+                "subject_id": "not-yet-calculated"}
+        result = post(web, body)
+        assert result.status_code == 200
+        assert result.json()["economy"]["status"] == "insufficient_basis"
+        assert result.json()["economy"]["candidates"] == []
+        assert post(web, {**body, "estimated_cents": 100}).status_code == 400
+        assert post(web, {**body, "legal_citations": []}).status_code == 400
+        operator = client(Executor(), PortalRole.OPERATOR)
+        assert post(operator, body).status_code == 403
+        assert post(web, {**body, "unit_id": "unit-b"}).status_code == 403
+        assert post(web, {**body, "subject_id": None}).status_code == 400

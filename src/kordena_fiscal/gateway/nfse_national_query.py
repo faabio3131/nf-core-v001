@@ -1,0 +1,244 @@
+"""Read-only SEFIN Nacional DPS recovery, reusing the canonical fiscal authority.
+
+GET /dps/{id} -> access key; GET /nfse/{key} -> authoritative XML.
+This transport never POSTs DPS, cannot reassign numbers and cannot infer
+authorization from a naked 50-digit key. Before field use it requires
+official version-specific XSD/XMLDSig and receipt archival certification.
+"""
+from __future__ import annotations
+
+import json
+import ssl
+from collections.abc import Callable, Mapping
+from datetime import UTC, datetime
+from urllib.error import HTTPError, URLError
+from urllib.parse import urlsplit
+from urllib.request import HTTPSHandler, Request, build_opener
+
+from kordena_fiscal.domain import (
+    Cnpj,
+    ExecutionScope,
+    FiscalDocumentKind,
+    FiscalEnvironment,
+    FiscalValidationError,
+)
+from kordena_fiscal.gateway.authorization import AuthorizationStatus, GatewayProviderMetadata
+from kordena_fiscal.gateway.fiscal_tls import RejectFiscalRedirects, build_fiscal_tls_context
+from kordena_fiscal.gateway.nfse_national_environment import (
+    SEFIN_PRODUCTION_HOST,
+    require_national_production_grant,
+    resolve_national_environment,
+)
+from kordena_fiscal.gateway.nfse_national_homologation import (
+    SEFIN_HOMOLOGATION_NFSE_URL,
+    OfficialNfseTransportError,
+)
+from kordena_fiscal.gateway.nfse_national_receipt import (
+    NationalDispatchEvidence,
+    NationalReceiptIdentity,
+    NfseReceiptVerificationError,
+    legacy_national_receipt_context,
+    require_national_receipt_signer_pins,
+    validate_nfse_receipt_integrity,
+    validate_official_nfse_receipt,
+)
+from kordena_fiscal.gateway.nfse_national_receipt import (
+    _verify_nfse_receipt_signature as _verify_nfse_receipt_signature,
+)
+from kordena_fiscal.gateway.production_activation import ProductionExecutionAuthority
+from kordena_fiscal.gateway.provider import ProviderOperation, ProviderSelectionResolver
+from kordena_fiscal.issuance.nfe_nfse import (
+    NfseAuthorizationRequest,
+    NfseAuthorizationResult,
+)
+from kordena_fiscal.issuance.nfse_dps_identity import national_dps_id
+from kordena_fiscal.vault import EphemeralCertificateMaterial
+from kordena_fiscal.vault.a1_preflight import validate_a1_for_issuer
+
+_PROVIDER_ID = "nfse-nacional-producao-restrita"
+_PROVIDER = GatewayProviderMetadata(_PROVIDER_ID, "1.0")
+_URL_BASE = SEFIN_HOMOLOGATION_NFSE_URL.rsplit("/nfse", 1)[0]
+_MAX_RESPONSE = 4_194_304
+
+
+def _dps_id(request: NfseAuthorizationRequest) -> str:
+    try:
+        document = request.document
+        municipality = document.issuer.address.jurisdiction.municipality_ibge_code
+        if municipality is None or document.dps_number is None:
+            raise FiscalValidationError("Missing durable DPS number")
+        return national_dps_id(
+            municipality, document.issuer.cnpj.value, document.dps_series, document.dps_number,
+        )
+    except FiscalValidationError:
+        raise OfficialNfseTransportError(
+            "Official DPS query requires a durably reserved legal issuer serial"
+        ) from None
+
+
+def _parse_key(raw: bytes, municipality: str) -> str:
+    if not isinstance(raw, bytes) or not 0 < len(raw) <= _MAX_RESPONSE:
+        raise OfficialNfseTransportError("Invalid national DPS query response length")
+    try:
+        payload = json.loads(raw)
+    except (UnicodeDecodeError, ValueError):
+        raise OfficialNfseTransportError("Invalid national DPS query JSON") from None
+    if not isinstance(payload, dict) or not isinstance(payload.get("chaveAcesso"), str):
+        raise OfficialNfseTransportError("National DPS query has no confirmed access key")
+    key: str = payload["chaveAcesso"]
+    if not key.isascii() or not key.isdecimal() or len(key) != 50:
+        raise OfficialNfseTransportError("Invalid official NFS-e access key")
+    if not key.startswith(municipality[:2]):
+        raise OfficialNfseTransportError("Official NFS-e key does not match issuer UF")
+    return key
+
+
+
+def _validate_official_nfse(
+    raw: bytes, key: str, *, expected: NationalReceiptIdentity | None = None,
+    schema_profile: str | None = None,
+) -> bytes:
+    """Compatibility entrypoint for national GET and replay callers."""
+    try:
+        return validate_official_nfse_receipt(
+            raw, key, expected=expected, schema_profile=schema_profile,
+        )
+    except NfseReceiptVerificationError as exc:
+        raise OfficialNfseTransportError(str(exc)) from None
+
+
+def _allowed_get_path(path: str) -> bool:
+    """Only the pinned restricted base or the official production host."""
+    if not isinstance(path, str) or ".." in path:
+        return False
+    if path.startswith(_URL_BASE + "/"):
+        return True
+    parts = urlsplit(path)
+    return (
+        parts.scheme == "https" and parts.hostname == SEFIN_PRODUCTION_HOST
+        and parts.port in (None, 443) and parts.username is None
+        and not parts.query and not parts.fragment
+    )
+
+
+def _read_only_get(path: str, context: ssl.SSLContext, timeout: float) -> bytes:
+    if not _allowed_get_path(path):
+        raise OfficialNfseTransportError("National API request path invalid")
+    request = Request(
+        path, method="GET", headers={"Accept": "application/json"},
+    )
+    try:
+        opener = build_opener(HTTPSHandler(context=context), RejectFiscalRedirects())
+        with opener.open(request, timeout=timeout) as response:
+            result = response.read(_MAX_RESPONSE + 1)
+    except (HTTPError, URLError, TimeoutError, OSError, ssl.SSLError):
+        raise OfficialNfseTransportError(
+            "Ambiguous national NFS-e query; reconcile without retransmitting DPS"
+        ) from None
+    if len(result) > _MAX_RESPONSE:
+        raise OfficialNfseTransportError("National query response exceeds limit")
+    return bytes(result)
+
+
+_LIVE_GET = _read_only_get
+
+
+class NfseNationalHomologationQueryGateway:
+    """Retrieve an existing DPS only; binding and A1 must match exact issuer unit."""
+
+    def __init__(
+        self,
+        *,
+        provider_resolver: ProviderSelectionResolver,
+        resolve_certificate: Callable[[ExecutionScope, str], EphemeralCertificateMaterial],
+        exchange_get: Callable[[str, ssl.SSLContext, float], bytes] | None = None,
+        timeout_seconds: float = 15,
+        load_dispatch: Callable[[NfseAuthorizationRequest], NationalDispatchEvidence | None]
+        | None = None,
+        production_authority: ProductionExecutionAuthority | None = None,
+        environ: Mapping[str, str] | None = None,
+    ) -> None:
+        if (
+            not callable(getattr(provider_resolver, "resolve_provider_id", None))
+            or not callable(resolve_certificate)
+            or not 0 < timeout_seconds <= 30
+        ):
+            raise ValueError("SEFIN query requires canonical binding, A1 and timeout")
+        self._provider_resolver = provider_resolver
+        self._resolve_certificate = resolve_certificate
+        self._get = exchange_get or _read_only_get
+        self._timeout = timeout_seconds
+        self._load_dispatch = load_dispatch
+        self._production_authority = production_authority
+        self._environ = environ
+
+    def query(self, request: NfseAuthorizationRequest) -> NfseAuthorizationResult:
+        if not isinstance(request, NfseAuthorizationRequest):
+            raise FiscalValidationError("NFS-e query requires canonical prepared request")
+        document = request.document
+        scope = document.scope
+        jurisdiction = document.issuer.address.jurisdiction
+        if scope.host_namespace is None or jurisdiction.municipality_ibge_code is None:
+            raise OfficialNfseTransportError("National NFS-e query requires trusted scope")
+        try:
+            environment_profile = resolve_national_environment(
+                scope.environment, env=self._environ,
+            )
+            if environment_profile.environment is FiscalEnvironment.PRODUCTION:
+                require_national_production_grant(
+                    self._production_authority,
+                    tenant_id=scope.tenant_id, unit_id=scope.unit_id,
+                    jurisdiction=jurisdiction, operation=ProviderOperation.QUERY,
+                )
+        except FiscalValidationError as exc:
+            raise OfficialNfseTransportError(str(exc)) from None
+        base_url = environment_profile.base_url
+        evidence = self._load_dispatch(request) if self._load_dispatch is not None else None
+        dps_id = evidence.identity.dps_id if evidence is not None else _dps_id(request)
+        bound = self._provider_resolver.resolve_provider_id(
+            scope=scope, document_kind=FiscalDocumentKind.NFSE,
+            jurisdiction=jurisdiction, operation="query",
+        )
+        if bound != _PROVIDER_ID:
+            raise OfficialNfseTransportError("National NFS-e query provider is not bound")
+        # A read-only recovery must not trust an arbitrary XMLDSig leaf either.
+        if self._get is _LIVE_GET:
+            pins = require_national_receipt_signer_pins()
+            from kordena_fiscal.gateway.nfse_receipt_pki import (
+                INVOICE_SIGNER_BUNDLE,
+                require_national_signer_pki_ready,
+            )
+            require_national_signer_pki_ready(pins, bundle_env=INVOICE_SIGNER_BUNDLE)
+        issuer_cnpj = document.issuer.cnpj.value
+        material = self._resolve_certificate(scope, issuer_cnpj)
+        validate_a1_for_issuer(
+            material.pkcs12_bytes, material.password,
+            issuer_cnpj=Cnpj(issuer_cnpj), at=datetime.now(UTC),
+        )
+        tls = build_fiscal_tls_context(material)
+        key = _parse_key(
+            self._get(f"{base_url}/dps/{dps_id}", tls, self._timeout),
+            jurisdiction.municipality_ibge_code,
+        )
+        raw = self._get(f"{base_url}/nfse/{key}", tls, self._timeout)
+        try:
+            if evidence is not None:
+                expected, profile = evidence.identity, evidence.schema_profile
+            else:
+                xml = validate_nfse_receipt_integrity(raw, key)
+                expected, profile = legacy_national_receipt_context(xml, key, request)
+        except NfseReceiptVerificationError as exc:
+            raise OfficialNfseTransportError(str(exc)) from None
+        authorized_xml = _validate_official_nfse(
+            raw, key, expected=expected, schema_profile=profile,
+        )
+        return NfseAuthorizationResult(
+            status=AuthorizationStatus.AUTHORIZED,
+            scope=scope, document_id=document.document_id,
+            idempotency_key=request.idempotency_key,
+            request_fingerprint=request.request_fingerprint,
+            provider=_PROVIDER,
+            provider_request_id=dps_id,
+            invoice_reference=key,
+            authorized_xml=authorized_xml,
+        )

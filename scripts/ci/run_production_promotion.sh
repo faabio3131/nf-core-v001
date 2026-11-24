@@ -3,8 +3,10 @@ set -eu
 
 sh scripts/ci/production_preflight.sh
 
-export NFCORE_SCHEMA_MIGRATION_APPROVED=true
-python scripts/ci/migration_guard.py --apply
+# Production promotion is code-only. Database DDL (including fiscal DPS v22)
+# is a separate N3-approved operation with independent backup/recovery proof.
+# Never synthesize schema-migration approval from the deploy approval token.
+python scripts/ci/migration_guard.py --assert-current-production
 
 revision="$NFCORE_DEPLOY_REVISION"
 sh "$NFCORE_PRODUCTION_DEPLOY_DRIVER" deploy "$revision"

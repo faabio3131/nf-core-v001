@@ -1,0 +1,123 @@
+{
+  "schema_version": "nfcore.t09.4uf-provenance-binary-audit/v1",
+  "as_of": "2026-11-23",
+  "original_outer_zip": "T09_PRIORITY_4UF_OFFICIAL_BYTES_20261123.zip",
+  "outer_sha256": "94d8d68b103ca791430167866f58459a404054157c2f2437fd30225482aa06cf",
+  "checked_source_count": 10,
+  "captured": 4,
+  "unavailable": 6,
+  "successful_uf": [
+    "AP",
+    "PA"
+  ],
+  "missing_uf": [
+    "SE",
+    "RR"
+  ],
+  "legal_approval": false,
+  "independent_review": false,
+  "entries": [
+    {
+      "uf": "AP",
+      "candidate_id": "AP-REGIME-ESPECIAL-RICMS-ART415-V1",
+      "source_url": "https://diofe.portal.ap.gov.br/portal/edicoes/download/9794",
+      "status": "captured_unreviewed",
+      "source_kind": "primary_or_official_legal_evidence_unreviewed",
+      "error": null,
+      "sha256": "d4c6b485514ac97dc3bbe8418b07ff7324984e58670d056601be0d6c8a3fff44",
+      "size_bytes": 5135408,
+      "relative_path": "sources/AP-d4c6b485514ac97d.pdf",
+      "hash_verified": true
+    },
+    {
+      "uf": "AP",
+      "candidate_id": "AP-REGIME-ESPECIAL-RICMS-ART415-V1",
+      "source_url": "https://diofe.portal.ap.gov.br/portal/edicoes/download/9949",
+      "status": "captured_unreviewed",
+      "source_kind": "primary_or_official_legal_evidence_unreviewed",
+      "error": null,
+      "sha256": "9180d91856bd3d955cc99a1a1e5b9c5f789131253e97a947e2d2f3ffde3f9523",
+      "size_bytes": 3481890,
+      "relative_path": "sources/AP-9180d91856bd3d95.pdf",
+      "hash_verified": true
+    },
+    {
+      "uf": "AP",
+      "candidate_id": "AP-REGIME-ESPECIAL-RICMS-ART415-V1",
+      "source_url": "https://diofe.portal.ap.gov.br/portal/edicoes/visualizar_pdf/9915/",
+      "status": "captured_unreviewed",
+      "source_kind": "primary_or_official_legal_evidence_unreviewed",
+      "error": null,
+      "sha256": "6b0c7f575d89cea05b7d031778a326d2a4d85f51458abf052a63720a576f7bd0",
+      "size_bytes": 6151710,
+      "relative_path": "sources/AP-6b0c7f575d89cea0.pdf",
+      "hash_verified": true
+    },
+    {
+      "uf": "PA",
+      "candidate_id": "PA-POLITICA-LEI6913-DEC2490-V1",
+      "source_url": "https://portal.stf.jus.br/peticaoInicial/verPeticaoInicial.asp?base=ADI&numProcesso=3779",
+      "status": "captured_unreviewed",
+      "source_kind": "primary_or_official_legal_evidence_unreviewed",
+      "error": null,
+      "sha256": "aede1b1a62bca6bdf677a8c0a54313a61785cd538a1b05ce6a91a96e2c0b5ac5",
+      "size_bytes": 61831,
+      "relative_path": "sources/PA-aede1b1a62bca6bd.html",
+      "hash_verified": true
+    },
+    {
+      "uf": "PA",
+      "candidate_id": "PA-POLITICA-LEI6913-DEC2490-V1",
+      "source_url": "https://www.ioepa.com.br/pages/2018/2018.03.23.DOE.pdf",
+      "status": "unavailable",
+      "source_kind": "primary_or_official_legal_evidence_unreviewed",
+      "error": "The read operation timed out",
+      "hash_verified": false
+    },
+    {
+      "uf": "PA",
+      "candidate_id": "PA-POLITICA-LEI6913-DEC2490-V1",
+      "source_url": "https://www.legispara.pa.gov.br/lei/5169",
+      "status": "unavailable",
+      "source_kind": "primary_or_official_legal_evidence_unreviewed",
+      "error": "<urlopen error timed out>",
+      "hash_verified": false
+    },
+    {
+      "uf": "PA",
+      "candidate_id": "PA-POLITICA-LEI6913-DEC2490-V1",
+      "source_url": "https://www.sistemas.pa.gov.br/sisleis/legislacao/3974",
+      "status": "unavailable",
+      "source_kind": "primary_or_official_legal_evidence_unreviewed",
+      "error": "<urlopen error timed out>",
+      "hash_verified": false
+    },
+    {
+      "uf": "RR",
+      "candidate_id": "RR-RICMS2001-AN1-ART1-LXVII-V1",
+      "source_url": "https://www.sefaz.rr.gov.br/component/jdownloads/?Itemid=402&catid=494&id=26478&m=0&task=download.send",
+      "status": "unavailable",
+      "source_kind": "primary_or_official_legal_evidence_unreviewed",
+      "error": "HTTP Error 404: Not Found",
+      "hash_verified": false
+    },
+    {
+      "uf": "RR",
+      "candidate_id": "RR-RICMS2001-AN1-ART1-LXVII-V1",
+      "source_url": "https://www.sefaz.rr.gov.br/downloads?catid=1404&id=25395&m=0&task=download.send",
+      "status": "unavailable",
+      "source_kind": "primary_or_official_legal_evidence_unreviewed",
+      "error": "redirect outside official HTTPS government domain",
+      "hash_verified": false
+    },
+    {
+      "uf": "SE",
+      "candidate_id": "SE-PSDI-LEI3140-DEC29935-V1",
+      "source_url": "https://aleselegis.al.se.leg.br/Arquivo/Documents/legislacao/html/l84902018.html",
+      "status": "unavailable",
+      "source_kind": "primary_or_official_legal_evidence_unreviewed",
+      "error": "<urlopen error timed out>",
+      "hash_verified": false
+    }
+  ]
+}

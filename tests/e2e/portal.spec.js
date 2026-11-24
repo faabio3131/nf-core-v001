@@ -367,6 +367,33 @@ test("mobile overview keeps premium header compact", async ({ page, context }) =
   expect(geometry.sidebarHeight).toBeLessThanOrEqual(150);
   expect(geometry.topbarHeight).toBeLessThanOrEqual(125);
   expect(geometry.bannerTop).toBeLessThanOrEqual(305);
+
+  // A long tenant label must not collapse into a narrow fourth column.
+  const contextBounds = await page.locator("#authority-context").boundingBox();
+  const actionsBounds = await page.locator(".top-actions").boundingBox();
+  expect(contextBounds.width).toBeGreaterThanOrEqual(actionsBounds.width - 1);
+  // MFA added a fourth header element. All session actions must remain present
+  // and usable; compactness must not be achieved by clipping or hiding them.
+  for (const id of ["theme-toggle", "security-action", "logout-action"]) {
+    const action = page.locator("#" + id);
+    await expect(action).toBeVisible();
+    await expect(action).toBeEnabled();
+    const bounds = await action.boundingBox();
+    expect(bounds.height).toBeGreaterThanOrEqual(44);
+    expect(bounds.x).toBeGreaterThanOrEqual(0);
+    expect(bounds.x + bounds.width).toBeLessThanOrEqual(391);
+  }
+  await page.setViewportSize({ width: 320, height: 844 });
+  await expect(page.locator("#authority-context")).toHaveText("nfcore-staging-e2e · owner");
+  for (const id of ["authority-context", "theme-toggle", "security-action", "logout-action"]) {
+    const element = page.locator("#" + id);
+    await expect(element).toBeVisible();
+    const bounds = await element.boundingBox();
+    expect(bounds.x).toBeGreaterThanOrEqual(0);
+    expect(bounds.x + bounds.width).toBeLessThanOrEqual(321);
+  }
+  expect(await page.evaluate(() => document.documentElement.scrollWidth))
+    .toBeLessThanOrEqual(320);
 });
 
 for (const [view, label, operation, fields] of [
@@ -394,12 +421,20 @@ for (const [view, label, operation, fields] of [
       return route.fulfill({json: {status: "configuration_recorded", version: 1, approval_status: view === "webhooks" ? "pending" : undefined}});
     });
     await page.goto("/"); await page.getByRole("button", {name: label, exact: true}).click();
-    for (const [field, value] of Object.entries(fields)) await page.locator(`#configuration-${field}`).fill(value);
+    for (const [field, value] of Object.entries(fields)) {
+      const control = page.locator(`#configuration-${field}`);
+      // Fixed technical values are Portuguese-labelled selects; free values stay text inputs.
+      if (await control.evaluate((element) => element.tagName) === "SELECT") await control.selectOption(value);
+      else await control.fill(value);
+    }
     await page.locator("#customer-configuration-form button[type=submit]").click();
     await expect(page.locator("#customer-configuration-form [role=status]")).toContainText("versão 1");
     expect(submitted.unit_id).toBe("unit-a"); expect(submitted.environment).toBe("homologation");
     expect(submitted.expected_version).toBe(0); expect(submitted.tenant_id).toBeUndefined();
     expect(submitted.platform_admin).toBeUndefined();
+    for (const [field, value] of Object.entries(fields)) {
+      if (["kind", "document_kind", "operation"].includes(field)) expect(submitted.values[field]).toBe(value);
+    }
     if (view === "webhooks") await expect(page.locator("#customer-configuration-form [role=status]")).toContainText("aprovação pending");
   });
 }
@@ -534,3 +569,54 @@ for (const width of [320, 390, 1280]) {
     await expect(page.locator("#app-shell")).not.toHaveClass(/is-operational-view/);
   });
 }
+
+
+test("RTC-02 owner declares Lucro Presumido explicitly and reads persisted status", async ({ page, context }) => {
+  const issuer = {
+    record_type: "rtc_issuer", status: "profile_effective",
+    legal_name: "Empresa Sintetica", crt: 3, primary_cnae: "8011101",
+    state_code: "SP", municipality_ibge_code: "3509205",
+    profile_version: 1, effective_from: "2026-01-01T00:00:00Z",
+    federal_regime_status: "declaration_not_configured",
+  };
+  await page.route("**/v1/portal/bootstrap", route => route.fulfill({json: {
+    tenant_id: "tenant-e2e", unit_ids: ["unit-a"], role: "owner",
+    permissions: ["portal.read", "configuration.write"], supported_documents: ["nfse"],
+    projection: {authorized_units: [{unit_id: "unit-a", display_name: "Synthetic unit",
+      environments: ["homologation"]}]},
+  }}));
+  await page.route("**/v1/portal/surfaces/**", route => route.fulfill({json: {
+    rows: route.request().url().includes("/tax-reform") ? [issuer] : [],
+  }}));
+  await page.route("**/v1/portal/operations/declareFederalRegime", route => {
+    expect(route.request().postDataJSON()).toEqual({
+      unit_id: "unit-a", environment: "homologation",
+      federal_income_tax_regime: "lucro_presumido", effective_from: "2026-01-01",
+      source_reference: "ECF synthetic evidence",
+    });
+    expect(route.request().headers()["x-csrf-token"]).toBe("csrf-e2e");
+    expect(route.request().headers()["idempotency-key"]).toBeTruthy();
+    Object.assign(issuer, {
+      federal_regime_status: "declared", federal_income_tax_regime: "lucro_presumido",
+      federal_regime_version: 1, federal_regime_effective_from: "2026-01-01T00:00:00-03:00",
+    });
+    return route.fulfill({json: {status: "declared", version: 1}});
+  });
+  await context.addCookies([
+    {name: "nfcore_session", value: "opaque-session", domain: "127.0.0.1", path: "/"},
+    {name: "nfcore_csrf", value: "csrf-e2e", domain: "127.0.0.1", path: "/"},
+  ]);
+  await page.goto("/");
+  await page.getByRole("button", {name: "Reforma Tributária", exact: true}).click();
+  const form = page.getByRole("form", {name: "Declarar regime federal"});
+  const regime = form.locator("select[name=federal_income_tax_regime]");
+  await expect(regime).toHaveValue("");
+  await expect(regime.locator("option[value=lucro_presumido]")).toHaveCount(1);
+  await expect(regime.locator("option[value=lucro_real]")).toHaveCount(1);
+  await expect(regime.locator("option[value=simples_nacional]")).toHaveCount(0);
+  await regime.selectOption("lucro_presumido");
+  await form.locator("input[type=date]").fill("2026-01-01");
+  await form.locator("input[autocomplete=off]").fill("ECF synthetic evidence");
+  await form.getByRole("button", {name: "Declarar regime federal"}).click();
+  await expect(page.getByText("Regime federal declarado: Lucro Presumido, desde 2026-01-01 (versão 1).")).toBeVisible();
+});

@@ -35,7 +35,7 @@ from kordena_fiscal.domain import (
 )
 from kordena_fiscal.events import FiscalDeliveryAuditStore, FiscalInboxStore
 from kordena_fiscal.lifecycle import FiscalDocumentState, FiscalStateSnapshot, IdempotencyStore
-from kordena_fiscal.numbering import FiscalSequenceStore
+from kordena_fiscal.numbering import DpsNumberingStore, FiscalSequenceStore
 from kordena_fiscal.reconciliation import FiscalReconciliationResult
 
 if TYPE_CHECKING:
@@ -162,6 +162,10 @@ class ControlPlaneStore(Protocol):
     ) -> SecretReference | None: ...
 
     def add_profile(self, profile: FiscalProfile) -> FiscalProfile: ...
+
+    def supersede_profile(
+        self, previous: FiscalProfile, successor: FiscalProfile,
+    ) -> FiscalProfile: ...
 
     def get_profile(self, profile_id: str, version: int) -> FiscalProfile | None: ...
 
@@ -368,6 +372,9 @@ class FiscalUnitOfWork(Protocol):
 
     @property
     def sequences(self) -> FiscalSequenceStore: ...
+
+    @property
+    def dps_sequences(self) -> DpsNumberingStore: ...
 
     @property
     def inbox(self) -> FiscalInboxStore: ...

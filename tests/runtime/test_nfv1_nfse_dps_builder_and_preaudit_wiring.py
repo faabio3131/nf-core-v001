@@ -13,10 +13,12 @@ from __future__ import annotations
 
 import base64
 import gzip
+import importlib.util
 import json
 from dataclasses import replace
 from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
+from pathlib import Path
 from unittest.mock import Mock
 
 import pytest
@@ -52,12 +54,21 @@ from kordena_fiscal.gateway.nfse_nacional_homologation import (
 from kordena_fiscal.issuance.nfe_nfse import (
     NfseAuthorizationRequest,
     NfseCanonicalDocument,
+    NfseNationalTaxTreatment,
     NfseServiceLine,
 )
-from kordena_fiscal.issuance.nfse_dps_builder import build_signed_dps
+from kordena_fiscal.issuance.nfse_dps_builder import build_sefin_signed_dps
 from kordena_fiscal.runtime.canonical_fiscal_composition import _GovernedNationalNfseGateway
 from kordena_fiscal.vault import EphemeralCertificateMaterial
 from kordena_fiscal.xml.nfse_nacional_schema import national_dps_validator
+from kordena_fiscal.xml.nfse_national_profiles import NT009_RESTRICTED_PROFILE
+
+_receipt_spec = importlib.util.spec_from_file_location(
+    "national_receipt_fixture", Path(__file__).parents[1] / "support/national_receipt_fixture.py",
+)
+assert _receipt_spec and _receipt_spec.loader
+_receipt_fixture = importlib.util.module_from_spec(_receipt_spec)
+_receipt_spec.loader.exec_module(_receipt_fixture)
 
 _NOW = datetime(2026, 11, 6, 12, 0, tzinfo=UTC)
 _ISSUER_CNPJ = Cnpj("11222333000181")
@@ -144,19 +155,19 @@ def _request(**service_overrides) -> NfseAuthorizationRequest:
         service_jurisdiction=BrazilianJurisdiction("SP", "3550308"),
         services=(NfseServiceLine(**service_fields),),
         service_taker_reference="taker-ref-1",
+        # Synthetic fixture uses a reserved number; never hash-derived.
+        dps_number=1,
     )
     return NfseAuthorizationRequest.build(document)
 
 
 def _fake_exchange(payload: bytes, *_args) -> bytes:
-    json.loads(payload)  # confirms the gateway sent well-formed JSON
-    key = "35" + "0" * 48
-    xml = (
-        f'<NFSe xmlns="http://www.sped.fazenda.gov.br/nfse">'
-        f'<infNFSe Id="NFS{key}"/></NFSe>'
-    ).encode()
+    dps = gzip.decompress(base64.b64decode(json.loads(payload)["dpsXmlGZipB64"]))
+    key = _receipt_fixture.key_for(dps)
+    xml = _receipt_fixture.complete_receipt(dps, _certificate(), key=key)
+    identifier = etree.fromstring(dps)[0].get("Id")
     return json.dumps({
-        "tipoAmbiente": 2, "chaveAcesso": key, "idDps": "dps-wiring-ok",
+        "tipoAmbiente": 2, "chaveAcesso": key, "idDps": identifier,
         "nfseXmlGZipB64": base64.b64encode(gzip.compress(xml, mtime=0)).decode("ascii"),
     }).encode()
 
@@ -164,7 +175,7 @@ def _fake_exchange(payload: bytes, *_args) -> bytes:
 def _governed_gateway(*, resolver_return: str = NACIONAL_HOMOLOGATION_PROVIDER_ID):
     transport = NfseNacionalHomologationGateway(
         resolve_certificate=lambda scope, cnpj: _certificate(),
-        build_signed_dps=build_signed_dps,
+        build_signed_dps=build_sefin_signed_dps,
         exchange=_fake_exchange,
     )
     application = Mock()
@@ -174,18 +185,57 @@ def _governed_gateway(*, resolver_return: str = NACIONAL_HOMOLOGATION_PROVIDER_I
     )
 
 
+@pytest.mark.parametrize(
+    ("regime", "competence"),
+    [
+        (TaxRegimeCode.NORMAL, date(2026, 11, 6)),
+        (TaxRegimeCode.SIMPLES_NACIONAL, date(2026, 10, 31)),
+    ],
+)
+def test_guarulhos_direct_national_gateway_refuses_wrong_channel_before_a1(
+    regime: TaxRegimeCode, competence: date,
+) -> None:
+    """Direct API/worker calls cannot bypass the Portal's issuer channel gate."""
+    original = _request()
+    city = BrazilianJurisdiction("SP", "3518800")
+    issuer = replace(
+        original.document.issuer,
+        tax_regime=regime,
+        address=replace(
+            original.document.issuer.address,
+            municipality_name="Guarulhos", jurisdiction=city,
+        ),
+    )
+    request = NfseAuthorizationRequest.build(replace(
+        original.document, issuer=issuer, service_jurisdiction=city,
+        competence_date=competence,
+    ))
+    certificate = Mock(side_effect=AssertionError("A1 must not be touched"))
+    signer = Mock(side_effect=AssertionError("DPS must not be signed"))
+    exchange = Mock(side_effect=AssertionError("SEFIN must not be called"))
+    gateway = NfseNacionalHomologationGateway(
+        resolve_certificate=certificate,
+        build_signed_dps=signer,
+        exchange=exchange,
+    )
+    with pytest.raises(OfficialNfseTransportError, match="Guarulhos"):
+        gateway.authorize(request)
+    certificate.assert_not_called()
+    signer.assert_not_called()
+    exchange.assert_not_called()
+
+
 def test_real_builder_and_preaudit_authorize_a_valid_document_end_to_end() -> None:
     """Preaudit passes, build_signed_dps produces a schema-valid unsigned DPS,
-    sign_nfse_dps_xml() signs it with RSA-SHA1 (matching the pinned
-    xml/official/NFSE_NACIONAL_1.00/xmldsig-core-schema.xsd's fixed
-    SignatureMethod/DigestMethod), and the governed gateway's own downstream
+    sign_nfse_dps_xml() signs the 1.01 layout with RSA-SHA256, and the
+    governed gateway's own downstream
     re-validation of the SIGNED document against the full pinned XSD now
     passes -- so the fake homologation exchange authorizes the document.
     """
     gateway = _governed_gateway()
     result = gateway.authorize(_request())
     assert result.status is AuthorizationStatus.AUTHORIZED
-    assert result.invoice_reference == "35" + "0" * 48
+    assert result.invoice_reference == "3550308" + "22" + "11222333000181" + "3" * 27
 
 
 def test_real_preaudit_blocks_before_any_signing_on_rate_divergence() -> None:
@@ -222,11 +272,34 @@ def _mg_request(
             jurisdiction=municipality,
         ),
     )
+    treatment = (
+        NfseNationalTaxTreatment(
+            iss_taxation_code="1",
+            special_regime_code="0",
+            simples_assessment_code="2",
+            normative_reference="Synthetic reviewed sublimit case: test-only",
+            rule_version=1,
+            effective_from=date(2026, 1, 1),
+        )
+        if tax_regime is TaxRegimeCode.SIMPLES_NACIONAL_EXCESS_SUBLIMIT
+        else None
+    )
+    # The MEI synthetic case must model fixed DAS-SIMEI, never per-invoice ISS.
+    # Keep the channel-routing assertion unchanged; only correct its fiscal fact.
+    services = (
+        tuple(
+            replace(line, iss_amount=Money.zero(), iss_withheld=False)
+            for line in base.document.services
+        )
+        if tax_regime is TaxRegimeCode.MEI else base.document.services
+    )
     document = replace(
         base.document,
         issuer=issuer,
         service_jurisdiction=municipality,
         competence_date=competence_date or base.document.competence_date,
+        services=services,
+        national_tax_treatment=treatment,
     )
     return NfseAuthorizationRequest.build(document)
 
@@ -244,12 +317,15 @@ def test_mg_national_channel_generates_signed_schema_valid_dps_envelope(
 ) -> None:
     """Offline synthetic DPS envelope tests: no official transmission claimed."""
     request = _mg_request(ibge, municipality)
-    signed = build_signed_dps(request, _certificate())
-    national_dps_validator("1.00").validate_document(signed)
+    signed = build_sefin_signed_dps(request, _certificate())
+    national_dps_validator(
+        "1.01", profile=NT009_RESTRICTED_PROFILE,
+    ).validate_document(signed)
     payload = encode_signed_dps(
         signed,
         issuer_cnpj=request.document.issuer.cnpj.value,
         issuer_municipality_ibge=ibge,
+        schema_profile=NT009_RESTRICTED_PROFILE,
     )
     restored = gzip.decompress(base64.b64decode(json.loads(payload)["dpsXmlGZipB64"]))
     assert restored == signed
@@ -293,7 +369,7 @@ def test_nfse_national_access_key_without_official_xml_is_not_authorization() ->
     """Never treat a single response field as a fiscal authorization receipt."""
     gateway = NfseNacionalHomologationGateway(
         resolve_certificate=lambda _scope, _cnpj: _certificate(),
-        build_signed_dps=build_signed_dps,
+        build_signed_dps=build_sefin_signed_dps,
         exchange=lambda *_args: json.dumps({
             "tipoAmbiente": 2, "chaveAcesso": "35" + "0" * 42,
         }).encode(),
@@ -314,7 +390,7 @@ def test_nfse_national_reply_requires_explicit_numeric_tpamb2(tp_amb: object) ->
         body["tipoAmbiente"] = tp_amb
     gateway = NfseNacionalHomologationGateway(
         resolve_certificate=lambda _scope, _cnpj: _certificate(),
-        build_signed_dps=build_signed_dps,
+        build_signed_dps=build_sefin_signed_dps,
         exchange=lambda *_args: json.dumps(body).encode(),
     )
     with pytest.raises(FiscalValidationError, match="homologação"):
@@ -342,8 +418,23 @@ def test_contagem_requires_federal_national_channel_for_eligible_simples(
     )
     gateway = NfseNacionalHomologationGateway(
         resolve_certificate=lambda _scope, _cnpj: _certificate(),
-        build_signed_dps=build_signed_dps,
+        build_signed_dps=build_sefin_signed_dps,
         exchange=_fake_exchange,
     )
     result = gateway.authorize(request)
     assert result.status is AuthorizationStatus.AUTHORIZED
+
+
+def test_canonical_gateway_refuses_signature_from_different_a1_before_network():
+    authorized, unrelated = _certificate(), _certificate()
+    exchange = Mock(side_effect=AssertionError("HTTP dispatched"))
+    record = Mock()
+    gateway = NfseNacionalHomologationGateway(
+        resolve_certificate=lambda *_: authorized,
+        build_signed_dps=lambda req, _: build_sefin_signed_dps(req, unrelated),
+        exchange=exchange, record_dispatch=record,
+    )
+    with pytest.raises(FiscalValidationError, match="scoped Vault A1"):
+        gateway.authorize(_request())
+    record.assert_not_called()
+    exchange.assert_not_called()

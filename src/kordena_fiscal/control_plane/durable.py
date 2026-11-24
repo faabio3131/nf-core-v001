@@ -238,6 +238,36 @@ class DurableControlPlaneService:
             uow.commit()
         return profile
 
+    def supersede_fiscal_profile(
+        self,
+        *,
+        actor: AdminPrincipal,
+        previous: FiscalProfile,
+        successor: FiscalProfile,
+    ) -> FiscalProfile:
+        """Atomically close the open profile version and add the next one, audited."""
+        self._require_tenant_permission(
+            actor, ControlPlanePermission.PROFILE_WRITE, successor.scope.tenant_id,
+        )
+        with self._unit_of_work_factory() as uow:
+            try:
+                uow.control_plane.supersede_profile(previous, successor)
+                uow.control_plane.append_audit(
+                    self._audit_event(
+                        actor=actor,
+                        action=ControlPlaneAuditAction.FISCAL_PROFILE_SUPERSEDED,
+                        target_type="fiscal-profile",
+                        target_id=f"{successor.profile_id}:v{successor.version}",
+                        correlation_id=successor.scope.correlation_id,
+                        tenant_id=successor.scope.tenant_id,
+                        unit_id=successor.scope.unit_id,
+                    )
+                )
+            except PersistenceConflictError as exc:
+                raise ControlPlaneConflictError(str(exc)) from exc
+            uow.commit()
+        return successor
+
     def list_audit(
         self,
         *,

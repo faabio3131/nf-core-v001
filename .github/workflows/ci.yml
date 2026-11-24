@@ -6,10 +6,17 @@ on:
     branches:
       - main
       - production
+      - "integration/nfcore-*"
+      - "feat/nfcore-economy-t*"
+      - "feat/nfcore-human-mfa-totp-20261120"
+      - "work/nfcore-closeout-20261119"
   push:
     branches:
       - main
+      - production
       - "feat/nfcore-web-*"
+      - "fix/nfcore-*"
+      - "work/nfcore-closeout-20261119"
 
 permissions:
   contents: read
@@ -55,7 +62,7 @@ jobs:
         run: python scripts/ci/check_repository_secrets.py
 
       - name: Install Python
-        run: python -m pip install -e ".[dev]"
+        run: python -m pip install -e ".[dev,telemetry]"
 
       - name: Validate canonical execution plan
         run: python3 scripts/check_nfcore_plan.py
@@ -69,8 +76,22 @@ jobs:
       - name: Mypy
         run: mypy
 
+      - name: Generate pinned official RFB V0073 reference database
+        run: |
+          set -euo pipefail
+          reference="$RUNNER_TEMP/rfb-v0073"
+          mkdir -p "$reference"
+          docker build --output "type=local,dest=$reference" deploy/rfb/database
+          test -s "$reference/calculadora-pro.db"
+          expected="$(awk '{print $1}' "$reference/calculadora-pro.db.sha256")"
+          actual="$(sha256sum "$reference/calculadora-pro.db" | awk '{print $1}')"
+          test "$expected" = "$actual"
+          printf 'Official RFB V0073 SHA-256: %s\n' "$actual"
+          echo "NFCORE_RFB_CALCULATOR_DB=$reference/calculadora-pro.db" >> "$GITHUB_ENV"
+          echo "NFCORE_RFB_CALCULATOR_DB_REQUIRED=true" >> "$GITHUB_ENV"
+
       - name: Pytest
-        run: pytest
+        run: pytest -ra
 
       - name: Python dependency audit
         run: |
@@ -354,3 +375,9 @@ jobs:
               response = client.get('/health/ready')
               assert response.status_code == 200, response.text
           PY
+
+      - name: Rehearse exact v21 to v23 transition and pre-cutover recovery
+        run: |
+          git fetch --no-tags --depth=1 origin ea4bdd3bcb9b61e6522081a14e5cc9ad1ced9599
+          bash -n scripts/ci/rehearse_v21_v23_cutover.sh
+          bash scripts/ci/rehearse_v21_v23_cutover.sh

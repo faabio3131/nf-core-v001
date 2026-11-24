@@ -60,6 +60,7 @@ class SecretReferenceKind(StrEnum):
 
 
 class ControlPlaneAuditAction(StrEnum):
+    CERTIFICATE_WITHDRAWAL_REQUESTED = "certificate.withdrawal_requested"
     FISCAL_INTENT_PREPARED = "fiscal_intent.prepared"
     FISCAL_INTENT_RECOVERED = "fiscal_intent.recovered"
     FISCAL_INTENT_RESUMED = "fiscal_intent.resumed"
@@ -72,6 +73,7 @@ class ControlPlaneAuditAction(StrEnum):
     UNIT_ONBOARDED = "unit.onboarded"
     SECRET_REFERENCE_BOUND = "secret_reference.bound"
     FISCAL_PROFILE_ADDED = "fiscal_profile.added"
+    FISCAL_PROFILE_SUPERSEDED = "fiscal_profile.superseded"
     PILOT_ACTIVATED = "pilot.activated"
     PILOT_DEACTIVATED = "pilot.deactivated"
     PILOT_SCOPE_CHANGED = "pilot.scope_changed"

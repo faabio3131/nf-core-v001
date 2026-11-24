@@ -10,6 +10,7 @@ from dataclasses import dataclass
 from kordena_fiscal.domain import FiscalValidationError
 
 from .contracts import AdviceRequest, Evidence, stable_hash
+from .economy_contract import CAPABILITIES, REVIEW_ACTIONS
 from .ports import ModelPrompt
 from .redaction import Redactor
 
@@ -82,6 +83,8 @@ class ContextPackBuilder:
             line = f"[{item.evidence_id}] {item.kind.value} ({clean(item.origin)}): {body}"
             hashed.append(
                 {"id": item.evidence_id, "kind": item.kind.value, "trusted": item.trusted,
+                 "origin": clean(item.origin),
+                 "as_of": item.as_of.isoformat() if item.as_of is not None else None,
                  "body": body}
             )
             if item.trusted:
@@ -97,12 +100,27 @@ class ContextPackBuilder:
         boundary = f"DADOS-{self._nonce()}"
         untrusted_text = "\n".join(_defuse(line, boundary) for line in untrusted_lines)
         fenced = f"<<{boundary}>>\n{untrusted_text}\n<</{boundary}>>" if untrusted_lines else ""
+        # A context fingerprint is a scoped provenance key, not just a hash
+        # of text. Identical snapshots from separate tenants, units or fiscal
+        # environments must not share a reference; evidence source and time
+        # also affect the claims that can legitimately be made about it.
         context_hash = stable_hash(
-            {"capability": request.capability.value, "evidence": hashed, "question": question}
+            {
+                "scope": request.scope.identity_material,
+                "actor": request.actor_id,
+                "subject": request.subject_id,
+                "capability": request.capability.value,
+                "evidence": hashed,
+                "question": question,
+            }
         )
         prompt = ModelPrompt(
             capability=request.capability,
-            system=SYSTEM_INSTRUCTIONS,
+            system=(SYSTEM_INSTRUCTIONS + "\nPara esta consulta de economia fiscal, "
+                    "retorne exclusivamente ações de revisão abaixo, citando todos os IDs "
+                    "da avaliação e das fontes legais. Não proponha valores ou normas. "
+                    + " | ".join(REVIEW_ACTIONS)
+                    if request.capability in CAPABILITIES else SYSTEM_INSTRUCTIONS),
             trusted_facts="\n".join(trusted_lines),
             untrusted_data=fenced,
             boundary=boundary,

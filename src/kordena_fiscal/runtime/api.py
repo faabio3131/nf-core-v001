@@ -8,6 +8,8 @@ from collections.abc import AsyncIterator, Callable, Mapping
 from contextlib import asynccontextmanager
 from dataclasses import asdict
 from datetime import UTC, datetime, timedelta
+from functools import partial
+from typing import cast
 from uuid import uuid4
 
 from fastapi import FastAPI, Request
@@ -16,14 +18,26 @@ from fastapi.responses import JSONResponse
 from kordena_fiscal.application.bling_operations import BlingOperationsService
 from kordena_fiscal.application.command_commercial import CommandCommercialReceiver
 from kordena_fiscal.application.commercial_acquisition import CommercialAcquisitionService
+from kordena_fiscal.application.service import FiscalApplicationService
 from kordena_fiscal.cognitive.composition import build_cognitive_router
 from kordena_fiscal.cognitive.durable_usage import DurableTokenQuotaStore
+from kordena_fiscal.cognitive.economy_reader import read_economy_evidence
+from kordena_fiscal.cognitive.federal_benefits_api import (
+    build_federal_benefit_runner,
+    build_federal_benefit_search_runner,
+)
+from kordena_fiscal.cognitive.simples_diagnostic_api import build_diagnostic_runner
+from kordena_fiscal.cognitive.state_benefits_api import (
+    build_state_benefit_runner,
+    build_state_search_runner,
+)
 from kordena_fiscal.compliance.nfse_preaudit import (
     extrema_abrasf_service_preaudit,
     nfse_preaudit,
 )
+from kordena_fiscal.gateway.nfse_national_environment import load_nfse_production_authority
 from kordena_fiscal.gateway.production_activation import ProductionExecutionAuthority
-from kordena_fiscal.issuance.nfse_dps_builder import build_signed_dps
+from kordena_fiscal.issuance.nfse_dps_builder import build_sefin_signed_dps
 from kordena_fiscal.persistence.command_commercial import CommandCommercialStore
 from kordena_fiscal.persistence.commercial_fulfillment import (
     postgres_canonical_commercial_database,
@@ -51,6 +65,7 @@ from kordena_fiscal.security.s2s import (
     WorkloadCredentialRecord,
 )
 from kordena_fiscal.security.secrets import SecretResolver
+from kordena_fiscal.vault.contracts import FiscalSecretVault, SecretResolutionService
 from kordena_fiscal.vault.encrypted_a1 import EncryptedA1Vault
 from kordena_fiscal.web.app import create_app
 from kordena_fiscal.web.command_commercial import create_command_commercial_router
@@ -75,6 +90,8 @@ from .activation_email import build_activation_delivery_from_environ
 from .ai_secrets import build_production_openai_key_readers
 from .alert_rules import InternalAlertMonitor, OperationalSignals
 from .api_staging_gsm_probe import staging_probe_verifier
+from .barueri_environment import build_barueri_port_builder_from_environ
+from .barueri_operational_composition import BarueriTrustedRuntimePorts
 from .bling_ingress import build_bling_ingress
 from .bling_multitenant_ingress import build_multitenant_bling_ingress
 from .bling_oauth_factory import build_bling_oauth_service
@@ -85,6 +102,8 @@ from .bling_review import build_bling_review_router
 from .bling_status import build_bling_status_router
 from .bling_worker import build_bling_orders
 from .bridge_credentials import load_bridge_credentials
+from .cajamar_environment import build_cajamar_port_builder_from_environ
+from .cajamar_operational_composition import CajamarTrustedRuntimePorts
 from .cakto import build_cakto_webhook_router, compose_postgres_cakto_commercial_runtime
 from .cakto_claim_email import build_cakto_claim_delivery_from_environ
 from .canonical_fiscal_composition import (
@@ -104,6 +123,9 @@ from .development_commercial_ingress import (
 from .development_fiscal_ingress import development_fiscal_ingress
 from .extrema_webiss_environment import build_extrema_webiss_exchange
 from .fiscal_runtime import FiscalOperationHandler
+from .guarulhos_giss_operational_composition import build_guarulhos_port_builder_from_environ
+from .jundiai_environment import build_jundiai_port_builder_from_environ
+from .jundiai_operational_composition import JundiaiTrustedRuntimePorts
 from .observability import (
     MetricsRegistry,
     RequestTimer,
@@ -111,6 +133,9 @@ from .observability import (
     StructuredLogger,
     TraceContext,
 )
+from .osasco_environment import build_osasco_port_builder_from_environ
+from .osasco_gsm_bootstrap import build_osasco_gsm_secret_factory
+from .osasco_operational_composition import OsascoTrustedRuntimePorts
 from .otel_trace_sink import build_trace_sink
 from .production_cakto_ingress import production_cakto_webhook_secret
 from .production_cakto_webhook_env import production_cakto_webhook_secret_from_env
@@ -120,6 +145,7 @@ from .production_commercial_acquisition_env import (
 )
 from .production_gsm import production_api_verifier
 from .public_trial_abuse import PostgresPublicTrialAbuseGate
+from .santana_environment import build_santana_port_builder_from_environ
 from .secret_manager import SecretBindingAdministration
 from .security import configure_edge_security
 from .staging_commercial_ingress import staging_commercial_ingress
@@ -153,6 +179,15 @@ class RuntimeApi:
                         database.require_current_schema(require_bling=True)
                     else:
                         database.require_current_schema()
+                elif os.environ.get("NFCORE_ECONOMY_ENABLED") == "true":
+                    runtime_role = os.environ.get("NFCORE_ECONOMY_RUNTIME_ROLE", "").strip()
+                    if not runtime_role:
+                        raise RuntimeError("restricted economy runtime role is required")
+                    database.initialize(
+                        enable_bling=os.environ.get("NFCORE_BLING_INSTALLATIONS_ENABLED") == "true",
+                        enable_mfa=os.environ.get("NFCORE_HUMAN_MFA") == "enabled",
+                        enable_economy=True, economy_runtime_role=runtime_role,
+                    )
                 else:
                     database.initialize(
                         enable_bling=os.environ.get("NFCORE_BLING_INSTALLATIONS_ENABLED") == "true"
@@ -249,10 +284,40 @@ def create_runtime_app(
     security_audit_sink: SecurityAuditSink | None = None,
     fiscal_operation_handlers: Mapping[str, FiscalOperationHandler] | None = None,
     fiscal_operation_handler_factory: FiscalOperationHandlerFactory | None = None,
+    cajamar_runtime_ports: CajamarTrustedRuntimePorts | None = None,
+    osasco_runtime_ports: OsascoTrustedRuntimePorts | None = None,
+    barueri_runtime_ports: BarueriTrustedRuntimePorts | None = None,
+    jundiai_runtime_ports: JundiaiTrustedRuntimePorts | None = None,
     certificate_vault: EncryptedA1Vault | None = None,
     fiscal_dependency_probe: Callable[[], Mapping[str, bool]] | None = None,
 ) -> FastAPI:
     resolved = settings or RuntimeSettings.from_environ()
+    if any(port is not None for port in (
+        cajamar_runtime_ports, osasco_runtime_ports, barueri_runtime_ports,
+        jundiai_runtime_ports,
+    )):
+        # One and only one canonical handler factory. This opt-in path is for
+        # operator-provisioned, independently validated GeisWeb dependencies.
+        # Without them, the default runtime remains non-transmitting.
+        if fiscal_operation_handlers is not None or fiscal_operation_handler_factory is not None:
+            raise RuntimeConfigurationError(
+                "Cajamar cannot introduce a second fiscal operation authority"
+            )
+        if resolved.environment.value not in {"staging", "production"}:
+            raise RuntimeConfigurationError(
+                "Cajamar official adapter can only attach to staging/production runtime"
+            )
+        fiscal_operation_handler_factory = build_runtime_fiscal_handler_factory(
+            certificate_vault=certificate_vault,
+            trusted_signed_dps_builder=(
+                build_sefin_signed_dps if certificate_vault is not None else None
+            ),
+            nfse_preaudit=(nfse_preaudit if certificate_vault is not None else None),
+            cajamar_runtime_ports=cajamar_runtime_ports,
+            osasco_runtime_ports=osasco_runtime_ports,
+            barueri_runtime_ports=barueri_runtime_ports,
+            jundiai_runtime_ports=jundiai_runtime_ports,
+        )
     runtime_metrics = metrics or MetricsRegistry()
     runtime = RuntimeApi(
         resolved,
@@ -480,7 +545,16 @@ def create_runtime_app(
         finally:
             runtime.close()
 
-    app = FastAPI(title="FM NFCORE Runtime", version="1.0.0", lifespan=lifespan)
+    # Interactive docs and the generated schema describe every route. Keep them
+    # for local development only; staging/production publish nothing here (the
+    # versioned contract lives in contracts/v1/openapi.json).
+    public_docs = resolved.environment.value not in {"staging", "production"}
+    app = FastAPI(
+        title="FM NFCORE Runtime", version="1.0.0", lifespan=lifespan,
+        docs_url="/docs" if public_docs else None,
+        redoc_url="/redoc" if public_docs else None,
+        openapi_url="/openapi.json" if public_docs else None,
+    )
     app.state.nfcore_runtime = runtime
     app.state.nfcore_runtime_composition = composition
     app.state.nfcore_password_recovery = (
@@ -1083,15 +1157,19 @@ def create_runtime_app(
     app.mount(
         "/",
         create_app(
+            public_docs=public_docs,
             security=bridge_security,
             executor=bridge_executor,
             human_identity=human_identity,
+            human_mfa=None if composition is None else composition.human_mfa,
             human_login_completed=commercial_activation_completed,
             password_recovery=password_recovery,
             password_reset_delivery=password_reset_delivery,
             password_reset_completed=commercial_activation_completed,
             portal_executor=portal_executor,
             certificate_vault=certificate_vault,
+            iron_a1_database=runtime.database,
+            iron_a1_allowed_origin=os.environ.get("NFCORE_IRON_A1_ALLOWED_ORIGIN"),
             pricing_administration=pricing_administration,
             commercial_release_administration=commercial_release_administration,
             commercial_checkout=selected_checkout,
@@ -1124,6 +1202,68 @@ def create_runtime_app(
                 os.environ,
                 audit_uow_factory=runtime.database,
                 runtime_environment=resolved.environment.value,
+                economy_reader=(
+                    partial(
+                        read_economy_evidence, partial(runtime.database.economy, read_only=True)
+                    )
+                    if runtime.database is not None
+                    and os.environ.get("NFCORE_ECONOMY_ENABLED") == "true" else None
+                ),
+                diagnostic_runner=(
+                    build_diagnostic_runner(
+                        portal_executor, runtime.database.economy, runtime.database,
+                    )
+                    if runtime.database is not None and portal_executor is not None
+                    and os.environ.get("NFCORE_ECONOMY_ENABLED") == "true" else None
+                ),
+                segregation_runner=(
+                    build_diagnostic_runner(
+                        portal_executor, partial(runtime.database.economy, read_only=True),
+                        runtime.database, segregation=True,
+                    )
+                    if runtime.database is not None and portal_executor is not None
+                    and os.environ.get("NFCORE_ECONOMY_ENABLED") == "true" else None
+                ),
+                assessment_runner=(
+                    build_diagnostic_runner(
+                        portal_executor, partial(runtime.database.economy, read_only=True),
+                        runtime.database, segregation=True, assessment=True,
+                    )
+                    if runtime.database is not None and portal_executor is not None
+                    and os.environ.get("NFCORE_ECONOMY_ENABLED") == "true" else None
+                ),
+                federal_benefit_runner=(
+                    build_federal_benefit_runner(
+                        portal_executor, partial(runtime.database.economy, read_only=True),
+                        runtime.database,
+                    )
+                    if runtime.database is not None and portal_executor is not None
+                    and os.environ.get("NFCORE_ECONOMY_ENABLED") == "true" else None
+                ),
+                federal_benefit_search_runner=(
+                    build_federal_benefit_search_runner(
+                        portal_executor, partial(runtime.database.economy, read_only=True),
+                        runtime.database,
+                    )
+                    if runtime.database is not None and portal_executor is not None
+                    and os.environ.get("NFCORE_ECONOMY_ENABLED") == "true" else None
+                ),
+                state_benefit_runner=(
+                    build_state_benefit_runner(
+                        portal_executor, partial(runtime.database.economy, read_only=True),
+                        runtime.database,
+                    )
+                    if runtime.database is not None and portal_executor is not None
+                    and os.environ.get("NFCORE_ECONOMY_ENABLED") == "true" else None
+                ),
+                state_search_runner=(
+                    build_state_search_runner(
+                        portal_executor, partial(runtime.database.economy, read_only=True),
+                        runtime.database,
+                    )
+                    if runtime.database is not None and portal_executor is not None
+                    and os.environ.get("NFCORE_ECONOMY_ENABLED") == "true" else None
+                ),
                 quota_store=(
                     DurableTokenQuotaStore(runtime.database.connection)
                     if runtime.database is not None else None
@@ -1153,6 +1293,86 @@ def create_runtime_app(
     return app
 
 
+def build_entrypoint_fiscal_handler_factory(
+    settings: RuntimeSettings,
+    environ: Mapping[str, str],
+    vault: EncryptedA1Vault | None,
+    *,
+    osasco_secret_vault: FiscalSecretVault | None = None,
+) -> FiscalOperationHandlerFactory | None:
+    """Compose reviewed municipal providers in the same executable runtime.
+
+    Optional on-host Osasco contracts never activate without a scoped
+    secret authority; no second fiscal service or duplicate provider registry.
+    """
+    osasco_requested = bool(environ.get("NFCORE_OSASCO_WCF_CONFIG_PATH", "").strip())
+    barueri_requested = bool(environ.get("NFCORE_BARUERI_PMB004_CONFIG_PATH", "").strip())
+    guarulhos_requested = bool(environ.get("NFCORE_GUARULHOS_GISS_CONFIG_PATH", "").strip())
+    jundiai_requested = bool(environ.get("NFCORE_JUNDIAI_GISS_CONFIG_PATH", "").strip())
+    santana_requested = bool(environ.get("NFCORE_SANTANA_SIMPLISS_CONFIG_PATH", "").strip())
+    if settings.environment.value not in {"staging", "production"}:
+        if (
+            environ.get("NFCORE_CAJAMAR_GEISWEB_CONFIG_PATH", "").strip()
+            or osasco_requested
+            or barueri_requested
+            or jundiai_requested
+            or guarulhos_requested
+            or santana_requested
+        ):
+            raise RuntimeConfigurationError(
+                "Reviewed municipal adapters require staging/production runtime"
+            )
+        return None
+    secrets_factory: Callable[[FiscalApplicationService], SecretResolutionService] | None
+    if osasco_requested:
+        if osasco_secret_vault is not None:
+            def provided_osasco_secrets(
+                application: FiscalApplicationService,
+            ) -> SecretResolutionService:
+                return SecretResolutionService(
+                    unit_of_work_factory=application._uow_factory,
+                    vault=osasco_secret_vault,
+                )
+            secrets_factory = provided_osasco_secrets
+        else:
+            secrets_factory = build_osasco_gsm_secret_factory(environ)
+    else:
+        secrets_factory = None
+    configured_factory = build_runtime_fiscal_handler_factory(
+        certificate_vault=vault,
+        trusted_signed_dps_builder=build_sefin_signed_dps,
+        nfse_preaudit=nfse_preaudit,
+        nfse_production_authority=load_nfse_production_authority(environ),
+        webiss_extrema_exchange=build_extrema_webiss_exchange(environ),
+        webiss_service_preaudit=(
+            extrema_abrasf_service_preaudit
+            if environ.get("NFCORE_EXTREMA_WEBISS_HOMOLOGATION_URL")
+            else None
+        ),
+        cajamar_port_builder=build_cajamar_port_builder_from_environ(
+            environ, vault=vault,
+        ),
+        osasco_port_builder=build_osasco_port_builder_from_environ(
+            environ, secrets_factory=secrets_factory,
+        ),
+        barueri_port_builder=build_barueri_port_builder_from_environ(
+            environ, vault=vault,
+        ),
+        guarulhos_port_builder=build_guarulhos_port_builder_from_environ(
+            environ, vault=vault,
+        ),
+        jundiai_port_builder=build_jundiai_port_builder_from_environ(
+            environ, vault=vault,
+        ),
+        santana_port_builder=build_santana_port_builder_from_environ(
+            environ, vault=vault,
+        ),
+    )
+    # The shared builder's public annotation is Any, but its closure implements
+    # the existing FiscalOperationHandlerFactory contract. Preserve B ownership.
+    return cast(FiscalOperationHandlerFactory, configured_factory)
+
+
 _entrypoint_settings = RuntimeSettings.from_environ()
 _entrypoint_certificate_vault = EncryptedA1Vault.from_environ()
 _development_ingress = development_commercial_ingress(_entrypoint_settings, os.environ)
@@ -1163,7 +1383,7 @@ app = create_runtime_app(
     certificate_vault=_entrypoint_certificate_vault,
     fiscal_dependency_probe=lambda: fiscal_external_dependency_snapshot(
         certificate_vault=_entrypoint_certificate_vault,
-        trusted_signed_dps_builder=build_signed_dps,
+        trusted_signed_dps_builder=build_sefin_signed_dps,
         nfse_preaudit=nfse_preaudit,
     ),
     command_secret_resolver=development_command_resolver(
@@ -1174,20 +1394,8 @@ app = create_runtime_app(
         if _entrypoint_settings.environment.value in {"development", "test"}
         else None
     ),
-    fiscal_operation_handler_factory=(
-        build_runtime_fiscal_handler_factory(
-            certificate_vault=_entrypoint_certificate_vault,
-            trusted_signed_dps_builder=build_signed_dps,
-            nfse_preaudit=nfse_preaudit,
-            webiss_extrema_exchange=build_extrema_webiss_exchange(os.environ),
-            webiss_service_preaudit=(
-                extrema_abrasf_service_preaudit
-                if os.environ.get("NFCORE_EXTREMA_WEBISS_HOMOLOGATION_URL")
-                else None
-            ),
-        )
-        if _entrypoint_settings.environment.value in {"staging", "production"}
-        else None
+    fiscal_operation_handler_factory=build_entrypoint_fiscal_handler_factory(
+        _entrypoint_settings, os.environ, _entrypoint_certificate_vault,
     ),
     commercial_acquisition_security=_development_ingress.get(
         "commercial_acquisition_security"

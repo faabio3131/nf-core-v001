@@ -493,6 +493,15 @@ class HumanIdentityService:
         self._dummy_hash = password_hasher.hash("nfcore-dummy-password-never-authenticates")
 
     def login(self, *, email: str, password: str, now: datetime) -> IssuedWebSession:
+        return self.issue_session(
+            self.authenticate_password(email=email, password=password, now=now), now=now,
+        )
+
+    def account_by_id(self, account_id: str) -> HumanAccount | None:
+        return self._accounts.by_id(_required(account_id, "account_id", 128))
+
+    def authenticate_password(self, *, email: str, password: str, now: datetime) -> HumanAccount:
+        """First factor only; callers decide whether a second factor is due."""
         _aware(now, "now")
         normalized_email = _required(email, "email", 320).casefold()
         self._login_limiter.assert_allowed(normalized_email, now)
@@ -504,6 +513,14 @@ class HumanIdentityService:
             raise HumanAuthenticationError("invalid email or password")
 
         self._login_limiter.reset(normalized_email, now)
+        return account
+
+    def issue_session(self, account: HumanAccount, *, now: datetime) -> IssuedWebSession:
+        _aware(now, "now")
+        current = self._accounts.by_id(account.account_id)
+        if current is None or not current.enabled:
+            raise HumanAuthenticationError("invalid email or password")
+        account = current
         session_token = secrets.token_urlsafe(48)
         csrf_token = secrets.token_urlsafe(32)
         expires_at = now + self._session_ttl

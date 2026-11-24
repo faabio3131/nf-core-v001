@@ -22,11 +22,22 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+      actions: read
     steps:
+      - name: Checkout protected production release verifier
+        uses: actions/checkout@v4
+        with:
+          ref: production
+          persist-credentials: false
       - name: Require explicit human approval token
         env:
           APPROVAL: ${{ inputs.approval }}
         run: test "$APPROVAL" = "PRODUCTION_APPROVED"
+      - name: Require exact protected production HEAD with successful full CI
+        env:
+          GH_TOKEN: ${{ github.token }}
+          NFCORE_SOURCE_REVISION: ${{ inputs.source_revision }}
+        run: python3 scripts/ci/verify_production_revision.py
 
   promote:
     name: Promote production
@@ -58,7 +69,7 @@ jobs:
         run: python -m pip install -e ".[dev]"
       - name: Govern migration policy
         run: python scripts/ci/migration_guard.py --check-policy
-      - name: Fail-closed preflight, migrate, deploy, smoke and rollback on failure
+      - name: Fail-closed code-only preflight, schema assertion, deploy and smoke
         run: sh scripts/ci/run_production_promotion.sh
       - name: Write safe promotion evidence
         if: success()

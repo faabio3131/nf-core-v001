@@ -193,6 +193,13 @@ test("RTC screen uses the existing authenticated scoped portal and does not inve
   assert.doesNotMatch(script, /\/v1\/rtc\/calculate/);
 });
 
+test("fiscal profile CRT has no silent default and record details are readable", () => {
+  assert.match(script, /crtPlaceholder\.value = ""; crtPlaceholder\.textContent = "Selecione o CRT"/);
+  assert.match(script, /crtPlaceholder\.disabled = true; crtPlaceholder\.selected = true/);
+  assert.match(script, /crt\.name = "crt"; crt\.required = true/);
+  assert.match(script, /display_name: "Nome"/);
+});
+
 
 test("RTC issuer profile enrollment uses governed portal operation and no browser tenant authority", () => {
   assert.match(script, /registerFiscalProfile/);
@@ -247,4 +254,98 @@ test("A1 file validator accepts exported .pfx/.p12 instead of requiring a backsl
   assert.equal(acceptsA1File("certificado.pfx.txt", 1024), false);
   assert.equal(acceptsA1File("certificado.pfx", 0), false);
   assert.equal(acceptsA1File("certificado.p12", 2 * 1024 * 1024 + 1), false);
+});
+
+
+test("Barueri PMB004 events are accessible through the same governed Portal", () => {
+  assert.match(script, /function appendBarueriFiscalEvent\(article, operation\)/);
+  assert.match(script, /function appendBarueriEventReconciliation\(article\)/);
+  for (const operation of [
+    "cancelBarueriNfse", "substituteBarueriNfse",
+    "reconcileBarueriNfseCancellation",
+  ]) {
+    assert.ok(script.includes(operation));
+  }
+  assert.match(script, /substitution_justification_code: reason\.value/);
+  assert.match(script, /human_approval: approved\.checked/);
+  assert.match(script, /Idempotency-Key": attempt\.key/);
+  assert.match(script, /No reenvie|Não retransmita|não reenvie/);
+  assert.match(script, /reconciliation\.execute/);
+  assert.match(script, /viewId === "issuances"\) appendBarueriFiscalEvent/);
+  assert.match(script, /appendBarueriEventReconciliation\(article\)/);
+  assert.doesNotMatch(script, /tenant_id:\s*selectedFiscalUnit/);
+});
+
+
+test("municipal SP5 event surfaces are discoverable in the authenticated portal", () => {
+  const operations = [
+    "cancelOsascoNfse", "substituteOsascoNfse",
+    "cancelSantanaNfse", "substituteSantanaNfse",
+    "reconcileSantanaNfseCancellation",
+    "reconcileSantanaNfseSubstitution",
+    "reconcileJundiaiNfseCancellation",
+  ];
+  for (const operation of operations) {
+    assert.ok(script.includes('appendReviewedMunicipalWebAction(article, "' + operation + '")'));
+    assert.ok(script.includes(operation + ": {"));
+  }
+  assert.match(script, /!configured\.includes\(operation\)/);
+  assert.match(script, /permissions\.includes\("document\.cancel"\)/);
+  assert.match(script, /permissions\.includes\("document\.issue"\)/);
+  assert.match(script, /permissions\.includes\("reconciliation\.execute"\)/);
+  assert.match(script, /selectedFiscalEnvironment !== "homologation"/);
+  assert.match(script, /headers: \{"X-CSRF-Token": csrfToken\(\), "Idempotency-Key": key\}/);
+  assert.match(script, /if \(!recovery\) attempted = true/);
+  assert.match(script, /if \(recovery\) submit\.disabled = false/);
+});
+
+test("municipal SP5 form payload fields match reviewed runtime contracts", () => {
+  assert.match(script, /reason: "cancellation_reason"/);
+  assert.match(script, /reason: "reason_description"/);
+  assert.match(script, /codes: \["1", "2", "9"\]/);
+  assert.match(script, /codes: \["01", "02", "03", "04", "05", "99"\]/);
+  assert.match(script, /"document_id", "ID da NFS-e original autorizada"/);
+  assert.match(script, /"original_id", "ID da NFS-e original autorizada"/);
+  assert.match(script, /"replacement_id", "ID da nova DPS previamente preparada"/);
+  assert.match(script, /if \(!recovery\) payload\.human_approval/);
+  assert.match(script, /"\/v1\/portal\/operations\/" \+ operation/);
+  assert.match(script, /NÃO retransmita/);
+});
+
+test("Cajamar read-only investigation exposes evidence without claiming cancellation", () => {
+  const start = script.indexOf("function appendReviewedMunicipalWebAction");
+  const end = script.indexOf("function appendCajamarCancellation", start);
+  const form = script.slice(start, end);
+  assert.match(form, /operation === "inspectCajamarNfseCancellation"/);
+  assert.ok(form.includes("Nota localizada; isso não comprova cancelamento."));
+  assert.ok(form.includes("Código municipal: "));
+  assert.ok(form.includes("Referência da evidência arquivada: "));
+  assert.match(form, /reply\.official_fiscal_confirmation === true/);
+  assert.doesNotMatch(form, /innerHTML|insertAdjacentHTML/);
+});
+
+test("portal never prints raw JSON objects and uses PT-BR choices for fixed technical values", () => {
+  assert.match(script, /if \(typeof record\.display_name === "string" && record\.display_name\) return record\.display_name;/);
+  assert.match(script, /choice:certificate=Certificado digital A1\|csc=CSC da NFC-e\|credentials=Credenciais do provedor/);
+  assert.doesNotMatch(script, /Tipo: certificate, csc ou credentials/);
+  assert.doesNotMatch(script, /"issued_at", "Data e hora da venda com fuso", new Date\(\)\.toISOString\(\)/);
+  assert.match(script, /localIsoWithOffset\(new Date\(\)\)/);
+});
+
+
+test("RTC-02 federal regime is explicitly selected and submitted through the scoped API", () => {
+  const start = script.indexOf("function appendFederalRegimeDeclaration");
+  const end = script.indexOf("async function renderSurface", start);
+  assert.ok(start > 0 && end > start);
+  const form = script.slice(start, end);
+  assert.match(form, /regime\.required = true/);
+  assert.match(form, /placeholder\.value = ""; placeholder\.textContent = "Selecione o regime federal"/);
+  assert.match(form, /"lucro_presumido", "Lucro Presumido"/);
+  assert.match(form, /"lucro_real", "Lucro Real"/);
+  assert.match(form, /"simples_nacional", "Simples Nacional"/);
+  assert.match(form, /\/v1\/portal\/operations\/declareFederalRegime/);
+  assert.match(form, /"Idempotency-Key": attempt\.key/);
+  assert.match(form, /"X-CSRF-Token": csrfToken\(\)/);
+  assert.doesNotMatch(form, /tenant_id|host_namespace|issuer_cnpj:/);
+  assert.match(script, /configured && bootstrapState\?\.permissions\.includes\("configuration.write"\)/);
 });

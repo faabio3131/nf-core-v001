@@ -35,8 +35,7 @@ def test_renderer_uses_offline_pdf_library_on_verified_xml(monkeypatch: pytest.M
         def __init__(self, *, xml: str) -> None:
             assert "<nfeProc" in xml
 
-        def output(self, *, dest: str) -> bytearray:
-            assert dest == "S"
+        def output(self) -> bytearray:
             return bytearray(b"%PDF-1.7\nNFCore signed XML test")
 
     monkeypatch.setattr(module, "Danfe", FakeDanfe)
@@ -67,7 +66,7 @@ def test_invalid_pdf_result_fails_closed(monkeypatch: pytest.MonkeyPatch) -> Non
         def __init__(self, *, xml: str) -> None:
             assert xml
 
-        def output(self, *, dest: str) -> bytes:
+        def output(self) -> bytes:
             return b"not pdf"
 
     monkeypatch.setattr(module, "Danfe", FakeDanfe)

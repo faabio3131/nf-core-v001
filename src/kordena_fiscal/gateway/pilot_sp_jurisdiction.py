@@ -6,7 +6,7 @@ No credentials, endpoint selection, authorization or provider I/O occurs here.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import date, datetime, timedelta, timezone
+from datetime import date, datetime
 from typing import TYPE_CHECKING, Literal
 
 from kordena_fiscal.domain import (
@@ -23,8 +23,6 @@ PilotDocument = Literal["nfe", "nfce", "nfse"]
 PilotChannel = Literal["sefaz-sp-nfe", "sefaz-sp-nfce", "nfse-national"]
 _SP_IBGE = frozenset({"3509205", "3548708", "3550308"})
 _NFSE_CUTOVER = date(2026, 11, 1)
-_SP_INUTILIZATION_END = date(2026, 11, 1)
-_SP_FIXED_OFFSET_2026 = timezone(timedelta(hours=-3))
 
 
 @dataclass(frozen=True, slots=True)
@@ -102,15 +100,11 @@ def require_sp_jurisdiction_operation_policy(
         or requested_at.utcoffset() is None
     ):
         raise FiscalValidationError("invalid SP provider operation context")
-    if (
-        jurisdiction.state_code == "SP"
-        and document_kind in (FiscalDocumentKind.NFE, FiscalDocumentKind.NFCE)
-        and operation is ProviderOperation.INUTILIZE
-        and requested_at.astimezone(_SP_FIXED_OFFSET_2026).date() >= _SP_INUTILIZATION_END
-    ):
-        raise FiscalValidationError(
-            "SP NF-e/NFC-e inutilization no longer applies from 2026-11-01"
-        )
+    # Since 2026-11-01 SP no longer REQUIRES inutilization, but the official
+    # SEFAZ-SP service remains operational during the transition through
+    # March 2027. Do not reject a valid request based only on the date.
+    # Positive authorization still depends on the configured provider,
+    # fiscal identity and its official response; this function grants none.
 
 
 def require_sp_pilot_operation_policy(
@@ -121,9 +115,10 @@ def require_sp_pilot_operation_policy(
 ) -> None:
     """Negative gate only: never grants provider or fiscal execution authority.
 
-    The Nov-2026 São Paulo rule stops inutilization of models 55/65. Using an
-    aware timestamp (rather than NFS-e competence) prevents historical-competence
-    documents from bypassing the current execution policy.
+    In SP inutilization of models 55/65 is not mandatory after Nov 2026,
+    but municipal date rules cannot deny the SEFAZ service while its official
+    transitional endpoint remains available. Provider operation authority
+    is governed independently.
     """
     from .provider import ProviderOperation
 

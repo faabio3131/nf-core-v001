@@ -1,0 +1,288 @@
+{
+  "schema_version": "nfcore.t09.research-package-manifest/v1",
+  "date": "2026-11-22",
+  "source_baseline": "c6008bb7bb0e3c2ec5e52c693f2384e6969a5fc4",
+  "package": {
+    "name": "NFCORE_T09_PESQUISA_NORMATIVA_PARCIAL_20261122.zip",
+    "size_bytes": 9087055,
+    "sha256": "001f7e85c84e35914931218a8b5c4d492cd65d7332e847c3f36167d66e5cc12b",
+    "zip_entry_count": 64,
+    "zip_integrity": "PASSED",
+    "remote_archive_verified": false,
+    "repository_contains_original_binary": false
+  },
+  "checks": {
+    "records": 29,
+    "sha256_matching_local_bytes": 29,
+    "research_dossiers": 27,
+    "proposed_cases": 58,
+    "executed_cases_from_package": 0,
+    "independently_reviewed_dossiers": 0,
+    "human_acceptances": 0,
+    "fiscal_imports": 0
+  },
+  "sources": [
+    {
+      "uf": "AC",
+      "path": "fontes/AC/AC_Decreto_4196_2001.html",
+      "size_bytes": 133628,
+      "sha256": "e976c4cd2b64422c1a3845018aabc19788286b095256d4d2ad5969310aae4fc0",
+      "kind": "captura_recebida_nao_autenticada",
+      "publisher_original_authenticated": false,
+      "eligible_for_import": false
+    },
+    {
+      "uf": "AL",
+      "path": "fontes/AL/AL_Decreto_38394_2000.html",
+      "size_bytes": 664051,
+      "sha256": "0c926b903821f64a789997e067ebeaeb4764b23ad04e076db39df6117ff1eb35",
+      "kind": "captura_recebida_nao_autenticada",
+      "publisher_original_authenticated": false,
+      "eligible_for_import": false
+    },
+    {
+      "uf": "AL",
+      "path": "fontes/AL/AL_Lei_5671_1995.html",
+      "size_bytes": 322547,
+      "sha256": "a23b73f43ab5d0f26f1f30c9f6338bfb6fdb57b504951897c11a9bc2b805d0ca",
+      "kind": "captura_recebida_nao_autenticada",
+      "publisher_original_authenticated": false,
+      "eligible_for_import": false
+    },
+    {
+      "uf": "AP",
+      "path": "fontes/AP/AP_RICMS_Decreto_2269_1998_art415.html",
+      "size_bytes": 6111150,
+      "sha256": "f7ba5933f475cc1ac69b0bdc1a0176575535ac1a20d39159855983b583488157",
+      "kind": "captura_recebida_nao_autenticada",
+      "publisher_original_authenticated": false,
+      "eligible_for_import": false
+    },
+    {
+      "uf": "PI",
+      "path": "fontes/PI/PI_RICMS_Decreto_21866_2023_Anexo_IV_art25A.pdf",
+      "size_bytes": 743818,
+      "sha256": "6310248448f1da7ae3eae8dc5cef23736b43c03795afa444eccb002f70dafe07",
+      "kind": "captura_recebida_nao_autenticada",
+      "publisher_original_authenticated": false,
+      "eligible_for_import": false
+    },
+    {
+      "uf": "RJ",
+      "path": "fontes/RJ/RJ_Portaria_SSER_345_2023.html",
+      "size_bytes": 80121,
+      "sha256": "479633989a20c17c3166598f002b0d0f91bcf193eccd66a2ef9f2a3283ca0282",
+      "kind": "captura_recebida_nao_autenticada",
+      "publisher_original_authenticated": false,
+      "eligible_for_import": false
+    },
+    {
+      "uf": "RJ",
+      "path": "fontes/RJ/RJ_Portaria_SSER_350_2024.html",
+      "size_bytes": 62613,
+      "sha256": "6bcc9da4e73bf97c1be6fdab8793287d06eee74dbc8fe6dc078eeedcff913167",
+      "kind": "captura_recebida_nao_autenticada",
+      "publisher_original_authenticated": false,
+      "eligible_for_import": false
+    },
+    {
+      "uf": "RJ",
+      "path": "fontes/RJ/RJ_Portaria_SSER_362_2024.html",
+      "size_bytes": 47385,
+      "sha256": "f00908fb3058cc962b63a16577ac30f83d522ef4a73e5fd1b875500b8b4453f9",
+      "kind": "REJEITADO_CAPTCHA",
+      "publisher_original_authenticated": false,
+      "eligible_for_import": false
+    },
+    {
+      "uf": "RJ",
+      "path": "fontes/RJ/RJ_Portaria_SSER_431_2025.html",
+      "size_bytes": 64558,
+      "sha256": "c6d1b8f2cd2363ea5e8cff385d84d6b2b9a8d66663330bf9e09b9a80f4656578",
+      "kind": "captura_recebida_nao_autenticada",
+      "publisher_original_authenticated": false,
+      "eligible_for_import": false
+    },
+    {
+      "uf": "RN",
+      "path": "fontes/RN/RN_RICMS_Decreto_31825_2022_Anexo003.html",
+      "size_bytes": 3187281,
+      "sha256": "ccba52f489593d764e2b54b1ac3fc85aeae09996a7379cabf88ae927cb3eed9e",
+      "kind": "INCOMPLETO_DECRETO_BASE",
+      "publisher_original_authenticated": false,
+      "eligible_for_import": false
+    },
+    {
+      "uf": "SE",
+      "path": "fontes/SE/SE_Decreto_29935_2014.pdf",
+      "size_bytes": 171106,
+      "sha256": "ca18358fccdfd93259819b1ab1d2fe7347b7084cde54d9660b3c8d0ffc67b3b8",
+      "kind": "captura_recebida_nao_autenticada",
+      "publisher_original_authenticated": false,
+      "eligible_for_import": false
+    },
+    {
+      "uf": "SE",
+      "path": "fontes/SE/SE_Lei_3140_1991.pdf",
+      "size_bytes": 4430286,
+      "sha256": "710660329fbdfac01faa327ef2874ec62f7ddff65eeacd5a0f9f12abda205c5a",
+      "kind": "HISTORICO_SUPERADO",
+      "publisher_original_authenticated": false,
+      "eligible_for_import": false
+    },
+    {
+      "uf": "AC",
+      "path": "fontes/AC/AC_Decreto_11852_2026.html",
+      "size_bytes": 68203,
+      "sha256": "992f1ad67a35bed9c8867cf68c00b43fb4b493f66a34de3b4325b8b93d40ab4c",
+      "kind": "secundaria",
+      "publisher_original_authenticated": false,
+      "eligible_for_import": false
+    },
+    {
+      "uf": "AM",
+      "path": "fontes/AM/AM_Decreto_47727_2023.html",
+      "size_bytes": 254114,
+      "sha256": "86b360bfbda4633a8b94fc04a8c55c0c6ac47a6532c0faf2de2d5f698d9e711e",
+      "kind": "secundaria",
+      "publisher_original_authenticated": false,
+      "eligible_for_import": false
+    },
+    {
+      "uf": "AM",
+      "path": "fontes/AM/AM_noticia_Decreto_54652_2026.html",
+      "size_bytes": 438136,
+      "sha256": "ba54af1714e4d9830fe41c9e514bbdf0ab28a899ca4742c9572796c36bc2bbad",
+      "kind": "noticia",
+      "publisher_original_authenticated": false,
+      "eligible_for_import": false
+    },
+    {
+      "uf": "AP",
+      "path": "fontes/AP/AP_Decreto_2894_2018_TesouroVerde.html",
+      "size_bytes": 27030,
+      "sha256": "49631cf60f8352d6034cfa11f48cd0136d23a859ea8b1f8ad1a2f79fc607db69",
+      "kind": "secundaria",
+      "publisher_original_authenticated": false,
+      "eligible_for_import": false
+    },
+    {
+      "uf": "AP",
+      "path": "fontes/AP/AP_Decreto_3541_2021.html",
+      "size_bytes": 11919,
+      "sha256": "46ae4d592c66405b43cad5db5b84b23da59167d43ce73b4206c824d6639d9366",
+      "kind": "secundaria",
+      "publisher_original_authenticated": false,
+      "eligible_for_import": false
+    },
+    {
+      "uf": "PA",
+      "path": "fontes/PA/PA_resumo_ADI_3779.html",
+      "size_bytes": 55807,
+      "sha256": "5fccbb3355f2612a4d73b8acf06a21fdf83bb8b77b771aee2d22e007cef9353f",
+      "kind": "resumo_anterior_ao_julgamento",
+      "publisher_original_authenticated": false,
+      "eligible_for_import": false
+    },
+    {
+      "uf": "RO",
+      "path": "fontes/RO/RO_Decreto_31961_2026.pdf",
+      "size_bytes": 307810,
+      "sha256": "4b7075db8c3c46f12cafdc8e4d83a50d2025d367741e40c8dd9979737989ca75",
+      "kind": "governamental_fora_escopo",
+      "publisher_original_authenticated": false,
+      "eligible_for_import": false
+    },
+    {
+      "uf": "RR",
+      "path": "fontes/RR/RR_Decreto_6147E_2004.html",
+      "size_bytes": 20873,
+      "sha256": "84aa2e062ab3bc993d25fb388f9f6b5e3627e7a2de73bb741e3df2233e250475",
+      "kind": "secundaria_projeto_distinto",
+      "publisher_original_authenticated": false,
+      "eligible_for_import": false
+    },
+    {
+      "uf": "TO",
+      "path": "fontes/TO/TO_Lei_1385_2003.html",
+      "size_bytes": 77354,
+      "sha256": "693fd480f316b2ad0eab5c2a37aa3214de1f5cb2291a19ddf30d4b7cf7684a1a",
+      "kind": "secundaria",
+      "publisher_original_authenticated": false,
+      "eligible_for_import": false
+    },
+    {
+      "uf": "TO",
+      "path": "fontes/TO/TO_Decreto_1866_2003.html",
+      "size_bytes": 60692,
+      "sha256": "65ba7af71946ea2d5c2e66262c640512355cecf23e351edb4cd8997ee9996042",
+      "kind": "secundaria",
+      "publisher_original_authenticated": false,
+      "eligible_for_import": false
+    },
+    {
+      "uf": "AP",
+      "path": "fontes/AP/Decreto Nº 2269 DE 24_07_1998 - Estadual - Amapá - LegisWeb.html",
+      "size_bytes": 4129854,
+      "sha256": "8caf16a3004c3b62ded1a5b26048ced0546343ab5fb40173361f0e3c95884983",
+      "kind": "secundaria",
+      "publisher_original_authenticated": false,
+      "eligible_for_import": false
+    },
+    {
+      "uf": "RN",
+      "path": "fontes/RN/Decreto Nº 31825 DE 18_08_2022 - Estadual - Rio Grande do Norte - LegisWeb.html",
+      "size_bytes": 555911,
+      "sha256": "9e6195a0e5bbd84933ef51c10972b5dbdbc6f927da40fccd17a5b73e463e5c17",
+      "kind": "secundaria",
+      "publisher_original_authenticated": false,
+      "eligible_for_import": false
+    },
+    {
+      "uf": "SE",
+      "path": "fontes/SE/LEI 3140_1991 23_12_1991.html",
+      "size_bytes": 166024,
+      "sha256": "c757671875ac9abe50d3367a784c36febbfc656146c252e69467382e71d30d04",
+      "kind": "captura_portal_governamental",
+      "publisher_original_authenticated": false,
+      "eligible_for_import": false
+    },
+    {
+      "uf": "RJ",
+      "path": "fontes/RJ/image(20261122-041504).png",
+      "size_bytes": 446994,
+      "sha256": "f89179787b1955d3a315e374804cddc575116cc8fe5429684a0b50104e361916",
+      "kind": "captura_visual_nao_pdf",
+      "publisher_original_authenticated": false,
+      "eligible_for_import": false
+    },
+    {
+      "uf": "RJ",
+      "path": "fontes/RJ/image(20261122-041518).png",
+      "size_bytes": 404159,
+      "sha256": "d4db05a09837baed5770f63f4a23518e93d355b51b53fb8b4443bae4fff31473",
+      "kind": "captura_visual_nao_pdf",
+      "publisher_original_authenticated": false,
+      "eligible_for_import": false
+    },
+    {
+      "uf": "RJ",
+      "path": "fontes/RJ/image(20261122-041536).png",
+      "size_bytes": 389230,
+      "sha256": "377780e9b57555cafa977f472d88eefe56841c540f3424f5bff37fe1f7a8a4f9",
+      "kind": "captura_visual_nao_pdf",
+      "publisher_original_authenticated": false,
+      "eligible_for_import": false
+    },
+    {
+      "uf": "RJ",
+      "path": "fontes/RJ/image(20261122-041552).png",
+      "size_bytes": 386230,
+      "sha256": "eefcc18615d1aab6a60b45aa14519e94bfc1efc6f1e352a5fc3a0bbc956a120c",
+      "kind": "captura_visual_nao_pdf",
+      "publisher_original_authenticated": false,
+      "eligible_for_import": false
+    }
+  ],
+  "warning": "SHA of received file proves local integrity only; original data remains outside Git. Rejected/superseded/incomplete captures are NOT normative authority."
+}

@@ -43,10 +43,30 @@ from kordena_fiscal.persistence.customer_configuration_schema import (
     CUSTOMER_CONFIGURATION_SCHEMA,
     CUSTOMER_CONFIGURATION_VERSION,
 )
+from kordena_fiscal.persistence.economy_schema import (
+    ECONOMY_NAME,
+    ECONOMY_SCHEMA,
+    ECONOMY_VERSION,
+)
 from kordena_fiscal.persistence.fiscal_scope_schema import (
     FISCAL_SCOPE_NAME,
     FISCAL_SCOPE_SCHEMA,
     FISCAL_SCOPE_VERSION,
+)
+from kordena_fiscal.persistence.human_mfa_schema import (
+    HUMAN_MFA_NAME,
+    HUMAN_MFA_SCHEMA,
+    HUMAN_MFA_VERSION,
+)
+from kordena_fiscal.persistence.iron_a1_delegation import (
+    IRON_A1_DELEGATION_NAME,
+    IRON_A1_DELEGATION_SCHEMA,
+    IRON_A1_DELEGATION_VERSION,
+)
+from kordena_fiscal.persistence.nfse_dps_numbering_schema import (
+    NFSE_DPS_NUMBERING_NAME,
+    NFSE_DPS_NUMBERING_SCHEMA,
+    NFSE_DPS_NUMBERING_VERSION,
 )
 from kordena_fiscal.persistence.postgres import (
     _COMMERCIAL_ACQUISITION_SCHEMA,
@@ -120,6 +140,10 @@ def validate_policy() -> tuple[int, ...]:
         COGNITIVE_QUOTA_VERSION,
         BLING_INSTALLATION_VERSION,
         BLING_WORKER_POLICY_VERSION,
+        NFSE_DPS_NUMBERING_VERSION,
+        IRON_A1_DELEGATION_VERSION,
+        HUMAN_MFA_VERSION,
+        ECONOMY_VERSION,
     )
     if versions != tuple(range(1, max(versions) + 1)):
         raise RuntimeError(f"migration versions must be contiguous from 1: {versions!r}")
@@ -205,6 +229,26 @@ def validate_policy() -> tuple[int, ...]:
         name=BLING_WORKER_POLICY_NAME,
         statements=BLING_WORKER_POLICY_SCHEMA,
     )
+    _reject_unapproved_destructive(
+        version=NFSE_DPS_NUMBERING_VERSION,
+        name=NFSE_DPS_NUMBERING_NAME,
+        statements=NFSE_DPS_NUMBERING_SCHEMA,
+    )
+    _reject_unapproved_destructive(
+        version=IRON_A1_DELEGATION_VERSION,
+        name=IRON_A1_DELEGATION_NAME,
+        statements=IRON_A1_DELEGATION_SCHEMA,
+    )
+    _reject_unapproved_destructive(
+        version=HUMAN_MFA_VERSION,
+        name=HUMAN_MFA_NAME,
+        statements=HUMAN_MFA_SCHEMA,
+    )
+    _reject_unapproved_destructive(
+        version=ECONOMY_VERSION,
+        name=ECONOMY_NAME,
+        statements=ECONOMY_SCHEMA,
+    )
     print(
         "migration policy: PASS "
         f"versions={','.join(str(item) for item in versions)} "
@@ -226,13 +270,73 @@ def _require_apply_approval(environment: str) -> None:
 
 
 
+def _mfa_enabled() -> bool:
+    return os.getenv("NFCORE_HUMAN_MFA", "").strip().casefold() == "enabled"
+
+
+def _economy_enabled() -> bool:
+    return os.getenv("NFCORE_ECONOMY_ENABLED") == "true"
+
+
+def _active_versions(versions: tuple[int, ...]) -> tuple[int, ...]:
+    optional = {
+        HUMAN_MFA_VERSION: _mfa_enabled(),
+        ECONOMY_VERSION: _economy_enabled(),
+    }
+    return tuple(v for v in versions if optional.get(v, True))
+
+
+def _check_installed_schema(
+    database: PostgresFiscalDatabase, installed: tuple[int, ...],
+) -> None:
+    # During approved upgrades, validate the installed source rather than
+    # demanding an optional target migration before it has been applied.
+    bling = BLING_WORKER_POLICY_VERSION in installed
+    if _mfa_enabled() or _economy_enabled():
+        database.require_current_schema(
+            require_bling=bling,
+            require_mfa=HUMAN_MFA_VERSION in installed,
+            require_economy=ECONOMY_VERSION in installed,
+        )
+    else:
+        database.require_current_schema(require_bling=bling)
+
+
+def _known_fiscal_schemas() -> tuple[tuple[int, ...], ...]:
+    """Exact migration boundaries; Bling 20/21 is an independent pair."""
+    baseline = tuple(range(1, COGNITIVE_QUOTA_VERSION + 1))
+    bling = tuple(range(1, BLING_WORKER_POLICY_VERSION + 1))
+    dps = (*baseline, NFSE_DPS_NUMBERING_VERSION)
+    dps_bling = (*bling, NFSE_DPS_NUMBERING_VERSION)
+    a1 = (*dps, IRON_A1_DELEGATION_VERSION)
+    a1_bling = (*dps_bling, IRON_A1_DELEGATION_VERSION)
+    known = (baseline, bling, dps, dps_bling, a1, a1_bling)
+    if _economy_enabled():
+        # An existing economy-only installation can later add optional MFA.
+        known = (*known, (*a1, ECONOMY_VERSION), (*a1_bling, ECONOMY_VERSION))
+    if _mfa_enabled():
+        known = (*known, (*a1, HUMAN_MFA_VERSION), (*a1_bling, HUMAN_MFA_VERSION))
+        if _economy_enabled():
+            known = (
+                *known, (*a1, HUMAN_MFA_VERSION, ECONOMY_VERSION),
+                (*a1_bling, HUMAN_MFA_VERSION, ECONOMY_VERSION),
+            )
+    return known
+
+
+def _release_schemas(*, enable_bling: bool) -> tuple[tuple[int, ...], ...]:
+    """v23 release boundary; additive MFA v24 only when NFCORE_HUMAN_MFA=enabled."""
+    current, current_bling = _known_fiscal_schemas()[-2:]
+    return (current_bling,) if enable_bling else (current, current_bling)
+
+
 def plan_staging() -> None:
     """Read-only plan using the canonical migration authorities.
 
     An unknown, out-of-order or newer installed version is NOT safe to upgrade.
     Missing Cakto tracking table is the expected uninitialized Cakto state.
     """
-    expected = validate_policy()
+    expected = _active_versions(validate_policy())
     if os.getenv("NFCORE_ENVIRONMENT") != "staging":
         raise RuntimeError("schema preflight is restricted to staging")
     if os.getenv("RAILWAY_SERVICE_ID", "").strip():
@@ -243,7 +347,8 @@ def plan_staging() -> None:
     database = PostgresFiscalDatabase(dsn)
     try:
         before = database.applied_migrations()
-        if before != expected[:len(before)]:
+        valid_sequences = _known_fiscal_schemas()
+        if not any(before == variant[:len(before)] for variant in valid_sequences):
             raise RuntimeError("schema preflight blocked: unexpected fiscal migration sequence")
         with database.connection() as connection:
             available = connection.execute(
@@ -265,7 +370,7 @@ def plan_staging() -> None:
         database.close()
     print(
         "schema preflight: PASS READ_ONLY "
-        f"fiscal_installed={before} fiscal_pending={expected[len(before):]} "
+        f"fiscal_installed={before} fiscal_pending={tuple(v for v in expected if v not in before)} "
         f"cakto_installed={cakto} cakto_pending={expected_cakto[len(cakto):]}"
     )
 
@@ -288,11 +393,10 @@ def _assert_cakto_current(database: PostgresFiscalDatabase) -> None:
 
 
 def plan_production_bling() -> None:
-    """Report a safe 19 -> 21 plan; NEVER apply Bling migrations or enable it.
+    """Read-only plan for Bling, DPS v22 and delegated A1 v23.
 
-    The production baseline may have 19 or 21 full migrations. A partial
-    migration 20, gaps, unknown versions, missing tables, or Cakto drift
-    fail closed before a human considers a separately authorized apply.
+    The Bling 20/21 pair remains optional; v23 follows v22. Partial Bling,
+    gaps, drift, missing tables and Cakto mismatch fail closed before DDL.
     """
     expected = validate_policy()
     if os.getenv("NFCORE_ENVIRONMENT") != "production":
@@ -302,19 +406,19 @@ def plan_production_bling() -> None:
     dsn = os.getenv("DATABASE_URL", "").strip()
     if not dsn:
         raise RuntimeError("Bling production plan requires DATABASE_URL")
-    baseline = tuple(range(1, COGNITIVE_QUOTA_VERSION + 1))
-    if expected != tuple(range(1, BLING_WORKER_POLICY_VERSION + 1)):
+    expected = _active_versions(expected)
+    if expected != _active_versions(tuple(range(1, ECONOMY_VERSION + 1))):
         raise RuntimeError("Bling production migration policy changed unexpectedly")
     database = PostgresFiscalDatabase(dsn)
     try:
         installed = database.applied_migrations()
-        if installed not in (baseline, expected):
+        if installed not in _known_fiscal_schemas():
             raise RuntimeError("Bling production migration plan blocked: drift or partial schema")
-        database.require_current_schema(require_bling=installed == expected)
+        _check_installed_schema(database, installed)
         _assert_cakto_current(database)
     finally:
         database.close()
-    pending = expected[len(installed):]
+    pending = tuple(version for version in expected if version not in installed)
     print(
         "Bling production migration plan: PASS READ_ONLY "
         f"installed={','.join(map(str, installed))} "
@@ -329,7 +433,7 @@ def assert_current_production() -> None:
     This command never runs migrations. Pending or drifted schemas require
     separately approved migration workflow before any deploy.
     """
-    expected = validate_policy()
+    validate_policy()
     if os.getenv("NFCORE_ENVIRONMENT") != "production":
         raise RuntimeError("production schema assertion requires production environment")
     if os.getenv("RAILWAY_SERVICE_ID", "").strip():
@@ -340,22 +444,23 @@ def assert_current_production() -> None:
     database = PostgresFiscalDatabase(dsn)
     try:
         before = database.applied_migrations()
-        # Accept the certified legacy schema, or a FULL optional Bling schema.
-        # Reuse the policy result: the same gate can test historical certified
-        # versions without changing or weakening the deployment guard.
-        baseline = expected[:min(len(expected), COGNITIVE_QUOTA_VERSION)]
-        bling_ready = (
-            expected if len(expected) == BLING_WORKER_POLICY_VERSION else ()
-        )
+        # The deployed NFCore now contains native DPS issuance. The previous
+        # legacy 1..19 / Bling 1..21 allowances could report a false PASS
+        # without the durable DPS v22 tables; production would then accept
+        # code that cannot reserve a canonical NFS-e series.
+        # This check is read-only: migrations must be approved separately.
         enable_bling = os.getenv("NFCORE_BLING_INSTALLATIONS_ENABLED") == "true"
-        if (enable_bling and before != bling_ready) or (
-            not enable_bling and before not in (baseline, bling_ready)
-        ):
-            raise RuntimeError("production schema has pending/drifted fiscal migrations")
-        # The original code-only gate remains read-only and compatible with
-        # legacy DB probes. Stronger catalog checks apply when opt-in enabled.
-        if enable_bling:
-            database.require_current_schema(require_bling=True)
+        ready = _release_schemas(enable_bling=enable_bling)
+        if before not in ready:
+            raise RuntimeError(
+                "production schema has pending/drifted fiscal migrations; "
+                "DPS v22 required; A1 delegation v23 required for this release"
+            )
+        # Verify the installed catalogs, including optional Bling when
+        # present. The adapter performs only SELECT catalog queries.
+        database.require_current_schema(
+            require_bling=BLING_WORKER_POLICY_VERSION in before
+        )
         _assert_cakto_current(database)
     finally:
         database.close()
@@ -382,20 +487,30 @@ def apply() -> None:
     try:
         before = database.applied_migrations()
         enable_bling = os.getenv("NFCORE_BLING_INSTALLATIONS_ENABLED") == "true"
-        if environment == "production" and enable_bling:
-            # Production Bling is a *controlled 19->21 migration only*.
-            # Never allow a gap, a partial 20, Cakto drift or an unknown DB
-            # to be silently repaired by the generalized initialize() path.
-            baseline = tuple(range(1, COGNITIVE_QUOTA_VERSION + 1))
-            full = tuple(range(1, BLING_WORKER_POLICY_VERSION + 1))
-            if before not in (baseline, full):
+        if environment == "production":
+            # Production is never a fresh-install/repair target, regardless of
+            # the optional Bling flag. Check the exact source before DDL.
+            if before not in _known_fiscal_schemas():
                 raise RuntimeError(
-                    "Bling production migration blocked: partial or drifted schema"
+                    "production migration blocked: partial or drifted schema"
                 )
-            database.require_current_schema(require_bling=before == full)
+            _check_installed_schema(database, before)
             _assert_cakto_current(database)
-        applied = database.initialize(enable_bling=enable_bling)
-        after = database.require_current_schema(require_bling=enable_bling)
+        if _economy_enabled():
+            runtime_role = os.getenv("NFCORE_ECONOMY_RUNTIME_ROLE", "").strip()
+            if not runtime_role:
+                raise RuntimeError("economy migration requires a restricted runtime role")
+            applied = database.initialize(
+                enable_bling=enable_bling, enable_mfa=_mfa_enabled(),
+                enable_economy=True, economy_runtime_role=runtime_role,
+            )
+        else:
+            applied = database.initialize(enable_bling=enable_bling, enable_mfa=_mfa_enabled())
+        after = database.require_current_schema(
+            require_bling=enable_bling or BLING_WORKER_POLICY_VERSION in before
+        )
+        if after not in _release_schemas(enable_bling=enable_bling):
+            raise RuntimeError("schema migration did not reach the exact v22/v23 release boundary")
         cakto = postgres_cakto_commercial_database(database)
         cakto_changed = cakto.initialize()
         cakto_versions = cakto.require_current_schema()

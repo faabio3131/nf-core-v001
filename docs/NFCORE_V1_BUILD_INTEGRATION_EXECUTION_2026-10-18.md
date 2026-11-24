@@ -1,5 +1,16 @@
 # FM NFCORE V1 — Anexo executivo de construção e integração Web (BUILD-ONLY)
 
+> **Entrega incremental 19/11/2026 — REC-03:** verificação OCSP offline complementar à LCR, CertID exato, resposta GOOD válida, assinatura da AC emissora ou responder delegado com EKU e revogação verificadas, mount existente opt-in. Nenhum endpoint externo ativado; materiais oficiais/identidade, LTV e certificação permanecem abertos. Código/testes no mesmo commit sobre `8cc67ababe091db76cf85b04d9636995aebf0f62`, sem execução de testes, nova CI, PR ou deploy. Fonte: RFC 6960. Dossiê `docs/operations/NFCORE_NATIONAL_RECEIPT_TRUST_SIGNER_PINS.md`.
+
+> **Entrega incremental 19/11/2026 — REC-03:** verificação criptográfica do DPS antes de POST, vínculo com fingerprint do A1 do Vault e verificação do arquivo histórico usando seu instante de observação somente para a assinatura DPS. Signatário oficial da NFS-e continua sujeito à confiança atual; não equivale a LTV/OCSP. Mudança e testes no mesmo commit desta nota sobre `22a0c7da9d2f8b334d61ed606882cbbd64e764a1`, testes não executados. Sem nova CI, PR, promoção ou deploy. Dossiê: `docs/operations/NFCORE_NATIONAL_DPS_DISPATCH_EVIDENCE.md`.
+
+> **Entrega incremental 19/11/2026 — REC-04:** contrato de deduções ampliado às espécies NFSeMun, NFNFS, nDocFisc e nDoc do XSD de fevereiro e docFiscalOutro/docOutro do NT009, com identificação de fornecedor, escolha por perfil, fingerprint/archive e reserva por identidade e hash contra alias na mesma unidade/emitente. Código e testes no mesmo commit desta nota, sobre `04305538178a097fdccd56273201c5257b39aea8`; testes não executados por ordem de construção. Política revisada e legitimidade dos comprovantes originais continuam obrigatórias; não promover REC-04/SP22/MG20 ou homologação a DONE. Detalhes em `docs/operations/NFCORE_REVIEWED_DOCUMENTARY_DEDUCTIONS.md`. Próxima dependência: integridade criptográfica e legado, lacunas municipais e gates de aceitação. Sem nova CI, PR, deploy ou expansão.
+
+> **CURRENT complementar — 19/11/2026:** branch `work/nfcore-closeout-20261119`, HEAD de engenharia `2224b3d0d6fca49029afa4fd41b194f65ac6562a`. As dez entregas registradas por commit em [cronograma executivo REC](audit/NFCORE_RECONCILIATION_CLOSEOUT_SCHEDULE_2026-11-17.md), [pendências CURRENT](audit/NFCORE_PENDING_REGISTER_CURRENT_2026-11-17.md) e [ledger de PRs](audit/NFCORE_PR_RECONCILIATION_LEDGER_CURRENT.md) reconciliam os avanços fiscais/municipais/Web/IRON desde 17/11. Incluem deduções documentais, reserva durável de comprovantes, DPS histórico, correção GISS, PKI e composição de release. Seis PRs Draft; zero runs na branch consolidada. Sem novo teste executado, EGM, promoção main/production, deploy ou aceite fiscal. Preservados os 59 IDs e seus checkboxes, critérios, ordem e independência dos gates BUILD/produção. As notas anteriores são históricas; não reutilizar CI de outro SHA. Não considerar SP22/MG20 completos.
+
+---
+
+
 **Status:** APROVADO PARA EXECUÇÃO INTERNA pelo proprietário em 18/10/2026.  
 **Vínculo obrigatório:** `docs/NFCORE_V1_COMPLETION_MASTER_EXECUTION_SCHEDULE_2026-10-05.md` + `docs/NFCORE_V1_EXECUTION_LEDGER.md`.  
 **Controle próprio de evidência:** `docs/NFCORE_V1_BUILD_INTEGRATION_LEDGER.md`.  
@@ -122,3 +133,15 @@ Cada `NFV1-BLD-xx` corresponde a um **bloco verificável de construção**. Se a
 ## 7. Resultado esperado
 
 `CONSTRUCTION_AND_WEB_INTEGRATION_COMPLETE` é marco **interno de construção funcional demonstrada**. Não significa `PRODUCTION_APPROVED`, `COMMERCIAL_LIVE` ou homologação fiscal. O cronograma mestre de 59 tarefas permanece em execução, com seus gates externos preservados e sem exigir repetição de etapas já comprovadas.
+
+> **2026-11-19 — REC-04 — incremento de evidência documental (base `d38c872dba2c`).** Nesta entrega: bytes originais previamente revisados, em diretório de política por escopo `<sale_policy_key>.evidence/<sha256>.bin`, máximo 2 MiB por arquivo/16 MiB por decisão, verificação do SHA-256 na resolução/instalação, retenção no arquivo fiscal canônico na mesma UoW da reserva e revalidação na recuperação. Sem segunda persistência ou aceitação de upload do navegador como autoridade. Requer provisionamento autorizado dos documentos e revisão fiscal; não equivale à comprovação de autenticidade/aceitação externa. Testes escritos, não executados; sem CI, merge ou deploy; REC-04 segue aberto até certificação normativa e operacional.
+
+
+## CURRENT reconciliado em 19/11/2026 — 59 IDs + SP-22/MG-20 + Cajamar
+
+[Reconciliação individual do código CURRENT](audit/NFCORE_CURRENT_RECONCILIATION_59_TASKS_42_MUNICIPALITIES_2026-11-19.md), auditoria commit `f97ba0aacc5d11b6af7cf786f99b3184e80a7d39`, SHA de engenharia auditado `79bee7c64e3b2e984fb9517d190d2ca6b128a573`. Preservados IDs/ordem e provas históricas. As dimensões de engenharia, certificação, operação e dependências externas são independentes. Não reimplementar por checklist antigo. Cajamar é célula adicional; corrigidas jurisdição do candidato de substituição e montagem Contabo, permanecem GAP-CAJ-01/02/03. Inventário inicial individualizado, não auditoria exaustiva das operações. Nenhuma CI, merge ou deploy nesta rodada.
+
+
+## CURRENT 19/11/2026 — delta de Cajamar após reconciliação 59/43
+
+**SHA de engenharia:** `0cdd034a293696e376aafd70923a42bfe7dced0f`, ver `docs/operations/CAJAMAR_GEISWEB_RUNTIME_PROVISIONING.md`. Preservadas emissão/consulta de lote/cancelamento/XML e autoridade canônica. GAP-CAJ-01 avançou: intent durável, códigos incertos fail-closed e ConsultaNfse por nota original conectada a Portal/arquivo (`5430c180`, `c3c80feb`, `b129fe6e`, `b52ab1eb`). Sem status oficial inequívoco no manual público, confirmação final de cancelamento incerto depende de contrato/prova autenticada adicional; consulta não muda lifecycle. GAP-CAJ-02: revisão humana agora arquivada, sem simular substituição; integração da confirmação municipal exige formato/contrato comprovado. GAP-CAJ-03: indisponibilidade de impressão oficial em homologação documentada e refletida no Portal; PDF municipal não fabricado (`0cdd034a`). Testes novos escritos, ainda não executados. **IMPLEMENTED_NOT_CERTIFIED** no escopo entregue; não declarar Cajamar nem NFCore completo. Sem CI, merge ou deploy. Não reabrir construção existente sem evidência de regressão.

@@ -1,0 +1,41 @@
+name: T09 Public Legal Source Evidence
+on:
+  workflow_dispatch:
+  pull_request:
+    branches:
+      - work/nfcore-closeout-20261119
+    paths:
+      - "docs/NFCORE_T09_STATE_BENEFIT_DRAFT_CANDIDATES_V1.json"
+      - "scripts/nfcore_t09_capture_public_evidence.py"
+      - "tests/application/test_t09_public_source_capture.py"
+      - ".github/workflows/nfcore-t09-public-sources.yml"
+permissions:
+  contents: read
+jobs:
+  capture-public-sources:
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Checkout exact candidate
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Collect public normative source bytes as unreviewed evidence
+        shell: bash
+        run: |
+          python scripts/nfcore_t09_capture_public_evidence.py \
+            --catalog docs/NFCORE_T09_STATE_BENEFIT_DRAFT_CANDIDATES_V1.json \
+            --output t09-public-source-evidence --timeout 18 --workers 5
+      - name: Upload raw sources and SHA256 provenance without legal approval
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: t09-public-sources-unreviewed
+          path: |
+            t09-public-source-evidence/capture_manifest.json
+            t09-public-source-evidence/nfcore_t09_official_source_evidence.zip
+          if-no-files-found: error
+          retention-days: 30

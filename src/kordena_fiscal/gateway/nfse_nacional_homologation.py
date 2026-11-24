@@ -6,9 +6,11 @@ preparation authority. Never builds a DPS from untrusted browser JSON.
 from __future__ import annotations
 
 import json
+import os
 import ssl
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from datetime import UTC, datetime
+from typing import Any
 from urllib.error import HTTPError, URLError
 from urllib.request import HTTPSHandler, Request, build_opener
 
@@ -16,6 +18,7 @@ from kordena_fiscal.domain import (
     Cnpj,
     ExecutionScope,
     FiscalEnvironment,
+    FiscalPreDispatchError,
     FiscalValidationError,
 )
 from kordena_fiscal.gateway.authorization import (
@@ -24,17 +27,38 @@ from kordena_fiscal.gateway.authorization import (
 )
 from kordena_fiscal.gateway.fiscal_tls import RejectFiscalRedirects, build_fiscal_tls_context
 from kordena_fiscal.gateway.mg_nfse_channel_guard import require_mg_national_channel_eligibility
-from kordena_fiscal.gateway.nfse_national_homologation import (
+from kordena_fiscal.gateway.nfse_national_environment import (
     SEFIN_HOMOLOGATION_NFSE_URL,
+    NationalEnvironmentProfile,
+    resolve_national_environment,
+)
+from kordena_fiscal.gateway.nfse_national_homologation import (
     build_nfse_dps_request,
+    parse_national_nfse_rejections,
     parse_nfse_homologation_response,
+    parse_signed_dps_info,
+)
+from kordena_fiscal.gateway.nfse_national_receipt import (
+    NationalReceiptIdentity,
+    require_national_receipt_signer_pins,
+    verify_outgoing_national_dps,
+)
+from kordena_fiscal.gateway.production_activation import (
+    ProductionActivationKey,
+    ProductionExecutionAuthority,
 )
 from kordena_fiscal.issuance.nfe_nfse import (
     NfseAuthorizationRequest,
     NfseAuthorizationResult,
+    NfseRejectionDetail,
 )
+from kordena_fiscal.issuance.nfse_dps_builder import validate_sefin_dps_input
 from kordena_fiscal.vault import EphemeralCertificateMaterial
 from kordena_fiscal.vault.a1_preflight import validate_a1_for_issuer
+from kordena_fiscal.xml.nfse_national_profiles import (
+    PRODUCTION_PROFILE,
+    select_national_dps_profile,
+)
 
 NACIONAL_HOMOLOGATION_NFSE_URL = SEFIN_HOMOLOGATION_NFSE_URL
 _MAX_RESPONSE = 2_097_152
@@ -46,23 +70,32 @@ class OfficialNfseTransportError(FiscalValidationError):
     """Transport failure with secrets and upstream response stripped."""
 
 
+class NfsePreDispatchError(OfficialNfseTransportError, FiscalPreDispatchError):
+    """Refusal certain to have happened before any request reached SEFIN."""
+
+
 def encode_signed_dps(
     signed_dps: bytes, *, issuer_cnpj: str | None = None,
     issuer_municipality_ibge: str | None = None,
+    schema_profile: str = PRODUCTION_PROFILE, tp_amb: str = "2",
 ) -> bytes:
     """Strict DPS envelope for national NFS-e POST /nfse."""
     try:
         return build_nfse_dps_request(
             signed_dps, issuer_cnpj=issuer_cnpj,
             issuer_municipality_ibge=issuer_municipality_ibge,
+            schema_profile=schema_profile, tp_amb=tp_amb,
         )
     except FiscalValidationError as exc:
         raise OfficialNfseTransportError(str(exc)) from None
 
 
-def _exchange_http(payload: bytes, context: ssl.SSLContext, timeout: float) -> bytes:
+def _exchange_http(
+    payload: bytes, context: ssl.SSLContext, timeout: float,
+    url: str = NACIONAL_HOMOLOGATION_NFSE_URL,
+) -> bytes:
     req = Request(
-        NACIONAL_HOMOLOGATION_NFSE_URL, data=payload, method="POST",
+        url, data=payload, method="POST",
         headers={"Content-Type": "application/json", "Accept": "application/json"},
     )
     try:
@@ -72,10 +105,36 @@ def _exchange_http(payload: bytes, context: ssl.SSLContext, timeout: float) -> b
         if len(data) > _MAX_RESPONSE:
             raise OfficialNfseTransportError("Resposta nacional excede limite")
         return bytes(data)
-    except (HTTPError, URLError, TimeoutError, OSError, ssl.SSLError):
+    except HTTPError as exc:
+        # A 4xx carrying the official rejection list is a definitive answer,
+        # not an outage: surface it so the gateway records REJECTED instead
+        # of leaving the document in TRANSMITTING forever. Anything else
+        # (5xx, 4xx without a structured rejection body) stays uncertain.
+        if 400 <= exc.code < 500:
+            try:
+                body = exc.read(_MAX_RESPONSE + 1)
+                if len(body) <= _MAX_RESPONSE:
+                    parsed = json.loads(body)
+                    if (
+                        isinstance(parsed, dict)
+                        and "chaveAcesso" not in parsed
+                        and isinstance(parsed.get("erros"), list)
+                        and parsed["erros"]
+                    ):
+                        return bytes(body)
+            except (ValueError, UnicodeDecodeError, RecursionError, OSError):
+                pass
         raise OfficialNfseTransportError(
             "Comunicação com SEFIN Nacional indisponível; consulte antes de retransmitir"
         ) from None
+    except (URLError, TimeoutError, OSError, ssl.SSLError):
+        raise OfficialNfseTransportError(
+            "Comunicação com SEFIN Nacional indisponível; consulte antes de retransmitir"
+        ) from None
+
+
+# Stable reference: monkeypatched/injected test transports are not the live network.
+_LIVE_EXCHANGE = _exchange_http
 
 
 class NfseNacionalHomologationGateway:
@@ -88,6 +147,9 @@ class NfseNacionalHomologationGateway:
         build_signed_dps: Callable[[NfseAuthorizationRequest, EphemeralCertificateMaterial], bytes],
         exchange: Callable[[bytes, ssl.SSLContext, float], bytes] | None = None,
         timeout_seconds: float = 15,
+        record_dispatch: Callable[[NfseAuthorizationRequest, str, bytes], None] | None = None,
+        production_authority: ProductionExecutionAuthority | None = None,
+        environ: Mapping[str, str] | None = None,
     ) -> None:
         if not callable(resolve_certificate) or not callable(build_signed_dps):
             raise ValueError("NFS-e requires trusted certificate and DPS preparation ports")
@@ -97,86 +159,245 @@ class NfseNacionalHomologationGateway:
         self._build_signed_dps = build_signed_dps
         self._exchange = exchange or _exchange_http
         self._timeout = timeout_seconds
+        self._record_dispatch = record_dispatch
+        self._production_authority = production_authority
+        self._environ = environ
 
-    def authorize(self, request: NfseAuthorizationRequest) -> NfseAuthorizationResult:
+    def _environment_profile(self, document: Any) -> NationalEnvironmentProfile:
+        """Environment parameters; production also needs an exact human grant."""
+        try:
+            profile = resolve_national_environment(
+                document.scope.environment, env=self._environ,
+            )
+        except FiscalValidationError as exc:
+            raise NfsePreDispatchError(str(exc)) from None
+        if profile.environment is FiscalEnvironment.PRODUCTION:
+            self._require_production_grant(document)
+        return profile
+
+    def _require_production_grant(self, document: Any) -> None:
+        if self._production_authority is None:
+            raise NfsePreDispatchError(
+                "NFS-e production requires an injected human production grant"
+            )
+        from kordena_fiscal.domain import FiscalDocumentKind
+        from kordena_fiscal.gateway.production_activation import (
+            FiscalProductionActivationError,
+        )
+        from kordena_fiscal.gateway.provider import ProviderOperation
+
+        try:
+            self._production_authority.require_key(ProductionActivationKey(
+                tenant_id=document.scope.tenant_id,
+                unit_id=document.scope.unit_id,
+                provider_id=NACIONAL_HOMOLOGATION_PROVIDER_ID,
+                document_kind=FiscalDocumentKind.NFSE,
+                jurisdiction=document.issuer.address.jurisdiction,
+                operation=ProviderOperation.AUTHORIZE,
+            ))
+        except FiscalProductionActivationError:
+            raise NfsePreDispatchError(
+                "NFS-e production grant is not active for this exact tenant/unit/municipality"
+            ) from None
+
+    def validate_pre_dispatch(self, request: NfseAuthorizationRequest) -> None:
+        """Validate real SEFIN trust/policy before HTTP intent or A1 access."""
         if not isinstance(request, NfseAuthorizationRequest):
             raise OfficialNfseTransportError("Solicitação NFS-e inválida")
+        self._environment_profile(request.document)
+        validate_sefin_dps_input(request.document)
+        if self._exchange is _LIVE_EXCHANGE:
+            pins = require_national_receipt_signer_pins()
+            from kordena_fiscal.gateway.nfse_receipt_pki import (
+                INVOICE_SIGNER_BUNDLE,
+                require_national_signer_pki_ready,
+            )
+            require_national_signer_pki_ready(pins, bundle_env=INVOICE_SIGNER_BUNDLE)
+            from kordena_fiscal.runtime.native_nfse_policy import (
+                require_current_national_treatment_for_live_dispatch,
+            )
+            require_current_national_treatment_for_live_dispatch(
+                os.environ, request.document,
+            )
+
+    def _prepare_dispatch(
+        self, request: NfseAuthorizationRequest,
+    ) -> tuple[
+        Any, bytes, ssl.SSLContext, NationalReceiptIdentity, str,
+        NationalEnvironmentProfile,
+    ]:
+        """Everything that must succeed BEFORE the first byte is sent."""
         document = request.document
-        if document.scope.environment is not FiscalEnvironment.HOMOLOGATION:
-            raise OfficialNfseTransportError("NFS-e disponível apenas com tpAmb=2")
+        environment_profile = self._environment_profile(document)
         issuer_cnpj = document.issuer.cnpj.value
         issuer_municipality = document.issuer.address.jurisdiction.municipality_ibge_code
         if issuer_municipality is None:
             raise OfficialNfseTransportError("DPS requires an issuer municipality")
+        if document.dps_number is None:
+            raise OfficialNfseTransportError(
+                "DPS fiscal number not durably reserved; SEFIN dispatch denied"
+            )
         try:
             require_mg_national_channel_eligibility(
                 jurisdiction=document.issuer.address.jurisdiction,
                 tax_regime=document.issuer.tax_regime,
                 competence_date=document.competence_date,
+                national_taxation_code=(
+                    document.services[0].national_taxation_code
+                    if len(document.services) == 1 else None
+                ),
             )
         except FiscalValidationError:
-            # Never open the A1 vault or contact SEFIN for a wrong issuer.
-            municipality_label = (
-                "Contagem/MG" if issuer_municipality == "3118601"
-                else f"IBGE {issuer_municipality}/MG"
+            issuer_state = document.issuer.address.jurisdiction.state_code
+            city_label = (
+                "Contagem/MG"
+                if issuer_state == "MG" and issuer_municipality == "3118601"
+                else f"IBGE {issuer_municipality}/{issuer_state}"
             )
             raise OfficialNfseTransportError(
-                f"{municipality_label}: contrato do Emissor Nacional nao autorizado "
-                "para regime e competencia informados"
+                f"{city_label}: Emissor Nacional indisponível para regime/competência"
+            ) from None
+        # Existing Guarulhos channel authority is also a dispatch gate.
+        # Portal checks it at preparation, but callers of this gateway may be
+        # internal integrations; a configured national binding alone cannot
+        # override the municipality's regime/competence split.
+        # Local import avoids a cycle: SP routing already imports this module.
+        from kordena_fiscal.gateway.municipal_sp_routing import (
+            require_guarulhos_nfse_channel,
+        )
+        try:
+            require_guarulhos_nfse_channel(
+                issuer_jurisdiction=document.issuer.address.jurisdiction,
+                tax_regime=document.issuer.tax_regime,
+                competence_date=document.competence_date,
+                provider_id=NACIONAL_HOMOLOGATION_PROVIDER_ID,
+            )
+        except FiscalValidationError:
+            raise OfficialNfseTransportError(
+                "Guarulhos: national provider is incompatible with regime/competence"
             ) from None
         material = self._resolve_certificate(document.scope, issuer_cnpj)
-        validate_a1_for_issuer(
+        a1 = validate_a1_for_issuer(
             material.pkcs12_bytes, material.password, issuer_cnpj=Cnpj(issuer_cnpj),
             at=datetime.now(UTC),
         )
         signed_dps = self._build_signed_dps(request, material)
+        profile = select_national_dps_profile(
+            environment=document.scope.environment, schema_version="1.01",
+            effective_on=datetime.now(UTC).date(),
+        )
         payload = encode_signed_dps(
             signed_dps, issuer_cnpj=issuer_cnpj, issuer_municipality_ibge=issuer_municipality,
+            schema_profile=profile, tp_amb=environment_profile.tp_amb_text,
         )
-        response = self._exchange(payload, build_fiscal_tls_context(material), self._timeout)
+        expected = NationalReceiptIdentity.from_request(request, schema_profile=profile)
+        dps_info = parse_signed_dps_info(signed_dps, tp_amb=environment_profile.tp_amb_text)
+        if NationalReceiptIdentity.from_dps_info(dps_info) != expected:
+            raise OfficialNfseTransportError("Outgoing DPS differs from canonical request")
+        # A policy might rotate after preflight while the A1 was resolved and
+        # the DPS signed. Recheck immediately before external HTTP (TOCTOU).
+        if self._exchange is _LIVE_EXCHANGE:
+            from kordena_fiscal.runtime.native_nfse_policy import (
+                require_current_national_treatment_for_live_dispatch,
+            )
+            require_current_national_treatment_for_live_dispatch(
+                os.environ, document,
+            )
+        verify_outgoing_national_dps(
+            signed_dps, expected_signer_sha256=a1.certificate_fingerprint_sha256,
+            tp_amb=environment_profile.tp_amb_text,
+        )
+        # Durable dispatch evidence is written BEFORE the first byte is sent;
+        # a failure here is still a certain pre-dispatch refusal.
+        if self._record_dispatch is not None:
+            self._record_dispatch(request, profile, signed_dps)
+        elif self._exchange is _LIVE_EXCHANGE:
+            raise NfsePreDispatchError("National dispatch evidence archive is required")
+        return (
+            document, payload, build_fiscal_tls_context(material), expected, profile,
+            environment_profile,
+        )
+
+    def authorize(self, request: NfseAuthorizationRequest) -> NfseAuthorizationResult:
+        if not isinstance(request, NfseAuthorizationRequest):
+            raise NfsePreDispatchError("Solicitação NFS-e inválida")
+        # Trust/policy readiness keeps its own, more specific error types and
+        # already runs before the durable claim; do not re-wrap it here.
+        self.validate_pre_dispatch(request)
+        try:
+            (
+                document, payload, context, expected, profile, environment_profile,
+            ) = self._prepare_dispatch(request)
+        except NfsePreDispatchError:
+            raise
+        except FiscalValidationError as exc:
+            # Safe, secret-free message by construction of this module.
+            raise NfsePreDispatchError(str(exc)) from None
+        except Exception as exc:  # A1/vault/IO failure: still before any send.
+            raise NfsePreDispatchError(
+                f"NFS-e pre-dispatch dependency failed ({type(exc).__name__})"
+            ) from None
+        if self._exchange is _LIVE_EXCHANGE:
+            response = _exchange_http(
+                payload, context, self._timeout, environment_profile.nfse_url,
+            )
+        else:
+            response = self._exchange(payload, context, self._timeout)
         if not isinstance(response, bytes) or len(response) > _MAX_RESPONSE:
             raise OfficialNfseTransportError("Resposta SEFIN inválida")
         try:
             result = json.loads(response)
-            if not isinstance(result, dict) or result.get("tipoAmbiente") != 2:
+            if not isinstance(result, dict):
+                raise ValueError
+            environment_code = result.get("tipoAmbiente")
+            if environment_code is None:
+                # Only an official rejection list may omit the environment;
+                # an authorization must always declare it.
+                if "chaveAcesso" in result or not isinstance(result.get("erros"), list):
+                    raise ValueError
+            elif environment_code != environment_profile.tp_amb:
                 raise ValueError
         except (ValueError, UnicodeDecodeError):
             raise OfficialNfseTransportError("Resposta SEFIN sem homologação válida") from None
 
         key = result.get("chaveAcesso")
+        invoice_reference: str | None = None
+        authorized_xml: bytes | None = None
+        rejection_code: str | None = None
+        rejection_message: str | None = None
+        rejections: tuple[NfseRejectionDetail, ...] = ()
         if isinstance(key, str) and key:
-            # The access key alone is not proof of an authorized invoice.
-            # The SEFIN must provide the corresponding decompressible XML.
-            # The shared parser bounds gzip size and validates its XML.
-            parsed = parse_nfse_homologation_response(response)
+            # The National access key alone is NOT proof. Require the exact
+            # official XML, bounded and bound to infNFSe/@Id in the parser.
+            parsed = parse_nfse_homologation_response(
+                response, expected=expected,
+                schema_profile=profile,
+            )
             if parsed.get("chaveAcesso") != key:
-                raise OfficialNfseTransportError("NFS-e autorizada com chave divergente")
+                raise OfficialNfseTransportError("NFS-e access key mismatch")
             status = AuthorizationStatus.AUTHORIZED
-            kwargs = {"invoice_reference": key[:512]}
+            invoice_reference = key
+            authorized_xml = parsed["xml"].encode("utf-8")
         else:
-            errors = result.get("erros")
-            if isinstance(errors, list) and errors:
-                first = errors[0] if isinstance(errors[0], dict) else {}
+            rejections = parse_national_nfse_rejections(result)
+            if rejections:
                 status = AuthorizationStatus.REJECTED
-                kwargs = {
-                    "rejection_code": str(
-                        first.get("Codigo", first.get("codigo", "NFSE_REJECTED"))
-                    )[:512],
-                    "rejection_message": str(
-                        first.get("Descricao", first.get("descricao", "DPS rejeitada"))
-                    )[:512],
-                }
+                rejection_code = rejections[0].code
+                # Preserve provider evidence without silent 512-character
+                # truncation. The raw details go to the tenant-scoped archive.
+                rejection_message = rejections[0].raw_message.strip()
             else:
                 status = AuthorizationStatus.PENDING
-                kwargs = {}
         return NfseAuthorizationResult(
             status=status, scope=document.scope, document_id=document.document_id,
             idempotency_key=request.idempotency_key,
             request_fingerprint=request.request_fingerprint,
-            provider=_PROVIDER,
-            provider_request_id=str(result["idDps"])[:512]
+            provider=GatewayProviderMetadata(environment_profile.provider_label, "1.0"),
+            provider_request_id=result["idDps"][:512]
             if isinstance(result.get("idDps"), str) else None,
-            invoice_reference=kwargs.get("invoice_reference"),
-            rejection_code=kwargs.get("rejection_code"),
-            rejection_message=kwargs.get("rejection_message"),
+            invoice_reference=invoice_reference,
+            authorized_xml=authorized_xml,
+            rejection_code=rejection_code,
+            rejection_message=rejection_message,
+            rejections=rejections,
         )

@@ -337,6 +337,7 @@ def test_authorized_nfce_composes_all_previous_boundaries_once() -> None:
         document.scope,
         model=ElectronicInvoiceModel.NFCE,
         series=3,
+        issuer_cnpj=document.issuer.cnpj.value,
     ) == 1
 
 
@@ -375,6 +376,7 @@ def test_pending_nfce_is_not_retransmitted_by_plain_retry() -> None:
         command.document.scope,
         model=ElectronicInvoiceModel.NFCE,
         series=3,
+        issuer_cnpj=command.document.issuer.cnpj.value,
     ) == 1
 
 
@@ -394,6 +396,7 @@ def test_authorized_retry_is_replay_without_new_number_or_gateway_call() -> None
         command.document.scope,
         model=ElectronicInvoiceModel.NFCE,
         series=3,
+        issuer_cnpj=command.document.issuer.cnpj.value,
     ) == 1
 
 
@@ -415,6 +418,7 @@ def test_changed_content_after_safe_rejection_opens_new_generation_and_number() 
         first_document.scope,
         model=ElectronicInvoiceModel.NFCE,
         series=3,
+        issuer_cnpj=first_document.issuer.cnpj.value,
     ) == 2
 
 

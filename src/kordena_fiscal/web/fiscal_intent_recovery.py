@@ -27,6 +27,25 @@ PERMISSIONS = {
     "issueFiscalDocument": PortalPermission.DOCUMENT_ISSUE,
     "cancelFiscalDocument": PortalPermission.DOCUMENT_CANCEL,
     "cancelExtremaNfse": PortalPermission.DOCUMENT_CANCEL,
+    "cancelCajamarNfse": PortalPermission.DOCUMENT_CANCEL,
+    "cancelOsascoNfse": PortalPermission.DOCUMENT_CANCEL,
+    "cancelBarueriNfse": PortalPermission.DOCUMENT_CANCEL,
+    "substituteBarueriNfse": PortalPermission.DOCUMENT_CANCEL,
+    "reconcileBarueriNfseCancellation": PortalPermission.RECONCILIATION_EXECUTE,
+    "cancelJundiaiNfse": PortalPermission.DOCUMENT_CANCEL,
+    "cancelGuarulhosNfse": PortalPermission.DOCUMENT_CANCEL,
+    "substituteJundiaiNfse": PortalPermission.DOCUMENT_CANCEL,
+    "substituteGuarulhosNfse": PortalPermission.DOCUMENT_CANCEL,
+    "cancelSantanaNfse": PortalPermission.DOCUMENT_CANCEL,
+    "cancelNationalNfse": PortalPermission.DOCUMENT_CANCEL,
+    "inspectCajamarNfseCancellation": PortalPermission.RECONCILIATION_EXECUTE,
+    "reconcileNationalNfseCancellation": PortalPermission.RECONCILIATION_EXECUTE,
+    "substituteSantanaNfse": PortalPermission.DOCUMENT_CANCEL,
+    "reconcileSantanaNfseCancellation": PortalPermission.RECONCILIATION_EXECUTE,
+    "reconcileSantanaNfseSubstitution": PortalPermission.RECONCILIATION_EXECUTE,
+    "reconcileJundiaiNfseCancellation": PortalPermission.RECONCILIATION_EXECUTE,
+    "reconcileGuarulhosNfseCancellation": PortalPermission.RECONCILIATION_EXECUTE,
+    "substituteOsascoNfse": PortalPermission.DOCUMENT_CANCEL,
     "substituteExtremaNfse": PortalPermission.DOCUMENT_CANCEL,
     "inutilizeFiscalRange": PortalPermission.DOCUMENT_INUTILIZE,
     "reconcileFiscalOperation": PortalPermission.RECONCILIATION_EXECUTE,
@@ -35,10 +54,38 @@ OPERATIONS = {
     "issueFiscalDocument": frozenset({"issue", "issueFiscalDocument"}),
     "cancelFiscalDocument": frozenset({"cancel", "cancelFiscalDocument"}),
     "cancelExtremaNfse": frozenset({"cancelExtremaNfse"}),
+    "cancelCajamarNfse": frozenset({"cancelCajamarNfse"}),
+    "cancelOsascoNfse": frozenset({"cancelOsascoNfse"}),
+    "cancelBarueriNfse": frozenset({"cancelBarueriNfse"}),
+    "substituteBarueriNfse": frozenset({"substituteBarueriNfse"}),
+    "reconcileBarueriNfseCancellation": frozenset({"reconcileBarueriNfseCancellation"}),
+    "cancelJundiaiNfse": frozenset({"cancelJundiaiNfse"}),
+    "cancelGuarulhosNfse": frozenset({"cancelGuarulhosNfse"}),
+    "substituteJundiaiNfse": frozenset({"substituteJundiaiNfse"}),
+    "substituteGuarulhosNfse": frozenset({"substituteGuarulhosNfse"}),
+    "cancelSantanaNfse": frozenset({"cancelSantanaNfse"}),
+    "cancelNationalNfse": frozenset({"cancelNationalNfse"}),
+    "inspectCajamarNfseCancellation": frozenset({"inspectCajamarNfseCancellation"}),
+    "reconcileNationalNfseCancellation": frozenset({"reconcileNationalNfseCancellation"}),
+    "substituteSantanaNfse": frozenset({"substituteSantanaNfse"}),
+    "reconcileSantanaNfseCancellation": frozenset({"reconcileSantanaNfseCancellation"}),
+    "reconcileSantanaNfseSubstitution": frozenset({"reconcileSantanaNfseSubstitution"}),
+    "reconcileJundiaiNfseCancellation": frozenset({"reconcileJundiaiNfseCancellation"}),
+    "reconcileGuarulhosNfseCancellation": frozenset({"reconcileGuarulhosNfseCancellation"}),
+    "substituteOsascoNfse": frozenset({"substituteOsascoNfse"}),
     "substituteExtremaNfse": frozenset({"substituteExtremaNfse"}),
     "inutilizeFiscalRange": frozenset({"inutilize", "inutilizeFiscalRange"}),
     "reconcileFiscalOperation": frozenset({"reconcile", "reconcileFiscalOperation"}),
 }
+_READ_ONLY_POLL = frozenset({
+    "reconcileFiscalOperation", "reconcileBarueriNfseCancellation",
+    "reconcileJundiaiNfseCancellation",
+    "reconcileGuarulhosNfseCancellation",
+    "reconcileSantanaNfseCancellation",
+    "reconcileNationalNfseCancellation",
+    "inspectCajamarNfseCancellation",
+    "reconcileSantanaNfseSubstitution",
+})
 POLICY = "T07-v1-24h-same-account-epoch"
 HOST = "fm-nfcore"
 
@@ -55,6 +102,13 @@ def denied(code: str, status: int = 409) -> HTTPException:
             "message": "Pedido bloqueado; preserve o original e consulte a reconciliação.",
         },
     )
+
+
+_ISSUE_AND_CANCEL_OPERATIONS = frozenset({
+    "substituteExtremaNfse", "reviewCajamarSubstitution",
+    "substituteOsascoNfse", "substituteBarueriNfse",
+    "substituteJundiaiNfse", "substituteSantanaNfse", "substituteGuarulhosNfse",
+})
 
 
 class FiscalIntentRecovery:
@@ -108,8 +162,16 @@ class FiscalIntentRecovery:
         return "fiscal-intent:" + digest(HOST + ":" + auth.account.account_id) + ":"
 
     @staticmethod
-    def permission(auth: AuthenticatedHuman, operation: str) -> None:
-        if operation not in PERMISSIONS or PERMISSIONS[operation] not in auth.account.permissions:
+    def allowed(auth: AuthenticatedHuman, operation: str) -> bool:
+        required = PERMISSIONS.get(operation)
+        return required is not None and required in auth.account.permissions and (
+            operation not in _ISSUE_AND_CANCEL_OPERATIONS
+            or PortalPermission.DOCUMENT_ISSUE in auth.account.permissions
+        )
+
+    @classmethod
+    def permission(cls, auth: AuthenticatedHuman, operation: str) -> None:
+        if not cls.allowed(auth, operation):
             raise denied("PORTAL_FORBIDDEN", 403)
 
     @staticmethod
@@ -132,6 +194,16 @@ class FiscalIntentRecovery:
             )
         except (ValueError, TypeError) as exc:
             raise denied("INVALID_FISCAL_REQUEST", 400) from exc
+
+    @classmethod
+    def intent_name(
+        cls, auth: AuthenticatedHuman, operation: str, fingerprint: str, key: str,
+    ) -> str:
+        """Read-only polling must be repeatable; fiscal mutations keep one claim."""
+        material = cls.prefix(auth) + fingerprint
+        if operation in _READ_ONLY_POLL:
+            material += ":read-only-poll:" + digest(key)
+        return cls.prefix(auth) + digest(material)
 
     @staticmethod
     def audit(
@@ -169,7 +241,31 @@ class FiscalIntentRecovery:
         raise denied(code, status)
 
     @staticmethod
-    def project(row: Mapping[str, object], *, replay: bool = True) -> Mapping[str, Any]:
+    def _safe_result(value: object) -> dict[str, object]:
+        """Only scoped, non-secret fiscal status; never persist a provider payload."""
+        if not isinstance(value, Mapping):
+            return {}
+        texts = {
+            "document_id", "status", "result_reference",
+            "rejection_reason", "rejection_message", "query_status",
+        }
+        flags = {"recovery_required"}
+        safe: dict[str, object] = {}
+        for key in texts:
+            item = value.get(key)
+            if isinstance(item, str) and len(item) <= 512:
+                safe[key] = item
+        for key in flags:
+            item = value.get(key)
+            if type(item) is bool:
+                safe[key] = item
+        return safe
+
+    @classmethod
+    def project(
+        cls, row: Mapping[str, object], *, replay: bool = True
+    ) -> Mapping[str, Any]:
+        safe = cls._safe_result(row.get("operation_result"))
         return {
             key: row.get(key)
             for key in (
@@ -182,7 +278,9 @@ class FiscalIntentRecovery:
                 "state",
                 "reference_id",
             )
-        } | {"replay": replay, "fiscal_confirmation": "not_inferred_from_receipt"}
+        } | {
+            "replay": replay, "fiscal_confirmation": "not_inferred_from_receipt",
+        } | ({"operation_result": safe} if safe else {})
 
     def validate(
         self,
@@ -201,7 +299,7 @@ class FiscalIntentRecovery:
             or row.get("environment") != scope.environment.value
         ):
             self.blocked(auth, scope, intent, "FISCAL_INTENT_AUTHORITY_CHANGED", 403)
-        if PERMISSIONS.get(str(row.get("operation"))) not in auth.account.permissions:
+        if not self.allowed(auth, str(row.get("operation"))):
             self.blocked(auth, scope, intent, "PORTAL_FORBIDDEN", 403)
         try:
             expired = datetime.fromisoformat(str(row["expires_at"])) <= datetime.now(UTC)
@@ -209,6 +307,35 @@ class FiscalIntentRecovery:
             raise denied("FISCAL_INTENT_POLICY_REQUIRED") from exc
         if expired:
             self.blocked(auth, scope, intent, "FISCAL_INTENT_EXPIRED")
+
+    def existing_exact_request(
+        self, auth: AuthenticatedHuman, operation: str,
+        payload: Mapping[str, Any], key: str,
+    ) -> Mapping[str, Any] | None:
+        """Read an already-authorized exact fiscal intent before new preflight.
+
+        Idempotent retries of a completed cancellation must replay the receipt
+        rather than re-checking whether the original invoice can be cancelled.
+        No new execution/claim is created, and tenant, unit, account, session
+        epoch, permission and payload fingerprint are revalidated.
+        """
+        self.permission(auth, operation)
+        if not isinstance(key, str) or not key.strip():
+            raise denied("MISSING_IDEMPOTENCY_KEY", 400)
+        scope = self.scope(auth, payload)
+        fingerprint = self.fingerprint(operation, scope, payload)
+        intent = self.intent_name(auth, operation, fingerprint, key)
+        with self.factory() as uow:
+            recorded = uow.commercial.configuration_receipt(scope, intent)
+        if recorded is None or recorded.get("original_key") != key:
+            return None
+        self.validate(auth, scope, recorded, intent)
+        if (
+            recorded.get("operation") != operation
+            or recorded.get("fingerprint") != fingerprint
+        ):
+            raise denied("FISCAL_INTENT_CONTENT_CONFLICT")
+        return self.project(recorded, replay=True)
 
     def prepare(
         self, auth: AuthenticatedHuman, operation: str, payload: Mapping[str, Any], key: str | None
@@ -218,7 +345,8 @@ class FiscalIntentRecovery:
             raise denied("MISSING_IDEMPOTENCY_KEY", 400)
         scope = self.scope(auth, payload)
         fingerprint = self.fingerprint(operation, scope, payload)
-        intent = self.prefix(auth) + digest(self.prefix(auth) + fingerprint)
+        # Each query key grants a distinct read-only poll, not a duplicate mutation.
+        intent = self.intent_name(auth, operation, fingerprint, key)
         alias = "fiscal-key:" + digest(HOST + ":" + auth.account.account_id + ":" + key)
         now = datetime.now(UTC)
         row: Mapping[str, object] = {
@@ -269,7 +397,7 @@ class FiscalIntentRecovery:
             for r in rows
             if r.get("policy") == POLICY
             and r.get("session_epoch") == auth.account.session_epoch
-            and PERMISSIONS.get(str(r.get("operation"))) in auth.account.permissions
+            and self.allowed(auth, str(r.get("operation")))
         )
 
     def claim(
@@ -346,12 +474,15 @@ class FiscalIntentRecovery:
         scope: ExecutionScope,
         row: Mapping[str, object],
         reference: object = None,
+        operation_result: Mapping[str, Any] | None = None,
     ) -> Mapping[str, object]:
         intent = str(row["intent_id"])
         updated = dict(row) | {
             "state": "recorded",
             "reference_id": reference if isinstance(reference, str) else None,
         }
+        if operation_result is not None:
+            updated["operation_result"] = self._safe_result(operation_result)
         with self.factory() as uow:
             if not uow.commercial.replace_configuration_receipt(scope, intent, row, updated):
                 current = uow.commercial.configuration_receipt(scope, intent)

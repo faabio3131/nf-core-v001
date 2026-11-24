@@ -1,0 +1,113 @@
+"""T09 importer binds legal source SHA256 to locally read bytes before DB writes."""
+import hashlib
+import json
+from pathlib import Path
+from runpy import run_path
+
+import pytest
+
+# The project intentionally treats scripts as CLI entrypoints, not an importable
+# package. Load the actual checked-in script without changing package layout.
+_SCRIPT = run_path(
+    str(
+        Path(__file__).resolve().parents[2]
+        / "scripts"
+        / "nfcore_state_benefits_import_reviewed.py"
+    ),
+)
+SOURCE_MANIFEST_SCHEMA = _SCRIPT["SOURCE_MANIFEST_SCHEMA"]
+verify_reviewed_source_bytes = _SCRIPT["verify_reviewed_source_bytes"]
+
+URL = "https://legislacao.fazenda.sp.gov.br/Paginas/an3art041.aspx"
+
+
+def packet(tmp_path):
+    data = b"<!doctype html><html>fake law for SOURCE-INTEGRITY UNIT TEST only</html>"
+    source = tmp_path / "decreto.html"
+    source.write_bytes(data)
+    policy = {"legal_citations": [{
+        "source_url": URL, "source_sha256": hashlib.sha256(data).hexdigest(),
+    }]}
+    manifest = tmp_path / "manifest.json"
+    manifest.write_text(json.dumps({
+        "schema_version": SOURCE_MANIFEST_SCHEMA,
+        "sources": [{"source_url": URL, "relative_path": "decreto.html"}],
+    }), encoding="utf-8")
+    return policy, manifest, source
+
+
+def test_reviewed_source_bytes_matching_digest_passes(tmp_path):
+    policy, manifest, _ = packet(tmp_path)
+    assert verify_reviewed_source_bytes(policy, manifest) == 1
+
+
+def test_tampered_legal_source_bytes_fail_closed(tmp_path):
+    policy, manifest, source = packet(tmp_path)
+    source.write_bytes(b"different content")
+    with pytest.raises(ValueError, match="bytes do not match"):
+        verify_reviewed_source_bytes(policy, manifest)
+
+
+def test_forged_source_hash_fails_closed(tmp_path):
+    policy, manifest, _ = packet(tmp_path)
+    policy["legal_citations"][0]["source_sha256"] = "f" * 64
+    with pytest.raises(ValueError, match="bytes do not match"):
+        verify_reviewed_source_bytes(policy, manifest)
+
+
+def test_unlisted_or_duplicate_legal_source_rejected(tmp_path):
+    policy, manifest, _ = packet(tmp_path)
+    packet_data = json.loads(manifest.read_text())
+    packet_data["sources"].append(packet_data["sources"][0])
+    manifest.write_text(json.dumps(packet_data))
+    with pytest.raises(ValueError, match="manifest"):
+        verify_reviewed_source_bytes(policy, manifest)
+
+
+@pytest.mark.parametrize(
+    "unsafe_path", ["../out.html", "/etc/passwd", "a/../../b", "C:\\temp\\doc"],
+)
+def test_legal_source_path_traversal_rejected(tmp_path, unsafe_path):
+    policy, manifest, _ = packet(tmp_path)
+    data = json.loads(manifest.read_text())
+    data["sources"][0]["relative_path"] = unsafe_path
+    manifest.write_text(json.dumps(data))
+    with pytest.raises(ValueError, match="unsafe|mapping"):
+        verify_reviewed_source_bytes(policy, manifest)
+
+
+def test_symlinked_legal_source_rejected(tmp_path):
+    policy, manifest, source = packet(tmp_path)
+    link = tmp_path / "shortcut.html"
+    link.symlink_to(source)
+    data = json.loads(manifest.read_text())
+    data["sources"][0]["relative_path"] = "shortcut.html"
+    manifest.write_text(json.dumps(data))
+    with pytest.raises(ValueError, match="symlinked"):
+        verify_reviewed_source_bytes(policy, manifest)
+
+
+def test_missing_source_file_rejected(tmp_path):
+    policy, manifest, source = packet(tmp_path)
+    source.unlink()
+    with pytest.raises(FileNotFoundError):
+        verify_reviewed_source_bytes(policy, manifest)
+
+
+
+def test_hash_matching_a_bogus_html_error_page_is_still_rejected(tmp_path):
+    policy, manifest, source = packet(tmp_path)
+    body = b"<html><body>Access Denied: CAPTCHA</body></html>"
+    source.write_bytes(body)
+    policy["legal_citations"][0]["source_sha256"] = hashlib.sha256(body).hexdigest()
+    with pytest.raises(ValueError, match="access/error"):
+        verify_reviewed_source_bytes(policy, manifest)
+
+
+def test_hash_matching_arbitrary_text_is_not_a_verified_legal_act(tmp_path):
+    policy, manifest, source = packet(tmp_path)
+    body = b"not a government HTML or PDF document"
+    source.write_bytes(body)
+    policy["legal_citations"][0]["source_sha256"] = hashlib.sha256(body).hexdigest()
+    with pytest.raises(ValueError, match="unsupported official source format"):
+        verify_reviewed_source_bytes(policy, manifest)

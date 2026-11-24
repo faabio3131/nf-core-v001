@@ -13,7 +13,7 @@ import binascii
 import json
 from collections.abc import Mapping, Sequence
 from datetime import UTC, datetime
-from typing import Annotated, Any, Protocol, runtime_checkable
+from typing import TYPE_CHECKING, Annotated, Any, Protocol, runtime_checkable
 from uuid import uuid4
 
 from fastapi import APIRouter, Body, HTTPException, Request, status
@@ -29,9 +29,15 @@ from kordena_fiscal.security.human_identity import (
     HumanIdentityService,
     PortalPermission,
 )
-from kordena_fiscal.signing.contracts import InvalidCertificateMaterialError
+from kordena_fiscal.signing.contracts import (
+    FiscalSigningError,
+    InvalidCertificateMaterialError,
+)
 from kordena_fiscal.vault.encrypted_a1 import A1VaultUnavailable, EncryptedA1Vault
 from kordena_fiscal.web.human_auth import CSRF_COOKIE, CSRF_HEADER, SESSION_COOKIE
+
+if TYPE_CHECKING:
+    from kordena_fiscal.security.human_mfa import HumanMfaService
 
 
 @runtime_checkable
@@ -95,7 +101,12 @@ _OPERATION_PERMISSIONS: dict[str, PortalPermission] = {
     "configureIntegrations": PortalPermission.INTEGRATION_MANAGE,
     "configureSettings": PortalPermission.CONFIGURATION_WRITE,
     "registerFiscalProfile": PortalPermission.CONFIGURATION_WRITE,
+    "declareFederalRegime": PortalPermission.CONFIGURATION_WRITE,
+    "changeFiscalProfileCrt": PortalPermission.CONFIGURATION_WRITE,
     "prepareExtremaNfse": PortalPermission.CONFIGURATION_WRITE,
+    "prepareNativeNfse": PortalPermission.DOCUMENT_ISSUE,
+    "reviewNativeSale": PortalPermission.DOCUMENT_ISSUE,
+    "prepareNativeSale": PortalPermission.DOCUMENT_ISSUE,
     "createUser": PortalPermission.USER_MANAGE,
     "updateUser": PortalPermission.USER_MANAGE,
     "issueFiscalDocument": PortalPermission.DOCUMENT_ISSUE,
@@ -103,10 +114,41 @@ _OPERATION_PERMISSIONS: dict[str, PortalPermission] = {
     "queryArchiveReference": PortalPermission.DOCUMENT_QUERY,
     "cancelFiscalDocument": PortalPermission.DOCUMENT_CANCEL,
     "cancelExtremaNfse": PortalPermission.DOCUMENT_CANCEL,
+    "cancelCajamarNfse": PortalPermission.DOCUMENT_CANCEL,
+    "cancelOsascoNfse": PortalPermission.DOCUMENT_CANCEL,
+    "cancelBarueriNfse": PortalPermission.DOCUMENT_CANCEL,
+    "substituteBarueriNfse": PortalPermission.DOCUMENT_CANCEL,
+    "reconcileBarueriNfseCancellation": PortalPermission.RECONCILIATION_EXECUTE,
+    "cancelJundiaiNfse": PortalPermission.DOCUMENT_CANCEL,
+    "cancelGuarulhosNfse": PortalPermission.DOCUMENT_CANCEL,
+    "substituteJundiaiNfse": PortalPermission.DOCUMENT_CANCEL,
+    "substituteGuarulhosNfse": PortalPermission.DOCUMENT_CANCEL,
+    "cancelSantanaNfse": PortalPermission.DOCUMENT_CANCEL,
+    "cancelNationalNfse": PortalPermission.DOCUMENT_CANCEL,
+    "inspectCajamarNfseCancellation": PortalPermission.RECONCILIATION_EXECUTE,
+    "reconcileNationalNfseCancellation": PortalPermission.RECONCILIATION_EXECUTE,
+    "substituteSantanaNfse": PortalPermission.DOCUMENT_CANCEL,
+    "reconcileSantanaNfseCancellation": PortalPermission.RECONCILIATION_EXECUTE,
+    "reconcileSantanaNfseSubstitution": PortalPermission.RECONCILIATION_EXECUTE,
+    "reconcileJundiaiNfseCancellation": PortalPermission.RECONCILIATION_EXECUTE,
+    "reconcileGuarulhosNfseCancellation": PortalPermission.RECONCILIATION_EXECUTE,
+    "substituteOsascoNfse": PortalPermission.DOCUMENT_CANCEL,
     "substituteExtremaNfse": PortalPermission.DOCUMENT_CANCEL,
+    "reviewCajamarSubstitution": PortalPermission.DOCUMENT_CANCEL,
     "inutilizeFiscalRange": PortalPermission.DOCUMENT_INUTILIZE,
     "reconcileFiscalOperation": PortalPermission.RECONCILIATION_EXECUTE,
 }
+
+# Approved step-up list: A1, regime/CRT, users (role changes). The A1 upload and
+# the production egress decision have their own routes and are checked there.
+STEP_UP_OPERATIONS = frozenset({
+    "configureCertificates",
+    "registerFiscalProfile",
+    "declareFederalRegime",
+    "changeFiscalProfileCrt",
+    "createUser",
+    "updateUser",
+})
 
 _IDEMPOTENT_MUTATIONS = {
     "onboardUnit",
@@ -116,12 +158,35 @@ _IDEMPOTENT_MUTATIONS = {
     "configureIntegrations",
     "configureSettings",
     "registerFiscalProfile",
+    "declareFederalRegime",
+    "changeFiscalProfileCrt",
     "prepareExtremaNfse",
+    "prepareNativeNfse",
+    "prepareNativeSale",
     "createUser",
     "updateUser",
     "issueFiscalDocument",
     "cancelFiscalDocument",
     "cancelExtremaNfse",
+    "cancelCajamarNfse",
+    "cancelOsascoNfse",
+    "cancelBarueriNfse",
+    "substituteBarueriNfse",
+    "reconcileBarueriNfseCancellation",
+    "cancelJundiaiNfse",
+    "cancelGuarulhosNfse",
+    "substituteJundiaiNfse",
+    "substituteGuarulhosNfse",
+    "cancelSantanaNfse",
+    "cancelNationalNfse",
+    "reconcileNationalNfseCancellation",
+    "inspectCajamarNfseCancellation",
+    "substituteSantanaNfse",
+    "reconcileSantanaNfseCancellation",
+    "reconcileSantanaNfseSubstitution",
+    "reconcileJundiaiNfseCancellation",
+    "reconcileGuarulhosNfseCancellation",
+    "substituteOsascoNfse",
     "substituteExtremaNfse",
     "inutilizeFiscalRange",
     "reconcileFiscalOperation",
@@ -249,17 +314,46 @@ def _authorized(
         ) from exc
 
 
+def _a1_failure_code(message: str) -> str:
+    """Map fixed, non-secret preflight messages to stable user-facing codes."""
+    if "outside validity period" in message:
+        return "A1_EXPIRED"
+    if "CNPJ does not match" in message or "lacks issuer identity" in message:
+        return "A1_CNPJ_MISMATCH"
+    if "material is invalid" in message:
+        return "A1_FILE_OR_PASSWORD_INVALID"
+    return "A1_VALIDATION_FAILED"
+
+
 def create_portal_router(
     identity: HumanIdentityService,
     executor: HumanPortalExecutor | None,
     *,
     platform_surfaces: tuple[str, ...] = (),
     certificate_vault: EncryptedA1Vault | None = None,
+    mfa: HumanMfaService | None = None,
 ) -> APIRouter:
     router = APIRouter(prefix="/v1/portal", tags=["human-portal"])
 
     def authority(request: Request) -> AuthenticatedHuman:
-        return _authenticated(request, identity, now=datetime.now(UTC))
+        auth = _authenticated(request, identity, now=datetime.now(UTC))
+        if (
+            mfa is not None and mfa.required_for(auth.account)
+            and not mfa.is_enrolled(auth.account.account_id)
+        ):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail={"code": "MFA_ENROLLMENT_REQUIRED",
+                        "message": "Ative o app autenticador para continuar"},
+            )
+        return auth
+
+    def step_up(auth: AuthenticatedHuman) -> None:
+        if mfa is not None and not mfa.has_recent_step_up(auth.session_id, datetime.now(UTC)):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail={"code": "STEP_UP_REQUIRED", "message": "Confirme o código do app"},
+            )
 
     def require_executor() -> HumanPortalExecutor:
         if executor is None:
@@ -324,6 +418,7 @@ def create_portal_router(
     async def upload_a1(request: Request) -> dict[str, str]:
         auth = authority(request)
         _csrf(request, identity, auth)
+        step_up(auth)
         if certificate_vault is None:
             raise HTTPException(
                 status_code=503,
@@ -370,11 +465,24 @@ def create_portal_router(
             evidence = certificate_vault.provision(
                 scope=scope, issuer_cnpj=issuer_cnpj,
                 pkcs12_bytes=certificate, password=password,
+                actor=auth.account.account_id,
             )
-        except (A1VaultUnavailable, FiscalValidationError, InvalidCertificateMaterialError):
+        except FiscalSigningError as exc:
+            # Preflight failures are not FiscalValidationError; they used to escape as HTTP 500.
+            raise HTTPException(
+                422, detail={"code": _a1_failure_code(str(exc)),
+                             "message": "Certificado A1 inválido, vencido ou não pertence ao CNPJ"},
+            ) from None
+        except (A1VaultUnavailable, FiscalValidationError):
             raise HTTPException(
                 422, detail={"code": "A1_VALIDATION_FAILED",
                              "message": "Certificado A1 inválido, vencido ou não pertence ao CNPJ"},
+            ) from None
+        except OSError:
+            # Vault directory not writable/full: never leak paths or errno details.
+            raise HTTPException(
+                503, detail={"code": "A1_VAULT_UNAVAILABLE",
+                             "message": "Cofre A1 indisponível para gravação neste ambiente"},
             ) from None
         return {
             "status": "stored",
@@ -394,7 +502,7 @@ def create_portal_router(
         """Serve immutable fiscal files to the same authorized human session."""
         auth = authority(request)
         _authorized(auth, PortalPermission.DOCUMENT_QUERY, unit_id=unit_id)
-        if kind not in {"authorized_xml", "danfe"}:
+        if kind not in {"authorized_xml", "danfe", "auxiliary_pdf"}:
             raise HTTPException(400, detail={"code": "FISCAL_ARTIFACT_KIND_INVALID"})
         if not 1 <= len(document_reference) <= 256:
             raise HTTPException(400, detail={"code": "FISCAL_ARTIFACT_REFERENCE_INVALID"})
@@ -569,6 +677,8 @@ def create_portal_router(
             )
         _authorized(auth, permission, unit_id=unit_id)
         _csrf(request, identity, auth)
+        if operation_id in STEP_UP_OPERATIONS:
+            step_up(auth)
         idempotency_key = request.headers.get("Idempotency-Key")
         if operation_id in _IDEMPOTENT_MUTATIONS and not (idempotency_key or "").strip():
             raise HTTPException(
@@ -629,6 +739,7 @@ def create_portal_router(
         if not auth.account.platform_admin:
             raise HTTPException(403, detail={"code": "EGRESS_FORBIDDEN"})
         _csrf(request, identity, auth)
+        step_up(auth)
         _reject_browser_authority(payload)
         if set(payload) - {"url", "expires_at", "expected_version"}:
             raise HTTPException(400, detail={"code": "INVALID_EGRESS_DECISION"})

@@ -27,6 +27,7 @@ from kordena_fiscal.application.commercial_portal import CommercialPortalReadSer
 from kordena_fiscal.application.commercial_trial import GovernedTrialService
 from kordena_fiscal.application.service import FiscalApplicationService
 from kordena_fiscal.archive.danfe_pdf import render_authorized_nfe_danfe
+from kordena_fiscal.archive.danfse_pdf import render_authorized_national_danfse
 from kordena_fiscal.compliance import CapabilityReadinessService
 from kordena_fiscal.control_plane.cakto_checkout import (
     CaktoCheckoutAdministrationService,
@@ -39,6 +40,7 @@ from kordena_fiscal.persistence.cakto import postgres_cakto_commercial_database
 from kordena_fiscal.persistence.commercial_fulfillment import (
     postgres_canonical_commercial_database,
 )
+from kordena_fiscal.persistence.ports import PersistenceStateError
 from kordena_fiscal.persistence.postgres import PostgresFiscalDatabase
 from kordena_fiscal.security.human_administration import HumanAdministrationService
 from kordena_fiscal.security.human_identity import (
@@ -46,6 +48,7 @@ from kordena_fiscal.security.human_identity import (
     LoginAttemptLimiter,
     ScryptPasswordHasher,
 )
+from kordena_fiscal.security.human_mfa import HumanMfaService
 from kordena_fiscal.security.human_recovery import PasswordRecoveryService
 from kordena_fiscal.security.s2s import (
     InMemorySecurityAuditSink,
@@ -97,6 +100,7 @@ class RuntimeComposition:
     portal_fiscal_operation_executor: CanonicalPortalOperationExecutor
     bridge_workload_identity_configured: bool
     portal_executor: DurableHumanPortalExecutor
+    human_mfa: HumanMfaService | None = None
 
 
 def build_postgres_runtime_composition(
@@ -125,6 +129,13 @@ def build_postgres_runtime_composition(
         password_hasher=password_hasher,
         login_limiter=LoginAttemptLimiter(),
     )
+    # Opt-in (NFCORE_HUMAN_MFA=enabled + external key); requires migration 24.
+    human_mfa = HumanMfaService.from_environ(lambda: database.human_mfa())
+    if human_mfa is not None:
+        from kordena_fiscal.persistence.human_mfa_schema import HUMAN_MFA_VERSION
+
+        if HUMAN_MFA_VERSION not in database.applied_migrations():
+            raise PersistenceStateError("NFCORE_HUMAN_MFA=enabled requires migration 24")
     human_administration_factory = getattr(database, "human_administration", None)
     human_administration = (
         HumanAdministrationService(
@@ -237,6 +248,7 @@ def build_postgres_runtime_composition(
         user_administration=human_administration,
         commercial_reader=commercial_portal_read,
         danfe_renderer=render_authorized_nfe_danfe,
+        danfse_renderer=render_authorized_national_danfse,
     )
     return RuntimeComposition(
         human_identity=identity,
@@ -260,4 +272,5 @@ def build_postgres_runtime_composition(
         portal_fiscal_operation_executor=portal_fiscal_operation_executor,
         bridge_workload_identity_configured=bool(workload_credentials),
         portal_executor=portal,
+        human_mfa=human_mfa,
     )

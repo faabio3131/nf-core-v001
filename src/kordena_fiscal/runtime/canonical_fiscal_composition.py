@@ -26,6 +26,9 @@ from kordena_fiscal.domain import (
     FiscalValidationError,
 )
 from kordena_fiscal.gateway import AuthorizationRequest, FiscalGatewayClient
+from kordena_fiscal.gateway.cajamar_geisweb_cancellation_builder import (
+    CajamarCancellationDecision,
+)
 from kordena_fiscal.gateway.mg_webiss_soap import (
     EXTREMA_IBGE,
     EXTREMA_WEBISS_PROVIDER_ID,
@@ -34,10 +37,12 @@ from kordena_fiscal.gateway.mg_webiss_soap import (
 from kordena_fiscal.gateway.nfe_sp_homologation import (
     MG_NFCE_HOMOLOGATION_PROVIDER_ID,
     MG_NFE_HOMOLOGATION_PROVIDER_ID,
+    SP_NFCE_HOMOLOGATION_PROVIDER_ID,
     HomologationAuthorizationTarget,
     SefazSpHomologationGateway,
     build_mg_nfce_homologation_gateway,
     build_mg_nfe_homologation_gateway,
+    build_sp_nfce_homologation_gateway,
 )
 from kordena_fiscal.gateway.nfe_sp_operations_homologation import (
     SefazHomologationOperationsGateway,
@@ -47,6 +52,18 @@ from kordena_fiscal.gateway.nfse_abrasf203_envelope import AbrasfServiceFacts
 from kordena_fiscal.gateway.nfse_nacional_homologation import (
     NACIONAL_HOMOLOGATION_PROVIDER_ID,
     NfseNacionalHomologationGateway,
+)
+from kordena_fiscal.gateway.nfse_national_query import (
+    NfseNationalHomologationQueryGateway,
+)
+from kordena_fiscal.gateway.production_activation import ProductionExecutionAuthority
+from kordena_fiscal.gateway.santana_simpliss_homologation import (
+    SANTANA_PROVIDER_ID,
+    SantanaSimplissHomologationGateway,
+)
+from kordena_fiscal.gateway.sp4_municipal_canonical import (
+    Sp4OriginalRps,
+    Sp4VerifiedInvoice,
 )
 from kordena_fiscal.gateway.webiss_2026_schema import (
     load_pinned_extrema_webiss_rtc_schema,
@@ -70,13 +87,30 @@ from kordena_fiscal.operations import (
     InutilizationRequest,
     InutilizationResult,
 )
+from kordena_fiscal.runtime.national_event_handlers import build_national_event_handlers
+from kordena_fiscal.runtime.santana_event_handlers import build_santana_event_handlers
 from kordena_fiscal.vault import EphemeralCertificateMaterial
 from kordena_fiscal.vault.encrypted_a1 import EncryptedA1Vault
 from kordena_fiscal.xml import NfeAccessKey
 
+from .barueri_cancel_handlers import build_barueri_event_handlers
+from .barueri_operational_composition import BarueriTrustedRuntimePorts
+from .cajamar_operational_composition import CajamarTrustedRuntimePorts
 from .fiscal_runtime import FiscalOperationHandler, PreflightFiscalOperationHandler
+from .guarulhos_giss_operational_composition import GuarulhosGissTrustedRuntimePorts
+from .jundiai_cancel_handlers import build_jundiai_event_handlers
+from .jundiai_operational_composition import JundiaiTrustedRuntimePorts
+from .osasco_cancel_handlers import (
+    build_osasco_cancel_handler,
+    build_osasco_substitution_handler,
+)
+from .osasco_operational_composition import OsascoTrustedRuntimePorts
 from .provider_issuance_handler import PreparedXmlGatewaySelector
 from .provider_operation_wiring import build_provider_operation_handlers
+from .sp4_municipal_canonical_composition import (
+    Sp4ReviewedMunicipalPorts,
+    build_sp4_canonical_clients,
+)
 
 
 def fiscal_external_dependency_snapshot(
@@ -166,6 +200,40 @@ def _require_mg_binding(
         raise FiscalValidationError(f"Provedor do vínculo de {label} incompatível")
 
 
+def _require_sp_nfce_binding(
+    application: FiscalApplicationService,
+    scope: ExecutionScope,
+    access_key: NfeAccessKey,
+    operation: ConfiguredFiscalOperation,
+) -> None:
+    """One existing tenant/unit/UF provider binding, never a browser header."""
+    if (
+        scope.environment is not FiscalEnvironment.HOMOLOGATION
+        or scope.host_namespace is None
+        or access_key.value[:2] != "35"
+        or access_key.model.value != 65
+    ):
+        raise FiscalValidationError("SP NFC-e requires scoped model 65 homologation")
+    try:
+        jurisdiction = application.resolve_scoped_issuer_jurisdiction(
+            scope=scope, issuer_cnpj=access_key.issuer_identifier,
+            instant=datetime.now(UTC),
+        )
+        if jurisdiction.state_code != "SP":
+            raise FiscalValidationError("SP NFC-e issuer municipality mismatch")
+        selected = application.resolve_configured_provider_id(
+            scope=scope, document_kind=FiscalDocumentKind.NFCE,
+            jurisdiction=jurisdiction, operation=operation.value,
+        )
+    except ControlPlaneNotFoundError:
+        raise FiscalValidationError("SP NFC-e provider binding unavailable") from None
+    if selected != SP_NFCE_HOMOLOGATION_PROVIDER_ID:
+        raise FiscalValidationError("SP NFC-e provider binding mismatch")
+
+
+_NFSE_NATIONAL_ENVIRONMENTS = (FiscalEnvironment.HOMOLOGATION, FiscalEnvironment.PRODUCTION)
+
+
 class _GovernedNationalNfseGateway:
     """Enforce a durable unit binding and fiscal audit before accessing A1."""
 
@@ -180,16 +248,20 @@ class _GovernedNationalNfseGateway:
         self._preaudit = preaudit
         self._gateway = gateway
 
+    def validate_pre_dispatch(self, request: NfseAuthorizationRequest) -> None:
+        self._preaudit(request)
+        self._gateway.validate_pre_dispatch(request)
+
     def authorize(self, request: NfseAuthorizationRequest) -> NfseAuthorizationResult:
         document = request.document
         scope = document.scope
         jurisdiction = document.issuer.address.jurisdiction
         if (
-            scope.environment is not FiscalEnvironment.HOMOLOGATION
+            scope.environment not in _NFSE_NATIONAL_ENVIRONMENTS
             or scope.host_namespace is None
             or jurisdiction.municipality_ibge_code is None
         ):
-            raise FiscalValidationError("NFS-e Nacional exige escopo de homologacao e municipio")
+            raise FiscalValidationError("NFS-e Nacional exige escopo governado e municipio")
         try:
             provider_id = self._application.resolve_configured_provider_id(
                 scope=scope,
@@ -228,23 +300,42 @@ class _GovernedNfseRouter:
         self, *, application: FiscalApplicationService,
         national: _GovernedNationalNfseGateway | None,
         extrema: WebissExtremaCanonicalNfseGateway | None,
+        national_query: NfseNationalHomologationQueryGateway | None = None,
+        municipal_issuance: Mapping[str, NfseGatewayClient] | None = None,
+        municipal_recovery: Mapping[str, NfseQueryClient] | None = None,
     ) -> None:
         self._application = application
         self._national = national
+        self._national_query = national_query
         self._extrema = extrema
+        self._municipal_issuance = municipal_issuance or {}
+        self._municipal_recovery = municipal_recovery or {}
 
     def _provider(self, request: NfseAuthorizationRequest) -> str:
         scope = request.document.scope
-        if (
-            scope.environment is not FiscalEnvironment.HOMOLOGATION
-            or not scope.host_namespace
-        ):
-            raise FiscalValidationError("NFS-e requires governed homologation scope")
-        return self._application.resolve_configured_provider_id(
+        if scope.environment not in _NFSE_NATIONAL_ENVIRONMENTS or not scope.host_namespace:
+            raise FiscalValidationError("NFS-e requires governed fiscal scope")
+        provider = self._application.resolve_configured_provider_id(
             scope=scope, document_kind=FiscalDocumentKind.NFSE,
             jurisdiction=request.document.issuer.address.jurisdiction,
             operation=ConfiguredFiscalOperation.AUTHORIZE.value,
         )
+        if (
+            scope.environment is FiscalEnvironment.PRODUCTION
+            and provider != NACIONAL_HOMOLOGATION_PROVIDER_ID
+        ):
+            # Municipal adapters are homologation-only until each is certified.
+            raise FiscalValidationError("NFS-e production is only open for the national provider")
+        return provider
+
+    def validate_pre_dispatch(self, request: NfseAuthorizationRequest) -> None:
+        provider = self._provider(request)
+        if provider == NACIONAL_HOMOLOGATION_PROVIDER_ID:
+            if self._national is None:
+                raise FiscalValidationError("National NFS-e gateway is not configured")
+            self._national.validate_pre_dispatch(request)
+        elif provider in self._municipal_issuance:
+            self._municipal_issuance[provider].validate_pre_dispatch(request)
 
     def authorize(self, request: NfseAuthorizationRequest) -> NfseAuthorizationResult:
         provider = self._provider(request)
@@ -258,18 +349,32 @@ class _GovernedNfseRouter:
             return self._extrema.authorize(request)
         if provider == NACIONAL_HOMOLOGATION_PROVIDER_ID and self._national is not None:
             return self._national.authorize(request)
+        municipal = self._municipal_issuance.get(provider)
+        if municipal is not None:
+            return municipal.authorize(request)
         raise FiscalValidationError("NFS-e issuance has no approved matching provider")
 
     def query(self, request: NfseAuthorizationRequest) -> NfseAuthorizationResult:
         provider = self._provider(request)
-        if (
-            provider != EXTREMA_WEBISS_PROVIDER_ID
-            or self._extrema is None
-            or request.document.issuer.address.jurisdiction.municipality_ibge_code
-            != EXTREMA_IBGE
-        ):
-            raise FiscalValidationError("Read-only NFS-e provider recovery is unavailable")
-        return self._extrema.query(request)
+        if provider == NACIONAL_HOMOLOGATION_PROVIDER_ID:
+            if self._national_query is None:
+                raise FiscalValidationError("Read-only NFS-e provider recovery is unavailable")
+            # The query transport independently requires an exact QUERY binding.
+            return self._national_query.query(request)
+        if provider == EXTREMA_WEBISS_PROVIDER_ID:
+            if (
+                self._extrema is None
+                or request.document.issuer.address.jurisdiction.municipality_ibge_code
+                != EXTREMA_IBGE
+            ):
+                raise FiscalValidationError("Read-only NFS-e provider recovery is unavailable")
+            return self._extrema.query(request)
+        municipal = self._municipal_recovery.get(provider)
+        if municipal is not None:
+            # Canonical municipal loader reads the archived original RPS.
+            # Query is read-only and never repeats the fiscal POST.
+            return municipal.query(request)
+        raise FiscalValidationError("Read-only NFS-e provider recovery is unavailable")
 
 
 class _GovernedMgQueryGateway:
@@ -280,10 +385,12 @@ class _GovernedMgQueryGateway:
         mg: FiscalOperationsGateway,
         application: FiscalApplicationService,
         mg_nfce: FiscalOperationsGateway | None = None,
+        sp_nfce: FiscalOperationsGateway | None = None,
     ) -> None:
         self._legacy = legacy
         self._mg = mg
         self._mg_nfce = mg_nfce
+        self._sp_nfce = sp_nfce
         self._application = application
 
     def _mg_for_model(self, access_key: NfeAccessKey) -> FiscalOperationsGateway:
@@ -294,6 +401,14 @@ class _GovernedMgQueryGateway:
         raise FiscalValidationError("Gateway MG para modelo fiscal indisponível")
 
     def query(self, request: FiscalQueryRequest) -> FiscalQueryResult:
+        if request.access_key.value[:2] == "35" and request.access_key.model.value == 65:
+            if self._sp_nfce is None:
+                raise FiscalValidationError("SP NFC-e query gateway unavailable")
+            _require_sp_nfce_binding(
+                self._application, request.scope, request.access_key,
+                ConfiguredFiscalOperation.QUERY,
+            )
+            return self._sp_nfce.query(request)
         if request.access_key.value[:2] != "31":
             return self._legacy.query(request)
         _require_mg_binding(
@@ -302,6 +417,14 @@ class _GovernedMgQueryGateway:
         return self._mg_for_model(request.access_key).query(request)
 
     def cancel(self, request: CancellationRequest) -> CancellationResult:
+        if request.access_key.value[:2] == "35" and request.access_key.model.value == 65:
+            if self._sp_nfce is None:
+                raise FiscalValidationError("SP NFC-e cancellation gateway unavailable")
+            _require_sp_nfce_binding(
+                self._application, request.scope, request.access_key,
+                ConfiguredFiscalOperation.CANCEL,
+            )
+            return self._sp_nfce.cancel(request)
         if request.access_key.value[:2] != "31":
             return self._legacy.cancel(request)
         _require_mg_binding(
@@ -329,11 +452,42 @@ def build_runtime_fiscal_handler_factory(
         [NfseAuthorizationRequest, EphemeralCertificateMaterial], bytes
     ] | None = None,
     nfse_preaudit: Callable[[NfseAuthorizationRequest], None] | None = None,
+    nfse_production_authority: ProductionExecutionAuthority | None = None,
     webiss_extrema_exchange: Callable[
         [bytes, str, ssl.SSLContext, float], bytes
     ] | None = None,
     webiss_service_preaudit: Callable[
         [tuple[AbrasfServiceFacts, ...]], None
+    ] | None = None,
+    sp4_reviewed_municipalities: Mapping[
+        str, Sp4ReviewedMunicipalPorts
+    ] | None = None,
+    cajamar_verified_cancel: Callable[
+        [NfseAuthorizationRequest, Sp4OriginalRps, Sp4VerifiedInvoice],
+        CajamarCancellationDecision,
+    ] | None = None,
+    cajamar_runtime_ports: CajamarTrustedRuntimePorts | None = None,
+    cajamar_port_builder: Callable[
+        [FiscalApplicationService], CajamarTrustedRuntimePorts
+    ] | None = None,
+    osasco_runtime_ports: OsascoTrustedRuntimePorts | None = None,
+    osasco_port_builder: Callable[
+        [FiscalApplicationService], OsascoTrustedRuntimePorts
+    ] | None = None,
+    barueri_runtime_ports: BarueriTrustedRuntimePorts | None = None,
+    barueri_port_builder: Callable[
+        [FiscalApplicationService], BarueriTrustedRuntimePorts
+    ] | None = None,
+    jundiai_runtime_ports: JundiaiTrustedRuntimePorts | None = None,
+    jundiai_port_builder: Callable[
+        [FiscalApplicationService], JundiaiTrustedRuntimePorts
+    ] | None = None,
+    guarulhos_runtime_ports: GuarulhosGissTrustedRuntimePorts | None = None,
+    guarulhos_port_builder: Callable[
+        [FiscalApplicationService], GuarulhosGissTrustedRuntimePorts
+    ] | None = None,
+    santana_port_builder: Callable[
+        [FiscalApplicationService], SantanaSimplissHomologationGateway
     ] | None = None,
 ) -> Any:
     """Register all four canonical operations without granting fiscal readiness.
@@ -364,6 +518,64 @@ def build_runtime_fiscal_handler_factory(
         raise ValueError("configure either an NFS-e gateway or a trusted DPS builder")
     if trusted_signed_dps_builder is not None and not callable(nfse_preaudit):
         raise ValueError("NFS-e signed DPS composition requires fiscal pre-audit")
+    if sp4_reviewed_municipalities is not None and nfse_gateway is not None:
+        raise ValueError("Municipal reviewed ports cannot coexist with an opaque gateway")
+    if cajamar_runtime_ports is not None and (
+        not isinstance(cajamar_runtime_ports, CajamarTrustedRuntimePorts)
+        or sp4_reviewed_municipalities is not None
+        or cajamar_verified_cancel is not None
+        or nfse_gateway is not None
+        or cajamar_port_builder is not None
+    ):
+        raise ValueError("Conflicting trusted Cajamar fiscal authorities")
+    if cajamar_port_builder is not None and (
+        not callable(cajamar_port_builder)
+        or cajamar_verified_cancel is not None
+        or sp4_reviewed_municipalities is not None
+        or nfse_gateway is not None
+    ):
+        raise ValueError("Conflicting trusted Cajamar fiscal authorities")
+    if cajamar_verified_cancel is not None and (
+        not callable(cajamar_verified_cancel)
+        or sp4_reviewed_municipalities is None
+        or "cajamar-geisweb-homologation" not in sp4_reviewed_municipalities
+    ):
+        raise ValueError("Cajamar cancellation needs the existing reviewed municipal binding")
+    if (
+        osasco_runtime_ports is not None
+        and (
+            not isinstance(osasco_runtime_ports, OsascoTrustedRuntimePorts)
+            or osasco_port_builder is not None
+            or nfse_gateway is not None
+        )
+    ) or (
+        osasco_port_builder is not None
+        and (not callable(osasco_port_builder) or nfse_gateway is not None)
+    ):
+        raise ValueError("Conflicting reviewed Osasco municipal fiscal authorities")
+    if (
+        barueri_runtime_ports is not None
+        and (not isinstance(barueri_runtime_ports, BarueriTrustedRuntimePorts)
+             or barueri_port_builder is not None
+             or nfse_gateway is not None)
+    ) or (
+        barueri_port_builder is not None
+        and (not callable(barueri_port_builder) or nfse_gateway is not None)
+    ):
+        raise ValueError("Conflicting reviewed Barueri municipal fiscal authorities")
+    if (
+        jundiai_runtime_ports is not None
+        and (not isinstance(jundiai_runtime_ports, JundiaiTrustedRuntimePorts)
+             or jundiai_port_builder is not None or nfse_gateway is not None)
+    ) or (
+        jundiai_port_builder is not None
+        and (not callable(jundiai_port_builder) or nfse_gateway is not None)
+    ):
+        raise ValueError("Conflicting reviewed Jundiai municipal fiscal authorities")
+    if santana_port_builder is not None and (
+        not callable(santana_port_builder) or nfse_gateway is not None
+    ):
+        raise ValueError("Conflicting reviewed Santana municipal fiscal authorities")
     if webiss_extrema_exchange is not None or webiss_service_preaudit is not None:
         if (
             nfse_gateway is not None
@@ -375,14 +587,6 @@ def build_runtime_fiscal_handler_factory(
             raise ValueError(
                 "WebISS requires A1 vault, canonical audit, service audit and approved exchange"
             )
-    national_nfse = None
-    if certificate_vault is not None and trusted_signed_dps_builder is not None:
-        national_nfse = NfseNacionalHomologationGateway(
-            resolve_certificate=lambda scope, cnpj: certificate_vault.resolve(
-                scope=scope, issuer_cnpj=cnpj
-            ),
-            build_signed_dps=trusted_signed_dps_builder,
-        )
     retention = RetentionPolicyMetadata(
         policy_id="nfcore-fiscal-archive", policy_version=1
     )
@@ -390,6 +594,95 @@ def build_runtime_fiscal_handler_factory(
     def factory(
         application: FiscalApplicationService,
     ) -> Mapping[str, FiscalOperationHandler]:
+        national_nfse = None
+        if certificate_vault is not None and trusted_signed_dps_builder is not None:
+            national_nfse = NfseNacionalHomologationGateway(
+                resolve_certificate=lambda scope, cnpj: certificate_vault.resolve(
+                    scope=scope, issuer_cnpj=cnpj
+                ),
+                build_signed_dps=trusted_signed_dps_builder,
+                record_dispatch=application.record_national_dispatch,
+                production_authority=nfse_production_authority,
+            )
+        # The municipal ports are scoped to the same canonical application.
+        # No secondary persistence, fiscal router, auth or signing identity.
+        active_municipalities = sp4_reviewed_municipalities
+        active_cajamar_cancel = cajamar_verified_cancel
+        selected_cajamar_ports = (
+            cajamar_port_builder(application)
+            if cajamar_port_builder is not None else cajamar_runtime_ports
+        )
+        if selected_cajamar_ports is not None:
+            if not isinstance(selected_cajamar_ports, CajamarTrustedRuntimePorts):
+                raise ValueError("Cajamar operator provisioning returned invalid ports")
+            reviewed_ports, reviewed_cancel = selected_cajamar_ports.attach(application)
+            active_municipalities = {
+                "cajamar-geisweb-homologation": reviewed_ports,
+            }
+            active_cajamar_cancel = reviewed_cancel
+        selected_osasco_ports = (
+            osasco_port_builder(application)
+            if osasco_port_builder is not None else osasco_runtime_ports
+        )
+        active_osasco_cancel = None
+        active_osasco_substitute = None
+        if selected_osasco_ports is not None:
+            if not isinstance(selected_osasco_ports, OsascoTrustedRuntimePorts):
+                raise ValueError("Osasco operator provisioning returned invalid ports")
+            if active_municipalities and "osasco-rtc-homologation" in active_municipalities:
+                raise ValueError("Duplicate Osasco provider authority")
+            active_municipalities = {
+                **(active_municipalities or {}),
+                "osasco-rtc-homologation": selected_osasco_ports.attach(application),
+            }
+            active_osasco_cancel = selected_osasco_ports.attach_verified_cancellation(
+                application,
+            )
+            active_osasco_substitute = selected_osasco_ports.attach_verified_cancellation(
+                application, cancel_type="S",
+            )
+        selected_barueri_ports = (
+            barueri_port_builder(application)
+            if barueri_port_builder is not None else barueri_runtime_ports
+        )
+        if selected_barueri_ports is not None:
+            if not isinstance(selected_barueri_ports, BarueriTrustedRuntimePorts):
+                raise ValueError("Barueri operator provisioning returned invalid ports")
+            if active_municipalities and "barueri-pmb004-homologation" in active_municipalities:
+                raise ValueError("Duplicate Barueri provider authority")
+            active_municipalities = {
+                **(active_municipalities or {}),
+                "barueri-pmb004-homologation": selected_barueri_ports.attach(application),
+            }
+        selected_jundiai_ports = (
+            jundiai_port_builder(application)
+            if jundiai_port_builder is not None else jundiai_runtime_ports
+        )
+        if selected_jundiai_ports is not None:
+            if not isinstance(selected_jundiai_ports, JundiaiTrustedRuntimePorts):
+                raise ValueError("Jundiai operator provisioning returned invalid ports")
+            if active_municipalities and "jundiai-giss-v2-homologation" in active_municipalities:
+                raise ValueError("Duplicate Jundiai provider authority")
+            active_municipalities = {
+                **(active_municipalities or {}),
+                "jundiai-giss-v2-homologation": selected_jundiai_ports.attach(application),
+            }
+        selected_guarulhos_ports = (
+            guarulhos_port_builder(application)
+            if guarulhos_port_builder is not None else guarulhos_runtime_ports
+        )
+        if selected_guarulhos_ports is not None:
+            if not isinstance(selected_guarulhos_ports, GuarulhosGissTrustedRuntimePorts):
+                raise ValueError("Guarulhos operator provisioning returned invalid ports")
+            if active_municipalities and (
+                "guarulhos-giss-v2-homologation" in active_municipalities
+            ):
+                raise ValueError("Duplicate Guarulhos provider authority")
+            active_municipalities = {
+                **(active_municipalities or {}),
+                "guarulhos-giss-v2-homologation":
+                    selected_guarulhos_ports.attach(application),
+            }
         gateway = selected_operations or UnprovisionedFiscalGateway()
         if operations_gateway is None and certificate_vault is not None:
             vault = certificate_vault
@@ -409,6 +702,10 @@ def build_runtime_fiscal_handler_factory(
                     resolve_certificate=resolve_mg_certificate,
                     target=HomologationAuthorizationTarget.MG_NFCE,
                 ),
+                sp_nfce=SefazHomologationOperationsGateway(
+                    resolve_certificate=resolve_mg_certificate,
+                    target=HomologationAuthorizationTarget.SP_NFCE,
+                ),
                 application=application,
             )
         selector: PreparedXmlGatewaySelector | None = None
@@ -426,8 +723,17 @@ def build_runtime_fiscal_handler_factory(
             mg_nfce_authorization = FiscalGatewayClient(build_mg_nfce_homologation_gateway(
                 resolve_certificate=resolve_authorization_certificate,
             ))
+            sp_nfce_authorization = FiscalGatewayClient(build_sp_nfce_homologation_gateway(
+                resolve_certificate=resolve_authorization_certificate,
+            ))
 
             def select_xml_gateway(request: AuthorizationRequest) -> FiscalGatewayClient:
+                if request.access_key.value[:2] == "35" and request.access_key.model.value == 65:
+                    _require_sp_nfce_binding(
+                        application, request.scope, request.access_key,
+                        ConfiguredFiscalOperation.AUTHORIZE,
+                    )
+                    return sp_nfce_authorization
                 if request.access_key.value[:2] != "31":
                     return authorization
                 _require_mg_binding(
@@ -479,16 +785,51 @@ def build_runtime_fiscal_handler_factory(
                 cancellation_preaudit=extrema_cancellation_preaudit,
                 municipal_validator=validator,
             )
-        if national_adapter is not None or extrema_adapter is not None:
+        municipal_issue: Mapping[str, NfseGatewayClient] = {}
+        municipal_query: Mapping[str, NfseQueryClient] = {}
+        if active_municipalities is not None:
+            municipal_issue, municipal_query = build_sp4_canonical_clients(
+                canonical_resolver=_CanonicalWebissProviderResolver(application),
+                configured_municipalities=active_municipalities,
+                canonical_rps_loader=application.load_sp4_original_rps,
+            )
+        reviewed_santana: SantanaSimplissHomologationGateway | None = None
+        if santana_port_builder is not None:
+            reviewed_santana = santana_port_builder(application)
+            if not isinstance(reviewed_santana, SantanaSimplissHomologationGateway):
+                raise ValueError("Santana reviewed gateway composition is incomplete")
+            if SANTANA_PROVIDER_ID in municipal_issue:
+                raise ValueError("Duplicate Santana municipal provider authority")
+            municipal_issue = {
+                **municipal_issue,
+                SANTANA_PROVIDER_ID: NfseGatewayClient(reviewed_santana),
+            }
+            municipal_query = {
+                **municipal_query,
+                SANTANA_PROVIDER_ID: NfseQueryClient(reviewed_santana),
+            }
+        national_query = None
+        if national_adapter is not None and certificate_vault is not None:
+            national_query = NfseNationalHomologationQueryGateway(
+                provider_resolver=_CanonicalWebissProviderResolver(application),
+                resolve_certificate=lambda scope, cnpj: certificate_vault.resolve(
+                    scope=scope, issuer_cnpj=cnpj,
+                ),
+                load_dispatch=application.load_national_dispatch,
+                production_authority=nfse_production_authority,
+            )
+        if national_adapter is not None or extrema_adapter is not None or municipal_issue:
             router = _GovernedNfseRouter(
                 application=application,
                 national=national_adapter,
                 extrema=extrema_adapter,
+                national_query=national_query,
+                municipal_issuance=municipal_issue,
+                municipal_recovery=municipal_query,
             )
             selected_nfse = NfseGatewayClient(router)
-            if extrema_adapter is not None:
-                # The canonical durable recovery handler performs only the
-                # original RPS query, never a second issuance POST.
+            if extrema_adapter is not None or municipal_query or national_query is not None:
+                # Never re-submit a national DPS or municipal RPS on an uncertain return.
                 nfse_query_client = NfseQueryClient(router)
         handlers = build_provider_operation_handlers(
             FiscalOperationsClient(gateway),
@@ -499,6 +840,160 @@ def build_runtime_fiscal_handler_factory(
             prepared_nfse_query_client=nfse_query_client,
             archive_retention=retention,
         )
+        if national_adapter is not None and certificate_vault is not None:
+            national_handlers = build_national_event_handlers(
+                application=application,
+                certificate_vault=certificate_vault,
+                provider_resolver=_CanonicalWebissProviderResolver(application),
+                retention=retention,
+                production_authority=nfse_production_authority,
+            )
+            for operation, handler in national_handlers.items():
+                if operation in handlers:
+                    raise ValueError("Duplicate national fiscal event handler authority")
+                handlers[operation] = handler
+        if reviewed_santana is not None and reviewed_santana.supports_events:
+            for operation, handler in build_santana_event_handlers(
+                application=application, gateway=reviewed_santana,
+                retention=retention,
+            ).items():
+                if operation in handlers:
+                    raise ValueError("Duplicate Santana fiscal event handler authority")
+                handlers[operation] = handler
+        if (
+            selected_barueri_ports is not None
+            and selected_barueri_ports.supports_events
+        ):
+            for operation, handler in build_barueri_event_handlers(
+                application=application, reviewed=selected_barueri_ports,
+                retention=retention,
+            ).items():
+                if operation in handlers:
+                    raise ValueError("Duplicate Barueri event handler authority")
+                handlers[operation] = handler
+        if (
+            selected_jundiai_ports is not None
+            and selected_jundiai_ports.supports_events
+        ):
+            for operation, handler in build_jundiai_event_handlers(
+                application=application, reviewed=selected_jundiai_ports,
+                retention=retention,
+            ).items():
+                if operation in handlers:
+                    raise ValueError("Duplicate Jundiai fiscal event authority")
+                handlers[operation] = handler
+        if (selected_guarulhos_ports is not None
+                and selected_guarulhos_ports.shared_giss.supports_events):
+            for operation, handler in build_jundiai_event_handlers(
+                application=application, reviewed=selected_guarulhos_ports.shared_giss,
+                retention=retention,
+            ).items():
+                if operation in handlers:
+                    raise ValueError("Duplicate Guarulhos fiscal event authority")
+                handlers[operation] = handler
+        if active_osasco_cancel is not None:
+            handlers["cancelOsascoNfse"] = build_osasco_cancel_handler(
+                application=application, verified_cancel=active_osasco_cancel,
+                retention=retention,
+            )
+        if active_osasco_substitute is not None:
+            handlers["substituteOsascoNfse"] = build_osasco_substitution_handler(
+                application=application,
+                verified_substitute_cancel=active_osasco_substitute,
+                retention=retention,
+            )
+        if active_cajamar_cancel is not None:
+            reviewed_cancel = active_cajamar_cancel
+
+            def validate_cajamar_cancel(
+                scope: ExecutionScope, payload: Mapping[str, Any], key: str | None,
+            ) -> None:
+                if (
+                    not isinstance(key, str) or not key.strip() or len(key) > 256
+                    or set(payload) != {
+                        "unit_id", "environment", "document_id", "human_approval",
+                        "cancellation_reason",
+                    }
+                    or payload.get("unit_id") != scope.unit_id
+                    or payload.get("environment") != scope.environment.value
+                    or payload.get("human_approval") is not True
+                    or not isinstance(payload.get("document_id"), str)
+                    or not str(payload["document_id"]).strip()
+                    or not isinstance(payload.get("cancellation_reason"), str)
+                ):
+                    raise FiscalValidationError("Human-reviewed Cajamar cancellation required")
+                application.preflight_cajamar_nfse_cancellation(
+                    scope=scope, document_id=str(payload["document_id"]),
+                    cancellation_reason=str(payload["cancellation_reason"]),
+                )
+
+            def execute_cajamar_cancel(
+                scope: ExecutionScope, payload: Mapping[str, Any], key: str | None,
+            ) -> Mapping[str, Any]:
+                validate_cajamar_cancel(scope, payload, key)
+                result = application.cancel_prepared_cajamar_nfse(
+                    scope=scope, document_id=str(payload["document_id"]),
+                    submit_verified_cancel=reviewed_cancel,
+                    cancellation_reason=str(payload["cancellation_reason"]),
+                    occurred_at=datetime.now(UTC), retention=retention,
+                )
+                return {
+                    "document_id": str(payload["document_id"]),
+                    "entry_id": result.archive_reference,
+                    "status": result.lifecycle.state.value,
+                    "official_fiscal_confirmation": result.decision.confirmed,
+                    "rejection_code": result.decision.rejection_code,
+                    "municipality_ibge": "3509205",
+                    "recovery_required": result.decision.requires_reconciliation,
+                }
+
+            handlers["cancelCajamarNfse"] = PreflightFiscalOperationHandler(
+                execute_cajamar_cancel, validate_cajamar_cancel,
+            )
+        if (
+            selected_cajamar_ports is not None
+            and selected_cajamar_ports.observe_invoice is not None
+        ):
+            cajamar_observe = selected_cajamar_ports.observe_invoice
+
+            def validate_cajamar_observation(
+                scope: ExecutionScope, payload: Mapping[str, Any], key: str | None,
+            ) -> None:
+                if (
+                    not isinstance(key, str) or not key.strip() or len(key) > 256
+                    or set(payload) != {"unit_id", "environment", "document_id"}
+                    or payload["unit_id"] != scope.unit_id
+                    or payload["environment"] != scope.environment.value
+                    or not isinstance(payload["document_id"], str)
+                    or not payload["document_id"].strip()
+                ):
+                    raise FiscalValidationError("Scoped Cajamar consultation required")
+                application.preflight_cajamar_cancellation_observation(
+                    scope=scope, document_id=payload["document_id"],
+                )
+
+            def inspect_cajamar_cancel(
+                scope: ExecutionScope, payload: Mapping[str, Any], key: str | None,
+            ) -> Mapping[str, Any]:
+                validate_cajamar_observation(scope, payload, key)
+                observation, entry_id = application.observe_cajamar_cancellation(
+                    scope=scope, document_id=payload["document_id"],
+                    query=cajamar_observe, retention=retention,
+                )
+                return {
+                    "document_id": payload["document_id"],
+                    "entry_id": entry_id,
+                    "status": "cancel_requested",
+                    "official_fiscal_confirmation": False,
+                    "recovery_required": True,
+                    "query_status": "invoice_found" if observation.found else "invoice_query_error",
+                    "result_reference": entry_id,
+                    "rejection_code": observation.error_code,
+                }
+
+            handlers["inspectCajamarNfseCancellation"] = PreflightFiscalOperationHandler(
+                inspect_cajamar_cancel, validate_cajamar_observation,
+            )
         if extrema_adapter is not None:
             cancellation_gateway = extrema_adapter
 
@@ -636,6 +1131,64 @@ def build_runtime_fiscal_handler_factory(
             handlers["substituteExtremaNfse"] = PreflightFiscalOperationHandler(
                 execute_extrema_substitution, validate_extrema_substitution,
             )
+        # Cajamar's official Decree 7.311/2024 provides municipal portal
+        # substitution, not a reviewed GeisWeb SOAP operation. This handler
+        # validates an original+candidate without altering either lifecycle.
+        # It is available for human review even when municipal SOAP ports are
+        # not provisioned; the fiscal documents must already exist.
+        def validate_cajamar_substitution_review(
+            scope: ExecutionScope, payload: Mapping[str, Any], key: str | None,
+        ) -> None:
+            if (
+                set(payload) != {
+                    "unit_id", "environment", "original_id",
+                    "replacement_id", "human_approval",
+                }
+                or payload.get("unit_id") != scope.unit_id
+                or payload.get("environment") != scope.environment.value
+                or scope.environment is not FiscalEnvironment.HOMOLOGATION
+                or payload.get("human_approval") is not True
+                or not isinstance(payload.get("original_id"), str)
+                or not isinstance(payload.get("replacement_id"), str)
+                or not str(payload["original_id"]).strip()
+                or not str(payload["replacement_id"]).strip()
+            ):
+                raise FiscalValidationError(
+                    "Cajamar substitution review needs two approved document references"
+                )
+            application.review_prepared_cajamar_substitution(
+                scope=scope,
+                original_id=str(payload["original_id"]),
+                replacement_id=str(payload["replacement_id"]),
+                reviewed_at=datetime.now(UTC),
+            )
+
+        def execute_cajamar_substitution_review(
+            scope: ExecutionScope, payload: Mapping[str, Any], key: str | None,
+        ) -> Mapping[str, Any]:
+            review = application.review_prepared_cajamar_substitution(
+                scope=scope,
+                original_id=str(payload["original_id"]),
+                replacement_id=str(payload["replacement_id"]),
+                reviewed_at=datetime.now(UTC),
+                record_retention=retention,
+            )
+            return {
+                "original_id": review.original_id,
+                "replacement_id": review.replacement_id,
+                "deadline": review.deadline.isoformat(),
+                "status": review.municipal_action,
+                "review_archive_reference": review.archive_reference,
+                "official_fiscal_confirmation": False,
+                "municipal_portal_url": review.portal_url,
+                "regulatory_evidence_url": review.decree_url,
+                "municipality_ibge": "3509205",
+            }
+
+        handlers["reviewCajamarSubstitution"] = PreflightFiscalOperationHandler(
+            execute_cajamar_substitution_review,
+            validate_cajamar_substitution_review,
+        )
         required = {
             "issueFiscalDocument",
             "queryFiscalDocument",

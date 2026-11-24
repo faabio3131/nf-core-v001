@@ -8,6 +8,7 @@ import sqlite3
 from typing import cast
 
 from kordena_fiscal.domain import (
+    ElectronicInvoiceModel,
     ExecutionScope,
     FiscalAccountBinding,
     FiscalAccountId,
@@ -38,6 +39,7 @@ def _sequence_token(key: FiscalSequenceKey, number: int) -> str:
 
 
 class SqliteFiscalSequenceStore:
+    _LEGAL_NAMESPACE = "nfcore-legal-sequence"
     def __init__(self, connection: sqlite3.Connection) -> None:
         self._connection = connection
 
@@ -52,6 +54,92 @@ class SqliteFiscalSequenceStore:
             key.series,
         )
 
+    def _issuer(self, key: FiscalSequenceKey) -> str | None:
+        if key.host_namespace == self._LEGAL_NAMESPACE:
+            raise SequenceStateError("reserved numbering namespace is internal")
+        if not isinstance(key.model, ElectronicInvoiceModel):
+            return None
+        profiles = self._connection.execute(
+            """SELECT DISTINCT cnpj FROM fm_control_plane_fiscal_profiles
+               WHERE host_namespace=? AND tenant_id=? AND unit_id=? AND environment=?""",
+            self._identity(key)[:4],
+        ).fetchall()
+        issuers = {text(row[0], "cnpj") for row in profiles}
+        if len(issuers) > 1 or (issuers and key.issuer_cnpj and key.issuer_cnpj not in issuers):
+            raise SequenceStateError("historical issuer scope requires explicit reconciliation")
+        # Explicit CNPJ comes only from the canonical signed-document pipeline.
+        # Old unbound counters may be read for reconciliation, never incremented.
+        return key.issuer_cnpj or next(iter(issuers), None)
+
+    def authority_lock_material(self, key: FiscalSequenceKey) -> str:
+        issuer = self._issuer(key)
+        return (f"legal-invoice:{issuer}:{key.environment.value}:{key.model.value}:{key.series}"
+                if issuer else key.canonical_material)
+
+    def _authority(
+        self, key: FiscalSequenceKey, policy: FiscalSequencePolicy | None = None,
+    ) -> tuple[tuple[object, ...], int | None]:
+        issuer = self._issuer(key)
+        if issuer is None:
+            if policy is not None and isinstance(key.model, ElectronicInvoiceModel):
+                raise SequenceStateError("invoice numbering requires canonical issuer identity")
+            return self._identity(key), None
+        identity = (self._LEGAL_NAMESPACE, key.tenant_id, issuer,
+                    key.environment.value, key.model.value, key.series)
+        owners = self._connection.execute(
+            """SELECT tenant_id FROM fm_fiscal_sequences
+               WHERE host_namespace=? AND unit_id=? AND environment=? AND model=? AND series=?""",
+            (self._LEGAL_NAMESPACE, issuer, key.environment.value, key.model.value, key.series),
+        ).fetchall()
+        if any(row[0] != key.tenant_id for row in owners):
+            raise SequenceStateError("legal numbering stream belongs to another tenant")
+        orphan = self._connection.execute(
+            """SELECT 1 FROM fm_fiscal_sequences s
+               WHERE s.tenant_id=? AND s.environment=? AND s.model=? AND s.series=?
+                 AND s.host_namespace<>?
+                 AND NOT (s.host_namespace=? AND s.unit_id=?)
+                 AND NOT EXISTS (SELECT 1 FROM fm_control_plane_fiscal_profiles p
+                     WHERE p.host_namespace=s.host_namespace AND p.tenant_id=s.tenant_id
+                       AND p.unit_id=s.unit_id AND p.environment=s.environment)
+               LIMIT 1""",
+            (key.tenant_id, key.environment.value, key.model.value, key.series,
+             self._LEGAL_NAMESPACE, host_key(key.host_namespace), key.unit_id),
+        ).fetchone()
+        if orphan is not None:
+            raise SequenceStateError("unattributed legacy numbering requires reconciliation")
+        rows = self._connection.execute(
+            """SELECT DISTINCT s.host_namespace,s.tenant_id,s.unit_id,
+                              s.first_number,s.max_number,s.last_reserved
+               FROM fm_fiscal_sequences s
+               LEFT JOIN fm_control_plane_fiscal_profiles p
+                 ON p.host_namespace=s.host_namespace AND p.tenant_id=s.tenant_id
+                AND p.unit_id=s.unit_id AND p.environment=s.environment
+               WHERE s.environment=? AND s.model=? AND s.series=?
+                 AND s.host_namespace<>?
+                 AND (p.cnpj=? OR (s.host_namespace=? AND s.tenant_id=? AND s.unit_id=?))""",
+            (key.environment.value, key.model.value, key.series, self._LEGAL_NAMESPACE,
+             issuer, host_key(key.host_namespace), key.tenant_id, key.unit_id),
+        ).fetchall()
+        high_water = None
+        for row in rows:
+            if row[1] != key.tenant_id:
+                raise SequenceStateError("legacy numbering ownership requires reconciliation")
+            # An old unit that changed CNPJ cannot silently donate its history.
+            cnpjs = self._connection.execute(
+                """SELECT DISTINCT cnpj FROM fm_control_plane_fiscal_profiles
+                   WHERE host_namespace=? AND tenant_id=? AND unit_id=? AND environment=?""",
+                (*row[:3], key.environment.value),
+            ).fetchall()
+            if any(p[0] != issuer for p in cnpjs):
+                raise SequenceStateError("ambiguous legacy numbering issuer")
+            if policy is not None and (
+                row[3] != policy.first_number or row[4] != policy.max_number
+            ):
+                raise SequenceStateError("legacy numbering policies require reconciliation")
+            value = integer(row[5], "last_reserved")
+            high_water = value if high_water is None else max(high_water, value)
+        return identity, high_water
+
     def reserve_next(
         self,
         key: FiscalSequenceKey,
@@ -61,7 +149,7 @@ class SqliteFiscalSequenceStore:
             raise FiscalValidationError("key must be FiscalSequenceKey")
         if not isinstance(policy, FiscalSequencePolicy):
             raise FiscalValidationError("policy must be FiscalSequencePolicy")
-        identity = self._identity(key)
+        identity, high_water = self._authority(key, policy)
         row = one_row(
             self._connection.execute(
                 """
@@ -74,7 +162,7 @@ class SqliteFiscalSequenceStore:
             )
         )
         if row is None:
-            candidate = policy.first_number
+            candidate = max(policy.first_number, (high_water or 0) + 1)
             if policy.max_number is not None and candidate > policy.max_number:
                 raise SequenceExhaustedError("fiscal sequence has reached its configured maximum")
             self._connection.execute(
@@ -91,7 +179,7 @@ class SqliteFiscalSequenceStore:
             stored_max = None if row[1] is None else integer(row[1], "max_number")
             if stored_first != policy.first_number or stored_max != policy.max_number:
                 raise SequenceStateError("sequence policy cannot change after first reservation")
-            candidate = integer(row[2], "last_reserved") + 1
+            candidate = max(integer(row[2], "last_reserved"), high_water or 0) + 1
             if policy.max_number is not None and candidate > policy.max_number:
                 raise SequenceExhaustedError("fiscal sequence has reached its configured maximum")
             self._connection.execute(
@@ -111,6 +199,7 @@ class SqliteFiscalSequenceStore:
     def last_reserved(self, key: FiscalSequenceKey) -> int | None:
         if not isinstance(key, FiscalSequenceKey):
             raise FiscalValidationError("key must be FiscalSequenceKey")
+        identity, high_water = self._authority(key)
         row = one_row(
             self._connection.execute(
                 """
@@ -118,10 +207,12 @@ class SqliteFiscalSequenceStore:
                 WHERE host_namespace = ? AND tenant_id = ? AND unit_id = ?
                   AND environment = ? AND model = ? AND series = ?
                 """,
-                self._identity(key),
+                identity,
             )
         )
-        return None if row is None else integer(row[0], "last_reserved")
+        if row is None:
+            return high_water
+        return max(integer(row[0], "last_reserved"), high_water or 0)
 
 
 class SqliteLifecycleRepository:

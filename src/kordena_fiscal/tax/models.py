@@ -72,6 +72,7 @@ class TaxRuleContext:
     operation_type: TaxOperationType
     recipient_profile: RecipientTaxProfile
     product: FiscalProductProfile
+    destination_state_code: str | None = None
 
     def __post_init__(self) -> None:
         if not isinstance(self.scope, ExecutionScope):
@@ -80,6 +81,9 @@ class TaxRuleContext:
             raise FiscalValidationError("instant must be timezone-aware")
         if not isinstance(self.jurisdiction, BrazilianJurisdiction):
             raise FiscalValidationError("jurisdiction must be a BrazilianJurisdiction")
+        if self.destination_state_code is not None:
+            destination = BrazilianJurisdiction(self.destination_state_code).state_code
+            object.__setattr__(self, "destination_state_code", destination)
         if not isinstance(self.tax_regime, TaxRegimeCode):
             raise FiscalValidationError("tax_regime must be a TaxRegimeCode")
         if not isinstance(self.document_kind, FiscalDocumentKind):
@@ -107,10 +111,14 @@ class TaxRuleSelector:
     operation_type: TaxOperationType | None = None
     recipient_profile: RecipientTaxProfile | None = None
     ncm_prefix: str | None = None
+    destination_state_code: str | None = None
 
     def __post_init__(self) -> None:
         state_code = self.state_code
         municipality_code = self.municipality_ibge_code
+        if self.destination_state_code is not None:
+            destination = BrazilianJurisdiction(self.destination_state_code).state_code
+            object.__setattr__(self, "destination_state_code", destination)
         if state_code is not None:
             state_code = BrazilianJurisdiction(state_code).state_code
             object.__setattr__(self, "state_code", state_code)
@@ -158,6 +166,7 @@ class TaxRuleSelector:
             self.operation_type,
             self.recipient_profile,
             self.ncm_prefix,
+            self.destination_state_code,
         )
         constrained = sum(value is not None for value in values)
         ncm_depth = len(self.ncm_prefix) if self.ncm_prefix is not None else 0
@@ -165,6 +174,11 @@ class TaxRuleSelector:
 
     def matches(self, context: TaxRuleContext) -> bool:
         if self.state_code is not None and self.state_code != context.jurisdiction.state_code:
+            return False
+        if (
+            self.destination_state_code is not None
+            and self.destination_state_code != context.destination_state_code
+        ):
             return False
         if (
             self.municipality_ibge_code is not None
@@ -189,6 +203,13 @@ class TaxRuleSelector:
         return True
 
 
+# Official cAtivSN codes (ATIVIDADE_SIMPLES_NACIONAL, effective 2027-01-01,
+# Receita Federal calculator database V0073): 01-14 activities, 90 non-taxable.
+SIMPLES_ACTIVITY_CODES = frozenset(
+    {f"{n:02d}" for n in range(1, 15)} | {"90"}
+)
+
+
 @dataclass(frozen=True, slots=True)
 class TaxRuleOutcome:
     """Canonical tax classification selected by a rule, not provider-specific XML."""
@@ -203,8 +224,18 @@ class TaxRuleOutcome:
     ibs_cbs_cst_code: str | None = None
     ibs_cbs_classification_table_version: str | None = None
     nfe_rates: NfeRateParameters | None = None
+    # cAtivSN (NT 2026.005): Simples Nacional activity of this operation. Codes from
+    # the official ATIVIDADE_SIMPLES_NACIONAL table (calculator database V0073).
+    simples_activity_code: str | None = None
 
     def __post_init__(self) -> None:
+        if self.simples_activity_code is not None:
+            code = self.simples_activity_code.strip()
+            if code not in SIMPLES_ACTIVITY_CODES:
+                raise FiscalValidationError(
+                    "simples_activity_code must be an official cAtivSN code"
+                )
+            object.__setattr__(self, "simples_activity_code", code)
         if self.nfe_rates is not None and not isinstance(self.nfe_rates, NfeRateParameters):
             raise FiscalValidationError(
                 "NF-e calculation requires immutable approved rate parameters"

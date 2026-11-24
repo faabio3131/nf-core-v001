@@ -1,0 +1,44 @@
+{
+  "sergipe-0": {
+    "url": "https://www.confaz.fazenda.gov.br/legislacao/certificado-registro-deposito-cv-icms-190-17-1/sergipe/2018/certificado_de_registro_e_deposito_0839442.pdf",
+    "sha256": "57dc784609c4a4cd4f35babc9345e49a6773460454cdf76ceb3b8a03015e6b68",
+    "bytes": 56408,
+    "provision": "SE nº 13/2018; Decreto 30.992/2018"
+  },
+  "amapa-0": {
+    "url": "https://www.confaz.fazenda.gov.br/legislacao/certificado-registro-deposito-cv-icms-190-17-1/amapa/2018/sei_mf-0851232-certificado-de-registro-e-deposito.pdf",
+    "sha256": "92204f3c1c8ef1719d0e7004dac5ef8e34fbea592e1a74e6d3b89f04e5a6d1ee",
+    "bytes": 200704,
+    "provision": "AP nº 14/2018; Decreto 0839/2018"
+  },
+  "para-0": {
+    "url": "https://www.confaz.fazenda.gov.br/legislacao/certificado-registro-deposito-cv-icms-190-17-1/para/2018/sei_mf-0870601-certificado-de-registro-e-deposito.pdf",
+    "sha256": "ff19cecf9fbde0782b92d034984feb4f23fe7a9d0598e8932b85a2ed431c173a",
+    "bytes": 200704,
+    "provision": "PA nº 16/2018; Decreto 2.014/2018"
+  },
+  "para-1": {
+    "url": "https://www.confaz.fazenda.gov.br/legislacao/certificado-registro-deposito-cv-icms-190-17-1/para/2018/certificado-de-registro-e-deposito-se-confaz-no-57-2018.pdf",
+    "sha256": "1bc4295b51642ddc9a5c6d8d4292fbf680125a45533dfa2fd8b55a90e2e13fa6",
+    "bytes": 201526,
+    "provision": "PA nº 57/2018; atos concessivos complementares e alterações"
+  },
+  "adi-acordao": {
+    "url": "https://portal.stf.jus.br/processos/downloadPeca.asp?id=15341879750&ext=.pdf",
+    "sha256": "b088bf079ac80f251bd9063e7244dc3e8eb391a61ffefaeb30e4847ac40272bd",
+    "bytes": 688908,
+    "provision": "Inteiro teor, ADI 3779, dispositivo nas pp. 2–3"
+  },
+  "adi-transito": {
+    "url": "https://portal.stf.jus.br/processos/downloadPeca.asp?id=15341996652&ext=.pdf",
+    "sha256": "68ef5e09fb328a069796ed3df2d0998e999757a12dfb6744b83a96a7933fbd0a",
+    "bytes": 28499,
+    "provision": "Certidão de trânsito em julgado em 13/12/2019"
+  },
+  "rr-ricms": {
+    "url": "https://sefaz.rr.gov.br/downloads/legislacao?file=02%20-%20LEGISLACAO%20ESTADUAL%2F03%20-%20REGULAMENTO%20DE%20ICMS%20-%20ATUALIZADO%20-%20DECRETO%204.335%202001%2FREGULAMENTO%20DE%20ICMS%20-%20DECRETO%204.335%20DE%2003.08.01%20-%20ATUALIZADO%20ATE%20OUTUBRO%202026.pdf",
+    "sha256": "8dba81d5763562e013138f656f3c2f4074fa3fc3bd70b793b103d1751687d59e",
+    "bytes": 8332670,
+    "provision": "Consolidação até outubro de 2026, p. 517, Anexo I, art. 1º, LXVII"
+  }
+}

@@ -1,0 +1,23 @@
+# Optional official SEFIN trust material in the SAME canonical API.
+# Public CA/CRL artifacts and operator-reviewed fingerprints only.
+# Never store taxpayer PFX, private keys or passwords under this mount.
+services:
+  nfcore-api:
+    environment:
+      # Optional pass-through; when configured, require exact signed DER evidence.
+      # Set to /run/nfcore/sefin-trust/ocsp; no second mount or network lookup.
+      NFCORE_NFSE_RECEIPT_OCSP_DIR:
+      NFCORE_NFSE_RECEIPT_CA_BUNDLE: /run/nfcore/sefin-trust/ca-bundle.pem
+      NFCORE_NFSE_RECEIPT_CRL_BUNDLE: /run/nfcore/sefin-trust/crl-bundle.pem
+      NFCORE_NFSE_RECEIPT_SIGNER_BUNDLE: /run/nfcore/sefin-trust/invoice-signers.pem
+      NFCORE_NFSE_EVENT_SIGNER_BUNDLE: /run/nfcore/sefin-trust/event-signers.pem
+      NFCORE_NFSE_RECEIPT_ROOT_SHA256: ${NFCORE_NFSE_RECEIPT_ROOT_SHA256:?reviewed ICP root fingerprint required}
+      NFCORE_NFSE_RECEIPT_SIGNER_SHA256: ${NFCORE_NFSE_RECEIPT_SIGNER_SHA256:?reviewed invoice signer fingerprints required}
+      NFCORE_NFSE_EVENT_SIGNER_SHA256: ${NFCORE_NFSE_EVENT_SIGNER_SHA256:?reviewed event signer fingerprints required}
+    volumes:
+      - type: bind
+        source: ${NFCORE_NFSE_TRUST_HOST_DIR:?pre-existing reviewed public trust directory required}
+        target: /run/nfcore/sefin-trust
+        read_only: true
+        bind:
+          create_host_path: false

@@ -35,7 +35,7 @@ def database() -> PostgresFiscalDatabase:
         connection.execute("DROP SCHEMA public CASCADE")
         connection.execute("CREATE SCHEMA public")
     database = PostgresFiscalDatabase(dsn)
-    assert database.initialize() == tuple(range(1, 20))
+    assert database.initialize() == (*range(1, 20), 22, 23)
     try:
         yield database
     finally:

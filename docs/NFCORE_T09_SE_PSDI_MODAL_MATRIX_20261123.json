@@ -1,0 +1,222 @@
+{
+  "schema_version": "nfcore.t09.se-psdi-modes/v1",
+  "jurisdiction": "SE",
+  "as_of": "2026-11-23",
+  "status": "NORMATIVE_PROVISIONS_EXAMINED_IMPORT_BLOCKED",
+  "law_official_alese": {
+    "url": "https://aleselegis.al.se.leg.br/Arquivo/Documents/legislacao/html/l31401991.HTML",
+    "sha256": "520b1a1f93b9a1c6c8ec5d315d5d885ec436df4236f7c46dfbdc9a21b9c080a5",
+    "kind": "OFFICIAL_LEGISLATIVE_COMPILATION_NOT_DOE"
+  },
+  "decree_historic_pge": {
+    "act": "Decreto 29.935/2014 (texto historico PGE, 37 paginas, sem alterações de 2024)",
+    "official_url": "https://pge.se.gov.br/wp-content/uploads/2025/02/DECRETO-29-935-1.pdf",
+    "source_type": "STATE_PGE_REPUBLISHED_HISTORIC_DECREE_NOT_2026_CONSOLIDATED",
+    "local_evidence_sha256": "ca18358fccdfd93259819b1ab1d2fe7347b7084cde54d9660b3c8d0ffc67b3b8",
+    "bytes": 171106,
+    "pages": 37,
+    "integrity_verified_by_hash": true,
+    "byte_identity_with_live_official_url_verified": false,
+    "persisted_copy": "/NFCore Commercial Launch/T09 Legal Evidence/SE_Decreto_29935_2014_PGE_Original_Historico.pdf",
+    "public_gazette_original_in_archive_verified": false,
+    "legal_in_force_for_all_months_through_2026": false
+  },
+  "amendment_sources": {
+    "Decreto 820/2024": {
+      "url": "https://www.legisweb.com.br/legislacao/?id=466606",
+      "type": "SECONDARY_TRANSCRIPTION_NOT_OFFICIAL_DOE",
+      "sha256": null
+    },
+    "Decreto 868/2024": {
+      "url": "https://www.legisweb.com.br/legislacao/?id=469405",
+      "type": "SECONDARY_TRANSCRIPTION_NOT_OFFICIAL_DOE",
+      "sha256": null
+    }
+  },
+  "legal_timeline": {
+    "Lei 9.494/2024": {
+      "date": "2024-07-22",
+      "topic": "matéria-prima interna e crédito fiscal, Lei 3.140 art3 IV-d, §5-B e §31",
+      "original_doe_verified": false
+    },
+    "Decreto 820/2024": {
+      "signed": "2024-10-15",
+      "published": "2024-10-16",
+      "stated_effective_from": "2024-07-23",
+      "retroactive_effects": true,
+      "primary_doe_edition_archived": false,
+      "amendment": "Decreto 29.935/2014 art5 IV-e, §5-B e §28"
+    },
+    "Decreto 868/2024": {
+      "signed": "2024-11-25",
+      "published": "2024-11-26",
+      "stated_effective_from": "2024-11-26",
+      "retroactive_effects": false,
+      "primary_doe_edition_archived": false,
+      "amendment": "Decreto 29.935/2014 art5 §§5-C a 5-G, Anexo III, revogação §22"
+    },
+    "Lei 9.812/2025": {
+      "topic": "Lei 3140 art4 §3 estabelecimento DESENQUADRADO do Simples enquadrável como novo com requisitos",
+      "official_compilation_confirmed": true,
+      "original_doe_verified": false
+    },
+    "Lei 9.943/2026": {
+      "signed": "2026-04-01",
+      "topic": "CODISE/DESENVOLVE-SE executoras, SEDETEC administração/CDI, fiscalização e FAI",
+      "official_compilation_confirmed": true,
+      "original_doe_verified": false
+    }
+  },
+  "modes": [
+    {
+      "id": "SE_PSDI_NEW_INDUSTRY_8",
+      "percentage_of_icms_due": "8",
+      "not_nominal_icms_rate": true,
+      "norms": [
+        "Lei 3.140/1991 art3 §5 I",
+        "Decreto 29.935/2014 art5 §3 I"
+      ],
+      "positive": "nova indústria industrial/agroindustrial/pecuária aquícola em modalidade apta, resolução CDI individual eficaz, receita/ICMS da atividade-fim e demais provas",
+      "negative": [
+        "empresa no Simples atual",
+        "ausência de resolução CDI",
+        "operação fora da atividade-fim",
+        "ICMS-ST retido",
+        "consumidor final sem exceção comprovada"
+      ],
+      "confaz_modal_route": "PENDING_ACT_SPECIFIC_MATCH",
+      "certified": false
+    },
+    {
+      "id": "SE_PSDI_NEW_INDUSTRY_6_2",
+      "percentage_of_icms_due": "6.2",
+      "not_nominal_icms_rate": true,
+      "norms": [
+        "Lei 3.140/1991 art3 §5 II",
+        "Decreto 29.935/2014 art5 §3 II"
+      ],
+      "positive": "novo empreendimento na localização semiárida ou de fronteira / projeto de relevante interesse conforme hipótese normativamente prevista, CDI e requisitos comprovados",
+      "negative": [
+        "localização genérica",
+        "projeto relevante sem deliberação CDI",
+        "resolução sem percentual de 6,2%",
+        "empresa no Simples atual"
+      ],
+      "confaz_modal_route": "PENDING_ACT_SPECIFIC_MATCH",
+      "certified": false
+    },
+    {
+      "id": "SE_PSDI_DOMESTIC_RAW_DEFERRAL",
+      "percentage_of_icms_due": null,
+      "not_nominal_icms_rate": true,
+      "norms": [
+        "Lei 3.140/1991 art3 IV d, §31, §5-B",
+        "Decreto 820/2024 art1",
+        "Decreto 868/2024 art1 §§5-C..G"
+      ],
+      "positive": "operação interna de matéria-prima efetivamente industrializada, sem cumulação vedada, estorno aplicável, obrigação de recolher na saída de produto resultante; condições CDI",
+      "negative": [
+        "crédito acumulado sem exceção exportação",
+        "produto já incentivado",
+        "matéria-prima de químico/plástico fora do Anexo III",
+        "benefício aplicado ao mês integral de julho/2024",
+        "competência novembro/2024 sem divisão de vigência"
+      ],
+      "confaz_modal_route": "LC160_CONVENIO190_CLAUSE13_MENTIONED_ACT_SPECIFIC_DEPOSIT_NOT_PROVEN",
+      "certified": false
+    },
+    {
+      "id": "SE_PSDI_CAPITAL_GOODS_DEFERRAL",
+      "percentage_of_icms_due": null,
+      "not_nominal_icms_rate": true,
+      "norms": [
+        "Lei 3.140/1991 art3 IV a",
+        "Decreto 29.935/2014 art5 IV a e §2"
+      ],
+      "positive": "bens de capital novos/diferencial em hipótese individual enquadrada e regime de prazo aplicável",
+      "negative": [
+        "bens usados",
+        "bem desincorporado sem análise de pagamento",
+        "sem resolução CDI"
+      ],
+      "confaz_modal_route": "PENDING_ACT_SPECIFIC_MATCH",
+      "certified": false
+    },
+    {
+      "id": "SE_PSDI_IMPORTED_RAW_DEFERRAL",
+      "percentage_of_icms_due": null,
+      "not_nominal_icms_rate": true,
+      "norms": [
+        "Lei 3.140/1991 art3 IV c",
+        "Decreto 29.935/2014 art5 IV c e §11"
+      ],
+      "positive": "importação de insumo e crédito fiscal com operação legal individualmente enquadrada",
+      "negative": [
+        "produto excluído por alteração 2021",
+        "prazo 6º mês não aferido",
+        "sem ato CDI"
+      ],
+      "confaz_modal_route": "PENDING_ACT_SPECIFIC_MATCH",
+      "certified": false
+    },
+    {
+      "id": "SE_PSDI_EXISTING_INDUSTRY_GROWTH",
+      "percentage_of_icms_due": null,
+      "not_nominal_icms_rate": true,
+      "norms": [
+        "Lei 3.140/1991 art3 §5 III",
+        "Decreto 29.935/2014 art5 §3 III"
+      ],
+      "positive": "empreendimento já instalado com crescimento apurado, média ICMS 12 meses e fórmula de excedente com ato CDI",
+      "negative": [
+        "usar indiscriminadamente taxa 8/6,2 do empreendimento novo",
+        "crescimento insuficiente",
+        "média 110% não atingida"
+      ],
+      "confaz_modal_route": "PENDING_ACT_SPECIFIC_MATCH",
+      "certified": false
+    }
+  ],
+  "specific_confaz_evidence": {
+    "act": "Certificado SE/CONFAZ 126/2024",
+    "official_url": "https://www.confaz.fazenda.gov.br/legislacao/certificado-registro-deposito-cv-icms-190-17-1/sergipe/2024/126-certificado-de-registro-e-deposito-se-an-e-ac-alteracao-e-extensao.pdf",
+    "certificate_issued": "2024-11-18",
+    "registered_deposit_number": "125/2024",
+    "deposit_scope": "atos concessivos editados outubro/2022 alterando/estendendo benefícios vigentes em 2017",
+    "modal_links_established": [],
+    "lc160_c190_referenced": true,
+    "sufficient_to_certify_specific_modalities": false,
+    "original_pge_reference": "https://pge.se.gov.br/wp-content/uploads/2025/09/Parecer-Referencial-no-4063.2025-CEDEC.pdf",
+    "notes": "Lei 8.490/2018 ALESE art1 e Anexo item1 identificam expressamente a Lei 3.140/1991 como base reinstituída, vinculada ao Certificado 13/2018. Ainda falta obter comprovante original 13/2018/planilha e demonstrar alcance de cada modalidade e alteração superveniente; Cert 126/2024 é restrito a atos concessivos de outubro/2022.",
+    "base_law_reinstitution_2018": {
+      "act": "Lei estadual 8.490/2018, arts.1º–3º e Anexo Único item 1",
+      "official_compiled_url": "https://aleselegis.al.se.leg.br/Arquivo/Documents/legislacao/html/l84902018.html",
+      "publication_original_reported": "2019-01-02",
+      "legal_institution": "Lei 3.140/1991 incluída expressamente no item 1 do Anexo Único",
+      "confaz_certificate": "SE/CONFAZ 13/2018",
+      "lc160_conv190": "Lei Complementar 160/2017 e Convênio ICMS 190/2017, cláusulas oitava e nona",
+      "law_reinstitutes_benefits_existing_on": "2017-08-08",
+      "historical_end_date_fomento_industrial": "2032-12-31",
+      "historical_end_date_cannot_override_later_changes": true,
+      "original_doe_bytes_archived": false,
+      "cert_13_2018_original_obtained": false,
+      "specific_rules_8_6_2_and_deferral_2024_verified": false,
+      "source_hash_pending_current_capture": true,
+      "verified_by_official_legislative_page": true,
+      "legal_current_by_competence_2026_certified": false,
+      "legal_import_authorized": false
+    }
+  },
+  "verified_effective_by_competence": {
+    "start_and_original_2024_exact_legal_effects_reviewed": false,
+    "monthly_scope_july_and_november_2024": "INTRAMONTH_FAIL_CLOSED",
+    "post_2025_2026_complete": false
+  },
+  "full_chain_legal_verified": false,
+  "full_chain_2024_2026_complete": false,
+  "independent_counter_review": false,
+  "real_client_grant_required_for_internal_engineering": false,
+  "import_authorized": false,
+  "legal_certified": false,
+  "fiscal_calculation_authorized": false
+}

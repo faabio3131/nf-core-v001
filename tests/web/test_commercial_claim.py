@@ -171,7 +171,7 @@ def test_rejects_non_json_and_malformed_payloads() -> None:
 
     wrong_content_type = client.post(
         "/v1/commercial/claim",
-        data=b"not json",
+        content=b"not json",
         headers={"Content-Type": "text/plain"},
     )
     assert wrong_content_type.status_code == 415

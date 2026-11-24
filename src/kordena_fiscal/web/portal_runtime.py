@@ -10,10 +10,12 @@ from __future__ import annotations
 
 import hashlib
 from collections.abc import Callable, Mapping, Sequence
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from typing import Any, Protocol
+from uuid import uuid4
 
 from fastapi import HTTPException, status
+from lxml import etree
 
 from kordena_fiscal.application.commercial_portal import (
     CommercialPortalReader,
@@ -24,6 +26,11 @@ from kordena_fiscal.archive import (
     FiscalArchiveKind,
     FiscalArchiveVerifier,
 )
+from kordena_fiscal.archive.danfce_pdf import (
+    render_authorized_nfce_danfce,
+    validate_authorized_nfce_danfce,
+)
+from kordena_fiscal.archive.danfse_pdf import render_authorized_national_danfse
 from kordena_fiscal.compliance import CapabilityReadinessService, JurisdictionCapabilityError
 from kordena_fiscal.compliance.capability_api import CapabilityReadinessError
 from kordena_fiscal.contingency import FiscalOutboxStatus
@@ -98,6 +105,82 @@ def _portal_error(status_code: int, code: str, message: str) -> HTTPException:
     )
 
 
+def _is_geisweb_authorized_xml(entry: Any) -> bool:
+    """Identify the archived municipal format, not a new printing authority."""
+    if (
+        entry.kind is not FiscalArchiveKind.AUTHORIZED_XML
+        or entry.media_type not in {"application/xml", "text/xml"}
+        or len(entry.content) > 2_097_152
+    ):
+        return False
+    try:
+        from lxml import etree
+
+        FiscalArchiveVerifier().verify_entry(entry)
+        root = etree.fromstring(entry.content, parser=etree.XMLParser(
+            no_network=True, load_dtd=False, resolve_entities=False, huge_tree=False,
+        ))
+        return (
+            # lxml-stubs 0.5 omits DocInfo.doctype; the attribute exists at runtime.
+            not root.getroottree().docinfo.doctype  # type: ignore[union-attr]
+            and root.tag == "ConsultaLoteRpsResposta"
+            and len(root.findall("Rps")) == 1
+        )
+    except (ArchiveIntegrityError, etree.XMLSyntaxError, ValueError, TypeError):
+        return False
+
+
+def _printable_authorized_xml(entry: Any) -> bool:
+    """Only advertise a PDF action for an archived XML that our renderer supports.
+
+    GeisWeb's ConsultaLoteRpsResposta is not a National DANFSe and the
+    provider does not publish printable notes in homologation. The backend
+    artifact endpoint independently repeats its own security/proof checks.
+    """
+    if (
+        entry.kind is not FiscalArchiveKind.AUTHORIZED_XML
+        or entry.media_type not in {"application/xml", "text/xml"}
+        or len(entry.content) > 2_097_152
+    ):
+        return False
+    try:
+        from lxml import etree
+
+        FiscalArchiveVerifier().verify_entry(entry)
+        root = etree.fromstring(
+            entry.content,
+            parser=etree.XMLParser(
+                resolve_entities=False, load_dtd=False,
+                no_network=True, huge_tree=False,
+            ),
+        )
+        if getattr(root.getroottree().docinfo, "doctype", ""):
+            return False
+        if root.tag == "{http://www.sped.fazenda.gov.br/nfse}NFSe":
+            return True
+        if root.tag == "{http://www.portalfiscal.inf.br/nfe}nfeProc":
+            # The only currently wired local PDF renderer accepts DANFE
+            # model 55. NFC-e model 65 uses a separate printable contract;
+            # advertising this action for 65 creates a broken Portal journey.
+            ns = "{http://www.portalfiscal.inf.br/nfe}"
+            invoices = root.findall(f"{ns}NFe/{ns}infNFe")
+            if len(invoices) != 1:
+                return False
+            model = invoices[0].findtext(f"{ns}ide/{ns}mod")
+            if model == "55":
+                return True
+            if model == "65":
+                try:
+                    validate_authorized_nfce_danfce(entry.content)
+                    return True
+                except FiscalValidationError:
+                    return False
+            return False
+        return False
+    except (ArchiveIntegrityError, etree.XMLSyntaxError, ValueError, TypeError):
+        return False
+
+
 class DurableHumanPortalExecutor:
     """Read canonical durable state and execute safe self-service configuration."""
 
@@ -134,12 +217,24 @@ class DurableHumanPortalExecutor:
         user_administration: HumanAdministrationService | None = None,
         commercial_reader: CommercialPortalReader | None = None,
         danfe_renderer: Callable[[bytes], bytes] | None = None,
+        danfse_renderer: Callable[[bytes], bytes] | None = None,
+        danfce_renderer: Callable[[bytes], bytes] | None = None,
     ) -> None:
         self._unit_of_work_factory = unit_of_work_factory
         self._operation_executor = operation_executor
         self._user_administration = user_administration
         self._commercial_reader = commercial_reader
         self._danfe_renderer = danfe_renderer
+        self._danfce_renderer = (
+            danfce_renderer if danfce_renderer is not None
+            else render_authorized_nfce_danfce
+        )
+        # Use the same already-approved national PDF implementation as #454.
+        # Only a scoped, verified authorized National XML may produce DANFSe.
+        self._danfse_renderer = (
+            danfse_renderer if danfse_renderer is not None
+            else render_authorized_national_danfse
+        )
         self._capabilities = (
             GovernedCapabilityReadinessService(
                 unit_of_work_factory=unit_of_work_factory,
@@ -439,6 +534,10 @@ class DurableHumanPortalExecutor:
         if surface_id == "capabilities":
             return self._capability_rows(authority, scope)[offset : offset + limit]
         if surface_id == "tax-reform":
+            from kordena_fiscal.application.federal_regime_store import (
+                federal_regime_status,
+            )
+
             # The only issuer authority is the existing versioned Control Plane
             # profile. The federal IRPJ regime is NOT inferred from NF-e CRT.
             with self._unit_of_work_factory() as uow:
@@ -468,7 +567,9 @@ class DurableHumanPortalExecutor:
                 "effective_from": issuer.effective_from.isoformat(),
                 "effective_to": (issuer.effective_to.isoformat()
                                  if issuer.effective_to is not None else None),
-                "federal_regime_status": "declaration_not_configured",
+                **federal_regime_status(
+                    self._unit_of_work_factory, scope, issuer, datetime.now(UTC),
+                ),
                 "calculation_status": "not_certified",
             },)[offset : offset + limit]
         rows: list[Mapping[str, Any]] = []
@@ -565,6 +666,17 @@ class DurableHumanPortalExecutor:
                             "archived_at": entry.archived_at.isoformat(),
                             "content_sha256": entry.content_sha256,
                             "media_type": entry.media_type,
+                            "auxiliary_pdf_available": _printable_authorized_xml(entry),
+                            **(
+                                {
+                                    "auxiliary_pdf_status": (
+                                        "MUNICIPAL_PRINT_HOMOLOGATION_UNAVAILABLE"
+                                    ),
+                                }
+                                if scope.environment is FiscalEnvironment.HOMOLOGATION
+                                and _is_geisweb_authorized_xml(entry)
+                                else {}
+                            ),
                         }
                     )
             if surface_id in {"issuances", "errors"}:
@@ -700,6 +812,22 @@ class DurableHumanPortalExecutor:
         if not idempotency_key or not idempotency_key.strip():
             raise _portal_error(400, "MISSING_IDEMPOTENCY_KEY", "Idempotency key is required")
         scope = recovery.scope(authority, payload)
+        if operation_id in {
+            "cancelCajamarNfse", "cancelOsascoNfse", "substituteOsascoNfse",
+            "cancelBarueriNfse", "substituteBarueriNfse",
+            "cancelJundiaiNfse", "substituteJundiaiNfse",
+            "cancelGuarulhosNfse", "substituteGuarulhosNfse",
+            "cancelSantanaNfse", "substituteSantanaNfse",
+            "cancelNationalNfse",
+        }:
+            # Replay an already-scoped T07 claim without asking the gateway
+            # to preflight a note that was successfully cancelled earlier.
+            # The exact account, key, payload and session epoch are checked.
+            replay = recovery.existing_exact_request(
+                authority, operation_id, payload, idempotency_key,
+            )
+            if replay is not None:
+                return replay
         preflight = getattr(self._operation_executor, "validate_prepared", None)
         if callable(preflight):
             preflight(
@@ -743,7 +871,8 @@ class DurableHumanPortalExecutor:
             idempotency_key=str(row["original_key"]),
         )
         updated = recovery.finish(
-            authority, scope, row, result.get("entry_id", result.get("document_id"))
+            authority, scope, row, result.get("entry_id", result.get("document_id")),
+            operation_result=result,
         )
         if not legacy_result:
             return recovery.project(updated, replay=False)
@@ -776,12 +905,35 @@ class DurableHumanPortalExecutor:
                 payload=payload,
                 idempotency_key=idempotency_key,
             )
+        if operation_id in {"reviewNativeSale", "prepareNativeSale"}:
+            from .native_sale_preparation import native_sale_operation
+
+            return native_sale_operation(
+                factory=self._unit_of_work_factory, authority=authority,
+                payload=payload, idempotency_key=idempotency_key,
+                review_only=operation_id == "reviewNativeSale",
+            )
+        if operation_id == "prepareNativeNfse":
+            from .native_nfse_preparation import prepare_native_nfse
+
+            return prepare_native_nfse(
+                factory=self._unit_of_work_factory,
+                authority=authority,
+                payload=payload,
+                idempotency_key=idempotency_key,
+            )
         if operation_id == "prepareExtremaNfse":
             return self._prepare_extrema_nfse(
                 authority=authority, payload=payload, idempotency_key=idempotency_key,
             )
         if operation_id == "registerFiscalProfile":
             return self._register_fiscal_profile(
+                authority=authority, payload=payload, idempotency_key=idempotency_key
+            )
+        if operation_id == "changeFiscalProfileCrt":
+            return self._change_fiscal_profile_crt(authority=authority, payload=payload)
+        if operation_id == "declareFederalRegime":
+            return self._declare_federal_regime(
                 authority=authority, payload=payload, idempotency_key=idempotency_key
             )
         if operation_id in {"createUser", "updateUser"}:
@@ -797,7 +949,12 @@ class DurableHumanPortalExecutor:
                 payload=payload,
                 idempotency_key=idempotency_key,
             )
-        if operation_id == "substituteExtremaNfse":
+        if operation_id in {
+            "substituteExtremaNfse", "reviewCajamarSubstitution",
+            "substituteOsascoNfse", "substituteBarueriNfse",
+            "substituteJundiaiNfse", "substituteSantanaNfse",
+            "substituteGuarulhosNfse",
+        }:
             try:
                 unit = payload.get("unit_id")
                 if not isinstance(unit, str) or not unit.strip():
@@ -812,19 +969,42 @@ class DurableHumanPortalExecutor:
         from .fiscal_intent_recovery import PERMISSIONS
 
         if operation_id in PERMISSIONS:
-            receipt = self.prepare_fiscal_intent(
-                authority=authority,
-                operation_id=operation_id,
-                payload=payload,
-                idempotency_key=idempotency_key,
-            )
-            return self.resume_fiscal_intent(
-                authority=authority,
-                intent_id=str(receipt["intent_id"]),
-                payload=payload,
-                idempotency_key=idempotency_key,
-                legacy_result=True,
-            )
+            try:
+                receipt = self.prepare_fiscal_intent(
+                    authority=authority,
+                    operation_id=operation_id,
+                    payload=payload,
+                    idempotency_key=idempotency_key,
+                )
+                return self.resume_fiscal_intent(
+                    authority=authority,
+                    intent_id=str(receipt["intent_id"]),
+                    payload=payload,
+                    idempotency_key=idempotency_key,
+                    legacy_result=True,
+                )
+            except (PersistenceConflictError, PersistenceStateError) as exc:
+                # A second Cajamar cancellation must return a scoped HTTP 409
+                # instead of leaking a storage exception or issuing another POST.
+                # All other existing fiscal operations retain their contracts.
+                if operation_id == "inspectCajamarNfseCancellation":
+                    raise _portal_error(
+                        409, "CAJAMAR_RECOVERY_STATE_CONFLICT",
+                        "Original Cajamar cancellation is not pending investigation",
+                    ) from exc
+                if operation_id not in {
+                    "cancelCajamarNfse", "cancelOsascoNfse", "substituteOsascoNfse",
+                    "cancelBarueriNfse", "substituteBarueriNfse",
+                    "cancelJundiaiNfse", "substituteJundiaiNfse",
+                    "cancelGuarulhosNfse", "substituteGuarulhosNfse",
+                    "cancelSantanaNfse", "substituteSantanaNfse",
+            "cancelNationalNfse",
+                }:
+                    raise
+                raise _portal_error(
+                    409, "MUNICIPAL_CANCELLATION_STATE_CONFLICT",
+                    "Original cancellation is completed, pending or under investigation",
+                ) from exc
         if self._operation_executor is None:
             raise _runtime_unavailable("Fiscal portal operation executor is not configured")
         return self._operation_executor.execute(
@@ -856,7 +1036,11 @@ class DurableHumanPortalExecutor:
             raise _portal_error(
                 403, "FISCAL_ARTIFACT_FORBIDDEN", "Document access denied"
             ) from exc
-        if kind not in {FiscalArchiveKind.AUTHORIZED_XML, FiscalArchiveKind.DANFE}:
+        if kind not in {
+            FiscalArchiveKind.AUTHORIZED_XML,
+            FiscalArchiveKind.DANFE,
+            FiscalArchiveKind.AUXILIARY_PDF,
+        }:
             raise _portal_error(
                 400, "FISCAL_ARTIFACT_KIND_INVALID", "Unsupported fiscal file"
             )
@@ -874,7 +1058,10 @@ class DurableHumanPortalExecutor:
         with self._unit_of_work_factory() as uow:
             entries = uow.archive.list_for_document(scope, document_reference)
         matches = [entry for entry in entries if entry.kind is kind]
-        if not matches and kind is FiscalArchiveKind.DANFE and self._danfe_renderer:
+        if not matches and (
+            kind is FiscalArchiveKind.AUXILIARY_PDF
+            or (kind is FiscalArchiveKind.DANFE and self._danfe_renderer is not None)
+        ):
             # Generate the printable PDF ONLY from an already archived, genuine
             # authorized XML. No synthetic fiscal authorization or XML is created.
             authorized = [
@@ -888,11 +1075,52 @@ class DurableHumanPortalExecutor:
                     )
                 try:
                     FiscalArchiveVerifier().verify_entry(original)
-                    pdf = self._danfe_renderer(original.content)
+                    if len(original.content) > 2 * 1024 * 1024:
+                        raise FiscalValidationError("Authorized XML too large")
+                    # Both legacy DANFE and unified auxiliary PDFs must use a
+                    # document-specific renderer, never infer NF-e from a PDF URL.
+                    root = etree.fromstring(
+                        original.content,
+                        parser=etree.XMLParser(
+                            resolve_entities=False, load_dtd=False,
+                            no_network=True, huge_tree=False,
+                        ),
+                    )
+                    if getattr(root.getroottree().docinfo, "doctype", ""):
+                        raise FiscalValidationError("Forbidden XML DOCTYPE")
+                    renderer = self._danfe_renderer
+                    if root.tag == "{http://www.sped.fazenda.gov.br/nfse}NFSe":
+                        if kind is not FiscalArchiveKind.AUXILIARY_PDF:
+                            raise FiscalValidationError("DANFE cannot represent national NFS-e")
+                        renderer = self._danfse_renderer
+                    elif root.tag == "{http://www.portalfiscal.inf.br/nfe}nfeProc":
+                        ns = "{http://www.portalfiscal.inf.br/nfe}"
+                        invoices = root.findall(f"{ns}NFe/{ns}infNFe")
+                        if len(invoices) != 1:
+                            raise FiscalValidationError("Ambiguous NFe/NFC-e model")
+                        model = invoices[0].findtext(f"{ns}ide/{ns}mod")
+                        if model == "65":
+                            if kind is not FiscalArchiveKind.AUXILIARY_PDF:
+                                raise FiscalValidationError("DANFE 55 cannot represent NFC-e 65")
+                            renderer = self._danfce_renderer
+                        elif model != "55":
+                            raise FiscalValidationError("Unsupported NFe/NFC-e model")
+                    else:
+                        raise FiscalValidationError("Unsupported authorized XML kind")
+                    if renderer is None:
+                        raise FiscalValidationError("Auxiliary PDF generator unavailable")
+                    pdf = renderer(original.content)
+                    if not pdf.startswith(b"%PDF-") or len(pdf) > 8 * 1024 * 1024:
+                        raise FiscalValidationError("Invalid auxiliary PDF")
                 except (ArchiveIntegrityError, FiscalValidationError) as exc:
                     raise _portal_error(
-                        409, "FISCAL_DANFE_RENDER_FAILED",
-                        "Não foi possível gerar DANFE do XML autorizado",
+                        409, "FISCAL_PDF_RENDER_FAILED",
+                        "Não foi possível gerar o PDF do XML autorizado",
+                    ) from exc
+                except etree.XMLSyntaxError as exc:
+                    raise _portal_error(
+                        409, "FISCAL_PDF_RENDER_FAILED",
+                        "XML autorizado inválido para impressão",
                     ) from exc
                 return pdf, "application/pdf"
         if len(matches) != 1:
@@ -918,6 +1146,7 @@ class DurableHumanPortalExecutor:
                 {"application/xml", "text/xml"}
             ),
             FiscalArchiveKind.DANFE: frozenset({"application/pdf"}),
+            FiscalArchiveKind.AUXILIARY_PDF: frozenset({"application/pdf"}),
         }
         if entry.media_type not in allowed_media[kind]:
             raise _portal_error(
@@ -1176,6 +1405,168 @@ class DurableHumanPortalExecutor:
             raise _portal_error(
                 400, "INVALID_EXTREMA_PREPARATION", "Reviewed fiscal facts invalid",
             ) from exc
+
+    def _change_fiscal_profile_crt(
+        self,
+        *,
+        authority: AuthenticatedHuman,
+        payload: Mapping[str, Any],
+    ) -> Mapping[str, Any]:
+        """New version of the issuer profile with another CRT, effective now.
+
+        The previous version is closed at the same instant (history kept). The
+        browser supplies only the unit, environment, new CRT and the version it
+        saw (compare-and-set); every other issuer fact is copied server-side.
+        """
+        from dataclasses import replace
+
+        from kordena_fiscal.domain import TaxRegimeCode
+
+        fields = {"unit_id", "environment", "crt", "expected_version"}
+        try:
+            if set(payload) != fields:
+                raise ValueError("invalid CRT change fields")
+            if not isinstance(payload["unit_id"], str) or not isinstance(
+                payload["environment"], str
+            ):
+                raise ValueError("unit and environment must be text")
+            if type(payload["crt"]) is not int or type(payload["expected_version"]) is not int:
+                raise ValueError("CRT and version must be integers")
+            unit_id = payload["unit_id"].strip()
+            environment = FiscalEnvironment(payload["environment"])
+            authority.assert_permission(PortalPermission.CONFIGURATION_WRITE, unit_id=unit_id)
+            if authority.account.role.value not in {"owner", "admin"}:
+                raise HumanAuthorizationError("CRT change requires owner or admin")
+            new_crt = TaxRegimeCode(payload["crt"])
+            now = datetime.now(UTC)
+            with self._unit_of_work_factory() as uow:
+                current = uow.control_plane.resolve_profile(
+                    host_namespace="fm-nfcore", tenant_id=authority.tenant_id,
+                    unit_id=unit_id, environment=environment, instant=now,
+                )
+            if current is None:
+                raise _portal_error(
+                    409, "FISCAL_PROFILE_REQUIRED", "Cadastre o perfil fiscal do emitente",
+                )
+            if (
+                current.version == payload["expected_version"] + 1
+                and current.tax_regime is new_crt
+            ):
+                return {
+                    "status": "profile_superseded", "version": current.version,
+                    "crt": int(current.tax_regime), "replay": True,
+                }
+            if current.version != payload["expected_version"]:
+                raise _portal_error(
+                    409, "FISCAL_PROFILE_CONFLICT", "Recarregue o perfil fiscal",
+                )
+            if current.tax_regime is new_crt:
+                raise ValueError("CRT unchanged")
+            successor = replace(
+                current, version=current.version + 1, tax_regime=new_crt,
+                effective_from=now, effective_to=None,
+                scope=replace(current.scope, correlation_id="crt-change-" + uuid4().hex[:16]),
+            )
+            actor = AdminPrincipal(
+                actor_id=authority.account.account_id,
+                permissions=frozenset({ControlPlanePermission.PROFILE_WRITE}),
+                tenant_ids=frozenset({authority.tenant_id}),
+            )
+            DurableControlPlaneService(self._unit_of_work_factory).supersede_fiscal_profile(
+                actor=actor, previous=current, successor=successor,
+            )
+        except HumanAuthorizationError as exc:
+            raise _portal_error(403, "FISCAL_PROFILE_FORBIDDEN", "Profile scope denied") from exc
+        except ControlPlaneConflictError as exc:
+            raise _portal_error(
+                409, "FISCAL_PROFILE_CONFLICT", "Recarregue o perfil fiscal",
+            ) from exc
+        except (FiscalValidationError, ValueError, TypeError, KeyError) as exc:
+            raise _portal_error(400, "INVALID_FISCAL_PROFILE", "Invalid issuer profile") from exc
+        return {
+            "status": "profile_superseded", "version": successor.version,
+            "crt": int(successor.tax_regime), "replay": False,
+        }
+
+    def _declare_federal_regime(
+        self,
+        *,
+        authority: AuthenticatedHuman,
+        payload: Mapping[str, Any],
+        idempotency_key: str | None,
+    ) -> Mapping[str, Any]:
+        """RTC-02: record Lucro Presumido / Lucro Real / Simples for the issuer.
+
+        The CRT comes from the effective issuer profile (server-owned); the
+        browser supplies only the regime, the start date and the evidence.
+        """
+        from zoneinfo import ZoneInfo
+
+        from kordena_fiscal.application.federal_regime_store import declare_federal_regime
+        from kordena_fiscal.tax.regimes import FederalIncomeTaxRegime
+
+        fields = {
+            "unit_id", "environment", "federal_income_tax_regime",
+            "effective_from", "source_reference",
+        }
+        try:
+            if set(payload) != fields or any(
+                not isinstance(payload[name], str) for name in fields
+            ):
+                raise ValueError("invalid federal regime command fields")
+            unit_id = payload["unit_id"].strip()
+            environment = FiscalEnvironment(payload["environment"])
+            authority.assert_permission(PortalPermission.CONFIGURATION_WRITE, unit_id=unit_id)
+            regime = FederalIncomeTaxRegime(payload["federal_income_tax_regime"])
+            start = date.fromisoformat(payload["effective_from"])
+            effective_from = datetime(
+                start.year, start.month, start.day, tzinfo=ZoneInfo("America/Sao_Paulo"),
+            )
+            scope = ExecutionScope(
+                host_namespace="fm-nfcore", tenant_id=authority.tenant_id,
+                unit_id=unit_id, environment=environment,
+                correlation_id="federal-regime-" + uuid4().hex[:16],
+            )
+            now = datetime.now(UTC)
+            with self._unit_of_work_factory() as uow:
+                profile = uow.control_plane.resolve_profile(
+                    host_namespace="fm-nfcore", tenant_id=authority.tenant_id,
+                    unit_id=unit_id, environment=environment, instant=now,
+                )
+            if profile is None:
+                raise _portal_error(
+                    409, "FISCAL_PROFILE_REQUIRED",
+                    "Cadastre o perfil fiscal do emitente antes do regime federal",
+                )
+            result = declare_federal_regime(
+                self._unit_of_work_factory, scope=scope, crt=profile.tax_regime,
+                issuer_cnpj=profile.cnpj, federal_income_tax_regime=regime,
+                effective_from=effective_from,
+                source_reference=payload["source_reference"],
+                actor=authority.account.account_id,
+                idempotency_key=idempotency_key or "", occurred_at=now,
+            )
+        except HumanAuthorizationError:
+            raise _portal_error(
+                403, "PORTAL_FORBIDDEN", "Sem permissão nesta unidade",
+            ) from None
+        except PersistenceConflictError:
+            raise _portal_error(
+                409, "FEDERAL_REGIME_CONFLICT",
+                "Esta tentativa já foi usada com dados diferentes",
+            ) from None
+        except (ValueError, TypeError, KeyError, FiscalValidationError):
+            raise _portal_error(
+                400, "FEDERAL_REGIME_INVALID",
+                "Regime federal, data de início ou evidência inválidos",
+            ) from None
+        return {
+            "status": "declared",
+            "federal_income_tax_regime": result["federal_income_tax_regime"],
+            "effective_from": result["effective_from"],
+            "version": result["version"],
+            "replay": result["replay"],
+        }
 
     def _register_fiscal_profile(
         self,

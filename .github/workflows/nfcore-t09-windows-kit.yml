@@ -1,0 +1,67 @@
+name: T09 Windows Offline Source Kit
+on:
+  pull_request:
+    branches:
+      - work/nfcore-closeout-20261119
+    paths:
+      - "scripts/obter_e_hashear_fontes.py"
+      - "scripts/nfcore_t09_capture_public_evidence.py"
+      - "docs/NFCORE_T09_WINDOWS_LOCAL_SOURCE_QUEUE_V1.json"
+      - "docs/NFCORE_T09_KIT_WINDOWS_FONTES_GUIA.md"
+      - ".github/workflows/nfcore-t09-windows-kit.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build-windows-kit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - name: Checkout exact PR SHA
+        uses: actions/checkout@v4
+      - name: Build a standalone offline Windows kit from canonical repo files
+        shell: bash
+        run: |
+          python - <<'PY'
+          import hashlib
+          import json
+          from pathlib import Path
+          from zipfile import ZIP_DEFLATED, ZipFile
+
+          files = {
+              "obter_e_hashear_fontes.py": "scripts/obter_e_hashear_fontes.py",
+              "nfcore_t09_capture_public_evidence.py":
+                  "scripts/nfcore_t09_capture_public_evidence.py",
+              "links_validos.json":
+                  "docs/NFCORE_T09_WINDOWS_LOCAL_SOURCE_QUEUE_V1.json",
+              "LEIA_ME_T09_WINDOWS.md":
+                  "docs/NFCORE_T09_KIT_WINDOWS_FONTES_GUIA.md",
+          }
+          out = Path("nfcore_t09_windows_fontes_offline.zip")
+          manifest = {"schema_version": "nfcore.t09.windows-kit-build/v1",
+                      "approved_for_tax": False, "files_sha256": {}}
+          with ZipFile(out, "w", ZIP_DEFLATED) as z:
+              for target, source in files.items():
+                  data = Path(source).read_bytes()
+                  z.writestr(target, data)
+                  manifest["files_sha256"][target] = hashlib.sha256(
+                      data
+                  ).hexdigest()
+              z.writestr("fontes/LEIA_ME.txt",
+                         "Salvar somente os originais oficiais neste diretorio.\n")
+              z.writestr("kit_sha256.json", json.dumps(manifest, indent=2))
+          with ZipFile(out) as z:
+              assert set(z.namelist()) == (
+                  set(files) | {"fontes/LEIA_ME.txt", "kit_sha256.json"}
+              )
+              for target, digest in manifest["files_sha256"].items():
+                  assert hashlib.sha256(z.read(target)).hexdigest() == digest
+          print(f"Offline kit verified: {out} ({out.stat().st_size} bytes)")
+          PY
+      - name: Publish offline source kit, no real sources included
+        uses: actions/upload-artifact@v4
+        with:
+          name: t09-windows-offline-source-kit
+          path: nfcore_t09_windows_fontes_offline.zip
+          if-no-files-found: error
+          retention-days: 30

@@ -28,6 +28,9 @@ class Capability(StrEnum):
     SUGGEST_CLASSIFICATION = "cognitive.suggest_classification"
     EXPLAIN_RECONCILIATION = "cognitive.explain_reconciliation"
     ANSWER_ACCOUNTANT_QUESTION = "cognitive.answer_accountant_question"
+    OPPORTUNITY_RADAR = "cognitive.opportunity_radar"
+    CREDIT_RECOVERY = "cognitive.credit_recovery"
+    TAX_SIMULATION = "cognitive.tax_simulation"
 
 
 class EvidenceKind(StrEnum):
@@ -38,6 +41,8 @@ class EvidenceKind(StrEnum):
     CLASSIFICATION_CATALOG = "classification_catalog"
     RECONCILIATION_ISSUE = "reconciliation_issue"
     KNOWLEDGE_BASE = "knowledge_base"
+    ECONOMY_EVALUATION = "economy_evaluation"
+    ECONOMY_LEGAL = "economy_legal"
 
 
 class SectionKind(StrEnum):
@@ -113,6 +118,7 @@ class AdviceRequest:
     capability: Capability
     evidence: tuple[Evidence, ...]
     question: str = ""
+    subject_id: str | None = None
 
     def __post_init__(self) -> None:
         if not isinstance(self.scope, ExecutionScope):
@@ -134,6 +140,8 @@ class AdviceRequest:
         if len(question) > MAX_QUESTION_CHARS:
             raise FiscalValidationError("question is too long")
         object.__setattr__(self, "question", question)
+        if self.subject_id is not None:
+            object.__setattr__(self, "subject_id", _text(self.subject_id, "subject_id", 128))
 
 
 @dataclass(frozen=True, slots=True)

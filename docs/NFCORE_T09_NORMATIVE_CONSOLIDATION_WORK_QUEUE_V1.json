@@ -1,0 +1,1956 @@
+{
+  "schema_version": "nfcore.t09.normative-consolidation-queue/v1",
+  "as_of": "2026-11-21",
+  "governing_pr": 592,
+  "based_on_commit": "917cf3ac428b682c6d575aba3e8f18d4f316d4d5",
+  "current": "one representative draft per UF, 27 candidate UFs, 24 partial official excerpts examined",
+  "target": "27/27 representative candidates fully consolidated by exact act and competence, provenance reproducible and suitability audited, then external independent accountant review for live fiscal application",
+  "scope_limitation": "One selected ICMS program/provision per UF, NOT exhaustive state tax benefits. Expand by separately approved scope.",
+  "task_owner_role": "AI_LEGAL_TAX_RESEARCH_SPECIALIST",
+  "agent_deployment_status": "runbook_defined_not_an_autonomous_running_agent",
+  "human_governance": "Internal engineering/AI curatorial evidence may be certified separately. Human product-owner acceptance and independent accountant opinion are EXTERNAL activation/promotion dependencies; no AI self-approval and no auto fiscal promotion.",
+  "internal_curatorial_stage": "IN_PROGRESS",
+  "external_opinion": {
+    "classification": "EXTERNAL_DEPENDENCY",
+    "responsible_role": "independent_accountant_designated_by_product_owner",
+    "state": "PENDING_NOT_RECEIVED",
+    "signature_received": false,
+    "external_review_not_required_to_document_internal_research": true,
+    "mandatory_before_legal_benefit_approval": true,
+    "mandatory_before_fiscal_activation": true,
+    "external_review_not_required_to_close_internal_engineering": true
+  },
+  "safety": {
+    "auto_import_rule": false,
+    "auto_apply_icms": false,
+    "tax_credits_allowed": false,
+    "artificial_signoff_allowed": false,
+    "create_parallel_tax_authority": false,
+    "unblock_T10_on_drafts": false,
+    "auto_merge": false,
+    "auto_deploy": false
+  },
+  "completion_gates": [
+    "act_exact_issuer_url_and_publication_record",
+    "source_original_bytes_archived_with_real_sha256",
+    "timeline_full_amendments_repeals_and_reinstatements",
+    "competence_time_interval_and_transitional_rules",
+    "state_legal_path_and_confaz_lc160_when_applicable",
+    "eligible_operations_ncm_cnae_cfop_icms_regime_and_exceptions",
+    "individual_grant_requirement_and_conditions_normatively_established",
+    "reproducible_positive_and_negative_cases_anchored_in_act",
+    "independent_adversarial_agent_review_of_source_and_result",
+    "deterministic_tests_and_ci_success_for_latest_head"
+  ],
+  "work_items": [
+    {
+      "uf": "AC",
+      "candidate_id": "AC-INDUSTRIA-LEI1358-DEC4196-V1",
+      "candidate_version": 1,
+      "normative_anchor": "Lei 1.358/2000; Decreto 4.196/2001; Lei 3.460/2018; Decreto 11.618/2025",
+      "primary_source_pointer": "https://www.legis.ac.gov.br/detalhar/1775",
+      "already_examined_government_excerpt": true,
+      "current_state": "AWAITING_COMPLETE_NORMATIVE_CONSOLIDATION",
+      "internal_ai_legal_owner": "AI_LEGAL_TAX_RESEARCH_SPECIALIST",
+      "source_publication_and_original_bytes_digest": null,
+      "full_amendment_chain_verified": false,
+      "applicability_by_competence_verified": false,
+      "confaz_legal_route_verified": false,
+      "taxpayer_grant_required_and_verified": false,
+      "scope_and_negative_cases_legally_grounded": false,
+      "independent_agent_counter_review_passed": false,
+      "technical_tests_certified_for_real_act": false,
+      "internal_curatorial_accepted": false,
+      "accountant_external_opinion": "PENDING_NOT_RECEIVED",
+      "legally_importable": false,
+      "eligible_for_fiscal_application": false,
+      "research_checkpoint_20261122": {
+        "dossier_path": "docs/NFCORE_T09_DOSSIE_RECONCILIATION_V1.json",
+        "candidate_id": "AC-INDUSTRIA-LEI1358-DEC4196-V1",
+        "required_review_evidence": "grant_project_investment",
+        "source_capture_records": [
+          "AC_Lei_1358_2000.html",
+          "AC_Decreto_4196_2001.html",
+          "AC_Decreto_11618_2025.html",
+          "AC_Lei_3460_2018.html"
+        ],
+        "case_design": "CONDITIONAL_POSITIVE_AND_NEGATIVE_PREPARED_NOT_CERTIFIED",
+        "internal_grant_requirement_review": "PENDING_NORMATIVE_DETERMINATION",
+        "actual_taxpayer_grant": "EXTERNAL_PER_TAXPAYER_WHEN_REQUIRED",
+        "actual_taxpayer_grant_not_required_to_finish_internal_curation": true,
+        "package_status": "PARTIAL_RESEARCH_NOT_APPROVED",
+        "package_residual_register": "docs/NFCORE_T09_RESEARCH_RESIDUAL_27UFS_20261122.md",
+        "final_receipt": {
+          "intake_status": "CLOSED",
+          "new_capture_count": 2,
+          "source_manifest": "docs/NFCORE_T09_RECEBIMENTO_FINAL_50_DOCUMENTOS_20261122.json",
+          "not_normative_approval": true,
+          "remaining_normative_work": "INTERNAL"
+        },
+        "latest_receipt_manifest": "docs/NFCORE_T09_RECEBIMENTO_FINAL_50_DOCUMENTOS_20261122.json",
+        "latest_receipt_count": 2,
+        "external_activation_separation": {
+          "human_product_owner_acceptance": "EXTERNAL_AFTER_INTERNAL_CERTIFICATION",
+          "accountant_opinion": "EXTERNAL_BEFORE_FISCAL_ACTIVATION",
+          "actual_taxpayer_grant": "EXTERNAL_BY_TAXPAYER_WHEN_NORM_REQUIRES",
+          "not_required_for_internal_eng_curation": true
+        },
+        "official_crosscheck_late_2026": {
+          "act": "Decreto AC 11.852/2026 sobre RICMS Decreto 008/1998",
+          "source": "https://legis.ac.gov.br/detalhar/6757",
+          "conditions": [
+            "industrial_process_destination",
+            "special_regime_terms_and_difal",
+            "state_normative_eligibility_as_of_competence"
+          ],
+          "material_risk": "Separar mercadorias usadas no processo industrial das demais; não deduzir dispensa de DIFAL ou da antecipação como regime fiscal universal.",
+          "scope": "INTERNAL_RESEARCH",
+          "verified_full_chain": false,
+          "approved": false
+        },
+        "latest_43_source_capture_receipt": {
+          "manifest_path": "docs/NFCORE_T09_43_OFFICIAL_SOURCE_BYTES_20261122.json",
+          "bytes_verified_count": 0,
+          "unavailable_count": 2,
+          "normative_chain_consolidated": false,
+          "independent_review_received": false
+        },
+        "retry_3_official_sources_20261122": {
+          "manifest": "docs/NFCORE_T09_RETRY_3UFS_CAPTURE_RECEIPT_20261122.json",
+          "captured_ok": 1,
+          "failed": 1,
+          "curation_approved": false
+        }
+      }
+    },
+    {
+      "uf": "AL",
+      "candidate_id": "AL-PRODESIN-LEI5671-DEC38394-V1",
+      "candidate_version": 1,
+      "normative_anchor": "Lei 5.671/1995, Decreto 38.394/2000",
+      "primary_source_pointer": "https://diario.imprensaoficial.al.gov.br/apinova/api/editions/viewPdf/51478",
+      "already_examined_government_excerpt": false,
+      "current_state": "AWAITING_COMPLETE_NORMATIVE_CONSOLIDATION",
+      "internal_ai_legal_owner": "AI_LEGAL_TAX_RESEARCH_SPECIALIST",
+      "source_publication_and_original_bytes_digest": null,
+      "full_amendment_chain_verified": false,
+      "applicability_by_competence_verified": false,
+      "confaz_legal_route_verified": false,
+      "taxpayer_grant_required_and_verified": false,
+      "scope_and_negative_cases_legally_grounded": false,
+      "independent_agent_counter_review_passed": false,
+      "technical_tests_certified_for_real_act": false,
+      "internal_curatorial_accepted": false,
+      "accountant_external_opinion": "PENDING_NOT_RECEIVED",
+      "legally_importable": false,
+      "eligible_for_fiscal_application": false,
+      "research_checkpoint_20261122": {
+        "dossier_path": "docs/NFCORE_T09_DOSSIE_RECONCILIATION_V1.json",
+        "candidate_id": "AL-PRODESIN-LEI5671-DEC38394-V1",
+        "required_review_evidence": "conedes_benefit_scope",
+        "source_capture_records": [
+          "AL_Lei_5671_1995.html",
+          "AL_Decreto_38394_2000.html",
+          "AL_DOE_2026_Decreto_107816.pdf"
+        ],
+        "case_design": "CONDITIONAL_POSITIVE_AND_NEGATIVE_PREPARED_NOT_CERTIFIED",
+        "internal_grant_requirement_review": "PENDING_NORMATIVE_DETERMINATION",
+        "actual_taxpayer_grant": "EXTERNAL_PER_TAXPAYER_WHEN_REQUIRED",
+        "actual_taxpayer_grant_not_required_to_finish_internal_curation": true,
+        "additional_primary_text_review": "CONTENT_IDENTIFIED_NOT_BYTES_ARCHIVED",
+        "package_status": "PARTIAL_RESEARCH_NOT_APPROVED",
+        "package_residual_register": "docs/NFCORE_T09_RESEARCH_RESIDUAL_27UFS_20261122.md",
+        "final_receipt": {
+          "intake_status": "CLOSED",
+          "new_capture_count": 3,
+          "source_manifest": "docs/NFCORE_T09_RECEBIMENTO_FINAL_50_DOCUMENTOS_20261122.json",
+          "not_normative_approval": true,
+          "remaining_normative_work": "INTERNAL"
+        },
+        "latest_receipt_manifest": "docs/NFCORE_T09_RECEBIMENTO_FINAL_50_DOCUMENTOS_20261122.json",
+        "latest_receipt_count": 3,
+        "external_activation_separation": {
+          "human_product_owner_acceptance": "EXTERNAL_AFTER_INTERNAL_CERTIFICATION",
+          "accountant_opinion": "EXTERNAL_BEFORE_FISCAL_ACTIVATION",
+          "actual_taxpayer_grant": "EXTERNAL_BY_TAXPAYER_WHEN_NORM_REQUIRES",
+          "not_required_for_internal_eng_curation": true
+        },
+        "latest_43_source_capture_receipt": {
+          "manifest_path": "docs/NFCORE_T09_43_OFFICIAL_SOURCE_BYTES_20261122.json",
+          "bytes_verified_count": 2,
+          "unavailable_count": 0,
+          "normative_chain_consolidated": false,
+          "independent_review_received": false
+        }
+      }
+    },
+    {
+      "uf": "AM",
+      "candidate_id": "AM-POLITICA-INDUSTRIAL-DEC47727-V1",
+      "candidate_version": 1,
+      "normative_anchor": "Lei 2.826/2003, Decreto 47.727/2023 e alterações de 2026",
+      "primary_source_pointer": "https://sistemas.sefaz.am.gov.br/get/Normas.do?metodo=viewDoc&uuidDoc=c4fa0162-c63e-47ed-8fc6-fe61309ddc15",
+      "already_examined_government_excerpt": true,
+      "current_state": "AWAITING_COMPLETE_NORMATIVE_CONSOLIDATION",
+      "internal_ai_legal_owner": "AI_LEGAL_TAX_RESEARCH_SPECIALIST",
+      "source_publication_and_original_bytes_digest": null,
+      "full_amendment_chain_verified": false,
+      "applicability_by_competence_verified": false,
+      "confaz_legal_route_verified": false,
+      "taxpayer_grant_required_and_verified": false,
+      "scope_and_negative_cases_legally_grounded": false,
+      "independent_agent_counter_review_passed": false,
+      "technical_tests_certified_for_real_act": false,
+      "internal_curatorial_accepted": false,
+      "accountant_external_opinion": "PENDING_NOT_RECEIVED",
+      "legally_importable": false,
+      "eligible_for_fiscal_application": false,
+      "research_checkpoint_20261122": {
+        "dossier_path": "docs/NFCORE_T09_DOSSIE_RECONCILIATION_V1.json",
+        "candidate_id": "AM-POLITICA-INDUSTRIAL-DEC47727-V1",
+        "required_review_evidence": "codam_product_decree",
+        "source_capture_records": [],
+        "case_design": "CONDITIONAL_POSITIVE_AND_NEGATIVE_PREPARED_NOT_CERTIFIED",
+        "internal_grant_requirement_review": "PENDING_NORMATIVE_DETERMINATION",
+        "actual_taxpayer_grant": "EXTERNAL_PER_TAXPAYER_WHEN_REQUIRED",
+        "actual_taxpayer_grant_not_required_to_finish_internal_curation": true,
+        "package_status": "PARTIAL_RESEARCH_NOT_APPROVED",
+        "package_residual_register": "docs/NFCORE_T09_RESEARCH_RESIDUAL_27UFS_20261122.md",
+        "final_receipt": {
+          "intake_status": "CLOSED",
+          "new_capture_count": 1,
+          "source_manifest": "docs/NFCORE_T09_RECEBIMENTO_FINAL_50_DOCUMENTOS_20261122.json",
+          "not_normative_approval": true,
+          "remaining_normative_work": "INTERNAL"
+        },
+        "latest_receipt_manifest": "docs/NFCORE_T09_RECEBIMENTO_FINAL_50_DOCUMENTOS_20261122.json",
+        "latest_receipt_count": 1,
+        "external_activation_separation": {
+          "human_product_owner_acceptance": "EXTERNAL_AFTER_INTERNAL_CERTIFICATION",
+          "accountant_opinion": "EXTERNAL_BEFORE_FISCAL_ACTIVATION",
+          "actual_taxpayer_grant": "EXTERNAL_BY_TAXPAYER_WHEN_NORM_REQUIRES",
+          "not_required_for_internal_eng_curation": true
+        },
+        "latest_43_source_capture_receipt": {
+          "manifest_path": "docs/NFCORE_T09_43_OFFICIAL_SOURCE_BYTES_20261122.json",
+          "bytes_verified_count": 2,
+          "unavailable_count": 0,
+          "normative_chain_consolidated": false,
+          "independent_review_received": false
+        }
+      }
+    },
+    {
+      "uf": "AP",
+      "candidate_id": "AP-REGIME-ESPECIAL-RICMS-ART415-V1",
+      "candidate_version": 1,
+      "normative_anchor": "Decreto 2.269/1998, art. 415 incisos VI e VII",
+      "primary_source_pointer": "https://sefaz.portal.ap.gov.br/conteudo/orientacoes/coordenadoria-de-tributacao-cotri",
+      "already_examined_government_excerpt": true,
+      "current_state": "AWAITING_COMPLETE_NORMATIVE_CONSOLIDATION",
+      "internal_ai_legal_owner": "AI_LEGAL_TAX_RESEARCH_SPECIALIST",
+      "source_publication_and_original_bytes_digest": null,
+      "full_amendment_chain_verified": false,
+      "applicability_by_competence_verified": false,
+      "confaz_legal_route_verified": false,
+      "taxpayer_grant_required_and_verified": false,
+      "scope_and_negative_cases_legally_grounded": false,
+      "independent_agent_counter_review_passed": false,
+      "technical_tests_certified_for_real_act": false,
+      "internal_curatorial_accepted": false,
+      "accountant_external_opinion": "PENDING_NOT_RECEIVED",
+      "legally_importable": false,
+      "eligible_for_fiscal_application": false,
+      "research_checkpoint_20261122": {
+        "dossier_path": "docs/NFCORE_T09_DOSSIE_RECONCILIATION_V1.json",
+        "candidate_id": "AP-REGIME-ESPECIAL-RICMS-ART415-V1",
+        "required_review_evidence": "ap_regime_and_seal_scope",
+        "source_capture_records": [
+          "AP_Decreto_2269_1998_Art415_VI_VII.html"
+        ],
+        "case_design": "CONDITIONAL_POSITIVE_AND_NEGATIVE_PREPARED_NOT_CERTIFIED",
+        "internal_grant_requirement_review": "PENDING_NORMATIVE_DETERMINATION",
+        "actual_taxpayer_grant": "EXTERNAL_PER_TAXPAYER_WHEN_REQUIRED",
+        "actual_taxpayer_grant_not_required_to_finish_internal_curation": true,
+        "package_status": "PARTIAL_RESEARCH_NOT_APPROVED",
+        "package_residual_register": "docs/NFCORE_T09_RESEARCH_RESIDUAL_27UFS_20261122.md",
+        "final_receipt": {
+          "intake_status": "CLOSED",
+          "new_capture_count": 1,
+          "source_manifest": "docs/NFCORE_T09_RECEBIMENTO_FINAL_50_DOCUMENTOS_20261122.json",
+          "not_normative_approval": true,
+          "remaining_normative_work": "INTERNAL"
+        },
+        "latest_receipt_manifest": "docs/NFCORE_T09_RECEBIMENTO_FINAL_50_DOCUMENTOS_20261122.json",
+        "latest_receipt_count": 1,
+        "supervening_official_review_status": "MORE_PRIMARY_WORK_DONE_NOT_LEGALLY_ACCEPTED",
+        "temporal_gate": {
+          "case_id": "AP-APRIL2026-SUPERSEDED-REGULATION",
+          "status": "NECESSARY_NEGATIVE_GUARD_TEST_DESIGNED_NOT_ALL_LEGAL_TESTS",
+          "full_legal_chain_verified": false
+        },
+        "external_activation_separation": {
+          "human_product_owner_acceptance": "EXTERNAL_AFTER_INTERNAL_CERTIFICATION",
+          "accountant_opinion": "EXTERNAL_BEFORE_FISCAL_ACTIVATION",
+          "actual_taxpayer_grant": "EXTERNAL_BY_TAXPAYER_WHEN_NORM_REQUIRES",
+          "not_required_for_internal_eng_curation": true
+        },
+        "latest_43_source_capture_receipt": {
+          "manifest_path": "docs/NFCORE_T09_43_OFFICIAL_SOURCE_BYTES_20261122.json",
+          "bytes_verified_count": 4,
+          "unavailable_count": 0,
+          "normative_chain_consolidated": false,
+          "independent_review_received": false
+        },
+        "priority_closeout_20261123": {
+          "material_replacement_id": "AP-PESCADO-DEC3599-LEI3395-MATERIAL-V1",
+          "legal_source_summary": "docs/NFCORE_T09_SE_AP_PA_RR_CLOSEOUT_20261123.json",
+          "missing_confaz_modal_binding": true,
+          "independent_review": false,
+          "internal_accepted": false
+        },
+        "priority_4uf_binary_evidence_20261123": {
+          "manifest": "docs/NFCORE_T09_PRIORITY_4UF_BYTES_AUDIT_20261123.json",
+          "captured": 3,
+          "failed": 0,
+          "legal_review_complete": false
+        },
+        "terminal_operational_decision_20261123": {
+          "assessment": "FISH_DEFERRAL_IDENTIFIED_BUT_2026_EFFECT_NOT_PROVEN",
+          "fiscal_blocked": true,
+          "legal_certification_awarded": false
+        }
+      }
+    },
+    {
+      "uf": "BA",
+      "candidate_id": "BA-DESENVOLVE-DEC8205-V1",
+      "candidate_version": 1,
+      "normative_anchor": "Lei 7.980/2001, Decreto 8.205/2002 e resoluções individualizadas de 2026",
+      "primary_source_pointer": "https://mbusca.sefaz.ba.gov.br/DITRI/normas_complementares/decretos/decreto_2002_8205_desenvolve.pdf",
+      "already_examined_government_excerpt": true,
+      "current_state": "AWAITING_COMPLETE_NORMATIVE_CONSOLIDATION",
+      "internal_ai_legal_owner": "AI_LEGAL_TAX_RESEARCH_SPECIALIST",
+      "source_publication_and_original_bytes_digest": null,
+      "full_amendment_chain_verified": false,
+      "applicability_by_competence_verified": false,
+      "confaz_legal_route_verified": false,
+      "taxpayer_grant_required_and_verified": false,
+      "scope_and_negative_cases_legally_grounded": false,
+      "independent_agent_counter_review_passed": false,
+      "technical_tests_certified_for_real_act": false,
+      "internal_curatorial_accepted": false,
+      "accountant_external_opinion": "PENDING_NOT_RECEIVED",
+      "legally_importable": false,
+      "eligible_for_fiscal_application": false,
+      "research_checkpoint_20261122": {
+        "dossier_path": "docs/NFCORE_T09_DOSSIE_RECONCILIATION_V1.json",
+        "candidate_id": "BA-DESENVOLVE-DEC8205-V1",
+        "required_review_evidence": "desenvolve_approved_project",
+        "source_capture_records": [],
+        "case_design": "CONDITIONAL_POSITIVE_AND_NEGATIVE_PREPARED_NOT_CERTIFIED",
+        "internal_grant_requirement_review": "PENDING_NORMATIVE_DETERMINATION",
+        "actual_taxpayer_grant": "EXTERNAL_PER_TAXPAYER_WHEN_REQUIRED",
+        "actual_taxpayer_grant_not_required_to_finish_internal_curation": true,
+        "package_status": "PARTIAL_RESEARCH_NOT_APPROVED",
+        "package_residual_register": "docs/NFCORE_T09_RESEARCH_RESIDUAL_27UFS_20261122.md",
+        "final_receipt": {
+          "intake_status": "CLOSED",
+          "new_capture_count": 4,
+          "source_manifest": "docs/NFCORE_T09_RECEBIMENTO_FINAL_50_DOCUMENTOS_20261122.json",
+          "not_normative_approval": true,
+          "remaining_normative_work": "INTERNAL"
+        },
+        "latest_receipt_manifest": "docs/NFCORE_T09_RECEBIMENTO_FINAL_50_DOCUMENTOS_20261122.json",
+        "latest_receipt_count": 4,
+        "external_activation_separation": {
+          "human_product_owner_acceptance": "EXTERNAL_AFTER_INTERNAL_CERTIFICATION",
+          "accountant_opinion": "EXTERNAL_BEFORE_FISCAL_ACTIVATION",
+          "actual_taxpayer_grant": "EXTERNAL_BY_TAXPAYER_WHEN_NORM_REQUIRES",
+          "not_required_for_internal_eng_curation": true
+        },
+        "latest_43_source_capture_receipt": {
+          "manifest_path": "docs/NFCORE_T09_43_OFFICIAL_SOURCE_BYTES_20261122.json",
+          "bytes_verified_count": 2,
+          "unavailable_count": 0,
+          "normative_chain_consolidated": false,
+          "independent_review_received": false
+        }
+      }
+    },
+    {
+      "uf": "CE",
+      "candidate_id": "CE-FDI-LEI10367-DEC34508-V1",
+      "candidate_version": 1,
+      "normative_anchor": "Lei 10.367/1979; Decreto 34.508/2022 e alterações do FDI",
+      "primary_source_pointer": "https://www.adece.ce.gov.br/projetos/",
+      "already_examined_government_excerpt": true,
+      "current_state": "AWAITING_COMPLETE_NORMATIVE_CONSOLIDATION",
+      "internal_ai_legal_owner": "AI_LEGAL_TAX_RESEARCH_SPECIALIST",
+      "source_publication_and_original_bytes_digest": null,
+      "full_amendment_chain_verified": false,
+      "applicability_by_competence_verified": false,
+      "confaz_legal_route_verified": false,
+      "taxpayer_grant_required_and_verified": false,
+      "scope_and_negative_cases_legally_grounded": false,
+      "independent_agent_counter_review_passed": false,
+      "technical_tests_certified_for_real_act": false,
+      "internal_curatorial_accepted": false,
+      "accountant_external_opinion": "PENDING_NOT_RECEIVED",
+      "legally_importable": false,
+      "eligible_for_fiscal_application": false,
+      "research_checkpoint_20261122": {
+        "dossier_path": "docs/NFCORE_T09_DOSSIE_RECONCILIATION_V1.json",
+        "candidate_id": "CE-FDI-LEI10367-DEC34508-V1",
+        "required_review_evidence": "fdi_contract_terms",
+        "source_capture_records": [],
+        "case_design": "CONDITIONAL_POSITIVE_AND_NEGATIVE_PREPARED_NOT_CERTIFIED",
+        "internal_grant_requirement_review": "PENDING_NORMATIVE_DETERMINATION",
+        "actual_taxpayer_grant": "EXTERNAL_PER_TAXPAYER_WHEN_REQUIRED",
+        "actual_taxpayer_grant_not_required_to_finish_internal_curation": true,
+        "package_status": "PARTIAL_RESEARCH_NOT_APPROVED",
+        "package_residual_register": "docs/NFCORE_T09_RESEARCH_RESIDUAL_27UFS_20261122.md",
+        "final_receipt": {
+          "intake_status": "CLOSED",
+          "new_capture_count": 3,
+          "source_manifest": "docs/NFCORE_T09_RECEBIMENTO_FINAL_50_DOCUMENTOS_20261122.json",
+          "not_normative_approval": true,
+          "remaining_normative_work": "INTERNAL"
+        },
+        "latest_receipt_manifest": "docs/NFCORE_T09_RECEBIMENTO_FINAL_50_DOCUMENTOS_20261122.json",
+        "latest_receipt_count": 3,
+        "external_activation_separation": {
+          "human_product_owner_acceptance": "EXTERNAL_AFTER_INTERNAL_CERTIFICATION",
+          "accountant_opinion": "EXTERNAL_BEFORE_FISCAL_ACTIVATION",
+          "actual_taxpayer_grant": "EXTERNAL_BY_TAXPAYER_WHEN_NORM_REQUIRES",
+          "not_required_for_internal_eng_curation": true
+        },
+        "latest_43_source_capture_receipt": {
+          "manifest_path": "docs/NFCORE_T09_43_OFFICIAL_SOURCE_BYTES_20261122.json",
+          "bytes_verified_count": 1,
+          "unavailable_count": 0,
+          "normative_chain_consolidated": false,
+          "independent_review_received": false
+        }
+      }
+    },
+    {
+      "uf": "DF",
+      "candidate_id": "DF-EMPREGA-DF-DEC39803-V1",
+      "candidate_version": 1,
+      "normative_anchor": "Decreto 39.803/2019, arts. 16 a 23 para modalidades especiais",
+      "primary_source_pointer": "https://economia.df.gov.br/emprega-df/",
+      "already_examined_government_excerpt": true,
+      "current_state": "AWAITING_COMPLETE_NORMATIVE_CONSOLIDATION",
+      "internal_ai_legal_owner": "AI_LEGAL_TAX_RESEARCH_SPECIALIST",
+      "source_publication_and_original_bytes_digest": null,
+      "full_amendment_chain_verified": false,
+      "applicability_by_competence_verified": false,
+      "confaz_legal_route_verified": false,
+      "taxpayer_grant_required_and_verified": false,
+      "scope_and_negative_cases_legally_grounded": false,
+      "independent_agent_counter_review_passed": false,
+      "technical_tests_certified_for_real_act": false,
+      "internal_curatorial_accepted": false,
+      "accountant_external_opinion": "PENDING_NOT_RECEIVED",
+      "legally_importable": false,
+      "eligible_for_fiscal_application": false,
+      "research_checkpoint_20261122": {
+        "dossier_path": "docs/NFCORE_T09_DOSSIE_RECONCILIATION_V1.json",
+        "candidate_id": "DF-EMPREGA-DF-DEC39803-V1",
+        "required_review_evidence": "df_pvtefs_approved",
+        "source_capture_records": [],
+        "case_design": "CONDITIONAL_POSITIVE_AND_NEGATIVE_PREPARED_NOT_CERTIFIED",
+        "internal_grant_requirement_review": "PENDING_NORMATIVE_DETERMINATION",
+        "actual_taxpayer_grant": "EXTERNAL_PER_TAXPAYER_WHEN_REQUIRED",
+        "actual_taxpayer_grant_not_required_to_finish_internal_curation": true,
+        "package_status": "PARTIAL_RESEARCH_NOT_APPROVED",
+        "package_residual_register": "docs/NFCORE_T09_RESEARCH_RESIDUAL_27UFS_20261122.md",
+        "final_receipt": {
+          "intake_status": "CLOSED",
+          "new_capture_count": 3,
+          "source_manifest": "docs/NFCORE_T09_RECEBIMENTO_FINAL_50_DOCUMENTOS_20261122.json",
+          "not_normative_approval": true,
+          "remaining_normative_work": "INTERNAL"
+        },
+        "latest_receipt_manifest": "docs/NFCORE_T09_RECEBIMENTO_FINAL_50_DOCUMENTOS_20261122.json",
+        "latest_receipt_count": 3,
+        "external_activation_separation": {
+          "human_product_owner_acceptance": "EXTERNAL_AFTER_INTERNAL_CERTIFICATION",
+          "accountant_opinion": "EXTERNAL_BEFORE_FISCAL_ACTIVATION",
+          "actual_taxpayer_grant": "EXTERNAL_BY_TAXPAYER_WHEN_NORM_REQUIRES",
+          "not_required_for_internal_eng_curation": true
+        },
+        "latest_43_source_capture_receipt": {
+          "manifest_path": "docs/NFCORE_T09_43_OFFICIAL_SOURCE_BYTES_20261122.json",
+          "bytes_verified_count": 2,
+          "unavailable_count": 0,
+          "normative_chain_consolidated": false,
+          "independent_review_received": false
+        }
+      }
+    },
+    {
+      "uf": "ES",
+      "candidate_id": "ES-COMPETE-DEC6116R-V1",
+      "candidate_version": 1,
+      "normative_anchor": "Programa COMPETE-ES; alteração RICMS Decreto 6.116-R",
+      "primary_source_pointer": "https://sefaz.es.gov.br/Noticia/decreto-define-codigos-especificos-para-recolhimento-de-icms-no-ambito-do-compete-es",
+      "already_examined_government_excerpt": true,
+      "current_state": "AWAITING_COMPLETE_NORMATIVE_CONSOLIDATION",
+      "internal_ai_legal_owner": "AI_LEGAL_TAX_RESEARCH_SPECIALIST",
+      "source_publication_and_original_bytes_digest": null,
+      "full_amendment_chain_verified": false,
+      "applicability_by_competence_verified": false,
+      "confaz_legal_route_verified": false,
+      "taxpayer_grant_required_and_verified": false,
+      "scope_and_negative_cases_legally_grounded": false,
+      "independent_agent_counter_review_passed": false,
+      "technical_tests_certified_for_real_act": false,
+      "internal_curatorial_accepted": false,
+      "accountant_external_opinion": "PENDING_NOT_RECEIVED",
+      "legally_importable": false,
+      "eligible_for_fiscal_application": false,
+      "research_checkpoint_20261122": {
+        "dossier_path": "docs/NFCORE_T09_DOSSIE_RECONCILIATION_V1.json",
+        "candidate_id": "ES-COMPETE-DEC6116R-V1",
+        "required_review_evidence": "compete_sector_adhesion",
+        "source_capture_records": [],
+        "case_design": "CONDITIONAL_POSITIVE_AND_NEGATIVE_PREPARED_NOT_CERTIFIED",
+        "internal_grant_requirement_review": "PENDING_NORMATIVE_DETERMINATION",
+        "actual_taxpayer_grant": "EXTERNAL_PER_TAXPAYER_WHEN_REQUIRED",
+        "actual_taxpayer_grant_not_required_to_finish_internal_curation": true,
+        "package_status": "PARTIAL_RESEARCH_NOT_APPROVED",
+        "package_residual_register": "docs/NFCORE_T09_RESEARCH_RESIDUAL_27UFS_20261122.md",
+        "final_receipt": {
+          "intake_status": "CLOSED",
+          "new_capture_count": 2,
+          "source_manifest": "docs/NFCORE_T09_RECEBIMENTO_FINAL_50_DOCUMENTOS_20261122.json",
+          "not_normative_approval": true,
+          "remaining_normative_work": "INTERNAL"
+        },
+        "latest_receipt_manifest": "docs/NFCORE_T09_RECEBIMENTO_FINAL_50_DOCUMENTOS_20261122.json",
+        "latest_receipt_count": 2,
+        "external_activation_separation": {
+          "human_product_owner_acceptance": "EXTERNAL_AFTER_INTERNAL_CERTIFICATION",
+          "accountant_opinion": "EXTERNAL_BEFORE_FISCAL_ACTIVATION",
+          "actual_taxpayer_grant": "EXTERNAL_BY_TAXPAYER_WHEN_NORM_REQUIRES",
+          "not_required_for_internal_eng_curation": true
+        },
+        "latest_43_source_capture_receipt": {
+          "manifest_path": "docs/NFCORE_T09_43_OFFICIAL_SOURCE_BYTES_20261122.json",
+          "bytes_verified_count": 2,
+          "unavailable_count": 0,
+          "normative_chain_consolidated": false,
+          "independent_review_received": false
+        }
+      }
+    },
+    {
+      "uf": "GO",
+      "candidate_id": "GO-PROGOIAS-LEI20787-ART24-V1",
+      "candidate_version": 1,
+      "normative_anchor": "Lei 20.787/2020, arts. 5, 13, 14 e 24",
+      "primary_source_pointer": "https://goias.gov.br/industriaecomercio/lei-ordinaria-20-787-20-progoias/",
+      "already_examined_government_excerpt": true,
+      "current_state": "AWAITING_COMPLETE_NORMATIVE_CONSOLIDATION",
+      "internal_ai_legal_owner": "AI_LEGAL_TAX_RESEARCH_SPECIALIST",
+      "source_publication_and_original_bytes_digest": null,
+      "full_amendment_chain_verified": false,
+      "applicability_by_competence_verified": false,
+      "confaz_legal_route_verified": false,
+      "taxpayer_grant_required_and_verified": false,
+      "scope_and_negative_cases_legally_grounded": false,
+      "independent_agent_counter_review_passed": false,
+      "technical_tests_certified_for_real_act": false,
+      "internal_curatorial_accepted": false,
+      "accountant_external_opinion": "PENDING_NOT_RECEIVED",
+      "legally_importable": false,
+      "eligible_for_fiscal_application": false,
+      "research_checkpoint_20261122": {
+        "dossier_path": "docs/NFCORE_T09_DOSSIE_RECONCILIATION_V1.json",
+        "candidate_id": "GO-PROGOIAS-LEI20787-ART24-V1",
+        "required_review_evidence": "progoias_compliance_period",
+        "source_capture_records": [],
+        "case_design": "CONDITIONAL_POSITIVE_AND_NEGATIVE_PREPARED_NOT_CERTIFIED",
+        "internal_grant_requirement_review": "PENDING_NORMATIVE_DETERMINATION",
+        "actual_taxpayer_grant": "EXTERNAL_PER_TAXPAYER_WHEN_REQUIRED",
+        "actual_taxpayer_grant_not_required_to_finish_internal_curation": true,
+        "package_status": "PARTIAL_RESEARCH_NOT_APPROVED",
+        "package_residual_register": "docs/NFCORE_T09_RESEARCH_RESIDUAL_27UFS_20261122.md",
+        "final_receipt": {
+          "intake_status": "CLOSED",
+          "new_capture_count": 3,
+          "source_manifest": "docs/NFCORE_T09_RECEBIMENTO_FINAL_50_DOCUMENTOS_20261122.json",
+          "not_normative_approval": true,
+          "remaining_normative_work": "INTERNAL"
+        },
+        "latest_receipt_manifest": "docs/NFCORE_T09_RECEBIMENTO_FINAL_50_DOCUMENTOS_20261122.json",
+        "latest_receipt_count": 3,
+        "external_activation_separation": {
+          "human_product_owner_acceptance": "EXTERNAL_AFTER_INTERNAL_CERTIFICATION",
+          "accountant_opinion": "EXTERNAL_BEFORE_FISCAL_ACTIVATION",
+          "actual_taxpayer_grant": "EXTERNAL_BY_TAXPAYER_WHEN_NORM_REQUIRES",
+          "not_required_for_internal_eng_curation": true
+        },
+        "latest_43_source_capture_receipt": {
+          "manifest_path": "docs/NFCORE_T09_43_OFFICIAL_SOURCE_BYTES_20261122.json",
+          "bytes_verified_count": 1,
+          "unavailable_count": 0,
+          "normative_chain_consolidated": false,
+          "independent_review_received": false
+        }
+      }
+    },
+    {
+      "uf": "MA",
+      "candidate_id": "MA-MAIS-EMPRESAS-LEI10690-2017-V1",
+      "candidate_version": 1,
+      "normative_anchor": "Lei Estadual MA 10.690/2017 — Programa Mais Empresas (processo de concessão)",
+      "primary_source_pointer": "https://seinc.ma.gov.br/servicos/solicitar-beneficios-do-programa-mais-empresas-emissao-de-carta-consulta",
+      "already_examined_government_excerpt": true,
+      "current_state": "AWAITING_COMPLETE_NORMATIVE_CONSOLIDATION",
+      "internal_ai_legal_owner": "AI_LEGAL_TAX_RESEARCH_SPECIALIST",
+      "source_publication_and_original_bytes_digest": null,
+      "full_amendment_chain_verified": false,
+      "applicability_by_competence_verified": false,
+      "confaz_legal_route_verified": false,
+      "taxpayer_grant_required_and_verified": false,
+      "scope_and_negative_cases_legally_grounded": false,
+      "independent_agent_counter_review_passed": false,
+      "technical_tests_certified_for_real_act": false,
+      "internal_curatorial_accepted": false,
+      "accountant_external_opinion": "PENDING_NOT_RECEIVED",
+      "legally_importable": false,
+      "eligible_for_fiscal_application": false,
+      "research_checkpoint_20261122": {
+        "dossier_path": "docs/NFCORE_T09_DOSSIE_RECONCILIATION_V1.json",
+        "candidate_id": "MA-MAIS-EMPRESAS-LEI10690-2017-V1",
+        "required_review_evidence": "condep_approved_grant",
+        "source_capture_records": [],
+        "case_design": "CONDITIONAL_POSITIVE_AND_NEGATIVE_PREPARED_NOT_CERTIFIED",
+        "internal_grant_requirement_review": "PENDING_NORMATIVE_DETERMINATION",
+        "actual_taxpayer_grant": "EXTERNAL_PER_TAXPAYER_WHEN_REQUIRED",
+        "actual_taxpayer_grant_not_required_to_finish_internal_curation": true,
+        "package_status": "PARTIAL_RESEARCH_NOT_APPROVED",
+        "package_residual_register": "docs/NFCORE_T09_RESEARCH_RESIDUAL_27UFS_20261122.md",
+        "final_receipt": {
+          "intake_status": "CLOSED",
+          "new_capture_count": 2,
+          "source_manifest": "docs/NFCORE_T09_RECEBIMENTO_FINAL_50_DOCUMENTOS_20261122.json",
+          "not_normative_approval": true,
+          "remaining_normative_work": "INTERNAL"
+        },
+        "latest_receipt_manifest": "docs/NFCORE_T09_RECEBIMENTO_FINAL_50_DOCUMENTOS_20261122.json",
+        "latest_receipt_count": 2,
+        "external_activation_separation": {
+          "human_product_owner_acceptance": "EXTERNAL_AFTER_INTERNAL_CERTIFICATION",
+          "accountant_opinion": "EXTERNAL_BEFORE_FISCAL_ACTIVATION",
+          "actual_taxpayer_grant": "EXTERNAL_BY_TAXPAYER_WHEN_NORM_REQUIRES",
+          "not_required_for_internal_eng_curation": true
+        },
+        "latest_43_source_capture_receipt": {
+          "manifest_path": "docs/NFCORE_T09_43_OFFICIAL_SOURCE_BYTES_20261122.json",
+          "bytes_verified_count": 1,
+          "unavailable_count": 0,
+          "normative_chain_consolidated": false,
+          "independent_review_received": false
+        }
+      }
+    },
+    {
+      "uf": "MG",
+      "candidate_id": "MG-RICMS2023-ANII-ITEM26-COHAB-V1",
+      "candidate_version": 1,
+      "normative_anchor": "Decreto 48.589/2023, Anexo II, Parte 1 item 26; Convênio 136/97",
+      "primary_source_pointer": "https://www.fazenda.mg.gov.br/empresas/legislacao_tributaria/ricms_2023_seco/anexoii2023_3.html",
+      "already_examined_government_excerpt": true,
+      "current_state": "AWAITING_COMPLETE_NORMATIVE_CONSOLIDATION",
+      "internal_ai_legal_owner": "AI_LEGAL_TAX_RESEARCH_SPECIALIST",
+      "source_publication_and_original_bytes_digest": null,
+      "full_amendment_chain_verified": false,
+      "applicability_by_competence_verified": false,
+      "confaz_legal_route_verified": false,
+      "taxpayer_grant_required_and_verified": false,
+      "scope_and_negative_cases_legally_grounded": false,
+      "independent_agent_counter_review_passed": false,
+      "technical_tests_certified_for_real_act": false,
+      "internal_curatorial_accepted": false,
+      "accountant_external_opinion": "PENDING_NOT_RECEIVED",
+      "legally_importable": false,
+      "eligible_for_fiscal_application": false,
+      "research_checkpoint_20261122": {
+        "dossier_path": "docs/NFCORE_T09_DOSSIE_RECONCILIATION_V1.json",
+        "candidate_id": "MG-RICMS2023-ANII-ITEM26-COHAB-V1",
+        "required_review_evidence": "cohab_material_and_discount",
+        "source_capture_records": [],
+        "case_design": "CONDITIONAL_POSITIVE_AND_NEGATIVE_PREPARED_NOT_CERTIFIED",
+        "internal_grant_requirement_review": "PENDING_NORMATIVE_DETERMINATION",
+        "actual_taxpayer_grant": "EXTERNAL_PER_TAXPAYER_WHEN_REQUIRED",
+        "actual_taxpayer_grant_not_required_to_finish_internal_curation": true,
+        "package_status": "PARTIAL_RESEARCH_NOT_APPROVED",
+        "package_residual_register": "docs/NFCORE_T09_RESEARCH_RESIDUAL_27UFS_20261122.md",
+        "final_receipt": {
+          "intake_status": "CLOSED",
+          "new_capture_count": 3,
+          "source_manifest": "docs/NFCORE_T09_RECEBIMENTO_FINAL_50_DOCUMENTOS_20261122.json",
+          "not_normative_approval": true,
+          "remaining_normative_work": "INTERNAL"
+        },
+        "latest_receipt_manifest": "docs/NFCORE_T09_RECEBIMENTO_FINAL_50_DOCUMENTOS_20261122.json",
+        "latest_receipt_count": 3,
+        "primary_provision_checkpoint": "PARTIAL_TEXT_CHECKED_NOT_CURATED",
+        "temporal_gate": {
+          "case_id": "MG-COHAB-ITEM26-STATE-VS-CONFAZ",
+          "status": "NECESSARY_NEGATIVE_GUARD_TEST_DESIGNED_NOT_ALL_LEGAL_TESTS",
+          "full_legal_chain_verified": false
+        },
+        "mg_procedural_recognition": {
+          "source": "https://www.fazenda.mg.gov.br/empresas/legislacao_tributaria/resolucoes/1998/rr0001_1998.html",
+          "evidence_sha256": "125b051af5214d535ffa97b81ec2cab01c44620f73748be6f66876587c7d7edc",
+          "requirements": [
+            "mg_cohab_recognition_per_invoice",
+            "mg_project_quantity_limit",
+            "mg_invoice_recognition_number_date",
+            "mg_invoice_tax_dispensation_amount"
+          ],
+          "status": "TEXT_CHECKED_IN_1998_ACT_NOT_2026_NORMATIVE_CURATION",
+          "human_acceptance": false
+        },
+        "external_activation_separation": {
+          "human_product_owner_acceptance": "EXTERNAL_AFTER_INTERNAL_CERTIFICATION",
+          "accountant_opinion": "EXTERNAL_BEFORE_FISCAL_ACTIVATION",
+          "actual_taxpayer_grant": "EXTERNAL_BY_TAXPAYER_WHEN_NORM_REQUIRES",
+          "not_required_for_internal_eng_curation": true
+        },
+        "latest_43_source_capture_receipt": {
+          "manifest_path": "docs/NFCORE_T09_43_OFFICIAL_SOURCE_BYTES_20261122.json",
+          "bytes_verified_count": 1,
+          "unavailable_count": 0,
+          "normative_chain_consolidated": false,
+          "independent_review_received": false
+        }
+      }
+    },
+    {
+      "uf": "MS",
+      "candidate_id": "MS-EMPREENDEDOR-LC93-TERMO-V1",
+      "candidate_version": 1,
+      "normative_anchor": "Lei Complementar 93/2001 e Termo de Acordo",
+      "primary_source_pointer": "https://www.sefaz.ms.gov.br/servicos-em-destaque/credito-outorgado-analise-dos-investimentos-necessaria-para-a-fruicao-do-beneficio-de-credito-outorgado-previsto-em-termo-de-acordo-lei-complementar-no-93-2001-2/",
+      "already_examined_government_excerpt": true,
+      "current_state": "AWAITING_COMPLETE_NORMATIVE_CONSOLIDATION",
+      "internal_ai_legal_owner": "AI_LEGAL_TAX_RESEARCH_SPECIALIST",
+      "source_publication_and_original_bytes_digest": null,
+      "full_amendment_chain_verified": false,
+      "applicability_by_competence_verified": false,
+      "confaz_legal_route_verified": false,
+      "taxpayer_grant_required_and_verified": false,
+      "scope_and_negative_cases_legally_grounded": false,
+      "independent_agent_counter_review_passed": false,
+      "technical_tests_certified_for_real_act": false,
+      "internal_curatorial_accepted": false,
+      "accountant_external_opinion": "PENDING_NOT_RECEIVED",
+      "legally_importable": false,
+      "eligible_for_fiscal_application": false,
+      "research_checkpoint_20261122": {
+        "dossier_path": "docs/NFCORE_T09_DOSSIE_RECONCILIATION_V1.json",
+        "candidate_id": "MS-EMPREENDEDOR-LC93-TERMO-V1",
+        "required_review_evidence": "ms_investment_agreement",
+        "source_capture_records": [],
+        "case_design": "CONDITIONAL_POSITIVE_AND_NEGATIVE_PREPARED_NOT_CERTIFIED",
+        "internal_grant_requirement_review": "PENDING_NORMATIVE_DETERMINATION",
+        "actual_taxpayer_grant": "EXTERNAL_PER_TAXPAYER_WHEN_REQUIRED",
+        "actual_taxpayer_grant_not_required_to_finish_internal_curation": true,
+        "package_status": "PARTIAL_RESEARCH_NOT_APPROVED",
+        "package_residual_register": "docs/NFCORE_T09_RESEARCH_RESIDUAL_27UFS_20261122.md",
+        "final_receipt": {
+          "intake_status": "CLOSED",
+          "new_capture_count": 3,
+          "source_manifest": "docs/NFCORE_T09_RECEBIMENTO_FINAL_50_DOCUMENTOS_20261122.json",
+          "not_normative_approval": true,
+          "remaining_normative_work": "INTERNAL"
+        },
+        "latest_receipt_manifest": "docs/NFCORE_T09_RECEBIMENTO_FINAL_50_DOCUMENTOS_20261122.json",
+        "latest_receipt_count": 3,
+        "external_activation_separation": {
+          "human_product_owner_acceptance": "EXTERNAL_AFTER_INTERNAL_CERTIFICATION",
+          "accountant_opinion": "EXTERNAL_BEFORE_FISCAL_ACTIVATION",
+          "actual_taxpayer_grant": "EXTERNAL_BY_TAXPAYER_WHEN_NORM_REQUIRES",
+          "not_required_for_internal_eng_curation": true
+        },
+        "official_crosscheck_late_2026": {
+          "act": "LC MS 93/2001 consolidada, LC 347/2025 e ADI 3794",
+          "source": "https://aacpdappls.net.ms.gov.br/appls/legislacao/secoge/govato.nsf/66ecc3cfb53d53ff04256b140049444b/3a836f159c1b161904256c000058e57a",
+          "conditions": [
+            "ms_adi3794_constitutionality_chain",
+            "ms_eligible_individual_terms",
+            "ms_24f_contribution_period_when_applicable"
+          ],
+          "material_risk": "Não usar arts.6-8 históricos declarados inconstitucionais como autorização isolada, nem aplicar 13% a todo MS-Empreendedor sem enquadramento no art.24-F.",
+          "scope": "INTERNAL_RESEARCH",
+          "verified_full_chain": false,
+          "approved": false
+        },
+        "latest_43_source_capture_receipt": {
+          "manifest_path": "docs/NFCORE_T09_43_OFFICIAL_SOURCE_BYTES_20261122.json",
+          "bytes_verified_count": 1,
+          "unavailable_count": 0,
+          "normative_chain_consolidated": false,
+          "independent_review_received": false
+        }
+      }
+    },
+    {
+      "uf": "MT",
+      "candidate_id": "MT-RICMS2014-ANV-ART31A-AGRO-V1",
+      "candidate_version": 1,
+      "normative_anchor": "Decreto 2.212/2014, Anexo V art. 31-A; Decreto 1.802/2025, Convênio 100/97",
+      "primary_source_pointer": "https://app1.sefaz.mt.gov.br/sistema/legislacao/respostaconsulta.nsf/766feae0478e62780325673c0049468e/dfdffa903c8253dd03258e28005313b4",
+      "already_examined_government_excerpt": true,
+      "current_state": "AWAITING_COMPLETE_NORMATIVE_CONSOLIDATION",
+      "internal_ai_legal_owner": "AI_LEGAL_TAX_RESEARCH_SPECIALIST",
+      "source_publication_and_original_bytes_digest": null,
+      "full_amendment_chain_verified": false,
+      "applicability_by_competence_verified": false,
+      "confaz_legal_route_verified": false,
+      "taxpayer_grant_required_and_verified": false,
+      "scope_and_negative_cases_legally_grounded": false,
+      "independent_agent_counter_review_passed": false,
+      "technical_tests_certified_for_real_act": false,
+      "internal_curatorial_accepted": false,
+      "accountant_external_opinion": "PENDING_NOT_RECEIVED",
+      "legally_importable": false,
+      "eligible_for_fiscal_application": false,
+      "research_checkpoint_20261122": {
+        "dossier_path": "docs/NFCORE_T09_DOSSIE_RECONCILIATION_V1.json",
+        "candidate_id": "MT-RICMS2014-ANV-ART31A-AGRO-V1",
+        "required_review_evidence": "mt_fertilizer_destination",
+        "source_capture_records": [],
+        "case_design": "CONDITIONAL_POSITIVE_AND_NEGATIVE_PREPARED_NOT_CERTIFIED",
+        "internal_grant_requirement_review": "PENDING_NORMATIVE_DETERMINATION",
+        "actual_taxpayer_grant": "EXTERNAL_PER_TAXPAYER_WHEN_REQUIRED",
+        "actual_taxpayer_grant_not_required_to_finish_internal_curation": true,
+        "package_status": "PARTIAL_RESEARCH_NOT_APPROVED",
+        "package_residual_register": "docs/NFCORE_T09_RESEARCH_RESIDUAL_27UFS_20261122.md",
+        "final_receipt": {
+          "intake_status": "CLOSED",
+          "new_capture_count": 1,
+          "source_manifest": "docs/NFCORE_T09_RECEBIMENTO_FINAL_50_DOCUMENTOS_20261122.json",
+          "not_normative_approval": true,
+          "remaining_normative_work": "INTERNAL"
+        },
+        "latest_receipt_manifest": "docs/NFCORE_T09_RECEBIMENTO_FINAL_50_DOCUMENTOS_20261122.json",
+        "latest_receipt_count": 1,
+        "supervening_official_review_status": "MORE_PRIMARY_WORK_DONE_NOT_LEGALLY_ACCEPTED",
+        "temporal_gate": {
+          "case_id": "MT-FERTILIZER-2027-EXCLUSIVE-END",
+          "status": "NECESSARY_NEGATIVE_GUARD_TEST_DESIGNED_NOT_ALL_LEGAL_TESTS",
+          "full_legal_chain_verified": false
+        },
+        "external_activation_separation": {
+          "human_product_owner_acceptance": "EXTERNAL_AFTER_INTERNAL_CERTIFICATION",
+          "accountant_opinion": "EXTERNAL_BEFORE_FISCAL_ACTIVATION",
+          "actual_taxpayer_grant": "EXTERNAL_BY_TAXPAYER_WHEN_NORM_REQUIRES",
+          "not_required_for_internal_eng_curation": true
+        },
+        "latest_43_source_capture_receipt": {
+          "manifest_path": "docs/NFCORE_T09_43_OFFICIAL_SOURCE_BYTES_20261122.json",
+          "bytes_verified_count": 1,
+          "unavailable_count": 0,
+          "normative_chain_consolidated": false,
+          "independent_review_received": false
+        }
+      }
+    },
+    {
+      "uf": "PA",
+      "candidate_id": "PA-POLITICA-LEI6913-DEC2490-V1",
+      "candidate_version": 1,
+      "normative_anchor": "Lei 6.913/2006, Decreto 2.490/2006 e Comissão de Política de Incentivos",
+      "primary_source_pointer": "https://bancodeleis.alepa.pa.gov.br/arquivos/lei2490_2006_53513.pdf",
+      "already_examined_government_excerpt": true,
+      "current_state": "AWAITING_COMPLETE_NORMATIVE_CONSOLIDATION",
+      "internal_ai_legal_owner": "AI_LEGAL_TAX_RESEARCH_SPECIALIST",
+      "source_publication_and_original_bytes_digest": null,
+      "full_amendment_chain_verified": false,
+      "applicability_by_competence_verified": false,
+      "confaz_legal_route_verified": false,
+      "taxpayer_grant_required_and_verified": false,
+      "scope_and_negative_cases_legally_grounded": false,
+      "independent_agent_counter_review_passed": false,
+      "technical_tests_certified_for_real_act": false,
+      "internal_curatorial_accepted": false,
+      "accountant_external_opinion": "PENDING_NOT_RECEIVED",
+      "legally_importable": false,
+      "eligible_for_fiscal_application": false,
+      "research_checkpoint_20261122": {
+        "dossier_path": "docs/NFCORE_T09_DOSSIE_RECONCILIATION_V1.json",
+        "candidate_id": "PA-POLITICA-LEI6913-DEC2490-V1",
+        "required_review_evidence": "pa_judicial_and_individual_basis",
+        "source_capture_records": [
+          "PA_Lei_6913_2006.pdf",
+          "PA_Lei_7485_2010.html",
+          "PA_Decreto_2490_2006.pdf",
+          "PA_Decreto_990_2020.html"
+        ],
+        "case_design": "CONDITIONAL_POSITIVE_AND_NEGATIVE_PREPARED_NOT_CERTIFIED",
+        "internal_grant_requirement_review": "PENDING_NORMATIVE_DETERMINATION",
+        "actual_taxpayer_grant": "EXTERNAL_PER_TAXPAYER_WHEN_REQUIRED",
+        "actual_taxpayer_grant_not_required_to_finish_internal_curation": true,
+        "additional_primary_text_review": "CONTENT_IDENTIFIED_NOT_BYTES_ARCHIVED",
+        "package_status": "PARTIAL_RESEARCH_NOT_APPROVED",
+        "package_residual_register": "docs/NFCORE_T09_RESEARCH_RESIDUAL_27UFS_20261122.md",
+        "final_receipt": {
+          "intake_status": "CLOSED",
+          "new_capture_count": 4,
+          "source_manifest": "docs/NFCORE_T09_RECEBIMENTO_FINAL_50_DOCUMENTOS_20261122.json",
+          "not_normative_approval": true,
+          "remaining_normative_work": "INTERNAL"
+        },
+        "latest_receipt_manifest": "docs/NFCORE_T09_RECEBIMENTO_FINAL_50_DOCUMENTOS_20261122.json",
+        "latest_receipt_count": 4,
+        "supervening_official_review_status": "MORE_PRIMARY_WORK_DONE_NOT_LEGALLY_ACCEPTED",
+        "external_activation_separation": {
+          "human_product_owner_acceptance": "EXTERNAL_AFTER_INTERNAL_CERTIFICATION",
+          "accountant_opinion": "EXTERNAL_BEFORE_FISCAL_ACTIVATION",
+          "actual_taxpayer_grant": "EXTERNAL_BY_TAXPAYER_WHEN_NORM_REQUIRES",
+          "not_required_for_internal_eng_curation": true
+        },
+        "latest_43_source_capture_receipt": {
+          "manifest_path": "docs/NFCORE_T09_43_OFFICIAL_SOURCE_BYTES_20261122.json",
+          "bytes_verified_count": 1,
+          "unavailable_count": 1,
+          "normative_chain_consolidated": false,
+          "independent_review_received": false
+        },
+        "priority_closeout_20261123": {
+          "material_replacement_id": null,
+          "legal_source_summary": "docs/NFCORE_T09_SE_AP_PA_RR_CLOSEOUT_20261123.json",
+          "missing_confaz_modal_binding": true,
+          "independent_review": false,
+          "internal_accepted": false
+        },
+        "priority_4uf_binary_evidence_20261123": {
+          "manifest": "docs/NFCORE_T09_PRIORITY_4UF_BYTES_AUDIT_20261123.json",
+          "captured": 1,
+          "failed": 3,
+          "legal_review_complete": false
+        },
+        "terminal_operational_decision_20261123": {
+          "assessment": "ORIGINAL_ACT_NOT_STANDALONE_BASIS_2026",
+          "fiscal_blocked": true,
+          "legal_certification_awarded": false
+        }
+      }
+    },
+    {
+      "uf": "PB",
+      "candidate_id": "PB-FAIN-DEC17252-ART3-V1",
+      "candidate_version": 1,
+      "normative_anchor": "Lei 6.000/1994; Decreto 17.252/1994, art. 3º; Decreto 47.898/2026",
+      "primary_source_pointer": "https://sefaz.pb.gov.br/legislacao/267-decretos-estaduais/icms/icms-1994/5391-decreto-n-17-252-de-27-de-dezembro-de-1994",
+      "already_examined_government_excerpt": true,
+      "current_state": "AWAITING_COMPLETE_NORMATIVE_CONSOLIDATION",
+      "internal_ai_legal_owner": "AI_LEGAL_TAX_RESEARCH_SPECIALIST",
+      "source_publication_and_original_bytes_digest": null,
+      "full_amendment_chain_verified": false,
+      "applicability_by_competence_verified": false,
+      "confaz_legal_route_verified": false,
+      "taxpayer_grant_required_and_verified": false,
+      "scope_and_negative_cases_legally_grounded": false,
+      "independent_agent_counter_review_passed": false,
+      "technical_tests_certified_for_real_act": false,
+      "internal_curatorial_accepted": false,
+      "accountant_external_opinion": "PENDING_NOT_RECEIVED",
+      "legally_importable": false,
+      "eligible_for_fiscal_application": false,
+      "research_checkpoint_20261122": {
+        "dossier_path": "docs/NFCORE_T09_DOSSIE_RECONCILIATION_V1.json",
+        "candidate_id": "PB-FAIN-DEC17252-ART3-V1",
+        "required_review_evidence": "fain_product_approved",
+        "source_capture_records": [],
+        "case_design": "CONDITIONAL_POSITIVE_AND_NEGATIVE_PREPARED_NOT_CERTIFIED",
+        "internal_grant_requirement_review": "PENDING_NORMATIVE_DETERMINATION",
+        "actual_taxpayer_grant": "EXTERNAL_PER_TAXPAYER_WHEN_REQUIRED",
+        "actual_taxpayer_grant_not_required_to_finish_internal_curation": true,
+        "package_status": "PARTIAL_RESEARCH_NOT_APPROVED",
+        "package_residual_register": "docs/NFCORE_T09_RESEARCH_RESIDUAL_27UFS_20261122.md",
+        "final_receipt": {
+          "intake_status": "CLOSED",
+          "new_capture_count": 2,
+          "source_manifest": "docs/NFCORE_T09_RECEBIMENTO_FINAL_50_DOCUMENTOS_20261122.json",
+          "not_normative_approval": true,
+          "remaining_normative_work": "INTERNAL"
+        },
+        "latest_receipt_manifest": "docs/NFCORE_T09_RECEBIMENTO_FINAL_50_DOCUMENTOS_20261122.json",
+        "latest_receipt_count": 2,
+        "primary_provision_checkpoint": "PARTIAL_TEXT_CHECKED_NOT_CURATED",
+        "external_activation_separation": {
+          "human_product_owner_acceptance": "EXTERNAL_AFTER_INTERNAL_CERTIFICATION",
+          "accountant_opinion": "EXTERNAL_BEFORE_FISCAL_ACTIVATION",
+          "actual_taxpayer_grant": "EXTERNAL_BY_TAXPAYER_WHEN_NORM_REQUIRES",
+          "not_required_for_internal_eng_curation": true
+        },
+        "official_crosscheck_late_2026": {
+          "act": "Decreto PB 48.405/2026 e Portaria 00080/2026/SEFAZ",
+          "source": "https://sefaz.pb.gov.br/legislacao/397-decretos-estaduais/icms/icms-2026/17811-decreto-n-48-405-de-03-de-julho-de-2026",
+          "conditions": [
+            "fgts_valid_on_grant_or_renewal_request",
+            "fain_geief_non_similarity_certificate_when_relevant",
+            "distinct_new_product_ncm_four_digits"
+          ],
+          "material_risk": "Não impor CRF por nota fiscal mensal sem previsão legal; nem presumir que quatro dígitos de NCM comprovam não similaridade sem certidão quando necessária.",
+          "scope": "INTERNAL_RESEARCH",
+          "verified_full_chain": false,
+          "approved": false
+        },
+        "latest_43_source_capture_receipt": {
+          "manifest_path": "docs/NFCORE_T09_43_OFFICIAL_SOURCE_BYTES_20261122.json",
+          "bytes_verified_count": 1,
+          "unavailable_count": 0,
+          "normative_chain_consolidated": false,
+          "independent_review_received": false
+        }
+      }
+    },
+    {
+      "uf": "PE",
+      "candidate_id": "PE-PRODEPE-LEI11675-DEC21959-V1",
+      "candidate_version": 1,
+      "normative_anchor": "Lei 11.675/1999, Decreto 21.959/1999, Portaria SF 239/2001",
+      "primary_source_pointer": "https://www.sefaz.pe.gov.br/Legislacao/Tributaria/Consolidada-Por-Assunto/Paginas/PRODEPE.aspx",
+      "already_examined_government_excerpt": true,
+      "current_state": "AWAITING_COMPLETE_NORMATIVE_CONSOLIDATION",
+      "internal_ai_legal_owner": "AI_LEGAL_TAX_RESEARCH_SPECIALIST",
+      "source_publication_and_original_bytes_digest": null,
+      "full_amendment_chain_verified": false,
+      "applicability_by_competence_verified": false,
+      "confaz_legal_route_verified": false,
+      "taxpayer_grant_required_and_verified": false,
+      "scope_and_negative_cases_legally_grounded": false,
+      "independent_agent_counter_review_passed": false,
+      "technical_tests_certified_for_real_act": false,
+      "internal_curatorial_accepted": false,
+      "accountant_external_opinion": "PENDING_NOT_RECEIVED",
+      "legally_importable": false,
+      "eligible_for_fiscal_application": false,
+      "research_checkpoint_20261122": {
+        "dossier_path": "docs/NFCORE_T09_DOSSIE_RECONCILIATION_V1.json",
+        "candidate_id": "PE-PRODEPE-LEI11675-DEC21959-V1",
+        "required_review_evidence": "prodepe_product_grant",
+        "source_capture_records": [],
+        "case_design": "CONDITIONAL_POSITIVE_AND_NEGATIVE_PREPARED_NOT_CERTIFIED",
+        "internal_grant_requirement_review": "PENDING_NORMATIVE_DETERMINATION",
+        "actual_taxpayer_grant": "EXTERNAL_PER_TAXPAYER_WHEN_REQUIRED",
+        "actual_taxpayer_grant_not_required_to_finish_internal_curation": true,
+        "package_status": "PARTIAL_RESEARCH_NOT_APPROVED",
+        "package_residual_register": "docs/NFCORE_T09_RESEARCH_RESIDUAL_27UFS_20261122.md",
+        "final_receipt": {
+          "intake_status": "CLOSED",
+          "new_capture_count": 0,
+          "source_manifest": "docs/NFCORE_T09_RECEBIMENTO_FINAL_50_DOCUMENTOS_20261122.json",
+          "not_normative_approval": true,
+          "remaining_normative_work": "INTERNAL"
+        },
+        "latest_receipt_manifest": "docs/NFCORE_T09_RECEBIMENTO_FINAL_50_DOCUMENTOS_20261122.json",
+        "latest_receipt_count": 0,
+        "primary_provision_checkpoint": "PARTIAL_TEXT_CHECKED_NOT_CURATED",
+        "external_activation_separation": {
+          "human_product_owner_acceptance": "EXTERNAL_AFTER_INTERNAL_CERTIFICATION",
+          "accountant_opinion": "EXTERNAL_BEFORE_FISCAL_ACTIVATION",
+          "actual_taxpayer_grant": "EXTERNAL_BY_TAXPAYER_WHEN_NORM_REQUIRES",
+          "not_required_for_internal_eng_curation": true
+        },
+        "latest_43_source_capture_receipt": {
+          "manifest_path": "docs/NFCORE_T09_43_OFFICIAL_SOURCE_BYTES_20261122.json",
+          "bytes_verified_count": 1,
+          "unavailable_count": 0,
+          "normative_chain_consolidated": false,
+          "independent_review_received": false
+        }
+      }
+    },
+    {
+      "uf": "PI",
+      "candidate_id": "PI-RICMS2023-AN4-ART25A-BASIC-FOOD-V1",
+      "candidate_version": 1,
+      "normative_anchor": "Decreto 21.866/2023, Anexo IV art. 25-A, acrescido pelo Decreto 23.672/2025; Convênio ICMS 224/2017",
+      "primary_source_pointer": "https://www.diario.pi.gov.br/doe/files/diarios/anexo/e1d8ee2a-5cf4-437f-93fa-393753b8574a/DOEPI_57_2025.pdf",
+      "already_examined_government_excerpt": true,
+      "current_state": "AWAITING_COMPLETE_NORMATIVE_CONSOLIDATION",
+      "internal_ai_legal_owner": "AI_LEGAL_TAX_RESEARCH_SPECIALIST",
+      "source_publication_and_original_bytes_digest": null,
+      "full_amendment_chain_verified": false,
+      "applicability_by_competence_verified": false,
+      "confaz_legal_route_verified": false,
+      "taxpayer_grant_required_and_verified": false,
+      "scope_and_negative_cases_legally_grounded": false,
+      "independent_agent_counter_review_passed": false,
+      "technical_tests_certified_for_real_act": false,
+      "internal_curatorial_accepted": false,
+      "accountant_external_opinion": "PENDING_NOT_RECEIVED",
+      "legally_importable": false,
+      "eligible_for_fiscal_application": false,
+      "research_checkpoint_20261122": {
+        "dossier_path": "docs/NFCORE_T09_DOSSIE_RECONCILIATION_V1.json",
+        "candidate_id": "PI-RICMS2023-AN4-ART25A-BASIC-FOOD-V1",
+        "required_review_evidence": "pi_art25a_product_and_credit_review",
+        "source_capture_records": [
+          "PI_DOE_57_2025_Decreto_23672_2025.pdf",
+          "PI_RICMS_Decreto_21866_2023_Anexo_IV_art25A.html"
+        ],
+        "case_design": "CONDITIONAL_POSITIVE_AND_NEGATIVE_PREPARED_NOT_CERTIFIED",
+        "internal_grant_requirement_review": "PENDING_NORMATIVE_DETERMINATION",
+        "actual_taxpayer_grant": "EXTERNAL_PER_TAXPAYER_WHEN_REQUIRED",
+        "actual_taxpayer_grant_not_required_to_finish_internal_curation": true,
+        "package_status": "PARTIAL_RESEARCH_NOT_APPROVED",
+        "package_residual_register": "docs/NFCORE_T09_RESEARCH_RESIDUAL_27UFS_20261122.md",
+        "final_receipt": {
+          "intake_status": "CLOSED",
+          "new_capture_count": 0,
+          "source_manifest": "docs/NFCORE_T09_RECEBIMENTO_FINAL_50_DOCUMENTOS_20261122.json",
+          "not_normative_approval": true,
+          "remaining_normative_work": "INTERNAL"
+        },
+        "latest_receipt_manifest": "docs/NFCORE_T09_RECEBIMENTO_FINAL_50_DOCUMENTOS_20261122.json",
+        "latest_receipt_count": 0,
+        "primary_provision_checkpoint": "PARTIAL_TEXT_CHECKED_NOT_CURATED",
+        "external_activation_separation": {
+          "human_product_owner_acceptance": "EXTERNAL_AFTER_INTERNAL_CERTIFICATION",
+          "accountant_opinion": "EXTERNAL_BEFORE_FISCAL_ACTIVATION",
+          "actual_taxpayer_grant": "EXTERNAL_BY_TAXPAYER_WHEN_NORM_REQUIRES",
+          "not_required_for_internal_eng_curation": true
+        },
+        "latest_43_source_capture_receipt": {
+          "manifest_path": "docs/NFCORE_T09_43_OFFICIAL_SOURCE_BYTES_20261122.json",
+          "bytes_verified_count": 2,
+          "unavailable_count": 1,
+          "normative_chain_consolidated": false,
+          "independent_review_received": false
+        }
+      }
+    },
+    {
+      "uf": "PR",
+      "candidate_id": "PR-PARANA-COMPETITIVO-DEC7721-V1",
+      "candidate_version": 1,
+      "normative_anchor": "Decreto 7.721/2024; NPF 2/2025 e alterações 2026",
+      "primary_source_pointer": "https://www.fazenda.pr.gov.br/Pagina/Parana-Competitivo",
+      "already_examined_government_excerpt": true,
+      "current_state": "AWAITING_COMPLETE_NORMATIVE_CONSOLIDATION",
+      "internal_ai_legal_owner": "AI_LEGAL_TAX_RESEARCH_SPECIALIST",
+      "source_publication_and_original_bytes_digest": null,
+      "full_amendment_chain_verified": false,
+      "applicability_by_competence_verified": false,
+      "confaz_legal_route_verified": false,
+      "taxpayer_grant_required_and_verified": false,
+      "scope_and_negative_cases_legally_grounded": false,
+      "independent_agent_counter_review_passed": false,
+      "technical_tests_certified_for_real_act": false,
+      "internal_curatorial_accepted": false,
+      "accountant_external_opinion": "PENDING_NOT_RECEIVED",
+      "legally_importable": false,
+      "eligible_for_fiscal_application": false,
+      "research_checkpoint_20261122": {
+        "dossier_path": "docs/NFCORE_T09_DOSSIE_RECONCILIATION_V1.json",
+        "candidate_id": "PR-PARANA-COMPETITIVO-DEC7721-V1",
+        "required_review_evidence": "pr_current_grant_ncm",
+        "source_capture_records": [],
+        "case_design": "CONDITIONAL_POSITIVE_AND_NEGATIVE_PREPARED_NOT_CERTIFIED",
+        "internal_grant_requirement_review": "PENDING_NORMATIVE_DETERMINATION",
+        "actual_taxpayer_grant": "EXTERNAL_PER_TAXPAYER_WHEN_REQUIRED",
+        "actual_taxpayer_grant_not_required_to_finish_internal_curation": true,
+        "package_status": "PARTIAL_RESEARCH_NOT_APPROVED",
+        "package_residual_register": "docs/NFCORE_T09_RESEARCH_RESIDUAL_27UFS_20261122.md",
+        "final_receipt": {
+          "intake_status": "CLOSED",
+          "new_capture_count": 2,
+          "source_manifest": "docs/NFCORE_T09_RECEBIMENTO_FINAL_50_DOCUMENTOS_20261122.json",
+          "not_normative_approval": true,
+          "remaining_normative_work": "INTERNAL"
+        },
+        "latest_receipt_manifest": "docs/NFCORE_T09_RECEBIMENTO_FINAL_50_DOCUMENTOS_20261122.json",
+        "latest_receipt_count": 2,
+        "external_activation_separation": {
+          "human_product_owner_acceptance": "EXTERNAL_AFTER_INTERNAL_CERTIFICATION",
+          "accountant_opinion": "EXTERNAL_BEFORE_FISCAL_ACTIVATION",
+          "actual_taxpayer_grant": "EXTERNAL_BY_TAXPAYER_WHEN_NORM_REQUIRES",
+          "not_required_for_internal_eng_curation": true
+        },
+        "official_crosscheck_late_2026": {
+          "act": "Decreto PR 7.721/2024 e Resolução SEFA 227/2026",
+          "source": "https://www.legislacao.pr.gov.br/legislacao/pesquisarAto.do?action=exibir&codAto=341992",
+          "conditions": [
+            "pr_modality_and_legal_item",
+            "pr_financial_contribution_if_required",
+            "pr_negative_ncm_list_current_by_act"
+          ],
+          "material_risk": "Não aplicar contribuição de 0,4% a todas modalidades, nem converter resolução de transferência em lista de NCM elegível.",
+          "scope": "INTERNAL_RESEARCH",
+          "verified_full_chain": false,
+          "approved": false
+        },
+        "latest_43_source_capture_receipt": {
+          "manifest_path": "docs/NFCORE_T09_43_OFFICIAL_SOURCE_BYTES_20261122.json",
+          "bytes_verified_count": 1,
+          "unavailable_count": 0,
+          "normative_chain_consolidated": false,
+          "independent_review_received": false
+        }
+      }
+    },
+    {
+      "uf": "RJ",
+      "candidate_id": "RJ-LEI6331-PORT345-ADESAO-V1",
+      "candidate_version": 1,
+      "normative_anchor": "Lei 6.331/2012; Portaria SSER 345/2023 e alterações 350/2024, 362/2024, 431/2025",
+      "primary_source_pointer": "https://www3.alerj.rj.gov.br/lotus_notes/default.asp?URL=L0NPTlRMRUkuTlNGL2M4YWEwOTAwMDI1ZmVlZjYwMzI1NjRlYzAwNjBkZmZmLzY4ZDI2ZWU1OThmMWFlNzI4MzI1N2E5OTAwNjNiMzcxP09wZW5Eb2N1bWVudA%3D%3D&id=2",
+      "already_examined_government_excerpt": true,
+      "current_state": "AWAITING_COMPLETE_NORMATIVE_CONSOLIDATION",
+      "internal_ai_legal_owner": "AI_LEGAL_TAX_RESEARCH_SPECIALIST",
+      "source_publication_and_original_bytes_digest": null,
+      "full_amendment_chain_verified": false,
+      "applicability_by_competence_verified": false,
+      "confaz_legal_route_verified": false,
+      "taxpayer_grant_required_and_verified": false,
+      "scope_and_negative_cases_legally_grounded": false,
+      "independent_agent_counter_review_passed": false,
+      "technical_tests_certified_for_real_act": false,
+      "internal_curatorial_accepted": false,
+      "accountant_external_opinion": "PENDING_NOT_RECEIVED",
+      "legally_importable": false,
+      "eligible_for_fiscal_application": false,
+      "research_checkpoint_20261122": {
+        "dossier_path": "docs/NFCORE_T09_DOSSIE_RECONCILIATION_V1.json",
+        "candidate_id": "RJ-LEI6331-PORT345-ADESAO-V1",
+        "required_review_evidence": "rj_textile_adhesion_validity",
+        "source_capture_records": [
+          "RJ_Portaria_SSER_345_2023.html",
+          "RJ_Portaria_SSER_350_2024.html",
+          "RJ_Portaria_SSER_362_2024.html",
+          "RJ_Portaria_SSER_431_2025.html",
+          "RJ_Lei_6331_2012.html"
+        ],
+        "case_design": "CONDITIONAL_POSITIVE_AND_NEGATIVE_PREPARED_NOT_CERTIFIED",
+        "internal_grant_requirement_review": "PENDING_NORMATIVE_DETERMINATION",
+        "actual_taxpayer_grant": "EXTERNAL_PER_TAXPAYER_WHEN_REQUIRED",
+        "actual_taxpayer_grant_not_required_to_finish_internal_curation": true,
+        "additional_primary_text_review": "CONTENT_IDENTIFIED_NOT_BYTES_ARCHIVED",
+        "package_status": "PARTIAL_RESEARCH_NOT_APPROVED",
+        "package_residual_register": "docs/NFCORE_T09_RESEARCH_RESIDUAL_27UFS_20261122.md",
+        "final_receipt": {
+          "intake_status": "CLOSED",
+          "new_capture_count": 1,
+          "source_manifest": "docs/NFCORE_T09_RECEBIMENTO_FINAL_50_DOCUMENTOS_20261122.json",
+          "not_normative_approval": true,
+          "remaining_normative_work": "INTERNAL"
+        },
+        "latest_receipt_manifest": "docs/NFCORE_T09_RECEBIMENTO_FINAL_50_DOCUMENTOS_20261122.json",
+        "latest_receipt_count": 1,
+        "external_activation_separation": {
+          "human_product_owner_acceptance": "EXTERNAL_AFTER_INTERNAL_CERTIFICATION",
+          "accountant_opinion": "EXTERNAL_BEFORE_FISCAL_ACTIVATION",
+          "actual_taxpayer_grant": "EXTERNAL_BY_TAXPAYER_WHEN_NORM_REQUIRES",
+          "not_required_for_internal_eng_curation": true
+        },
+        "latest_43_source_capture_receipt": {
+          "manifest_path": "docs/NFCORE_T09_43_OFFICIAL_SOURCE_BYTES_20261122.json",
+          "bytes_verified_count": 1,
+          "unavailable_count": 1,
+          "normative_chain_consolidated": false,
+          "independent_review_received": false
+        }
+      }
+    },
+    {
+      "uf": "RN",
+      "candidate_id": "RN-RICMS2022-AN003-REDUCAO-V1",
+      "candidate_version": 1,
+      "normative_anchor": "Decreto 31.825/2022, Anexo 003, arts. 1 a 6",
+      "primary_source_pointer": "https://diariooficial.rn.gov.br/dei/dorn3/documentos/00000001/20220819/783131.htm",
+      "already_examined_government_excerpt": true,
+      "current_state": "AWAITING_COMPLETE_NORMATIVE_CONSOLIDATION",
+      "internal_ai_legal_owner": "AI_LEGAL_TAX_RESEARCH_SPECIALIST",
+      "source_publication_and_original_bytes_digest": null,
+      "full_amendment_chain_verified": false,
+      "applicability_by_competence_verified": false,
+      "confaz_legal_route_verified": false,
+      "taxpayer_grant_required_and_verified": false,
+      "scope_and_negative_cases_legally_grounded": false,
+      "independent_agent_counter_review_passed": false,
+      "technical_tests_certified_for_real_act": false,
+      "internal_curatorial_accepted": false,
+      "accountant_external_opinion": "PENDING_NOT_RECEIVED",
+      "legally_importable": false,
+      "eligible_for_fiscal_application": false,
+      "research_checkpoint_20261122": {
+        "dossier_path": "docs/NFCORE_T09_DOSSIE_RECONCILIATION_V1.json",
+        "candidate_id": "RN-RICMS2022-AN003-REDUCAO-V1",
+        "required_review_evidence": "rn_fish_origin_option",
+        "source_capture_records": [
+          "RN_Decreto_31825_2022_Anexo_003.html"
+        ],
+        "case_design": "CONDITIONAL_POSITIVE_AND_NEGATIVE_PREPARED_NOT_CERTIFIED",
+        "internal_grant_requirement_review": "PENDING_NORMATIVE_DETERMINATION",
+        "actual_taxpayer_grant": "EXTERNAL_PER_TAXPAYER_WHEN_REQUIRED",
+        "actual_taxpayer_grant_not_required_to_finish_internal_curation": true,
+        "package_status": "PARTIAL_RESEARCH_NOT_APPROVED",
+        "package_residual_register": "docs/NFCORE_T09_RESEARCH_RESIDUAL_27UFS_20261122.md",
+        "final_receipt": {
+          "intake_status": "CLOSED",
+          "new_capture_count": 2,
+          "source_manifest": "docs/NFCORE_T09_RECEBIMENTO_FINAL_50_DOCUMENTOS_20261122.json",
+          "not_normative_approval": true,
+          "remaining_normative_work": "INTERNAL"
+        },
+        "latest_receipt_manifest": "docs/NFCORE_T09_RECEBIMENTO_FINAL_50_DOCUMENTOS_20261122.json",
+        "latest_receipt_count": 2,
+        "primary_provision_checkpoint": "PARTIAL_TEXT_CHECKED_NOT_CURATED",
+        "temporal_gate": {
+          "case_id": "RN-FISH-2025-MIDMONTH",
+          "status": "NECESSARY_NEGATIVE_GUARD_TEST_DESIGNED_NOT_ALL_LEGAL_TESTS",
+          "full_legal_chain_verified": false
+        },
+        "external_activation_separation": {
+          "human_product_owner_acceptance": "EXTERNAL_AFTER_INTERNAL_CERTIFICATION",
+          "accountant_opinion": "EXTERNAL_BEFORE_FISCAL_ACTIVATION",
+          "actual_taxpayer_grant": "EXTERNAL_BY_TAXPAYER_WHEN_NORM_REQUIRES",
+          "not_required_for_internal_eng_curation": true
+        },
+        "latest_43_source_capture_receipt": {
+          "manifest_path": "docs/NFCORE_T09_43_OFFICIAL_SOURCE_BYTES_20261122.json",
+          "bytes_verified_count": 2,
+          "unavailable_count": 0,
+          "normative_chain_consolidated": false,
+          "independent_review_received": false
+        }
+      }
+    },
+    {
+      "uf": "RO",
+      "candidate_id": "RO-INDS-LEI1558-DEC12988-V1",
+      "candidate_version": 1,
+      "normative_anchor": "Lei 1.558/2005, Decreto 12.988/2007 e Decreto 28.386/2023",
+      "primary_source_pointer": "https://www.sefin.ro.gov.br/lista.jsp?formato=166&page=9&tipo=lei",
+      "already_examined_government_excerpt": true,
+      "current_state": "AWAITING_COMPLETE_NORMATIVE_CONSOLIDATION",
+      "internal_ai_legal_owner": "AI_LEGAL_TAX_RESEARCH_SPECIALIST",
+      "source_publication_and_original_bytes_digest": null,
+      "full_amendment_chain_verified": false,
+      "applicability_by_competence_verified": false,
+      "confaz_legal_route_verified": false,
+      "taxpayer_grant_required_and_verified": false,
+      "scope_and_negative_cases_legally_grounded": false,
+      "independent_agent_counter_review_passed": false,
+      "technical_tests_certified_for_real_act": false,
+      "internal_curatorial_accepted": false,
+      "accountant_external_opinion": "PENDING_NOT_RECEIVED",
+      "legally_importable": false,
+      "eligible_for_fiscal_application": false,
+      "research_checkpoint_20261122": {
+        "dossier_path": "docs/NFCORE_T09_DOSSIE_RECONCILIATION_V1.json",
+        "candidate_id": "RO-INDS-LEI1558-DEC12988-V1",
+        "required_review_evidence": "ro_conder_current_class",
+        "source_capture_records": [],
+        "case_design": "CONDITIONAL_POSITIVE_AND_NEGATIVE_PREPARED_NOT_CERTIFIED",
+        "internal_grant_requirement_review": "PENDING_NORMATIVE_DETERMINATION",
+        "actual_taxpayer_grant": "EXTERNAL_PER_TAXPAYER_WHEN_REQUIRED",
+        "actual_taxpayer_grant_not_required_to_finish_internal_curation": true,
+        "package_status": "PARTIAL_RESEARCH_NOT_APPROVED",
+        "package_residual_register": "docs/NFCORE_T09_RESEARCH_RESIDUAL_27UFS_20261122.md",
+        "final_receipt": {
+          "intake_status": "CLOSED",
+          "new_capture_count": 2,
+          "source_manifest": "docs/NFCORE_T09_RECEBIMENTO_FINAL_50_DOCUMENTOS_20261122.json",
+          "not_normative_approval": true,
+          "remaining_normative_work": "INTERNAL"
+        },
+        "latest_receipt_manifest": "docs/NFCORE_T09_RECEBIMENTO_FINAL_50_DOCUMENTOS_20261122.json",
+        "latest_receipt_count": 2,
+        "external_activation_separation": {
+          "human_product_owner_acceptance": "EXTERNAL_AFTER_INTERNAL_CERTIFICATION",
+          "accountant_opinion": "EXTERNAL_BEFORE_FISCAL_ACTIVATION",
+          "actual_taxpayer_grant": "EXTERNAL_BY_TAXPAYER_WHEN_NORM_REQUIRES",
+          "not_required_for_internal_eng_curation": true
+        },
+        "latest_43_source_capture_receipt": {
+          "manifest_path": "docs/NFCORE_T09_43_OFFICIAL_SOURCE_BYTES_20261122.json",
+          "bytes_verified_count": 1,
+          "unavailable_count": 0,
+          "normative_chain_consolidated": false,
+          "independent_review_received": false
+        }
+      }
+    },
+    {
+      "uf": "RR",
+      "candidate_id": "RR-RICMS2001-AN1-ART1-LXVII-V1",
+      "candidate_version": 1,
+      "normative_anchor": "Decreto 4.335-E/2001, Anexo I art. 1º inciso LXVII",
+      "primary_source_pointer": "https://www.sefaz.rr.gov.br/downloads/legislacao?dir=02+-+LEGISLACAO+ESTADUAL",
+      "already_examined_government_excerpt": false,
+      "current_state": "AWAITING_COMPLETE_NORMATIVE_CONSOLIDATION",
+      "internal_ai_legal_owner": "AI_LEGAL_TAX_RESEARCH_SPECIALIST",
+      "source_publication_and_original_bytes_digest": null,
+      "full_amendment_chain_verified": false,
+      "applicability_by_competence_verified": false,
+      "confaz_legal_route_verified": false,
+      "taxpayer_grant_required_and_verified": false,
+      "scope_and_negative_cases_legally_grounded": false,
+      "independent_agent_counter_review_passed": false,
+      "technical_tests_certified_for_real_act": false,
+      "internal_curatorial_accepted": false,
+      "accountant_external_opinion": "PENDING_NOT_RECEIVED",
+      "legally_importable": false,
+      "eligible_for_fiscal_application": false,
+      "research_checkpoint_20261122": {
+        "dossier_path": "docs/NFCORE_T09_DOSSIE_RECONCILIATION_V1.json",
+        "candidate_id": "RR-RICMS2001-AN1-ART1-LXVII-V1",
+        "required_review_evidence": "rr_agro_input_scope",
+        "source_capture_records": [],
+        "case_design": "CONDITIONAL_POSITIVE_AND_NEGATIVE_PREPARED_NOT_CERTIFIED",
+        "internal_grant_requirement_review": "PENDING_NORMATIVE_DETERMINATION",
+        "actual_taxpayer_grant": "EXTERNAL_PER_TAXPAYER_WHEN_REQUIRED",
+        "actual_taxpayer_grant_not_required_to_finish_internal_curation": true,
+        "package_status": "PARTIAL_RESEARCH_NOT_APPROVED",
+        "package_residual_register": "docs/NFCORE_T09_RESEARCH_RESIDUAL_27UFS_20261122.md",
+        "final_receipt": {
+          "intake_status": "CLOSED",
+          "new_capture_count": 1,
+          "source_manifest": "docs/NFCORE_T09_RECEBIMENTO_FINAL_50_DOCUMENTOS_20261122.json",
+          "not_normative_approval": true,
+          "remaining_normative_work": "INTERNAL"
+        },
+        "latest_receipt_manifest": "docs/NFCORE_T09_RECEBIMENTO_FINAL_50_DOCUMENTOS_20261122.json",
+        "latest_receipt_count": 1,
+        "supervening_official_review_status": "MORE_PRIMARY_WORK_DONE_NOT_LEGALLY_ACCEPTED",
+        "temporal_gate": {
+          "case_id": "RR-AGRI-2026-FEDERAL-VS-STATE",
+          "status": "NECESSARY_NEGATIVE_GUARD_TEST_DESIGNED_NOT_ALL_LEGAL_TESTS",
+          "full_legal_chain_verified": false
+        },
+        "external_activation_separation": {
+          "human_product_owner_acceptance": "EXTERNAL_AFTER_INTERNAL_CERTIFICATION",
+          "accountant_opinion": "EXTERNAL_BEFORE_FISCAL_ACTIVATION",
+          "actual_taxpayer_grant": "EXTERNAL_BY_TAXPAYER_WHEN_NORM_REQUIRES",
+          "not_required_for_internal_eng_curation": true
+        },
+        "latest_43_source_capture_receipt": {
+          "manifest_path": "docs/NFCORE_T09_43_OFFICIAL_SOURCE_BYTES_20261122.json",
+          "bytes_verified_count": 0,
+          "unavailable_count": 1,
+          "normative_chain_consolidated": false,
+          "independent_review_received": false
+        },
+        "retry_3_official_sources_20261122": {
+          "manifest": "docs/NFCORE_T09_RETRY_3UFS_CAPTURE_RECEIPT_20261122.json",
+          "captured_ok": 1,
+          "failed": 1,
+          "curation_approved": false
+        },
+        "priority_closeout_20261123": {
+          "material_replacement_id": null,
+          "legal_source_summary": "docs/NFCORE_T09_SE_AP_PA_RR_CLOSEOUT_20261123.json",
+          "missing_confaz_modal_binding": true,
+          "independent_review": false,
+          "internal_accepted": false
+        },
+        "priority_4uf_binary_evidence_20261123": {
+          "manifest": "docs/NFCORE_T09_PRIORITY_4UF_BYTES_AUDIT_20261123.json",
+          "captured": 0,
+          "failed": 2,
+          "legal_review_complete": false
+        },
+        "terminal_operational_decision_20261123": {
+          "assessment": "NO_VERIFIED_STATE_EXTENSION_IN_2026",
+          "fiscal_blocked": true,
+          "legal_certification_awarded": false
+        }
+      }
+    },
+    {
+      "uf": "RS",
+      "candidate_id": "RS-RICMS1997-L1-ART32-CLXXXVI-METAL-V1",
+      "candidate_version": 1,
+      "normative_anchor": "Decreto 37.699/1997, Livro I, art. 32, inciso CLXXXVI",
+      "primary_source_pointer": "https://receita.fazenda.rs.gov.br/servicos-a-empresas/servicos?servico=1946",
+      "already_examined_government_excerpt": true,
+      "current_state": "AWAITING_COMPLETE_NORMATIVE_CONSOLIDATION",
+      "internal_ai_legal_owner": "AI_LEGAL_TAX_RESEARCH_SPECIALIST",
+      "source_publication_and_original_bytes_digest": null,
+      "full_amendment_chain_verified": false,
+      "applicability_by_competence_verified": false,
+      "confaz_legal_route_verified": false,
+      "taxpayer_grant_required_and_verified": false,
+      "scope_and_negative_cases_legally_grounded": false,
+      "independent_agent_counter_review_passed": false,
+      "technical_tests_certified_for_real_act": false,
+      "internal_curatorial_accepted": false,
+      "accountant_external_opinion": "PENDING_NOT_RECEIVED",
+      "legally_importable": false,
+      "eligible_for_fiscal_application": false,
+      "research_checkpoint_20261122": {
+        "dossier_path": "docs/NFCORE_T09_DOSSIE_RECONCILIATION_V1.json",
+        "candidate_id": "RS-RICMS1997-L1-ART32-CLXXXVI-METAL-V1",
+        "required_review_evidence": "rs_metal_option",
+        "source_capture_records": [],
+        "case_design": "CONDITIONAL_POSITIVE_AND_NEGATIVE_PREPARED_NOT_CERTIFIED",
+        "internal_grant_requirement_review": "PENDING_NORMATIVE_DETERMINATION",
+        "actual_taxpayer_grant": "EXTERNAL_PER_TAXPAYER_WHEN_REQUIRED",
+        "actual_taxpayer_grant_not_required_to_finish_internal_curation": true,
+        "package_status": "PARTIAL_RESEARCH_NOT_APPROVED",
+        "package_residual_register": "docs/NFCORE_T09_RESEARCH_RESIDUAL_27UFS_20261122.md",
+        "final_receipt": {
+          "intake_status": "CLOSED",
+          "new_capture_count": 2,
+          "source_manifest": "docs/NFCORE_T09_RECEBIMENTO_FINAL_50_DOCUMENTOS_20261122.json",
+          "not_normative_approval": true,
+          "remaining_normative_work": "INTERNAL"
+        },
+        "latest_receipt_manifest": "docs/NFCORE_T09_RECEBIMENTO_FINAL_50_DOCUMENTOS_20261122.json",
+        "latest_receipt_count": 2,
+        "external_activation_separation": {
+          "human_product_owner_acceptance": "EXTERNAL_AFTER_INTERNAL_CERTIFICATION",
+          "accountant_opinion": "EXTERNAL_BEFORE_FISCAL_ACTIVATION",
+          "actual_taxpayer_grant": "EXTERNAL_BY_TAXPAYER_WHEN_NORM_REQUIRES",
+          "not_required_for_internal_eng_curation": true
+        },
+        "latest_43_source_capture_receipt": {
+          "manifest_path": "docs/NFCORE_T09_43_OFFICIAL_SOURCE_BYTES_20261122.json",
+          "bytes_verified_count": 1,
+          "unavailable_count": 0,
+          "normative_chain_consolidated": false,
+          "independent_review_received": false
+        }
+      }
+    },
+    {
+      "uf": "SC",
+      "candidate_id": "SC-PROEMPREGO-LEI13992-DEC105-V1",
+      "candidate_version": 1,
+      "normative_anchor": "Lei 13.992/2007, Decreto 105/2007 e Resolução de Enquadramento",
+      "primary_source_pointer": "https://www.sef.sc.gov.br/saiba-mais/programa-pro-emprego",
+      "already_examined_government_excerpt": true,
+      "current_state": "AWAITING_COMPLETE_NORMATIVE_CONSOLIDATION",
+      "internal_ai_legal_owner": "AI_LEGAL_TAX_RESEARCH_SPECIALIST",
+      "source_publication_and_original_bytes_digest": null,
+      "full_amendment_chain_verified": false,
+      "applicability_by_competence_verified": false,
+      "confaz_legal_route_verified": false,
+      "taxpayer_grant_required_and_verified": false,
+      "scope_and_negative_cases_legally_grounded": false,
+      "independent_agent_counter_review_passed": false,
+      "technical_tests_certified_for_real_act": false,
+      "internal_curatorial_accepted": false,
+      "accountant_external_opinion": "PENDING_NOT_RECEIVED",
+      "legally_importable": false,
+      "eligible_for_fiscal_application": false,
+      "research_checkpoint_20261122": {
+        "dossier_path": "docs/NFCORE_T09_DOSSIE_RECONCILIATION_V1.json",
+        "candidate_id": "SC-PROEMPREGO-LEI13992-DEC105-V1",
+        "required_review_evidence": "sc_ttd_resolution",
+        "source_capture_records": [],
+        "case_design": "CONDITIONAL_POSITIVE_AND_NEGATIVE_PREPARED_NOT_CERTIFIED",
+        "internal_grant_requirement_review": "PENDING_NORMATIVE_DETERMINATION",
+        "actual_taxpayer_grant": "EXTERNAL_PER_TAXPAYER_WHEN_REQUIRED",
+        "actual_taxpayer_grant_not_required_to_finish_internal_curation": true,
+        "package_status": "PARTIAL_RESEARCH_NOT_APPROVED",
+        "package_residual_register": "docs/NFCORE_T09_RESEARCH_RESIDUAL_27UFS_20261122.md",
+        "final_receipt": {
+          "intake_status": "CLOSED",
+          "new_capture_count": 0,
+          "source_manifest": "docs/NFCORE_T09_RECEBIMENTO_FINAL_50_DOCUMENTOS_20261122.json",
+          "not_normative_approval": true,
+          "remaining_normative_work": "INTERNAL"
+        },
+        "latest_receipt_manifest": "docs/NFCORE_T09_RECEBIMENTO_FINAL_50_DOCUMENTOS_20261122.json",
+        "latest_receipt_count": 0,
+        "external_activation_separation": {
+          "human_product_owner_acceptance": "EXTERNAL_AFTER_INTERNAL_CERTIFICATION",
+          "accountant_opinion": "EXTERNAL_BEFORE_FISCAL_ACTIVATION",
+          "actual_taxpayer_grant": "EXTERNAL_BY_TAXPAYER_WHEN_NORM_REQUIRES",
+          "not_required_for_internal_eng_curation": true
+        },
+        "latest_43_source_capture_receipt": {
+          "manifest_path": "docs/NFCORE_T09_43_OFFICIAL_SOURCE_BYTES_20261122.json",
+          "bytes_verified_count": 1,
+          "unavailable_count": 0,
+          "normative_chain_consolidated": false,
+          "independent_review_received": false
+        }
+      }
+    },
+    {
+      "uf": "SE",
+      "candidate_id": "SE-PSDI-LEI3140-DEC29935-V1",
+      "candidate_version": 1,
+      "normative_anchor": "Lei 3.140/1991, Decreto 29.935/2014 e decisão CDI",
+      "primary_source_pointer": "https://pge.se.gov.br/wp-content/uploads/2025/02/DECRETO-29-935-1.pdf",
+      "already_examined_government_excerpt": true,
+      "current_state": "AWAITING_COMPLETE_NORMATIVE_CONSOLIDATION",
+      "internal_ai_legal_owner": "AI_LEGAL_TAX_RESEARCH_SPECIALIST",
+      "source_publication_and_original_bytes_digest": null,
+      "full_amendment_chain_verified": false,
+      "applicability_by_competence_verified": false,
+      "confaz_legal_route_verified": false,
+      "taxpayer_grant_required_and_verified": false,
+      "scope_and_negative_cases_legally_grounded": false,
+      "independent_agent_counter_review_passed": false,
+      "technical_tests_certified_for_real_act": false,
+      "internal_curatorial_accepted": false,
+      "accountant_external_opinion": "PENDING_NOT_RECEIVED",
+      "legally_importable": false,
+      "eligible_for_fiscal_application": false,
+      "research_checkpoint_20261122": {
+        "dossier_path": "docs/NFCORE_T09_DOSSIE_RECONCILIATION_V1.json",
+        "candidate_id": "SE-PSDI-LEI3140-DEC29935-V1",
+        "required_review_evidence": "se_psdi_cdi_scope",
+        "source_capture_records": [
+          "SE_Lei_3140_1991.html",
+          "SE_Decreto_29935_2014.pdf"
+        ],
+        "case_design": "CONDITIONAL_POSITIVE_AND_NEGATIVE_PREPARED_NOT_CERTIFIED",
+        "internal_grant_requirement_review": "PENDING_NORMATIVE_DETERMINATION",
+        "actual_taxpayer_grant": "EXTERNAL_PER_TAXPAYER_WHEN_REQUIRED",
+        "actual_taxpayer_grant_not_required_to_finish_internal_curation": true,
+        "package_status": "PARTIAL_RESEARCH_NOT_APPROVED",
+        "package_residual_register": "docs/NFCORE_T09_RESEARCH_RESIDUAL_27UFS_20261122.md",
+        "final_receipt": {
+          "intake_status": "CLOSED",
+          "new_capture_count": 0,
+          "source_manifest": "docs/NFCORE_T09_RECEBIMENTO_FINAL_50_DOCUMENTOS_20261122.json",
+          "not_normative_approval": true,
+          "remaining_normative_work": "INTERNAL"
+        },
+        "latest_receipt_manifest": "docs/NFCORE_T09_RECEBIMENTO_FINAL_50_DOCUMENTOS_20261122.json",
+        "latest_receipt_count": 0,
+        "external_activation_separation": {
+          "human_product_owner_acceptance": "EXTERNAL_AFTER_INTERNAL_CERTIFICATION",
+          "accountant_opinion": "EXTERNAL_BEFORE_FISCAL_ACTIVATION",
+          "actual_taxpayer_grant": "EXTERNAL_BY_TAXPAYER_WHEN_NORM_REQUIRES",
+          "not_required_for_internal_eng_curation": true
+        },
+        "latest_43_source_capture_receipt": {
+          "manifest_path": "docs/NFCORE_T09_43_OFFICIAL_SOURCE_BYTES_20261122.json",
+          "bytes_verified_count": 0,
+          "unavailable_count": 3,
+          "normative_chain_consolidated": false,
+          "independent_review_received": false
+        },
+        "retry_3_official_sources_20261122": {
+          "manifest": "docs/NFCORE_T09_RETRY_3UFS_CAPTURE_RECEIPT_20261122.json",
+          "captured_ok": 0,
+          "failed": 5,
+          "curation_approved": false
+        },
+        "user_lei3140_pdf_20261123": {
+          "source_provenance_document": "docs/NFCORE_T09_SE_LEI_3140_1991_USUARIO_2018_EVIDENCE_20261123.md",
+          "sha256": "710660329fbdfac01faa327ef2874ec62f7ddff65eeacd5a0f9f12abda205c5a",
+          "source_type": "HISTORICAL_SECONDARY_CONSOLIDATION_REPUBLISHED_BY_STATE_SEDETEC",
+          "text_cutoff": "2018-10-21",
+          "original_doe_proven": false,
+          "post_2018_consolidation_complete": false,
+          "external_material_needed_from_owner": false,
+          "internal_review_complete": false
+        },
+        "official_alese_compilation_user_html_20261123": {
+          "source_url": "https://aleselegis.al.se.leg.br/Arquivo/Documents/legislacao/html/l31401991.HTML",
+          "uploaded_sha256": "520b1a1f93b9a1c6c8ec5d315d5d885ec436df4236f7c46dfbdc9a21b9c080a5",
+          "document_type": "OFFICIAL_STATE_LEGISLATIVE_COMPILATION_HTML_NOT_ORIGINAL_DOE_ISSUE",
+          "compilation_includes_2026": true,
+          "original_gazette_issue": false,
+          "all_amendments_reconciled": false,
+          "independent_review_complete": false,
+          "external_owner_document_required": false,
+          "internal_curatorial_accepted": false
+        },
+        "decree_29935_2014_historical_bytes_20261123": {
+          "sha256": "ca18358fccdfd93259819b1ab1d2fe7347b7084cde54d9660b3c8d0ffc67b3b8",
+          "bytes": 171106,
+          "archive": "/NFCore Commercial Launch/T09 Legal Evidence/SE_Decreto_29935_2014_PGE_Original_Historico.pdf",
+          "legal_2026_consolidated": false,
+          "external_material_needed_from_owner": false,
+          "internal_curation_accepted": false
+        },
+        "priority_closeout_20261123": {
+          "material_replacement_id": null,
+          "legal_source_summary": "docs/NFCORE_T09_SE_AP_PA_RR_CLOSEOUT_20261123.json",
+          "missing_confaz_modal_binding": true,
+          "independent_review": false,
+          "internal_accepted": false
+        },
+        "priority_4uf_binary_evidence_20261123": {
+          "manifest": "docs/NFCORE_T09_PRIORITY_4UF_BYTES_AUDIT_20261123.json",
+          "captured": 0,
+          "failed": 1,
+          "legal_review_complete": false
+        },
+        "terminal_operational_decision_20261123": {
+          "assessment": "BASE_REINSTITUTION_IDENTIFIED_MODAL_PROOF_INCOMPLETE",
+          "fiscal_blocked": true,
+          "legal_certification_awarded": false
+        }
+      }
+    },
+    {
+      "uf": "SP",
+      "candidate_id": "SP-RICMS2000-AN3-ART41-TEXTILE-V1",
+      "candidate_version": 1,
+      "normative_anchor": "Decreto 45.490/2000, Anexo III, art. 41 (redação Decreto 67.524/2023, prazo Decreto 69.292/2025)",
+      "primary_source_pointer": "https://legislacao.fazenda.sp.gov.br/Paginas/an3art041.aspx",
+      "already_examined_government_excerpt": true,
+      "current_state": "AWAITING_COMPLETE_NORMATIVE_CONSOLIDATION",
+      "internal_ai_legal_owner": "AI_LEGAL_TAX_RESEARCH_SPECIALIST",
+      "source_publication_and_original_bytes_digest": "08e35cf1671526d59a538fe975f98148080c7eb5ccdbdfeb697ee5d562cc4b68",
+      "full_amendment_chain_verified": false,
+      "applicability_by_competence_verified": false,
+      "confaz_legal_route_verified": false,
+      "taxpayer_grant_required_and_verified": false,
+      "scope_and_negative_cases_legally_grounded": false,
+      "independent_agent_counter_review_passed": false,
+      "technical_tests_certified_for_real_act": false,
+      "internal_curatorial_accepted": false,
+      "accountant_external_opinion": "PENDING_NOT_RECEIVED",
+      "legally_importable": false,
+      "eligible_for_fiscal_application": false,
+      "research_checkpoint_20261122": {
+        "dossier_path": "docs/NFCORE_T09_DOSSIE_RECONCILIATION_V1.json",
+        "candidate_id": "SP-RICMS2000-AN3-ART41-TEXTILE-V1",
+        "required_review_evidence": "sp_textile_art52_option",
+        "source_capture_records": [],
+        "case_design": "CONDITIONAL_POSITIVE_AND_NEGATIVE_PREPARED_NOT_CERTIFIED",
+        "internal_grant_requirement_review": "VERIFIED_FROM_SP_ART41_ART52_CAT35_BUT_ACTUAL_GRANT_EXTERNAL",
+        "actual_taxpayer_grant": "EXTERNAL_PER_TAXPAYER_WHEN_REQUIRED",
+        "actual_taxpayer_grant_not_required_to_finish_internal_curation": true,
+        "package_status": "PARTIAL_RESEARCH_NOT_APPROVED",
+        "package_residual_register": "docs/NFCORE_T09_RESEARCH_RESIDUAL_27UFS_20261122.md",
+        "final_receipt": {
+          "intake_status": "CLOSED",
+          "new_capture_count": 3,
+          "source_manifest": "docs/NFCORE_T09_RECEBIMENTO_FINAL_50_DOCUMENTOS_20261122.json",
+          "not_normative_approval": true,
+          "remaining_normative_work": "INTERNAL"
+        },
+        "latest_receipt_manifest": "docs/NFCORE_T09_RECEBIMENTO_FINAL_50_DOCUMENTOS_20261122.json",
+        "latest_receipt_count": 3,
+        "primary_provision_checkpoint": "PARTIAL_TEXT_CHECKED_NOT_CURATED",
+        "supervening_official_review_status": "MORE_PRIMARY_WORK_DONE_NOT_LEGALLY_ACCEPTED",
+        "temporal_gate": {
+          "case_id": "SP-TEXTILE-ART41-INTRA-MONTH",
+          "status": "NECESSARY_NEGATIVE_GUARD_TEST_DESIGNED_NOT_ALL_LEGAL_TESTS",
+          "full_legal_chain_verified": false
+        },
+        "external_activation_separation": {
+          "human_product_owner_acceptance": "EXTERNAL_AFTER_INTERNAL_CERTIFICATION",
+          "accountant_opinion": "EXTERNAL_BEFORE_FISCAL_ACTIVATION",
+          "actual_taxpayer_grant": "EXTERNAL_BY_TAXPAYER_WHEN_NORM_REQUIRES",
+          "not_required_for_internal_eng_curation": true
+        },
+        "sp_vertical_checkpoint": {
+          "status": "IN_PROGRESS",
+          "source_captures_verified_sha256": 3,
+          "art41_original_capture_verified": true,
+          "independent_counter_review": false,
+          "tests": "PENDING_CI",
+          "source_docs": "docs/NFCORE_T09_SP_VERTICAL_RESEARCH_20261122.md",
+          "art41_gazette_original_verified": false,
+          "art41_capture_artifact_id": 14766917663,
+          "confaz_route_identified": true,
+          "confaz_route_complete": false,
+          "normative_individual_concession_verified": true
+        },
+        "latest_43_source_capture_receipt": {
+          "manifest_path": "docs/NFCORE_T09_43_OFFICIAL_SOURCE_BYTES_20261122.json",
+          "bytes_verified_count": 1,
+          "unavailable_count": 0,
+          "normative_chain_consolidated": false,
+          "independent_review_received": false
+        }
+      },
+      "individual_concession_normative_requirement_verified": true
+    },
+    {
+      "uf": "TO",
+      "candidate_id": "TO-PROINDUSTRIA-LEI1385-ART6-V1",
+      "candidate_version": 1,
+      "normative_anchor": "Lei 1.385/2003, art. 6º e alterações",
+      "primary_source_pointer": "https://dtri.sefaz.to.gov.br/legislacao/ntributaria/Leis/Lei1.385-03.htm",
+      "already_examined_government_excerpt": false,
+      "current_state": "AWAITING_COMPLETE_NORMATIVE_CONSOLIDATION",
+      "internal_ai_legal_owner": "AI_LEGAL_TAX_RESEARCH_SPECIALIST",
+      "source_publication_and_original_bytes_digest": null,
+      "full_amendment_chain_verified": false,
+      "applicability_by_competence_verified": false,
+      "confaz_legal_route_verified": false,
+      "taxpayer_grant_required_and_verified": false,
+      "scope_and_negative_cases_legally_grounded": false,
+      "independent_agent_counter_review_passed": false,
+      "technical_tests_certified_for_real_act": false,
+      "internal_curatorial_accepted": false,
+      "accountant_external_opinion": "PENDING_NOT_RECEIVED",
+      "legally_importable": false,
+      "eligible_for_fiscal_application": false,
+      "research_checkpoint_20261122": {
+        "dossier_path": "docs/NFCORE_T09_DOSSIE_RECONCILIATION_V1.json",
+        "candidate_id": "TO-PROINDUSTRIA-LEI1385-ART6-V1",
+        "required_review_evidence": "to_proindustria_approved_letter",
+        "source_capture_records": [],
+        "case_design": "CONDITIONAL_POSITIVE_AND_NEGATIVE_PREPARED_NOT_CERTIFIED",
+        "internal_grant_requirement_review": "PENDING_NORMATIVE_DETERMINATION",
+        "actual_taxpayer_grant": "EXTERNAL_PER_TAXPAYER_WHEN_REQUIRED",
+        "actual_taxpayer_grant_not_required_to_finish_internal_curation": true,
+        "package_status": "PARTIAL_RESEARCH_NOT_APPROVED",
+        "package_residual_register": "docs/NFCORE_T09_RESEARCH_RESIDUAL_27UFS_20261122.md",
+        "final_receipt": {
+          "intake_status": "CLOSED",
+          "new_capture_count": 0,
+          "source_manifest": "docs/NFCORE_T09_RECEBIMENTO_FINAL_50_DOCUMENTOS_20261122.json",
+          "not_normative_approval": true,
+          "remaining_normative_work": "INTERNAL"
+        },
+        "latest_receipt_manifest": "docs/NFCORE_T09_RECEBIMENTO_FINAL_50_DOCUMENTOS_20261122.json",
+        "latest_receipt_count": 0,
+        "external_activation_separation": {
+          "human_product_owner_acceptance": "EXTERNAL_AFTER_INTERNAL_CERTIFICATION",
+          "accountant_opinion": "EXTERNAL_BEFORE_FISCAL_ACTIVATION",
+          "actual_taxpayer_grant": "EXTERNAL_BY_TAXPAYER_WHEN_NORM_REQUIRES",
+          "not_required_for_internal_eng_curation": true
+        },
+        "official_crosscheck_late_2026": {
+          "act": "Lei TO 1.385/2003; Lei 3.577/2019; consulta tributária 034/2024",
+          "source": "https://dtri.sefaz.to.gov.br/legislacao/ntributaria/Leis/Lei1.385-03.htm",
+          "conditions": [
+            "to_approved_consulta_and_instrument",
+            "to_lc160_reinstitution_and_confaz_deposit",
+            "to_st_incidence_by_operation"
+          ],
+          "material_risk": "Distinguir PROINDÚSTRIA e PROSPERAR, substituição tributária e operação; Lei de reinstituição não prova planilha depositada específica.",
+          "scope": "INTERNAL_RESEARCH",
+          "verified_full_chain": false,
+          "approved": false
+        },
+        "latest_43_source_capture_receipt": {
+          "manifest_path": "docs/NFCORE_T09_43_OFFICIAL_SOURCE_BYTES_20261122.json",
+          "bytes_verified_count": 1,
+          "unavailable_count": 0,
+          "normative_chain_consolidated": false,
+          "independent_review_received": false
+        }
+      }
+    }
+  ],
+  "initial_research_commit": "917cf3ac428b682c6d575aba3e8f18d4f316d4d5",
+  "audited_snapshot_commit": "30742c0b248796d2374ab35349a9bdd1fc630551",
+  "source_capture_status": "NOT_VERIFIED_FULL_PRIMARY_BYTES",
+  "local_windows_evidence_kit": {
+    "schema_version": "nfcore.t09.windows-local-source-kit/v1",
+    "queue_path": "docs/NFCORE_T09_WINDOWS_LOCAL_SOURCE_QUEUE_V1.json",
+    "entry_count": 22,
+    "lots": {
+      "A": [
+        "AC",
+        "PA",
+        "PI"
+      ],
+      "B": [
+        "AL",
+        "AP",
+        "RJ",
+        "RN",
+        "SE"
+      ]
+    },
+    "status": "AWAITING_LOCAL_ORIGINAL_BYTES_AND_PROVENANCE_REVIEW",
+    "local_sha256_source_identity_approved": false,
+    "ac_portaria_sefaz_140_2025": "EXCLUDED_AS_INCENTIVE_NORM_UNRELATED_AUTORREGULARIZACAO",
+    "rj_news_alerj": "EXCLUDED_FROM_MANDATORY_ORIGINALS",
+    "external_accountant_review": "PENDING_NOT_RECEIVED",
+    "individual_grant": "PER_TAXPAYER_AT_RUNTIME_WHEN_REQUIRED",
+    "internal_curatorial_signoff": "PENDING_NOT_GRANTED",
+    "reconciliation_checkpoint": "docs/NFCORE_T09_DOSSIE_RECONCILIATION_V1.json",
+    "received_or_cotejo_count": 19,
+    "unaccounted_in_audited_local_evidence_count": 3,
+    "additional_online_primary_text_review_count": 3,
+    "all_22_entries_content_located_or_cotejo": true,
+    "all_22_original_bytes_archived": false
+  },
+  "internal_external_gate_clarification": "Internal research establishes necessity/dispensation and tests grant lifecycle with controlled evidence. Actual third-party taxpayer grant and professional opinion are external; no client grant required to finish internal curation. Legacy combined taxpayer_grant_required_and_verified remains false, never substitute it for internal requirement determination.",
+  "research_package_checkpoint_20261122": {
+    "path": "docs/NFCORE_T09_RESEARCH_PACKAGE_CHECKPOINT_20261122.md",
+    "manifest_path": "docs/NFCORE_T09_RESEARCH_PACKAGE_MANIFEST_20261122.json",
+    "residual_path": "docs/NFCORE_T09_RESEARCH_RESIDUAL_27UFS_20261122.md",
+    "sha256": "001f7e85c84e35914931218a8b5c4d492cd65d7332e847c3f36167d66e5cc12b",
+    "verified_captures": 29,
+    "zip_entries": 64,
+    "proposed_not_executed_cases": 58,
+    "independent_review": false,
+    "accepted_curations": 0,
+    "imports": 0,
+    "original_binary_archived_in_git": false,
+    "source_ci_commit": "c6008bb7bb0e3c2ec5e52c693f2384e6969a5fc4",
+    "source_ci_run": 44986673875,
+    "new_head_ci": "REQUIRED"
+  },
+  "final_user_document_receipt_20261122": {
+    "status": "CLOSED_USER_HAS_NO_MORE_FILES",
+    "index_path": "docs/NFCORE_T09_RECEBIMENTO_FINAL_50_DOCUMENTOS_20261122.json",
+    "closeout_path": "docs/NFCORE_T09_COLETA_ENCERRADA_20261122.md",
+    "local_archive_name": "NFCORE_T09_COLETA_CONSOLIDADA_50_ARQUIVOS_20261122.zip",
+    "local_archive_sha256": "584a0cd1458619b7033d39e95a7ee4cbe31558cba90cf0ee1cdab00e1f4cd547",
+    "local_archive_bytes": 20785123,
+    "remote_archive_verified": false,
+    "capture_count_new": 50,
+    "new_capture_uf_count": 22,
+    "prior_capture_record_count": 29,
+    "not_additive_with_old_collections": true,
+    "curatorial_acceptances": 0,
+    "policy_imports": 0,
+    "research_followup": "INTERNAL_NOT_REQUEST_MORE_FILES_FROM_USER",
+    "ci_of_new_commit": "REQUIRED"
+  },
+  "external_dependency_separation_20261122": {
+    "classification": "APPROVED_SCOPE_DECISION_BY_PRODUCT_OWNER",
+    "scope": "Internal engineering research and certification can complete WITHOUT human-curatorial release approval, independent accountant opinion, or individual taxpayer grant. The actual adhesion/concession/maintenance of a taxpayer is external; determining the normative requirement is internal.",
+    "internal_requirements": [
+      "official primary act and archived source bytes with digest",
+      "full amendment / repeal / temporal / CONFAZ route for the chosen act",
+      "determinate legal applicability, CNAE NCM CFOP ICMS-ST DIFAL and grant requirement as a legal predicate",
+      "positive and negative deterministic tests, full CI and independent technical/adversarial review",
+      "internal engineering-curation certification with reproducible evidence"
+    ],
+    "external_after_internal": [
+      "human product owner acceptance of the curated benefit for promotion",
+      "signed independent accountant opinion when required before legal approval and activation",
+      "actual taxpayer-specific grant/adhesion/reconciliation when legally required",
+      "production fiscal enablement and final human go/no-go"
+    ],
+    "external_not_a_blocker_for_internal_closeout": true,
+    "no_auto_release": true,
+    "implementation_gate": "scripts/nfcore_t09_curatorial_closure.py",
+    "operational_authority": "kordena_fiscal.application.state_review_gate.verify_internal_review_approval",
+    "status": "CURRENT_RESEARCH_REMAINS_INCOMPLETE",
+    "external_obligations_are_not_waived": true
+  },
+  "internal_completion_gates": [
+    "act_exact_issuer_url_and_publication_record",
+    "source_original_bytes_archived_with_real_sha256",
+    "timeline_full_amendments_repeals_and_reinstatements",
+    "competence_time_interval_and_transitional_rules",
+    "state_legal_path_and_confaz_lc160_when_applicable",
+    "eligible_operations_ncm_cnae_cfop_icms_regime_and_exceptions",
+    "individual_grant_requirement_and_conditions_normatively_established",
+    "reproducible_positive_and_negative_cases_anchored_in_act",
+    "independent_adversarial_agent_review_of_source_and_result",
+    "deterministic_tests_and_ci_success_for_latest_head",
+    "internal_curation_proof_not_human_release_approval"
+  ],
+  "external_release_gates": [
+    "human_product_owner_approval_of_curatorial_release",
+    "independent_accountant_signed_opinion",
+    "taxpayer_specific_grant_or_adhesion_if_applicable",
+    "taxpayer_evidence_and_reconciliation_without_secrets",
+    "fiscal_activation_explicit_authorization",
+    "individual_grant_adhesion_and_maintenance_when_required"
+  ]
+}

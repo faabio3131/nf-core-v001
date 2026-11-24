@@ -21,13 +21,18 @@ from .adapters.openai_compatible import build_model_from_environ
 from .api import create_cognitive_router
 from .command_api import create_command_metrics_router
 from .durable_usage import DurableTokenQuotaStore
+from .economy_reader import EconomyReader
+from .federal_benefits_api import FederalBenefitRunner, FederalBenefitSearchRunner
 from .governance import DEFAULT_PILOT_DAILY_LIMIT, InMemoryUsageLedger, pilot_entitlement
 from .knowledge.official import OfficialTablesError, cached_official_catalog
+from .normative_radar_api import build_normative_reader
 from .portal_evidence import PortalSurfaceEvidenceProvider, SurfaceReader
 from .ports import AuditSinkPort
 from .quota_model import QuotaGovernedAdvisoryClient
 from .registry import default_baselines
 from .service import CognitiveAdviceService
+from .simples_diagnostic_api import DiagnosticRunner
+from .state_benefits_api import StateBenefitRunner, StateSearchRunner
 from .usage_aggregates import CognitiveUsageAggregates
 
 ENABLE_FLAG = "NFCORE_COGNITIVE_ENABLED"
@@ -50,6 +55,14 @@ def build_cognitive_routers(
     runtime_environment: str | None = None,
     quota_store: DurableTokenQuotaStore | None = None,
     model_key_readers: Mapping[str, Callable[[], str | None]] | None = None,
+    economy_reader: EconomyReader | None = None,
+    diagnostic_runner: DiagnosticRunner | None = None,
+    segregation_runner: DiagnosticRunner | None = None,
+    assessment_runner: DiagnosticRunner | None = None,
+    federal_benefit_runner: FederalBenefitRunner | None = None,
+    federal_benefit_search_runner: FederalBenefitSearchRunner | None = None,
+    state_benefit_runner: StateBenefitRunner | None = None,
+    state_search_runner: StateSearchRunner | None = None,
 ) -> list[APIRouter]:
     """Portal advisory route (opt-in) plus the Command read-only metrics route (always mounted).
 
@@ -121,8 +134,16 @@ def build_cognitive_routers(
         create_cognitive_router(
             identity,
             service,
-            PortalSurfaceEvidenceProvider(portal_executor),
+            PortalSurfaceEvidenceProvider(portal_executor, economy_reader=economy_reader),
             ai_enabled=model is not None,
+            normative_radar=build_normative_reader(portal_executor, environ),
+            diagnostic_runner=diagnostic_runner,
+            segregation_runner=segregation_runner,
+            assessment_runner=assessment_runner,
+            federal_benefit_runner=federal_benefit_runner,
+            federal_benefit_search_runner=federal_benefit_search_runner,
+            state_benefit_runner=state_benefit_runner,
+            state_search_runner=state_search_runner,
         ),
         create_command_metrics_router(aggregates, environ, ai_enabled=model is not None),
     ]
@@ -137,6 +158,14 @@ def build_cognitive_router(
     runtime_environment: str | None = None,
     quota_store: DurableTokenQuotaStore | None = None,
     model_key_readers: Mapping[str, Callable[[], str | None]] | None = None,
+    economy_reader: EconomyReader | None = None,
+    diagnostic_runner: DiagnosticRunner | None = None,
+    segregation_runner: DiagnosticRunner | None = None,
+    assessment_runner: DiagnosticRunner | None = None,
+    federal_benefit_runner: FederalBenefitRunner | None = None,
+    federal_benefit_search_runner: FederalBenefitSearchRunner | None = None,
+    state_benefit_runner: StateBenefitRunner | None = None,
+    state_search_runner: StateSearchRunner | None = None,
 ) -> APIRouter | None:
     """One router mounting the Portal advisory route and the Command metrics route."""
     routers = build_cognitive_routers(
@@ -145,6 +174,14 @@ def build_cognitive_router(
         runtime_environment=runtime_environment,
         quota_store=quota_store,
         model_key_readers=model_key_readers,
+        economy_reader=economy_reader,
+        diagnostic_runner=diagnostic_runner,
+        segregation_runner=segregation_runner,
+        assessment_runner=assessment_runner,
+        federal_benefit_runner=federal_benefit_runner,
+        federal_benefit_search_runner=federal_benefit_search_runner,
+        state_benefit_runner=state_benefit_runner,
+        state_search_runner=state_search_runner,
     )
     if not routers:
         return None
