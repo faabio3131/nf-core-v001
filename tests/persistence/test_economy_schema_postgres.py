@@ -77,6 +77,7 @@ def test_real_postgres_economy_schema_scope_and_immutability(monkeypatch):
             _certify_t07_transition(database)
             _certify_t08_federal(database)
             _certify_t09_state(database, monkeypatch)
+            _certify_t10_municipal(database)
             admin.execute(sql.SQL("SET search_path TO {}").format(sql.Identifier(schema_name)))
             # Explicitly add DML permissions only in this sandbox to prove
             # that the RLS policies, not solely GRANTs, deny mutation.
@@ -1039,3 +1040,40 @@ def _certify_t09_state(database, monkeypatch):
     with database.economy(_scope(tenant="economy-t09-foreign"), read_only=True) as store:
         assert store.record("fm_economy_snapshots", "t09-state-facts", 1) is None
         assert store.record("fm_economy_benefits", "t09-sp-synthetic", 1) is None
+
+
+def _certify_t10_municipal(database):
+    from kordena_fiscal.application.opportunity_radar import ISS_FACTS, ISS_RULE, scan_benefits
+    from tests.application.test_opportunity_radar import (
+        CITY,
+        ISSUER,
+        MONTH,
+        assessment,
+        no_verifier,
+        rule,
+    )
+
+    scope = _scope(tenant="tenant-t10")
+    args = dict(record_id="iss", tax_code="ISS", jurisdiction=CITY,
+                normative_reference="Ato de teste", valid_until=None)
+    with database.economy(scope) as store:
+        digest = store.append_benefit(**args, version=1, valid_from=date(2020, 1, 1),
+                                      content=rule())
+        store.append_snapshot(record_id="facts", version=1, competence=MONTH, issuer=Cnpj(ISSUER),
+                              content={"schema_version": ISS_FACTS, "review_status": "reviewed",
+                                       "municipality_ibge_code": CITY,
+                                       "assessments": {"iss": assessment(digest)}})
+
+    def run(scope, city):
+        with database.economy(scope, read_only=True) as store:
+            return scan_benefits(store, ISSUER, city, MONTH, no_verifier,
+                                 no_verifier)["opportunities"]
+
+    assert [r["estimated_cents"] for r in run(scope, CITY)] == [1000]
+    assert not run(_scope(tenant="tenant-t10-other"), CITY)
+    assert not run(_scope(tenant="tenant-t10", unit="unit-b"), CITY)
+    assert not run(scope, "3550308")
+    with database.economy(scope) as store:
+        store.append_benefit(**args, version=2, valid_from=date(2026, 11, 15),
+                             content={"schema_version": ISS_RULE, "review_status": "revoked"})
+    assert not run(scope, CITY)

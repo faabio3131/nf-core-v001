@@ -132,3 +132,29 @@ def test_state_api_fails_closed_when_unconfigured_or_unauthorized():
     assert operator.post(
         PREFIX + "/state-benefit-search", json=body, headers=csrf(operator),
     ).status_code == 403
+
+
+def test_opportunity_radar_unit_csrf_and_month_authority():
+    calls = []
+
+    def scan(auth, unit, env, month):
+        calls.append((auth.tenant_id, unit, env.value, month.isoformat()))
+        return {"opportunities": []}
+
+    ident = identity(PortalRole.OWNER)
+    executor = Executor()
+    router = build_cognitive_router(ident, executor, {"NFCORE_COGNITIVE_ENABLED": "true"},
+                                    opportunity_runner=scan)
+    web = TestClient(create_app(human_identity=ident, portal_executor=executor,
+                                cognitive_router=router), base_url="https://nfcore.test")
+    url = PREFIX + "/opportunity-radar"
+    body = {"unit_id": "unit-a", "environment": "homologation", "competence": "2026-11-01"}
+    assert web.post(url, json=body).status_code == 401
+    assert web.post("/v1/auth/login", json={"email": "owner@example.com",
+                                            "password": PASSWORD}).status_code == 200
+    assert web.post(url, json=body).status_code == 403
+    for change, expected in (({"unit_id": "unit-b"}, 403), ({"tenant_id": "fake"}, 400),
+                             ({"competence": "2026-11-02"}, 400), ({"estimated_cents": 1}, 400)):
+        assert web.post(url, json={**body, **change}, headers=csrf(web)).status_code == expected
+    assert web.post(url, json=body, headers=csrf(web)).status_code == 200
+    assert calls == [("tenant-authoritative", "unit-a", "homologation", "2026-11-01")]

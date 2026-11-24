@@ -26,6 +26,8 @@ from kordena_fiscal.cognitive.federal_benefits_api import (
     build_federal_benefit_runner,
     build_federal_benefit_search_runner,
 )
+from kordena_fiscal.cognitive.normative_radar_api import build_normative_reader
+from kordena_fiscal.cognitive.opportunity_radar_api import build_opportunity_runner
 from kordena_fiscal.cognitive.simples_diagnostic_api import build_diagnostic_runner
 from kordena_fiscal.cognitive.state_benefits_api import (
     build_state_benefit_runner,
@@ -1260,6 +1262,14 @@ def create_runtime_app(
                     build_state_search_runner(
                         portal_executor, partial(runtime.database.economy, read_only=True),
                         runtime.database,
+                    )
+                    if runtime.database is not None and portal_executor is not None
+                    and os.environ.get("NFCORE_ECONOMY_ENABLED") == "true" else None
+                ),
+                opportunity_runner=(
+                    build_opportunity_runner(
+                        portal_executor, partial(runtime.database.economy, read_only=True),
+                        runtime.database, build_normative_reader(portal_executor, os.environ),
                     )
                     if runtime.database is not None and portal_executor is not None
                     and os.environ.get("NFCORE_ECONOMY_ENABLED") == "true" else None

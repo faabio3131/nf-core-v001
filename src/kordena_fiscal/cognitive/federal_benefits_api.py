@@ -39,35 +39,43 @@ FederalBenefitSearchRunner = Callable[
 ]
 
 
+def monthly_issuer_profile(
+    uow_factory: Callable[[], AbstractContextManager[Any]], scope: ExecutionScope, competence: date,
+) -> tuple[FiscalProfile, datetime, datetime]:
+    start = datetime.combine(competence, time.min, tzinfo=ZoneInfo("America/Sao_Paulo"))
+    end = datetime.combine(
+        date(competence.year + (competence.month == 12), competence.month % 12 + 1, 1),
+        time.min, tzinfo=start.tzinfo,
+    )
+    with uow_factory() as uow:
+        first = uow.control_plane.resolve_profile(
+            host_namespace=scope.host_namespace, tenant_id=scope.tenant_id,
+            unit_id=scope.unit_id, environment=scope.environment, instant=start,
+        )
+        last = uow.control_plane.resolve_profile(
+            host_namespace=scope.host_namespace, tenant_id=scope.tenant_id,
+            unit_id=scope.unit_id, environment=scope.environment,
+            instant=end - timedelta(microseconds=1),
+        )
+    if (
+        not isinstance(first, FiscalProfile)
+        or not isinstance(last, FiscalProfile)
+        or first != last
+        or first.scope.identity_material != scope.identity_material
+    ):
+        raise FiscalValidationError("canonical issuer not stable across competence")
+    return first, start, end
+
+
 def build_federal_issuer_verifier(
     uow_factory: Callable[[], AbstractContextManager[Any]], scope: ExecutionScope,
     store: EconomyStore | None = None,
 ) -> Callable[[str, date], ReviewedFederalIssuer]:
     """Resolve the canonical issuer and effective federal regime for a whole month."""
     def verify(issuer: str, competence: date) -> ReviewedFederalIssuer:
-        start = datetime.combine(competence, time.min, tzinfo=ZoneInfo("America/Sao_Paulo"))
-        end = datetime.combine(
-            date(competence.year + (competence.month == 12), competence.month % 12 + 1, 1),
-            time.min, tzinfo=start.tzinfo,
-        )
-        with uow_factory() as uow:
-            first = uow.control_plane.resolve_profile(
-                host_namespace=scope.host_namespace, tenant_id=scope.tenant_id,
-                unit_id=scope.unit_id, environment=scope.environment, instant=start,
-            )
-            last = uow.control_plane.resolve_profile(
-                host_namespace=scope.host_namespace, tenant_id=scope.tenant_id,
-                unit_id=scope.unit_id, environment=scope.environment,
-                instant=end - timedelta(microseconds=1),
-            )
-        if (
-            not isinstance(first, FiscalProfile)
-            or not isinstance(last, FiscalProfile)
-            or first != last
-            or first.cnpj.value != issuer
-            or first.scope.identity_material != scope.identity_material
-        ):
-            raise FiscalValidationError("canonical issuer not stable across competence")
+        first, start, end = monthly_issuer_profile(uow_factory, scope, competence)
+        if first.cnpj.value != issuer:
+            raise FiscalValidationError("canonical issuer mismatch")
         declarations = load_federal_regime_declarations(uow_factory, scope)
         regime = resolve_federal_regime_timeline(first, declarations, start)
         if resolve_federal_regime_timeline(

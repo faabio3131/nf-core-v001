@@ -26,6 +26,7 @@ from .federal_benefits_api import FederalBenefitRunner, FederalBenefitSearchRunn
 from .governance import DEFAULT_PILOT_DAILY_LIMIT, InMemoryUsageLedger, pilot_entitlement
 from .knowledge.official import OfficialTablesError, cached_official_catalog
 from .normative_radar_api import build_normative_reader
+from .opportunity_radar_api import OpportunityRunner
 from .portal_evidence import PortalSurfaceEvidenceProvider, SurfaceReader
 from .ports import AuditSinkPort
 from .quota_model import QuotaGovernedAdvisoryClient
@@ -63,6 +64,7 @@ def build_cognitive_routers(
     federal_benefit_search_runner: FederalBenefitSearchRunner | None = None,
     state_benefit_runner: StateBenefitRunner | None = None,
     state_search_runner: StateSearchRunner | None = None,
+    opportunity_runner: OpportunityRunner | None = None,
 ) -> list[APIRouter]:
     """Portal advisory route (opt-in) plus the Command read-only metrics route (always mounted).
 
@@ -144,6 +146,7 @@ def build_cognitive_routers(
             federal_benefit_search_runner=federal_benefit_search_runner,
             state_benefit_runner=state_benefit_runner,
             state_search_runner=state_search_runner,
+            opportunity_runner=opportunity_runner,
         ),
         create_command_metrics_router(aggregates, environ, ai_enabled=model is not None),
     ]
@@ -166,6 +169,7 @@ def build_cognitive_router(
     federal_benefit_search_runner: FederalBenefitSearchRunner | None = None,
     state_benefit_runner: StateBenefitRunner | None = None,
     state_search_runner: StateSearchRunner | None = None,
+    opportunity_runner: OpportunityRunner | None = None,
 ) -> APIRouter | None:
     """One router mounting the Portal advisory route and the Command metrics route."""
     routers = build_cognitive_routers(
@@ -182,6 +186,7 @@ def build_cognitive_router(
         federal_benefit_search_runner=federal_benefit_search_runner,
         state_benefit_runner=state_benefit_runner,
         state_search_runner=state_search_runner,
+        opportunity_runner=opportunity_runner,
     )
     if not routers:
         return None
