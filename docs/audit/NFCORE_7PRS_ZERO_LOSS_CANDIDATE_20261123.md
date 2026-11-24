@@ -38,3 +38,7 @@
 3. Permitir `INTEGRATED_MAIN` e liberação para T10 somente após revisão técnica, merge humano autorizado, CI pós-merge e reconciliação documental de aceites T01–T09. Não promover 27 UFs legalmente nem a matriz municipal.
 4. SE/AP/PA/RR seguem `BLOCK_ICMS_BENEFIT_CALCULATION_AND_FISCAL_IMPORT`. Benefícios legais: 0/27 curadorias aprovadas/importadas; documentação futura isolada. Não executar novas pesquisas legais neste bloco.
 5. `PRODUCTION_APPROVED=NO`, sem merge nesta entrega, sem DNS, deploy, migrations produtivas, credenciais ou emissão fiscal.
+
+## Retificação NF592-07 — auditoria independente de 23/11/2026
+
+O inventário original 149/112 omitia `portal/index.html` e `portal/styles.css`. Ambos existem no baseline e na candidata, com blobs iguais. O manifesto de nome histórico agora registra **151 referências, 114 caminhos únicos**, e associação explícita tarefa→arquivo. As contagens históricas acima não devem ser interpretadas como inventário completo. O resultado não representa prova universal de equivalência semântica nem aprovação dos achados NF592-01/02.

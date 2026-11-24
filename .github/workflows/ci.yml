@@ -76,6 +76,20 @@ jobs:
       - name: Mypy
         run: mypy
 
+      - name: Generate pinned official RFB V0073 reference database
+        run: |
+          set -euo pipefail
+          reference="$RUNNER_TEMP/rfb-v0073"
+          mkdir -p "$reference"
+          docker build --output "type=local,dest=$reference" deploy/rfb/database
+          test -s "$reference/calculadora-pro.db"
+          expected="$(awk '{print $1}' "$reference/calculadora-pro.db.sha256")"
+          actual="$(sha256sum "$reference/calculadora-pro.db" | awk '{print $1}')"
+          test "$expected" = "$actual"
+          printf 'Official RFB V0073 SHA-256: %s\n' "$actual"
+          echo "NFCORE_RFB_CALCULATOR_DB=$reference/calculadora-pro.db" >> "$GITHUB_ENV"
+          echo "NFCORE_RFB_CALCULATOR_DB_REQUIRED=true" >> "$GITHUB_ENV"
+
       - name: Pytest
         run: pytest -ra
 

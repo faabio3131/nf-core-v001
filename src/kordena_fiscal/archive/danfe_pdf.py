@@ -54,7 +54,7 @@ def render_authorized_nfe_danfe(xml_bytes: bytes) -> bytes:
         from brazilfiscalreport.danfe import Danfe  # type: ignore[import-untyped]
 
         document = Danfe(xml=xml_bytes.decode("utf-8"))
-        rendered = document.output(dest="S")
+        rendered = document.output()
         pdf = bytes(rendered) if isinstance(rendered, (bytes, bytearray)) else b""
     except Exception as exc:  # Fiscal PDF adapter: never leak renderer errors or XML\n
         raise FiscalValidationError("Falha na geração segura do DANFE") from exc

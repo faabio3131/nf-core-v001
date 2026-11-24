@@ -86,7 +86,7 @@ def render_authorized_nfce_danfce(xml_bytes: bytes) -> bytes:
         from brazilfiscalreport.danfce import Danfce  # type: ignore[import-untyped]
 
         document = Danfce(xml=xml_bytes.decode("utf-8"))
-        rendered = document.output(dest="S")
+        rendered = document.output()
         pdf = bytes(rendered) if isinstance(rendered, (bytes, bytearray)) else b""
     except Exception as exc:
         raise FiscalValidationError("Falha na geração segura do DANFCe") from exc
