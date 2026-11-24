@@ -686,19 +686,45 @@ test("annual regime comparison presents reviewed scenarios and insufficient basi
   await page.route("**/v1/portal/cognitive/economy/annual-regime-comparison", route => {
     expect(route.request().postDataJSON()).toEqual({unit_id: "unit-a", environment: "homologation", competence: "2026-01-01"});
     expect(route.request().headers()["x-csrf-token"]).toBe("csrf-e2e");
-    if (++requests > 1) return route.fulfill({json: {status: "insufficient_basis"}});
+    ++requests;
+    if (requests === 3) return route.fulfill({json: {status: "insufficient_basis"}});
+    if (requests === 4) return route.fulfill({status: 422, json: {detail: {code: "ANNUAL_COMPARISON_EVIDENCE_INVALID"}}});
+    if (requests === 5) return route.fulfill({status: 503, json: {detail: {code: "UNAVAILABLE"}}});
     const totals = {simples_nacional: 1860012, lucro_presumido: 2079600, lucro_real: 2118000};
     const delta = {simples_nacional: 0, lucro_presumido: 0, lucro_real: 72000};
-    return route.fulfill({json: {status: "compared",
-      scenarios: {baseline: {annual_tax_cents: totals, revenue_cents: 12000000, payroll_cents: 2400000, real_accounting_result_cents: 1200000}},
-      sensitivity_tax_delta_cents: {margin: delta, payroll: delta},
-      recommendation: {candidates: ["simples_nacional"], sensitivity_stable: true}}});
+    const tax = {icms: 0, iss: 0, employer_contributions: 0, other_mandatory_taxes: 0, rtc_net_increment: 0};
+    const scenario = {annual_tax_cents: totals, revenue_cents: 12000000, payroll_cents: 2400000, real_accounting_result_cents: 1200000,
+      accounting_margin_bps: 1000, qualifying_payroll_bps: 2000,
+      months: [{gross_rtc: {ibs_balance: 100, cbs_balance: 900}, outside: {simples_nacional: tax, lucro_presumido: tax, lucro_real: tax}}]};
+    return route.fulfill({json: {status: "compared", source_mode: "linked_t11_snapshots",
+      snapshot: {version: 2, digest: "a".repeat(64)}, registered_regime_by_month: {"2026-01-01": "simples_nacional"},
+      scenarios: {baseline: scenario, margin: scenario, payroll: scenario},
+      sensitivity_tax_delta_cents: {margin: delta, payroll: {...delta, simples_nacional: -665007}},
+      recommendation: {status: requests === 2 ? "tie" : "review_required",
+        candidates: requests === 2 ? ["simples_nacional", "lucro_presumido"] : ["simples_nacional"],
+        sensitivity_stable: requests !== 2}}});
   });
   await page.goto("/");
   await page.getByRole("button", {name: "Reforma Tributária", exact: true}).click();
   await page.getByRole("button", {name: "Comparar regimes de 2026"}).click();
   await expect(page.getByText(/Menor carga estimada: Simples Nacional/)).toBeVisible();
   await expect(page.getByText(/Lucro Real trimestral · Carga anual/)).toBeVisible();
+  await expect(page.getByText(/Regime cadastrado por competência/)).toBeVisible();
+  await expect(page.getByText(/Snapshot revisado: versão 2/)).toBeVisible();
+  await page.getByText("Limites do comparador", {exact: true}).click();
+  await expect(page.getByText(/Não contempla majoração/)).toBeVisible();
+  await page.getByText("Tributos externos e RTC bruto por cenário", {exact: true}).click();
+  await expect(page.getByText(/Base · Margem 10%/)).toBeVisible();
+  await page.getByRole("button", {name: "Comparar regimes de 2026"}).click();
+  await expect(page.getByText(/Empate técnico — revisão contábil obrigatória/)).toBeVisible();
+  await expect(page.getByText(/Ranking nos cenários alternativos: variável/)).toBeVisible();
+  await expect(page.getByText(/Simples Nacional · Carga anual.*-R/)).toBeVisible();
   await page.getByRole("button", {name: "Comparar regimes de 2026"}).click();
   await expect(page.getByText("Falta base revisada comparável para o ano e a unidade.")).toBeVisible();
+  await page.getByRole("button", {name: "Comparar regimes de 2026"}).click();
+  await expect(page.getByText(/Falha HTTP 422|ANNUAL_COMPARISON_EVIDENCE_INVALID/)).toBeVisible();
+  await expect(page.getByText(/Menor carga estimada/)).toHaveCount(0);
+  await page.getByRole("button", {name: "Comparar regimes de 2026"}).click();
+  await expect(page.getByText(/Falha HTTP 503|UNAVAILABLE/)).toBeVisible();
+  await expect(page.getByText(/Menor carga estimada/)).toHaveCount(0);
 });

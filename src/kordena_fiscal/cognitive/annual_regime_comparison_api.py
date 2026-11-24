@@ -1,13 +1,13 @@
 """Read-only annual comparison under existing Portal authorization and T01 RLS."""
 from collections.abc import Callable
-from contextlib import AbstractContextManager
+from contextlib import AbstractContextManager, nullcontext
 from datetime import date
 from typing import Any
 
 from fastapi import HTTPException
 from pydantic import ValidationError
 
-from kordena_fiscal.application.annual_regime_comparison import PERIOD
+from kordena_fiscal.application.annual_regime_comparison import PERIOD, verify_baseline_links
 from kordena_fiscal.domain import ExecutionScope, FiscalEnvironment, FiscalValidationError
 from kordena_fiscal.persistence.economy_store import EconomyStore
 from kordena_fiscal.security.human_identity import AuthenticatedHuman
@@ -26,14 +26,19 @@ def annual_issuer_context(
     uow_factory: Callable[[], AbstractContextManager[Any]], scope: ExecutionScope,
     issuer: str, uf: str,
 ) -> dict[str, str]:
-    verify = build_federal_issuer_verifier(uow_factory, scope)
-    registered = {}
-    for month in range(1, 13):
-        competence = date(PERIOD.year, month, 1)
-        profile, _, _ = monthly_issuer_profile(uow_factory, scope, competence)
-        if profile.cnpj.value != issuer or profile.address.jurisdiction.state_code != uf:
-            raise FiscalValidationError("annual issuer scope or UF mismatch")
-        registered[competence.isoformat()] = verify(issuer, competence).regime.value
+    registered: dict[str, str] = {}
+    # Keep the canonical profile/regime resolution, without opening 36 separate UoWs.
+    with uow_factory() as uow:
+        def shared() -> AbstractContextManager[Any]:
+            return nullcontext(uow)
+
+        verify = build_federal_issuer_verifier(shared, scope)
+        for month in range(1, 13):
+            competence = date(PERIOD.year, month, 1)
+            profile, _, _ = monthly_issuer_profile(shared, scope, competence)
+            if profile.cnpj.value != issuer or profile.address.jurisdiction.state_code != uf:
+                raise FiscalValidationError("annual issuer scope or UF mismatch")
+            registered[competence.isoformat()] = verify(issuer, competence).regime.value
     return registered
 
 
@@ -58,6 +63,7 @@ def build_annual_comparison_runner(
                             "advisory_only": True}
                 facts = AnnualComparison.model_validate(row["content"])
                 registered = annual_issuer_context(uow_factory, scope, issuer, facts.baseline.uf)
+                verify_baseline_links(store, profile.cnpj, facts)
                 report = compare(facts)
                 report["snapshot"] = {k: row[k] for k in ("record_id", "version", "digest")}
                 report["registered_regime_by_month"] = registered

@@ -21,168 +21,192 @@
           "trade_revenue": 0,
           "service_revenue": 1000000,
           "payroll": 200000,
-          "evidence": "history-2025-1"
+          "evidence": "history-2025-1",
+          "real_payroll_expense_excluding_employer": 200000
         },
         {
           "competence": "2025-02-01",
           "trade_revenue": 0,
           "service_revenue": 1000000,
           "payroll": 200000,
-          "evidence": "history-2025-2"
+          "evidence": "history-2025-2",
+          "real_payroll_expense_excluding_employer": 200000
         },
         {
           "competence": "2025-03-01",
           "trade_revenue": 0,
           "service_revenue": 1000000,
           "payroll": 200000,
-          "evidence": "history-2025-3"
+          "evidence": "history-2025-3",
+          "real_payroll_expense_excluding_employer": 200000
         },
         {
           "competence": "2025-04-01",
           "trade_revenue": 0,
           "service_revenue": 1000000,
           "payroll": 200000,
-          "evidence": "history-2025-4"
+          "evidence": "history-2025-4",
+          "real_payroll_expense_excluding_employer": 200000
         },
         {
           "competence": "2025-05-01",
           "trade_revenue": 0,
           "service_revenue": 1000000,
           "payroll": 200000,
-          "evidence": "history-2025-5"
+          "evidence": "history-2025-5",
+          "real_payroll_expense_excluding_employer": 200000
         },
         {
           "competence": "2025-06-01",
           "trade_revenue": 0,
           "service_revenue": 1000000,
           "payroll": 200000,
-          "evidence": "history-2025-6"
+          "evidence": "history-2025-6",
+          "real_payroll_expense_excluding_employer": 200000
         },
         {
           "competence": "2025-07-01",
           "trade_revenue": 0,
           "service_revenue": 1000000,
           "payroll": 200000,
-          "evidence": "history-2025-7"
+          "evidence": "history-2025-7",
+          "real_payroll_expense_excluding_employer": 200000
         },
         {
           "competence": "2025-08-01",
           "trade_revenue": 0,
           "service_revenue": 1000000,
           "payroll": 200000,
-          "evidence": "history-2025-8"
+          "evidence": "history-2025-8",
+          "real_payroll_expense_excluding_employer": 200000
         },
         {
           "competence": "2025-09-01",
           "trade_revenue": 0,
           "service_revenue": 1000000,
           "payroll": 200000,
-          "evidence": "history-2025-9"
+          "evidence": "history-2025-9",
+          "real_payroll_expense_excluding_employer": 200000
         },
         {
           "competence": "2025-10-01",
           "trade_revenue": 0,
           "service_revenue": 1000000,
           "payroll": 200000,
-          "evidence": "history-2025-10"
+          "evidence": "history-2025-10",
+          "real_payroll_expense_excluding_employer": 200000
         },
         {
           "competence": "2025-11-01",
           "trade_revenue": 0,
           "service_revenue": 1000000,
           "payroll": 200000,
-          "evidence": "history-2025-11"
+          "evidence": "history-2025-11",
+          "real_payroll_expense_excluding_employer": 200000
         },
         {
           "competence": "2025-12-01",
           "trade_revenue": 0,
           "service_revenue": 1000000,
           "payroll": 200000,
-          "evidence": "history-2025-12"
+          "evidence": "history-2025-12",
+          "real_payroll_expense_excluding_employer": 200000
         },
         {
           "competence": "2026-01-01",
           "trade_revenue": 0,
           "service_revenue": 1000000,
           "payroll": 200000,
-          "evidence": "history-2026-1"
+          "evidence": "history-2026-1",
+          "real_payroll_expense_excluding_employer": 200000
         },
         {
           "competence": "2026-02-01",
           "trade_revenue": 0,
           "service_revenue": 1000000,
           "payroll": 200000,
-          "evidence": "history-2026-2"
+          "evidence": "history-2026-2",
+          "real_payroll_expense_excluding_employer": 200000
         },
         {
           "competence": "2026-03-01",
           "trade_revenue": 0,
           "service_revenue": 1000000,
           "payroll": 200000,
-          "evidence": "history-2026-3"
+          "evidence": "history-2026-3",
+          "real_payroll_expense_excluding_employer": 200000
         },
         {
           "competence": "2026-04-01",
           "trade_revenue": 0,
           "service_revenue": 1000000,
           "payroll": 200000,
-          "evidence": "history-2026-4"
+          "evidence": "history-2026-4",
+          "real_payroll_expense_excluding_employer": 200000
         },
         {
           "competence": "2026-05-01",
           "trade_revenue": 0,
           "service_revenue": 1000000,
           "payroll": 200000,
-          "evidence": "history-2026-5"
+          "evidence": "history-2026-5",
+          "real_payroll_expense_excluding_employer": 200000
         },
         {
           "competence": "2026-06-01",
           "trade_revenue": 0,
           "service_revenue": 1000000,
           "payroll": 200000,
-          "evidence": "history-2026-6"
+          "evidence": "history-2026-6",
+          "real_payroll_expense_excluding_employer": 200000
         },
         {
           "competence": "2026-07-01",
           "trade_revenue": 0,
           "service_revenue": 1000000,
           "payroll": 200000,
-          "evidence": "history-2026-7"
+          "evidence": "history-2026-7",
+          "real_payroll_expense_excluding_employer": 200000
         },
         {
           "competence": "2026-08-01",
           "trade_revenue": 0,
           "service_revenue": 1000000,
           "payroll": 200000,
-          "evidence": "history-2026-8"
+          "evidence": "history-2026-8",
+          "real_payroll_expense_excluding_employer": 200000
         },
         {
           "competence": "2026-09-01",
           "trade_revenue": 0,
           "service_revenue": 1000000,
           "payroll": 200000,
-          "evidence": "history-2026-9"
+          "evidence": "history-2026-9",
+          "real_payroll_expense_excluding_employer": 200000
         },
         {
           "competence": "2026-10-01",
           "trade_revenue": 0,
           "service_revenue": 1000000,
           "payroll": 200000,
-          "evidence": "history-2026-10"
+          "evidence": "history-2026-10",
+          "real_payroll_expense_excluding_employer": 200000
         },
         {
           "competence": "2026-11-01",
           "trade_revenue": 0,
           "service_revenue": 1000000,
           "payroll": 200000,
-          "evidence": "history-2026-11"
+          "evidence": "history-2026-11",
+          "real_payroll_expense_excluding_employer": 200000
         },
         {
           "competence": "2026-12-01",
           "trade_revenue": 0,
           "service_revenue": 1000000,
           "payroll": 200000,
-          "evidence": "history-2026-12"
+          "evidence": "history-2026-12",
+          "real_payroll_expense_excluding_employer": 200000
         }
       ],
       "outside": [
@@ -194,7 +218,8 @@
             "employer_contributions": 0,
             "other_mandatory_taxes": 0,
             "rtc_net_increment": 0,
-            "evidence": "synthetic-review"
+            "evidence": "synthetic-review",
+            "zero_justifications": {}
           },
           "lucro_presumido": {
             "icms": 0,
@@ -202,7 +227,8 @@
             "employer_contributions": 40000,
             "other_mandatory_taxes": 0,
             "rtc_net_increment": 0,
-            "evidence": "synthetic-review"
+            "evidence": "synthetic-review",
+            "zero_justifications": {}
           },
           "lucro_real": {
             "icms": 0,
@@ -210,7 +236,8 @@
             "employer_contributions": 40000,
             "other_mandatory_taxes": 0,
             "rtc_net_increment": 0,
-            "evidence": "synthetic-review"
+            "evidence": "synthetic-review",
+            "zero_justifications": {}
           }
         },
         {
@@ -221,7 +248,8 @@
             "employer_contributions": 0,
             "other_mandatory_taxes": 0,
             "rtc_net_increment": 0,
-            "evidence": "synthetic-review"
+            "evidence": "synthetic-review",
+            "zero_justifications": {}
           },
           "lucro_presumido": {
             "icms": 0,
@@ -229,7 +257,8 @@
             "employer_contributions": 40000,
             "other_mandatory_taxes": 0,
             "rtc_net_increment": 0,
-            "evidence": "synthetic-review"
+            "evidence": "synthetic-review",
+            "zero_justifications": {}
           },
           "lucro_real": {
             "icms": 0,
@@ -237,7 +266,8 @@
             "employer_contributions": 40000,
             "other_mandatory_taxes": 0,
             "rtc_net_increment": 0,
-            "evidence": "synthetic-review"
+            "evidence": "synthetic-review",
+            "zero_justifications": {}
           }
         },
         {
@@ -248,7 +278,8 @@
             "employer_contributions": 0,
             "other_mandatory_taxes": 0,
             "rtc_net_increment": 0,
-            "evidence": "synthetic-review"
+            "evidence": "synthetic-review",
+            "zero_justifications": {}
           },
           "lucro_presumido": {
             "icms": 0,
@@ -256,7 +287,8 @@
             "employer_contributions": 40000,
             "other_mandatory_taxes": 0,
             "rtc_net_increment": 0,
-            "evidence": "synthetic-review"
+            "evidence": "synthetic-review",
+            "zero_justifications": {}
           },
           "lucro_real": {
             "icms": 0,
@@ -264,7 +296,8 @@
             "employer_contributions": 40000,
             "other_mandatory_taxes": 0,
             "rtc_net_increment": 0,
-            "evidence": "synthetic-review"
+            "evidence": "synthetic-review",
+            "zero_justifications": {}
           }
         },
         {
@@ -275,7 +308,8 @@
             "employer_contributions": 0,
             "other_mandatory_taxes": 0,
             "rtc_net_increment": 0,
-            "evidence": "synthetic-review"
+            "evidence": "synthetic-review",
+            "zero_justifications": {}
           },
           "lucro_presumido": {
             "icms": 0,
@@ -283,7 +317,8 @@
             "employer_contributions": 40000,
             "other_mandatory_taxes": 0,
             "rtc_net_increment": 0,
-            "evidence": "synthetic-review"
+            "evidence": "synthetic-review",
+            "zero_justifications": {}
           },
           "lucro_real": {
             "icms": 0,
@@ -291,7 +326,8 @@
             "employer_contributions": 40000,
             "other_mandatory_taxes": 0,
             "rtc_net_increment": 0,
-            "evidence": "synthetic-review"
+            "evidence": "synthetic-review",
+            "zero_justifications": {}
           }
         },
         {
@@ -302,7 +338,8 @@
             "employer_contributions": 0,
             "other_mandatory_taxes": 0,
             "rtc_net_increment": 0,
-            "evidence": "synthetic-review"
+            "evidence": "synthetic-review",
+            "zero_justifications": {}
           },
           "lucro_presumido": {
             "icms": 0,
@@ -310,7 +347,8 @@
             "employer_contributions": 40000,
             "other_mandatory_taxes": 0,
             "rtc_net_increment": 0,
-            "evidence": "synthetic-review"
+            "evidence": "synthetic-review",
+            "zero_justifications": {}
           },
           "lucro_real": {
             "icms": 0,
@@ -318,7 +356,8 @@
             "employer_contributions": 40000,
             "other_mandatory_taxes": 0,
             "rtc_net_increment": 0,
-            "evidence": "synthetic-review"
+            "evidence": "synthetic-review",
+            "zero_justifications": {}
           }
         },
         {
@@ -329,7 +368,8 @@
             "employer_contributions": 0,
             "other_mandatory_taxes": 0,
             "rtc_net_increment": 0,
-            "evidence": "synthetic-review"
+            "evidence": "synthetic-review",
+            "zero_justifications": {}
           },
           "lucro_presumido": {
             "icms": 0,
@@ -337,7 +377,8 @@
             "employer_contributions": 40000,
             "other_mandatory_taxes": 0,
             "rtc_net_increment": 0,
-            "evidence": "synthetic-review"
+            "evidence": "synthetic-review",
+            "zero_justifications": {}
           },
           "lucro_real": {
             "icms": 0,
@@ -345,7 +386,8 @@
             "employer_contributions": 40000,
             "other_mandatory_taxes": 0,
             "rtc_net_increment": 0,
-            "evidence": "synthetic-review"
+            "evidence": "synthetic-review",
+            "zero_justifications": {}
           }
         },
         {
@@ -356,7 +398,8 @@
             "employer_contributions": 0,
             "other_mandatory_taxes": 0,
             "rtc_net_increment": 0,
-            "evidence": "synthetic-review"
+            "evidence": "synthetic-review",
+            "zero_justifications": {}
           },
           "lucro_presumido": {
             "icms": 0,
@@ -364,7 +407,8 @@
             "employer_contributions": 40000,
             "other_mandatory_taxes": 0,
             "rtc_net_increment": 0,
-            "evidence": "synthetic-review"
+            "evidence": "synthetic-review",
+            "zero_justifications": {}
           },
           "lucro_real": {
             "icms": 0,
@@ -372,7 +416,8 @@
             "employer_contributions": 40000,
             "other_mandatory_taxes": 0,
             "rtc_net_increment": 0,
-            "evidence": "synthetic-review"
+            "evidence": "synthetic-review",
+            "zero_justifications": {}
           }
         },
         {
@@ -383,7 +428,8 @@
             "employer_contributions": 0,
             "other_mandatory_taxes": 0,
             "rtc_net_increment": 0,
-            "evidence": "synthetic-review"
+            "evidence": "synthetic-review",
+            "zero_justifications": {}
           },
           "lucro_presumido": {
             "icms": 0,
@@ -391,7 +437,8 @@
             "employer_contributions": 40000,
             "other_mandatory_taxes": 0,
             "rtc_net_increment": 0,
-            "evidence": "synthetic-review"
+            "evidence": "synthetic-review",
+            "zero_justifications": {}
           },
           "lucro_real": {
             "icms": 0,
@@ -399,7 +446,8 @@
             "employer_contributions": 40000,
             "other_mandatory_taxes": 0,
             "rtc_net_increment": 0,
-            "evidence": "synthetic-review"
+            "evidence": "synthetic-review",
+            "zero_justifications": {}
           }
         },
         {
@@ -410,7 +458,8 @@
             "employer_contributions": 0,
             "other_mandatory_taxes": 0,
             "rtc_net_increment": 0,
-            "evidence": "synthetic-review"
+            "evidence": "synthetic-review",
+            "zero_justifications": {}
           },
           "lucro_presumido": {
             "icms": 0,
@@ -418,7 +467,8 @@
             "employer_contributions": 40000,
             "other_mandatory_taxes": 0,
             "rtc_net_increment": 0,
-            "evidence": "synthetic-review"
+            "evidence": "synthetic-review",
+            "zero_justifications": {}
           },
           "lucro_real": {
             "icms": 0,
@@ -426,7 +476,8 @@
             "employer_contributions": 40000,
             "other_mandatory_taxes": 0,
             "rtc_net_increment": 0,
-            "evidence": "synthetic-review"
+            "evidence": "synthetic-review",
+            "zero_justifications": {}
           }
         },
         {
@@ -437,7 +488,8 @@
             "employer_contributions": 0,
             "other_mandatory_taxes": 0,
             "rtc_net_increment": 0,
-            "evidence": "synthetic-review"
+            "evidence": "synthetic-review",
+            "zero_justifications": {}
           },
           "lucro_presumido": {
             "icms": 0,
@@ -445,7 +497,8 @@
             "employer_contributions": 40000,
             "other_mandatory_taxes": 0,
             "rtc_net_increment": 0,
-            "evidence": "synthetic-review"
+            "evidence": "synthetic-review",
+            "zero_justifications": {}
           },
           "lucro_real": {
             "icms": 0,
@@ -453,7 +506,8 @@
             "employer_contributions": 40000,
             "other_mandatory_taxes": 0,
             "rtc_net_increment": 0,
-            "evidence": "synthetic-review"
+            "evidence": "synthetic-review",
+            "zero_justifications": {}
           }
         },
         {
@@ -464,7 +518,8 @@
             "employer_contributions": 0,
             "other_mandatory_taxes": 0,
             "rtc_net_increment": 0,
-            "evidence": "synthetic-review"
+            "evidence": "synthetic-review",
+            "zero_justifications": {}
           },
           "lucro_presumido": {
             "icms": 0,
@@ -472,7 +527,8 @@
             "employer_contributions": 40000,
             "other_mandatory_taxes": 0,
             "rtc_net_increment": 0,
-            "evidence": "synthetic-review"
+            "evidence": "synthetic-review",
+            "zero_justifications": {}
           },
           "lucro_real": {
             "icms": 0,
@@ -480,7 +536,8 @@
             "employer_contributions": 40000,
             "other_mandatory_taxes": 0,
             "rtc_net_increment": 0,
-            "evidence": "synthetic-review"
+            "evidence": "synthetic-review",
+            "zero_justifications": {}
           }
         },
         {
@@ -491,7 +548,8 @@
             "employer_contributions": 0,
             "other_mandatory_taxes": 0,
             "rtc_net_increment": 0,
-            "evidence": "synthetic-review"
+            "evidence": "synthetic-review",
+            "zero_justifications": {}
           },
           "lucro_presumido": {
             "icms": 0,
@@ -499,7 +557,8 @@
             "employer_contributions": 40000,
             "other_mandatory_taxes": 0,
             "rtc_net_increment": 0,
-            "evidence": "synthetic-review"
+            "evidence": "synthetic-review",
+            "zero_justifications": {}
           },
           "lucro_real": {
             "icms": 0,
@@ -507,7 +566,8 @@
             "employer_contributions": 40000,
             "other_mandatory_taxes": 0,
             "rtc_net_increment": 0,
-            "evidence": "synthetic-review"
+            "evidence": "synthetic-review",
+            "zero_justifications": {}
           }
         }
       ],
@@ -764,168 +824,192 @@
           "trade_revenue": 0,
           "service_revenue": 1000000,
           "payroll": 200000,
-          "evidence": "history-2025-1"
+          "evidence": "history-2025-1",
+          "real_payroll_expense_excluding_employer": 200000
         },
         {
           "competence": "2025-02-01",
           "trade_revenue": 0,
           "service_revenue": 1000000,
           "payroll": 200000,
-          "evidence": "history-2025-2"
+          "evidence": "history-2025-2",
+          "real_payroll_expense_excluding_employer": 200000
         },
         {
           "competence": "2025-03-01",
           "trade_revenue": 0,
           "service_revenue": 1000000,
           "payroll": 200000,
-          "evidence": "history-2025-3"
+          "evidence": "history-2025-3",
+          "real_payroll_expense_excluding_employer": 200000
         },
         {
           "competence": "2025-04-01",
           "trade_revenue": 0,
           "service_revenue": 1000000,
           "payroll": 200000,
-          "evidence": "history-2025-4"
+          "evidence": "history-2025-4",
+          "real_payroll_expense_excluding_employer": 200000
         },
         {
           "competence": "2025-05-01",
           "trade_revenue": 0,
           "service_revenue": 1000000,
           "payroll": 200000,
-          "evidence": "history-2025-5"
+          "evidence": "history-2025-5",
+          "real_payroll_expense_excluding_employer": 200000
         },
         {
           "competence": "2025-06-01",
           "trade_revenue": 0,
           "service_revenue": 1000000,
           "payroll": 200000,
-          "evidence": "history-2025-6"
+          "evidence": "history-2025-6",
+          "real_payroll_expense_excluding_employer": 200000
         },
         {
           "competence": "2025-07-01",
           "trade_revenue": 0,
           "service_revenue": 1000000,
           "payroll": 200000,
-          "evidence": "history-2025-7"
+          "evidence": "history-2025-7",
+          "real_payroll_expense_excluding_employer": 200000
         },
         {
           "competence": "2025-08-01",
           "trade_revenue": 0,
           "service_revenue": 1000000,
           "payroll": 200000,
-          "evidence": "history-2025-8"
+          "evidence": "history-2025-8",
+          "real_payroll_expense_excluding_employer": 200000
         },
         {
           "competence": "2025-09-01",
           "trade_revenue": 0,
           "service_revenue": 1000000,
           "payroll": 200000,
-          "evidence": "history-2025-9"
+          "evidence": "history-2025-9",
+          "real_payroll_expense_excluding_employer": 200000
         },
         {
           "competence": "2025-10-01",
           "trade_revenue": 0,
           "service_revenue": 1000000,
           "payroll": 200000,
-          "evidence": "history-2025-10"
+          "evidence": "history-2025-10",
+          "real_payroll_expense_excluding_employer": 200000
         },
         {
           "competence": "2025-11-01",
           "trade_revenue": 0,
           "service_revenue": 1000000,
           "payroll": 200000,
-          "evidence": "history-2025-11"
+          "evidence": "history-2025-11",
+          "real_payroll_expense_excluding_employer": 200000
         },
         {
           "competence": "2025-12-01",
           "trade_revenue": 0,
           "service_revenue": 1000000,
           "payroll": 200000,
-          "evidence": "history-2025-12"
+          "evidence": "history-2025-12",
+          "real_payroll_expense_excluding_employer": 200000
         },
         {
           "competence": "2026-01-01",
           "trade_revenue": 0,
           "service_revenue": 1000000,
           "payroll": 200000,
-          "evidence": "history-2026-1"
+          "evidence": "history-2026-1",
+          "real_payroll_expense_excluding_employer": 200000
         },
         {
           "competence": "2026-02-01",
           "trade_revenue": 0,
           "service_revenue": 1000000,
           "payroll": 200000,
-          "evidence": "history-2026-2"
+          "evidence": "history-2026-2",
+          "real_payroll_expense_excluding_employer": 200000
         },
         {
           "competence": "2026-03-01",
           "trade_revenue": 0,
           "service_revenue": 1000000,
           "payroll": 200000,
-          "evidence": "history-2026-3"
+          "evidence": "history-2026-3",
+          "real_payroll_expense_excluding_employer": 200000
         },
         {
           "competence": "2026-04-01",
           "trade_revenue": 0,
           "service_revenue": 1000000,
           "payroll": 200000,
-          "evidence": "history-2026-4"
+          "evidence": "history-2026-4",
+          "real_payroll_expense_excluding_employer": 200000
         },
         {
           "competence": "2026-05-01",
           "trade_revenue": 0,
           "service_revenue": 1000000,
           "payroll": 200000,
-          "evidence": "history-2026-5"
+          "evidence": "history-2026-5",
+          "real_payroll_expense_excluding_employer": 200000
         },
         {
           "competence": "2026-06-01",
           "trade_revenue": 0,
           "service_revenue": 1000000,
           "payroll": 200000,
-          "evidence": "history-2026-6"
+          "evidence": "history-2026-6",
+          "real_payroll_expense_excluding_employer": 200000
         },
         {
           "competence": "2026-07-01",
           "trade_revenue": 0,
           "service_revenue": 1000000,
           "payroll": 200000,
-          "evidence": "history-2026-7"
+          "evidence": "history-2026-7",
+          "real_payroll_expense_excluding_employer": 200000
         },
         {
           "competence": "2026-08-01",
           "trade_revenue": 0,
           "service_revenue": 1000000,
           "payroll": 200000,
-          "evidence": "history-2026-8"
+          "evidence": "history-2026-8",
+          "real_payroll_expense_excluding_employer": 200000
         },
         {
           "competence": "2026-09-01",
           "trade_revenue": 0,
           "service_revenue": 1000000,
           "payroll": 200000,
-          "evidence": "history-2026-9"
+          "evidence": "history-2026-9",
+          "real_payroll_expense_excluding_employer": 200000
         },
         {
           "competence": "2026-10-01",
           "trade_revenue": 0,
           "service_revenue": 1000000,
           "payroll": 200000,
-          "evidence": "history-2026-10"
+          "evidence": "history-2026-10",
+          "real_payroll_expense_excluding_employer": 200000
         },
         {
           "competence": "2026-11-01",
           "trade_revenue": 0,
           "service_revenue": 1000000,
           "payroll": 200000,
-          "evidence": "history-2026-11"
+          "evidence": "history-2026-11",
+          "real_payroll_expense_excluding_employer": 200000
         },
         {
           "competence": "2026-12-01",
           "trade_revenue": 0,
           "service_revenue": 1000000,
           "payroll": 200000,
-          "evidence": "history-2026-12"
+          "evidence": "history-2026-12",
+          "real_payroll_expense_excluding_employer": 200000
         }
       ],
       "outside": [
@@ -937,7 +1021,8 @@
             "employer_contributions": 0,
             "other_mandatory_taxes": 0,
             "rtc_net_increment": 0,
-            "evidence": "synthetic-review"
+            "evidence": "synthetic-review",
+            "zero_justifications": {}
           },
           "lucro_presumido": {
             "icms": 0,
@@ -945,7 +1030,8 @@
             "employer_contributions": 40000,
             "other_mandatory_taxes": 0,
             "rtc_net_increment": 0,
-            "evidence": "synthetic-review"
+            "evidence": "synthetic-review",
+            "zero_justifications": {}
           },
           "lucro_real": {
             "icms": 0,
@@ -953,7 +1039,8 @@
             "employer_contributions": 40000,
             "other_mandatory_taxes": 0,
             "rtc_net_increment": 0,
-            "evidence": "synthetic-review"
+            "evidence": "synthetic-review",
+            "zero_justifications": {}
           }
         },
         {
@@ -964,7 +1051,8 @@
             "employer_contributions": 0,
             "other_mandatory_taxes": 0,
             "rtc_net_increment": 0,
-            "evidence": "synthetic-review"
+            "evidence": "synthetic-review",
+            "zero_justifications": {}
           },
           "lucro_presumido": {
             "icms": 0,
@@ -972,7 +1060,8 @@
             "employer_contributions": 40000,
             "other_mandatory_taxes": 0,
             "rtc_net_increment": 0,
-            "evidence": "synthetic-review"
+            "evidence": "synthetic-review",
+            "zero_justifications": {}
           },
           "lucro_real": {
             "icms": 0,
@@ -980,7 +1069,8 @@
             "employer_contributions": 40000,
             "other_mandatory_taxes": 0,
             "rtc_net_increment": 0,
-            "evidence": "synthetic-review"
+            "evidence": "synthetic-review",
+            "zero_justifications": {}
           }
         },
         {
@@ -991,7 +1081,8 @@
             "employer_contributions": 0,
             "other_mandatory_taxes": 0,
             "rtc_net_increment": 0,
-            "evidence": "synthetic-review"
+            "evidence": "synthetic-review",
+            "zero_justifications": {}
           },
           "lucro_presumido": {
             "icms": 0,
@@ -999,7 +1090,8 @@
             "employer_contributions": 40000,
             "other_mandatory_taxes": 0,
             "rtc_net_increment": 0,
-            "evidence": "synthetic-review"
+            "evidence": "synthetic-review",
+            "zero_justifications": {}
           },
           "lucro_real": {
             "icms": 0,
@@ -1007,7 +1099,8 @@
             "employer_contributions": 40000,
             "other_mandatory_taxes": 0,
             "rtc_net_increment": 0,
-            "evidence": "synthetic-review"
+            "evidence": "synthetic-review",
+            "zero_justifications": {}
           }
         },
         {
@@ -1018,7 +1111,8 @@
             "employer_contributions": 0,
             "other_mandatory_taxes": 0,
             "rtc_net_increment": 0,
-            "evidence": "synthetic-review"
+            "evidence": "synthetic-review",
+            "zero_justifications": {}
           },
           "lucro_presumido": {
             "icms": 0,
@@ -1026,7 +1120,8 @@
             "employer_contributions": 40000,
             "other_mandatory_taxes": 0,
             "rtc_net_increment": 0,
-            "evidence": "synthetic-review"
+            "evidence": "synthetic-review",
+            "zero_justifications": {}
           },
           "lucro_real": {
             "icms": 0,
@@ -1034,7 +1129,8 @@
             "employer_contributions": 40000,
             "other_mandatory_taxes": 0,
             "rtc_net_increment": 0,
-            "evidence": "synthetic-review"
+            "evidence": "synthetic-review",
+            "zero_justifications": {}
           }
         },
         {
@@ -1045,7 +1141,8 @@
             "employer_contributions": 0,
             "other_mandatory_taxes": 0,
             "rtc_net_increment": 0,
-            "evidence": "synthetic-review"
+            "evidence": "synthetic-review",
+            "zero_justifications": {}
           },
           "lucro_presumido": {
             "icms": 0,
@@ -1053,7 +1150,8 @@
             "employer_contributions": 40000,
             "other_mandatory_taxes": 0,
             "rtc_net_increment": 0,
-            "evidence": "synthetic-review"
+            "evidence": "synthetic-review",
+            "zero_justifications": {}
           },
           "lucro_real": {
             "icms": 0,
@@ -1061,7 +1159,8 @@
             "employer_contributions": 40000,
             "other_mandatory_taxes": 0,
             "rtc_net_increment": 0,
-            "evidence": "synthetic-review"
+            "evidence": "synthetic-review",
+            "zero_justifications": {}
           }
         },
         {
@@ -1072,7 +1171,8 @@
             "employer_contributions": 0,
             "other_mandatory_taxes": 0,
             "rtc_net_increment": 0,
-            "evidence": "synthetic-review"
+            "evidence": "synthetic-review",
+            "zero_justifications": {}
           },
           "lucro_presumido": {
             "icms": 0,
@@ -1080,7 +1180,8 @@
             "employer_contributions": 40000,
             "other_mandatory_taxes": 0,
             "rtc_net_increment": 0,
-            "evidence": "synthetic-review"
+            "evidence": "synthetic-review",
+            "zero_justifications": {}
           },
           "lucro_real": {
             "icms": 0,
@@ -1088,7 +1189,8 @@
             "employer_contributions": 40000,
             "other_mandatory_taxes": 0,
             "rtc_net_increment": 0,
-            "evidence": "synthetic-review"
+            "evidence": "synthetic-review",
+            "zero_justifications": {}
           }
         },
         {
@@ -1099,7 +1201,8 @@
             "employer_contributions": 0,
             "other_mandatory_taxes": 0,
             "rtc_net_increment": 0,
-            "evidence": "synthetic-review"
+            "evidence": "synthetic-review",
+            "zero_justifications": {}
           },
           "lucro_presumido": {
             "icms": 0,
@@ -1107,7 +1210,8 @@
             "employer_contributions": 40000,
             "other_mandatory_taxes": 0,
             "rtc_net_increment": 0,
-            "evidence": "synthetic-review"
+            "evidence": "synthetic-review",
+            "zero_justifications": {}
           },
           "lucro_real": {
             "icms": 0,
@@ -1115,7 +1219,8 @@
             "employer_contributions": 40000,
             "other_mandatory_taxes": 0,
             "rtc_net_increment": 0,
-            "evidence": "synthetic-review"
+            "evidence": "synthetic-review",
+            "zero_justifications": {}
           }
         },
         {
@@ -1126,7 +1231,8 @@
             "employer_contributions": 0,
             "other_mandatory_taxes": 0,
             "rtc_net_increment": 0,
-            "evidence": "synthetic-review"
+            "evidence": "synthetic-review",
+            "zero_justifications": {}
           },
           "lucro_presumido": {
             "icms": 0,
@@ -1134,7 +1240,8 @@
             "employer_contributions": 40000,
             "other_mandatory_taxes": 0,
             "rtc_net_increment": 0,
-            "evidence": "synthetic-review"
+            "evidence": "synthetic-review",
+            "zero_justifications": {}
           },
           "lucro_real": {
             "icms": 0,
@@ -1142,7 +1249,8 @@
             "employer_contributions": 40000,
             "other_mandatory_taxes": 0,
             "rtc_net_increment": 0,
-            "evidence": "synthetic-review"
+            "evidence": "synthetic-review",
+            "zero_justifications": {}
           }
         },
         {
@@ -1153,7 +1261,8 @@
             "employer_contributions": 0,
             "other_mandatory_taxes": 0,
             "rtc_net_increment": 0,
-            "evidence": "synthetic-review"
+            "evidence": "synthetic-review",
+            "zero_justifications": {}
           },
           "lucro_presumido": {
             "icms": 0,
@@ -1161,7 +1270,8 @@
             "employer_contributions": 40000,
             "other_mandatory_taxes": 0,
             "rtc_net_increment": 0,
-            "evidence": "synthetic-review"
+            "evidence": "synthetic-review",
+            "zero_justifications": {}
           },
           "lucro_real": {
             "icms": 0,
@@ -1169,7 +1279,8 @@
             "employer_contributions": 40000,
             "other_mandatory_taxes": 0,
             "rtc_net_increment": 0,
-            "evidence": "synthetic-review"
+            "evidence": "synthetic-review",
+            "zero_justifications": {}
           }
         },
         {
@@ -1180,7 +1291,8 @@
             "employer_contributions": 0,
             "other_mandatory_taxes": 0,
             "rtc_net_increment": 0,
-            "evidence": "synthetic-review"
+            "evidence": "synthetic-review",
+            "zero_justifications": {}
           },
           "lucro_presumido": {
             "icms": 0,
@@ -1188,7 +1300,8 @@
             "employer_contributions": 40000,
             "other_mandatory_taxes": 0,
             "rtc_net_increment": 0,
-            "evidence": "synthetic-review"
+            "evidence": "synthetic-review",
+            "zero_justifications": {}
           },
           "lucro_real": {
             "icms": 0,
@@ -1196,7 +1309,8 @@
             "employer_contributions": 40000,
             "other_mandatory_taxes": 0,
             "rtc_net_increment": 0,
-            "evidence": "synthetic-review"
+            "evidence": "synthetic-review",
+            "zero_justifications": {}
           }
         },
         {
@@ -1207,7 +1321,8 @@
             "employer_contributions": 0,
             "other_mandatory_taxes": 0,
             "rtc_net_increment": 0,
-            "evidence": "synthetic-review"
+            "evidence": "synthetic-review",
+            "zero_justifications": {}
           },
           "lucro_presumido": {
             "icms": 0,
@@ -1215,7 +1330,8 @@
             "employer_contributions": 40000,
             "other_mandatory_taxes": 0,
             "rtc_net_increment": 0,
-            "evidence": "synthetic-review"
+            "evidence": "synthetic-review",
+            "zero_justifications": {}
           },
           "lucro_real": {
             "icms": 0,
@@ -1223,7 +1339,8 @@
             "employer_contributions": 40000,
             "other_mandatory_taxes": 0,
             "rtc_net_increment": 0,
-            "evidence": "synthetic-review"
+            "evidence": "synthetic-review",
+            "zero_justifications": {}
           }
         },
         {
@@ -1234,7 +1351,8 @@
             "employer_contributions": 0,
             "other_mandatory_taxes": 0,
             "rtc_net_increment": 0,
-            "evidence": "synthetic-review"
+            "evidence": "synthetic-review",
+            "zero_justifications": {}
           },
           "lucro_presumido": {
             "icms": 0,
@@ -1242,7 +1360,8 @@
             "employer_contributions": 40000,
             "other_mandatory_taxes": 0,
             "rtc_net_increment": 0,
-            "evidence": "synthetic-review"
+            "evidence": "synthetic-review",
+            "zero_justifications": {}
           },
           "lucro_real": {
             "icms": 0,
@@ -1250,7 +1369,8 @@
             "employer_contributions": 40000,
             "other_mandatory_taxes": 0,
             "rtc_net_increment": 0,
-            "evidence": "synthetic-review"
+            "evidence": "synthetic-review",
+            "zero_justifications": {}
           }
         }
       ],
@@ -1507,168 +1627,192 @@
           "trade_revenue": 0,
           "service_revenue": 1000000,
           "payroll": 200000,
-          "evidence": "history-2025-1"
+          "evidence": "history-2025-1",
+          "real_payroll_expense_excluding_employer": 200000
         },
         {
           "competence": "2025-02-01",
           "trade_revenue": 0,
           "service_revenue": 1000000,
           "payroll": 200000,
-          "evidence": "history-2025-2"
+          "evidence": "history-2025-2",
+          "real_payroll_expense_excluding_employer": 200000
         },
         {
           "competence": "2025-03-01",
           "trade_revenue": 0,
           "service_revenue": 1000000,
           "payroll": 200000,
-          "evidence": "history-2025-3"
+          "evidence": "history-2025-3",
+          "real_payroll_expense_excluding_employer": 200000
         },
         {
           "competence": "2025-04-01",
           "trade_revenue": 0,
           "service_revenue": 1000000,
           "payroll": 200000,
-          "evidence": "history-2025-4"
+          "evidence": "history-2025-4",
+          "real_payroll_expense_excluding_employer": 200000
         },
         {
           "competence": "2025-05-01",
           "trade_revenue": 0,
           "service_revenue": 1000000,
           "payroll": 200000,
-          "evidence": "history-2025-5"
+          "evidence": "history-2025-5",
+          "real_payroll_expense_excluding_employer": 200000
         },
         {
           "competence": "2025-06-01",
           "trade_revenue": 0,
           "service_revenue": 1000000,
           "payroll": 200000,
-          "evidence": "history-2025-6"
+          "evidence": "history-2025-6",
+          "real_payroll_expense_excluding_employer": 200000
         },
         {
           "competence": "2025-07-01",
           "trade_revenue": 0,
           "service_revenue": 1000000,
           "payroll": 200000,
-          "evidence": "history-2025-7"
+          "evidence": "history-2025-7",
+          "real_payroll_expense_excluding_employer": 200000
         },
         {
           "competence": "2025-08-01",
           "trade_revenue": 0,
           "service_revenue": 1000000,
           "payroll": 200000,
-          "evidence": "history-2025-8"
+          "evidence": "history-2025-8",
+          "real_payroll_expense_excluding_employer": 200000
         },
         {
           "competence": "2025-09-01",
           "trade_revenue": 0,
           "service_revenue": 1000000,
           "payroll": 200000,
-          "evidence": "history-2025-9"
+          "evidence": "history-2025-9",
+          "real_payroll_expense_excluding_employer": 200000
         },
         {
           "competence": "2025-10-01",
           "trade_revenue": 0,
           "service_revenue": 1000000,
           "payroll": 200000,
-          "evidence": "history-2025-10"
+          "evidence": "history-2025-10",
+          "real_payroll_expense_excluding_employer": 200000
         },
         {
           "competence": "2025-11-01",
           "trade_revenue": 0,
           "service_revenue": 1000000,
           "payroll": 200000,
-          "evidence": "history-2025-11"
+          "evidence": "history-2025-11",
+          "real_payroll_expense_excluding_employer": 200000
         },
         {
           "competence": "2025-12-01",
           "trade_revenue": 0,
           "service_revenue": 1000000,
           "payroll": 200000,
-          "evidence": "history-2025-12"
+          "evidence": "history-2025-12",
+          "real_payroll_expense_excluding_employer": 200000
         },
         {
           "competence": "2026-01-01",
           "trade_revenue": 0,
           "service_revenue": 1000000,
           "payroll": 400000,
-          "evidence": "history-2026-1"
+          "evidence": "history-2026-1",
+          "real_payroll_expense_excluding_employer": 400000
         },
         {
           "competence": "2026-02-01",
           "trade_revenue": 0,
           "service_revenue": 1000000,
           "payroll": 400000,
-          "evidence": "history-2026-2"
+          "evidence": "history-2026-2",
+          "real_payroll_expense_excluding_employer": 400000
         },
         {
           "competence": "2026-03-01",
           "trade_revenue": 0,
           "service_revenue": 1000000,
           "payroll": 400000,
-          "evidence": "history-2026-3"
+          "evidence": "history-2026-3",
+          "real_payroll_expense_excluding_employer": 400000
         },
         {
           "competence": "2026-04-01",
           "trade_revenue": 0,
           "service_revenue": 1000000,
           "payroll": 400000,
-          "evidence": "history-2026-4"
+          "evidence": "history-2026-4",
+          "real_payroll_expense_excluding_employer": 400000
         },
         {
           "competence": "2026-05-01",
           "trade_revenue": 0,
           "service_revenue": 1000000,
           "payroll": 400000,
-          "evidence": "history-2026-5"
+          "evidence": "history-2026-5",
+          "real_payroll_expense_excluding_employer": 400000
         },
         {
           "competence": "2026-06-01",
           "trade_revenue": 0,
           "service_revenue": 1000000,
           "payroll": 400000,
-          "evidence": "history-2026-6"
+          "evidence": "history-2026-6",
+          "real_payroll_expense_excluding_employer": 400000
         },
         {
           "competence": "2026-07-01",
           "trade_revenue": 0,
           "service_revenue": 1000000,
           "payroll": 400000,
-          "evidence": "history-2026-7"
+          "evidence": "history-2026-7",
+          "real_payroll_expense_excluding_employer": 400000
         },
         {
           "competence": "2026-08-01",
           "trade_revenue": 0,
           "service_revenue": 1000000,
           "payroll": 400000,
-          "evidence": "history-2026-8"
+          "evidence": "history-2026-8",
+          "real_payroll_expense_excluding_employer": 400000
         },
         {
           "competence": "2026-09-01",
           "trade_revenue": 0,
           "service_revenue": 1000000,
           "payroll": 400000,
-          "evidence": "history-2026-9"
+          "evidence": "history-2026-9",
+          "real_payroll_expense_excluding_employer": 400000
         },
         {
           "competence": "2026-10-01",
           "trade_revenue": 0,
           "service_revenue": 1000000,
           "payroll": 400000,
-          "evidence": "history-2026-10"
+          "evidence": "history-2026-10",
+          "real_payroll_expense_excluding_employer": 400000
         },
         {
           "competence": "2026-11-01",
           "trade_revenue": 0,
           "service_revenue": 1000000,
           "payroll": 400000,
-          "evidence": "history-2026-11"
+          "evidence": "history-2026-11",
+          "real_payroll_expense_excluding_employer": 400000
         },
         {
           "competence": "2026-12-01",
           "trade_revenue": 0,
           "service_revenue": 1000000,
           "payroll": 400000,
-          "evidence": "history-2026-12"
+          "evidence": "history-2026-12",
+          "real_payroll_expense_excluding_employer": 400000
         }
       ],
       "outside": [
@@ -1680,7 +1824,8 @@
             "employer_contributions": 0,
             "other_mandatory_taxes": 0,
             "rtc_net_increment": 0,
-            "evidence": "synthetic-review"
+            "evidence": "synthetic-review",
+            "zero_justifications": {}
           },
           "lucro_presumido": {
             "icms": 0,
@@ -1688,7 +1833,8 @@
             "employer_contributions": 80000,
             "other_mandatory_taxes": 0,
             "rtc_net_increment": 0,
-            "evidence": "synthetic-review"
+            "evidence": "synthetic-review",
+            "zero_justifications": {}
           },
           "lucro_real": {
             "icms": 0,
@@ -1696,7 +1842,8 @@
             "employer_contributions": 80000,
             "other_mandatory_taxes": 0,
             "rtc_net_increment": 0,
-            "evidence": "synthetic-review"
+            "evidence": "synthetic-review",
+            "zero_justifications": {}
           }
         },
         {
@@ -1707,7 +1854,8 @@
             "employer_contributions": 0,
             "other_mandatory_taxes": 0,
             "rtc_net_increment": 0,
-            "evidence": "synthetic-review"
+            "evidence": "synthetic-review",
+            "zero_justifications": {}
           },
           "lucro_presumido": {
             "icms": 0,
@@ -1715,7 +1863,8 @@
             "employer_contributions": 80000,
             "other_mandatory_taxes": 0,
             "rtc_net_increment": 0,
-            "evidence": "synthetic-review"
+            "evidence": "synthetic-review",
+            "zero_justifications": {}
           },
           "lucro_real": {
             "icms": 0,
@@ -1723,7 +1872,8 @@
             "employer_contributions": 80000,
             "other_mandatory_taxes": 0,
             "rtc_net_increment": 0,
-            "evidence": "synthetic-review"
+            "evidence": "synthetic-review",
+            "zero_justifications": {}
           }
         },
         {
@@ -1734,7 +1884,8 @@
             "employer_contributions": 0,
             "other_mandatory_taxes": 0,
             "rtc_net_increment": 0,
-            "evidence": "synthetic-review"
+            "evidence": "synthetic-review",
+            "zero_justifications": {}
           },
           "lucro_presumido": {
             "icms": 0,
@@ -1742,7 +1893,8 @@
             "employer_contributions": 80000,
             "other_mandatory_taxes": 0,
             "rtc_net_increment": 0,
-            "evidence": "synthetic-review"
+            "evidence": "synthetic-review",
+            "zero_justifications": {}
           },
           "lucro_real": {
             "icms": 0,
@@ -1750,7 +1902,8 @@
             "employer_contributions": 80000,
             "other_mandatory_taxes": 0,
             "rtc_net_increment": 0,
-            "evidence": "synthetic-review"
+            "evidence": "synthetic-review",
+            "zero_justifications": {}
           }
         },
         {
@@ -1761,7 +1914,8 @@
             "employer_contributions": 0,
             "other_mandatory_taxes": 0,
             "rtc_net_increment": 0,
-            "evidence": "synthetic-review"
+            "evidence": "synthetic-review",
+            "zero_justifications": {}
           },
           "lucro_presumido": {
             "icms": 0,
@@ -1769,7 +1923,8 @@
             "employer_contributions": 80000,
             "other_mandatory_taxes": 0,
             "rtc_net_increment": 0,
-            "evidence": "synthetic-review"
+            "evidence": "synthetic-review",
+            "zero_justifications": {}
           },
           "lucro_real": {
             "icms": 0,
@@ -1777,7 +1932,8 @@
             "employer_contributions": 80000,
             "other_mandatory_taxes": 0,
             "rtc_net_increment": 0,
-            "evidence": "synthetic-review"
+            "evidence": "synthetic-review",
+            "zero_justifications": {}
           }
         },
         {
@@ -1788,7 +1944,8 @@
             "employer_contributions": 0,
             "other_mandatory_taxes": 0,
             "rtc_net_increment": 0,
-            "evidence": "synthetic-review"
+            "evidence": "synthetic-review",
+            "zero_justifications": {}
           },
           "lucro_presumido": {
             "icms": 0,
@@ -1796,7 +1953,8 @@
             "employer_contributions": 80000,
             "other_mandatory_taxes": 0,
             "rtc_net_increment": 0,
-            "evidence": "synthetic-review"
+            "evidence": "synthetic-review",
+            "zero_justifications": {}
           },
           "lucro_real": {
             "icms": 0,
@@ -1804,7 +1962,8 @@
             "employer_contributions": 80000,
             "other_mandatory_taxes": 0,
             "rtc_net_increment": 0,
-            "evidence": "synthetic-review"
+            "evidence": "synthetic-review",
+            "zero_justifications": {}
           }
         },
         {
@@ -1815,7 +1974,8 @@
             "employer_contributions": 0,
             "other_mandatory_taxes": 0,
             "rtc_net_increment": 0,
-            "evidence": "synthetic-review"
+            "evidence": "synthetic-review",
+            "zero_justifications": {}
           },
           "lucro_presumido": {
             "icms": 0,
@@ -1823,7 +1983,8 @@
             "employer_contributions": 80000,
             "other_mandatory_taxes": 0,
             "rtc_net_increment": 0,
-            "evidence": "synthetic-review"
+            "evidence": "synthetic-review",
+            "zero_justifications": {}
           },
           "lucro_real": {
             "icms": 0,
@@ -1831,7 +1992,8 @@
             "employer_contributions": 80000,
             "other_mandatory_taxes": 0,
             "rtc_net_increment": 0,
-            "evidence": "synthetic-review"
+            "evidence": "synthetic-review",
+            "zero_justifications": {}
           }
         },
         {
@@ -1842,7 +2004,8 @@
             "employer_contributions": 0,
             "other_mandatory_taxes": 0,
             "rtc_net_increment": 0,
-            "evidence": "synthetic-review"
+            "evidence": "synthetic-review",
+            "zero_justifications": {}
           },
           "lucro_presumido": {
             "icms": 0,
@@ -1850,7 +2013,8 @@
             "employer_contributions": 80000,
             "other_mandatory_taxes": 0,
             "rtc_net_increment": 0,
-            "evidence": "synthetic-review"
+            "evidence": "synthetic-review",
+            "zero_justifications": {}
           },
           "lucro_real": {
             "icms": 0,
@@ -1858,7 +2022,8 @@
             "employer_contributions": 80000,
             "other_mandatory_taxes": 0,
             "rtc_net_increment": 0,
-            "evidence": "synthetic-review"
+            "evidence": "synthetic-review",
+            "zero_justifications": {}
           }
         },
         {
@@ -1869,7 +2034,8 @@
             "employer_contributions": 0,
             "other_mandatory_taxes": 0,
             "rtc_net_increment": 0,
-            "evidence": "synthetic-review"
+            "evidence": "synthetic-review",
+            "zero_justifications": {}
           },
           "lucro_presumido": {
             "icms": 0,
@@ -1877,7 +2043,8 @@
             "employer_contributions": 80000,
             "other_mandatory_taxes": 0,
             "rtc_net_increment": 0,
-            "evidence": "synthetic-review"
+            "evidence": "synthetic-review",
+            "zero_justifications": {}
           },
           "lucro_real": {
             "icms": 0,
@@ -1885,7 +2052,8 @@
             "employer_contributions": 80000,
             "other_mandatory_taxes": 0,
             "rtc_net_increment": 0,
-            "evidence": "synthetic-review"
+            "evidence": "synthetic-review",
+            "zero_justifications": {}
           }
         },
         {
@@ -1896,7 +2064,8 @@
             "employer_contributions": 0,
             "other_mandatory_taxes": 0,
             "rtc_net_increment": 0,
-            "evidence": "synthetic-review"
+            "evidence": "synthetic-review",
+            "zero_justifications": {}
           },
           "lucro_presumido": {
             "icms": 0,
@@ -1904,7 +2073,8 @@
             "employer_contributions": 80000,
             "other_mandatory_taxes": 0,
             "rtc_net_increment": 0,
-            "evidence": "synthetic-review"
+            "evidence": "synthetic-review",
+            "zero_justifications": {}
           },
           "lucro_real": {
             "icms": 0,
@@ -1912,7 +2082,8 @@
             "employer_contributions": 80000,
             "other_mandatory_taxes": 0,
             "rtc_net_increment": 0,
-            "evidence": "synthetic-review"
+            "evidence": "synthetic-review",
+            "zero_justifications": {}
           }
         },
         {
@@ -1923,7 +2094,8 @@
             "employer_contributions": 0,
             "other_mandatory_taxes": 0,
             "rtc_net_increment": 0,
-            "evidence": "synthetic-review"
+            "evidence": "synthetic-review",
+            "zero_justifications": {}
           },
           "lucro_presumido": {
             "icms": 0,
@@ -1931,7 +2103,8 @@
             "employer_contributions": 80000,
             "other_mandatory_taxes": 0,
             "rtc_net_increment": 0,
-            "evidence": "synthetic-review"
+            "evidence": "synthetic-review",
+            "zero_justifications": {}
           },
           "lucro_real": {
             "icms": 0,
@@ -1939,7 +2112,8 @@
             "employer_contributions": 80000,
             "other_mandatory_taxes": 0,
             "rtc_net_increment": 0,
-            "evidence": "synthetic-review"
+            "evidence": "synthetic-review",
+            "zero_justifications": {}
           }
         },
         {
@@ -1950,7 +2124,8 @@
             "employer_contributions": 0,
             "other_mandatory_taxes": 0,
             "rtc_net_increment": 0,
-            "evidence": "synthetic-review"
+            "evidence": "synthetic-review",
+            "zero_justifications": {}
           },
           "lucro_presumido": {
             "icms": 0,
@@ -1958,7 +2133,8 @@
             "employer_contributions": 80000,
             "other_mandatory_taxes": 0,
             "rtc_net_increment": 0,
-            "evidence": "synthetic-review"
+            "evidence": "synthetic-review",
+            "zero_justifications": {}
           },
           "lucro_real": {
             "icms": 0,
@@ -1966,7 +2142,8 @@
             "employer_contributions": 80000,
             "other_mandatory_taxes": 0,
             "rtc_net_increment": 0,
-            "evidence": "synthetic-review"
+            "evidence": "synthetic-review",
+            "zero_justifications": {}
           }
         },
         {
@@ -1977,7 +2154,8 @@
             "employer_contributions": 0,
             "other_mandatory_taxes": 0,
             "rtc_net_increment": 0,
-            "evidence": "synthetic-review"
+            "evidence": "synthetic-review",
+            "zero_justifications": {}
           },
           "lucro_presumido": {
             "icms": 0,
@@ -1985,7 +2163,8 @@
             "employer_contributions": 80000,
             "other_mandatory_taxes": 0,
             "rtc_net_increment": 0,
-            "evidence": "synthetic-review"
+            "evidence": "synthetic-review",
+            "zero_justifications": {}
           },
           "lucro_real": {
             "icms": 0,
@@ -1993,7 +2172,8 @@
             "employer_contributions": 80000,
             "other_mandatory_taxes": 0,
             "rtc_net_increment": 0,
-            "evidence": "synthetic-review"
+            "evidence": "synthetic-review",
+            "zero_justifications": {}
           }
         }
       ],
@@ -2011,7 +2191,7 @@
           "csll_ordinary_limit": 0,
           "irpj_other_taxable": 0,
           "csll_other_taxable": 0,
-          "real_accounting_result": 300000,
+          "real_accounting_result": -420000,
           "irpj_additions": 0,
           "irpj_exclusions": 0,
           "csll_additions": 0,
@@ -2070,7 +2250,7 @@
           "csll_ordinary_limit": 125000000,
           "irpj_other_taxable": 0,
           "csll_other_taxable": 0,
-          "real_accounting_result": 300000,
+          "real_accounting_result": -420000,
           "irpj_additions": 0,
           "irpj_exclusions": 0,
           "csll_additions": 0,
@@ -2129,7 +2309,7 @@
           "csll_ordinary_limit": 125000000,
           "irpj_other_taxable": 0,
           "csll_other_taxable": 0,
-          "real_accounting_result": 300000,
+          "real_accounting_result": -420000,
           "irpj_additions": 0,
           "irpj_exclusions": 0,
           "csll_additions": 0,
@@ -2188,7 +2368,7 @@
           "csll_ordinary_limit": 125000000,
           "irpj_other_taxable": 0,
           "csll_other_taxable": 0,
-          "real_accounting_result": 300000,
+          "real_accounting_result": -420000,
           "irpj_additions": 0,
           "irpj_exclusions": 0,
           "csll_additions": 0,
@@ -2235,6 +2415,181 @@
           ]
         }
       ]
-    }
+    },
+    "source_mode": "linked_t11_snapshots",
+    "baseline_quarter_links": [
+      {
+        "record_id": "quarter-12345678000195-2026-01-01",
+        "version": 1,
+        "digest": "cd1ab7f5067428fa434cdfcf4a499beb6e99b242a429aca67a7908a2e3dfbd7b"
+      },
+      {
+        "record_id": "quarter-12345678000195-2026-04-01",
+        "version": 1,
+        "digest": "1a9ba6ce4cca7278355bb4ead3f2b7655e995a06533a5a7d46bb00f5df99554c"
+      },
+      {
+        "record_id": "quarter-12345678000195-2026-07-01",
+        "version": 1,
+        "digest": "ab792432c90c291857d8dce600246eb19fc4807df826c52321c3de05599ae349"
+      },
+      {
+        "record_id": "quarter-12345678000195-2026-10-01",
+        "version": 1,
+        "digest": "45d097fa85b29265d850f8b8753607cf2a550cf5938004277899b69728c1b14d"
+      }
+    ],
+    "evidence_artifacts": [
+      {
+        "reference": "baseline",
+        "content": "TEST ONLY synthetic reviewed scenario evidence: baseline",
+        "sha256": "82573214423c8abb91d0fcb6a41fb3285c57b28d7e9e942323e1e296e879de3d"
+      },
+      {
+        "reference": "history-2025-1",
+        "content": "TEST ONLY synthetic reviewed scenario evidence: history-2025-1",
+        "sha256": "c87ca9f3d1a71c6f7a5380190f13a9fc75fb788c6a88ded7006362637bae0058"
+      },
+      {
+        "reference": "history-2025-10",
+        "content": "TEST ONLY synthetic reviewed scenario evidence: history-2025-10",
+        "sha256": "8c4e4f0ebef595631bae7b20979d60ea9a72d6bd0d7765be57e0811fc198802b"
+      },
+      {
+        "reference": "history-2025-11",
+        "content": "TEST ONLY synthetic reviewed scenario evidence: history-2025-11",
+        "sha256": "71ac3c63659d8ab5b6cf44920ca4923d272ea67e90090a1e124e0c1d1b64c649"
+      },
+      {
+        "reference": "history-2025-12",
+        "content": "TEST ONLY synthetic reviewed scenario evidence: history-2025-12",
+        "sha256": "59655f7cf62d385f91171f2e31b789bf8bb9df7fb0dd06b6be544eccfdaf16af"
+      },
+      {
+        "reference": "history-2025-2",
+        "content": "TEST ONLY synthetic reviewed scenario evidence: history-2025-2",
+        "sha256": "62724210e7114f03a5b7154faf8be1d8a158aa080375cf3e0607db577fd9004c"
+      },
+      {
+        "reference": "history-2025-3",
+        "content": "TEST ONLY synthetic reviewed scenario evidence: history-2025-3",
+        "sha256": "4e5dbe4803582e7a2c2527c226a344d3dfcf2af00663490209deee65fff8f617"
+      },
+      {
+        "reference": "history-2025-4",
+        "content": "TEST ONLY synthetic reviewed scenario evidence: history-2025-4",
+        "sha256": "ab6dfbe2fca60550802c4d15e3ea3c329e3bf343470f27be59b35f7603fd94d6"
+      },
+      {
+        "reference": "history-2025-5",
+        "content": "TEST ONLY synthetic reviewed scenario evidence: history-2025-5",
+        "sha256": "8c8bde3871d19954be9fd64e794c32c049026c1259302df54e23b0111b9120d8"
+      },
+      {
+        "reference": "history-2025-6",
+        "content": "TEST ONLY synthetic reviewed scenario evidence: history-2025-6",
+        "sha256": "4df45081392cc0cdfca7fe8a91fba1268e261e95bcaacbfbe30cc9914e3f7f8f"
+      },
+      {
+        "reference": "history-2025-7",
+        "content": "TEST ONLY synthetic reviewed scenario evidence: history-2025-7",
+        "sha256": "144a92efec6ddca0b9ca264faa7cd7fcc5a0aa7c097e287fc1d1dbe79f2c592f"
+      },
+      {
+        "reference": "history-2025-8",
+        "content": "TEST ONLY synthetic reviewed scenario evidence: history-2025-8",
+        "sha256": "3b0670233cc71678da4e867be2c2c9db7825e35b8ec1b1df1c0dcc77f9800a89"
+      },
+      {
+        "reference": "history-2025-9",
+        "content": "TEST ONLY synthetic reviewed scenario evidence: history-2025-9",
+        "sha256": "fd57e1d986cca240d06817d35c1c6de2a6c20e5ba5ce4ca65f59059662c0b989"
+      },
+      {
+        "reference": "history-2026-1",
+        "content": "TEST ONLY synthetic reviewed scenario evidence: history-2026-1",
+        "sha256": "8082c243c532565d4d1222690fda64632cafbbbe6bf36362ad6849ba0aabc0f6"
+      },
+      {
+        "reference": "history-2026-10",
+        "content": "TEST ONLY synthetic reviewed scenario evidence: history-2026-10",
+        "sha256": "2450d30249c2c0a3f640cff3db9bcfe0ec841011c34355b9b66d7a8ec59271e9"
+      },
+      {
+        "reference": "history-2026-11",
+        "content": "TEST ONLY synthetic reviewed scenario evidence: history-2026-11",
+        "sha256": "7e7959e064464aebb33815b78df2a5396102cdb42e565e65a41571dac0646bce"
+      },
+      {
+        "reference": "history-2026-12",
+        "content": "TEST ONLY synthetic reviewed scenario evidence: history-2026-12",
+        "sha256": "44a016a17e60dea0a3dd6c7c84a0236f1514692ad5ec97a37d8a771285b8c1f5"
+      },
+      {
+        "reference": "history-2026-2",
+        "content": "TEST ONLY synthetic reviewed scenario evidence: history-2026-2",
+        "sha256": "a0b7998a49d804011f7ddf797a510186d839df8cf07e972c717d18fc5f77ccd0"
+      },
+      {
+        "reference": "history-2026-3",
+        "content": "TEST ONLY synthetic reviewed scenario evidence: history-2026-3",
+        "sha256": "a9ecc00e2cbcd50cbc2e83f789a87fcb740d28e32400378bf2e5ce3854e6b589"
+      },
+      {
+        "reference": "history-2026-4",
+        "content": "TEST ONLY synthetic reviewed scenario evidence: history-2026-4",
+        "sha256": "80339b1c5a4ac2c1b69cdd24cd3ecf6e519533bb7dc99f86946a194148964e49"
+      },
+      {
+        "reference": "history-2026-5",
+        "content": "TEST ONLY synthetic reviewed scenario evidence: history-2026-5",
+        "sha256": "969d63127287af48ad3a7561d5e5f911764ed154f0c6e8ee7704b855b20a0306"
+      },
+      {
+        "reference": "history-2026-6",
+        "content": "TEST ONLY synthetic reviewed scenario evidence: history-2026-6",
+        "sha256": "6bdabf01fff8aeb51a4b446b91d6c7ed00801de4747db71058ea8c958b52bb81"
+      },
+      {
+        "reference": "history-2026-7",
+        "content": "TEST ONLY synthetic reviewed scenario evidence: history-2026-7",
+        "sha256": "0a42acb44323a5153a82cd61c476b318fe4c407c30b3e375d29fe7eea23de2a3"
+      },
+      {
+        "reference": "history-2026-8",
+        "content": "TEST ONLY synthetic reviewed scenario evidence: history-2026-8",
+        "sha256": "74af634b2c0931e09290bda52c6a106c90598bd1369ce72b0bae22c18b9bc2dc"
+      },
+      {
+        "reference": "history-2026-9",
+        "content": "TEST ONLY synthetic reviewed scenario evidence: history-2026-9",
+        "sha256": "b408e34401f2e08d5468f8ed6ec44d670564f87860912036e9598a41678ece18"
+      },
+      {
+        "reference": "margin",
+        "content": "TEST ONLY synthetic reviewed scenario evidence: margin",
+        "sha256": "50b9c7861a7b14376ff2e35cdc6d52e729101b7f8ce124a02aefc5c56018d2d5"
+      },
+      {
+        "reference": "payroll",
+        "content": "TEST ONLY synthetic reviewed scenario evidence: payroll",
+        "sha256": "3493242a1936d80985bb6b98e1a812c6ffc31bbbe17ce03b6a8bc5ba083672db"
+      },
+      {
+        "reference": "synthetic-eligibility-reviewed",
+        "content": "TEST ONLY synthetic reviewed scenario evidence: synthetic-eligibility-reviewed",
+        "sha256": "344a04c0c1dcc420ce7bfd67147b9e4874db6893748bf1a462cfc5aabe58aefb"
+      },
+      {
+        "reference": "synthetic-no-rtc-debit",
+        "content": "TEST ONLY synthetic reviewed scenario evidence: synthetic-no-rtc-debit",
+        "sha256": "e9b92d43005bfc31e70b5db14bd14f499822aa8f2f706ba001e59fca02baf365"
+      },
+      {
+        "reference": "synthetic-review",
+        "content": "TEST ONLY synthetic reviewed scenario evidence: synthetic-review",
+        "sha256": "836280ca6dc96444727584413664e9f833ff6f3c92ce06e5dfd41b20cae96e67"
+      }
+    ]
   }
 }

@@ -6,11 +6,12 @@ Existing T07 and T11 remain the only tax calculation authorities.
 """
 from datetime import date
 from fractions import Fraction
+from hashlib import sha256
 from typing import Annotated, Any, Literal
 
-from pydantic import Field
+from pydantic import Field, StringConstraints
 
-from kordena_fiscal.cognitive.economy_contract import Cents, ContractModel
+from kordena_fiscal.cognitive.economy_contract import Cents, ContractModel, Digest, Version
 from kordena_fiscal.domain import FiscalValidationError
 from kordena_fiscal.tax.quarterly_simulation import Quarter, Reference, rounded, simulate
 from kordena_fiscal.tax.simples_nacional import (
@@ -43,6 +44,9 @@ class OutsideTax(ContractModel):
     # Gross T11 RTC balances are disclosed separately, not added a second time.
     rtc_net_increment: Cents
     evidence: Reference
+    zero_justifications: dict[
+        Literal["icms", "iss", "employer_contributions"], Reference
+    ] = Field(default_factory=dict)
 
     def total(self) -> int:
         return (self.icms + self.iss + self.employer_contributions
@@ -54,6 +58,8 @@ class HistoryMonth(ContractModel):
     trade_revenue: Cents
     service_revenue: Cents
     payroll: Cents
+    # Separately reviewed deductible expense; qualifying Fator R is not necessarily wages.
+    real_payroll_expense_excluding_employer: Cents
     evidence: Reference
 
     @property
@@ -82,10 +88,25 @@ class Scenario(ContractModel):
     quarters: Annotated[list[Quarter], Field(min_length=4, max_length=4)]
 
 
+class QuarterLink(ContractModel):
+    record_id: Reference
+    version: Version
+    digest: Digest
+
+
+class EvidenceArtifact(ContractModel):
+    reference: Reference
+    sha256: Digest
+    content: Annotated[str, StringConstraints(min_length=1, max_length=16384)]
+
+
 class AnnualComparison(ContractModel):
     schema_version: Literal["nfcore.annual-regime-comparison/v1"]
     review_status: Literal["reviewed"]
     data_basis: Literal["reviewed_annual_scenarios"]
+    source_mode: Literal["linked_t11_snapshots"]
+    baseline_quarter_links: Annotated[list[QuarterLink], Field(min_length=4, max_length=4)]
+    evidence_artifacts: Annotated[list[EvidenceArtifact], Field(min_length=1, max_length=500)]
     baseline: Scenario
     margin: Scenario
     payroll: Scenario
@@ -121,6 +142,10 @@ def _year(scenario: Scenario) -> dict[str, Any]:
     quarter_details: list[dict[str, Any]] = []
     seen: set[str] = set()
     accounting_result = 0
+    prior_revenue = 0
+    prior_csll_revenue = 0
+    # T11 validates the statutory first-quarter band; reuse it as the annual anchor.
+    ordinary_band = scenario.quarters[0].irpj_ordinary_limit
     for index, quarter in enumerate(scenario.quarters):
         start = index * 3
         group = months[start:start + 3]
@@ -128,9 +153,15 @@ def _year(scenario: Scenario) -> dict[str, Any]:
                  and quarter.trade_revenue == sum(m.trade_revenue for m in group)
                  and quarter.services_revenue == sum(m.service_revenue for m in group),
                  "quarter revenue or competence does not reconcile")
-        _require(sum(m.revenue for m in group) <= quarter.irpj_ordinary_limit
-                 and (index == 0 or sum(m.revenue for m in group) <= quarter.csll_ordinary_limit),
+        quarter_revenue = sum(m.revenue for m in group)
+        _require(quarter_revenue <= quarter.irpj_ordinary_limit
+                 <= (index + 1) * ordinary_band - prior_revenue
+                 and (index == 0 or quarter_revenue <= quarter.csll_ordinary_limit
+                      <= index * ordinary_band - prior_csll_revenue),
                  "reviewed presumption uplift requires broader annual reconciliation")
+        prior_revenue += quarter_revenue
+        if index > 0:
+            prior_csll_revenue += quarter_revenue
         _require(quarter.irpj_other_taxable == quarter.csll_other_taxable == 0,
                  "additional revenue requires broader reviewed comparison")
         _require(quarter.irpj_loss_applied == quarter.csll_loss_applied == 0,
@@ -183,6 +214,22 @@ def _year(scenario: Scenario) -> dict[str, Any]:
             if scenario.service_activity != "service_iv" or not m.service_revenue:
                 _require(outside.simples_nacional.employer_contributions == 0,
                          "employer contributions already included in DAS")
+            for regime in REGIMES:
+                taxes = getattr(outside, regime)
+                required = []
+                if regime != "simples_nacional":
+                    if m.trade_revenue:
+                        required.append("icms")
+                    if m.service_revenue:
+                        required.append("iss")
+                if m.payroll and (regime != "simples_nacional" or (
+                    scenario.service_activity == "service_iv" and m.service_revenue
+                )):
+                    required.append("employer_contributions")
+                _require(all(getattr(taxes, key) or (
+                    key in taxes.zero_justifications
+                    and taxes.zero_justifications[key] != taxes.evidence
+                ) for key in required), "missing specific reviewed zero-tax justification")
             monthly_tax = {
                 "simples_nacional": das + outside.simples_nacional.total(),
                 "lucro_presumido": sum(monthly["cumulative"].values())
@@ -223,31 +270,105 @@ def _same_revenue(base: Scenario, variant: Scenario) -> bool:
     return (
         base.uf == variant.uf and base.service_activity == variant.service_activity
         and base.opened_month == variant.opened_month
+        and base.eligibility_reference == variant.eligibility_reference
         and [(m.competence, m.trade_revenue, m.service_revenue) for m in base.history]
         == [(m.competence, m.trade_revenue, m.service_revenue) for m in variant.history]
         and base.history[:12] == variant.history[:12]
     )
 
 
+def _quarter_invariants(base: Quarter, variant: Quarter) -> bool:
+    excluded = {"review_reference", "real_accounting_result"}
+    return base.model_dump(exclude=excluded) == variant.model_dump(exclude=excluded)
+
+
+def _outside_invariants(base: Scenario, variant: Scenario, *, payroll: bool) -> bool:
+    excluded = {"evidence"}
+    if payroll:
+        excluded |= {"employer_contributions", "zero_justifications"}
+    for a, b in zip(base.outside, variant.outside, strict=True):
+        for regime in REGIMES:
+            left, right = getattr(a, regime), getattr(b, regime)
+            if left.model_dump(exclude=excluded) != right.model_dump(exclude=excluded):
+                return False
+            if payroll and {k: v for k, v in left.zero_justifications.items()
+                            if k != "employer_contributions"} != {
+                k: v for k, v in right.zero_justifications.items()
+                if k != "employer_contributions"
+            }:
+                return False
+    return True
+
+
+def _verify_evidence(facts: AnnualComparison) -> None:
+    evidence = {}
+    for artifact in facts.evidence_artifacts:
+        _require(artifact.reference not in evidence and
+                 sha256(artifact.content.encode("utf-8")).hexdigest() == artifact.sha256,
+                 "duplicate or invalid supporting evidence digest")
+        evidence[artifact.reference] = artifact.sha256
+    references: set[str] = set()
+    for scenario in (facts.baseline, facts.margin, facts.payroll):
+        references.update((scenario.review_reference, scenario.eligibility_reference))
+        references.update(m.evidence for m in scenario.history)
+        for month in scenario.outside:
+            for regime in REGIMES:
+                taxes = getattr(month, regime)
+                references.add(taxes.evidence)
+                references.update(taxes.zero_justifications.values())
+        for quarter in scenario.quarters:
+            references.add(quarter.review_reference)
+            references.update(m.rtc_evidence for m in quarter.months)
+    _require(references <= evidence.keys(), "missing supporting evidence artifact")
+
+
+def _reconcile_payroll(base: Scenario, payroll: Scenario) -> None:
+    for index, (before, after) in enumerate(zip(base.quarters, payroll.quarters, strict=True)):
+        start = 12 + index * 3
+        costs = sum(
+            p.real_payroll_expense_excluding_employer - b.real_payroll_expense_excluding_employer
+            for b, p in zip(base.history[start:start + 3], payroll.history[start:start + 3],
+                            strict=True)
+        )
+        contributions = sum(
+            p.lucro_real.employer_contributions - b.lucro_real.employer_contributions
+            for b, p in zip(base.outside[index * 3:index * 3 + 3],
+                            payroll.outside[index * 3:index * 3 + 3], strict=True)
+        )
+        _require(after.real_accounting_result == before.real_accounting_result - costs
+                 - contributions, "payroll accounting result does not reconcile")
+
+
 def compare(facts: AnnualComparison) -> dict[str, Any]:
     """Rank reviewed comparable scenarios; never recommend a legal election."""
+    _verify_evidence(facts)
     base, margin, payroll = facts.baseline, facts.margin, facts.payroll
     _require(len({s.review_reference for s in (base, margin, payroll)}) == 3,
              "each sensitivity scenario requires independent reviewed evidence")
     _require(_same_revenue(base, margin) and _same_revenue(base, payroll),
              "sensitivity must hold revenue, prior history, UF and activity constant")
-    _require([m.payroll for m in base.history] == [m.payroll for m in margin.history]
+    _require(all(_quarter_invariants(a, b) for variant in (margin, payroll)
+                 for a, b in zip(base.quarters, variant.quarters, strict=True)),
+             "sensitivity changed independent quarterly tax facts")
+    _require(_outside_invariants(base, margin, payroll=False)
+             and _outside_invariants(base, payroll, payroll=True),
+             "sensitivity changed independent outside taxes")
+    _require(base.history == margin.history
              and sum(q.real_accounting_result for q in base.quarters)
              != sum(q.real_accounting_result for q in margin.quarters),
              "margin sensitivity must vary annual accounting result, not payroll")
     _require([m.payroll for m in base.history[12:]] != [m.payroll for m in payroll.history[12:]],
              "payroll sensitivity must vary reviewed current-year payroll")
+    _reconcile_payroll(base, payroll)
     results = {name: _year(scenario) for name, scenario in
                (("baseline", base), ("margin", margin), ("payroll", payroll))}
     baseline = results["baseline"]
     return {
         "schema_version": SCHEMA, "status": "compared", "year": 2026, "unit": "BRL_cent",
         "data_basis": facts.data_basis, "scenarios": results,
+        "source_mode": facts.source_mode,
+        "baseline_quarter_links": [link.model_dump() for link in facts.baseline_quarter_links],
+        "supporting_evidence_integrity": "digest_verified_not_accounting_approval",
         "sensitivity_tax_delta_cents": {
             name: {regime: results[name]["annual_tax_cents"][regime]
                    - baseline["annual_tax_cents"][regime] for regime in REGIMES}

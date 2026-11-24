@@ -21,3 +21,21 @@ Fixture sintética compartilhada tests/tax/fixtures/t12_reviewed_annual_example.
 - Expansão de outros escopos/competências/territórios no backlog, sem fabricar cobertura. Uso real e validação contábil externa não comprovados.
 
 Não alterar main/production, sem deploy, transmissão, pagamento ou mudança de regime. Testes sintéticos ainda não executados no momento deste registro.
+
+
+## Revisão independente Gemini — 24/11/2026 (HEAD anterior c3619a05)
+
+CI integral 45399043217 SUCCESS: 7.010 Python PASS, 1 SKIP (test_p02_t02_fiscal_surfaces.py:389 requer PostgreSQL na composição de produção), 84 E2E PASS; governança 45399042990 e completude 45399043165/45399103717 SUCCESS. Revisão estática e matemática independente do Gemini: REPROVADO — CORRIGIR E REVALIDAR. Quatro P1 internos, não confundidos com dependências externas. Registro na issue #599 e PR #600. Não herdar a certificação do HEAD anterior.
+
+### Candidato de remediação (requer nova CI e reauditoria)
+- P1-01: invariantes ceteris paribus em fatos trimestrais, históricos, elegibilidade e tributos externos; única variação permitida de resultado contábil no cenário margem, e folha/encargos no cenário folha. Despesa de folha dedutível sem patronal é declarada separadamente da folha qualificada Fator R, evitando presumir sua identidade contábil. Reconciliar resultado trimestre a trimestre. Fixture sintética explicita hipótese de despesa dedutível e corrige Lucro Real para prejuízo de R$ 16.800/ano, sem compensar perdas. Referência independente: baseline Simples R$ 18.600,12, Presumido R$ 20.796,00, Real R$ 21.180,00; margem Real +R$ 720,00; folha Simples R$ 11.950,05, Presumido R$ 25.596,00, Real R$ 23.100,00 (delta +R$ 1.920,00). Não interpretar resultado tributário como lucro líquido.
+- P1-02: contrato exige quatro links T11 record_id/version/digest, identidade e competência canônicas. Importação e leitura verificam snapshot único atual no T01, mesmo escopo e conteúdo completo; versão T11 superveniente invalida comparação antiga. Artefatos de evidência textuais obrigatórios com referência única, SHA-256 verificado e cobertura das referências; conteúdo não exposto no resultado API. Integridade não é autenticidade nem aprovação contábil T13. Evidências de teste são sintéticas; não importar segredo/PII desnecessária. Sem duplicar tabela, cálculo fiscal ou autoridade.
+- P1-03: regressões de causalidade, provas, empates/inversão, comércio + serviço, Anexo IV, prejuízo, adicional, duplicidade RTC, limites e bases; integração HTTP runner real com PostgreSQL, perfil e declaração canônicos, ausência de snapshot, ano inválido, RBAC, feature flag, UF divergente, link faltante/inválido/externo/superseded; execução CLI real em sandbox e rejeições de ambiente/tamanho/escopo.
+- P1-04: Portal mostra empate, cadastro mensal, versão/digest, margens/folha, tributos externos e RTC bruto separado, limites e erros 422/503. E2E de projeção com mock, complementado pelo runner HTTP real.
+- P2-01: zero de imposto externo aplicável exige justificativa específica vinculada a artefato distinto. P2-02: limite ordinário cumulativo restringido pelo saldo após receitas anteriores, reaproveitando âncora T11; majoração continua fora de escopo. P2-03: reutilização de uma UoW no contexto anual sem substituir a autoridade fiscal; consultas ainda são mensais.
+- P3-01: atualização deste handoff e cronograma. Certificação final e revisão independente somente no novo SHA exato. T13 bloqueada, sem merge/deploy/opção fiscal.
+
+### Gates e continuidade
+Executar testes locais e CI integral do novo HEAD. Revisar evidências de RLS, runner, CLI, Portal e correção contábil com Gemini. Somente depois de aprovação independente e autorização humana específica proceder com merge e CI pós-merge. A expansão territorial #593 e homologações reais continuam em trilha separada. A T12 ainda não está entregue.
+
+Gate local: 105 testes Python focais PASS (T12/T11/T07 e HTTP), 2 testes do arquivo PostgreSQL T01 PASS em cluster PostgreSQL 16 descartável (runner, CLI, RLS); Ruff e Mypy focais PASS; frontend lint/typecheck/build e 30 testes Node PASS. E2E focal PASS (1 teste, Chromium; configuração local estática isolada), CI remota do novo candidato ainda pendente. Não incluir alteração de template causada pela colisão de caixa de nomes no Windows nem ferramentas temporárias.
