@@ -19,3 +19,10 @@ Testes sintéticos de cálculo e XML assinado/XSD; PostgreSQL real com RLS e HTT
 
 ## Correcao de regressao CI - 24/11/2026
 CI integral #45453735610 (HEAD 81a5c0ee) FAILURE: 7051 Python PASS, 1 FAIL e 1 SKIP. Causa unica: CST 51 sem evidencia revisada continuava bloqueado, mas mensagem deixou de conter unsupported, quebrando o contrato de regressao B01. Corrigida exclusivamente a mensagem do motor, sem alterar regra, controle ou teste. Reteste focal: 27 PASS, 71 deselected; Ruff e Mypy focal PASS. Nova CI integral obrigatoria; revisao independente ainda pendente.
+
+## Fechamento certificado — 24/11/2026
+
+- HEAD auditado ca8655b3b17ae86c8f639976cabbf695fc2afbb2, CI #45456972784 SUCCESS (44/44, 7052 Python PASS, 1 SKIP, 86 E2E). Gemini aprovou, 0 P0/P1/P2, 3 P3 na #607; parecer integral privado https://drive.google.com/file/d/1Fe3bVGqyJ4wkXbUcat13arfbpmVCmVMB/view.
+- PR #606 MERGED com autorização expressa do diretor, main 9435cd0165b477c853d34354a02dafaf0afb2833, árvore idêntica ao HEAD auditado.
+- CI pós-merge #45467529956 tentativa 1 interrompida por Maven Central HTTP 429 durante geração da base oficial RFB V0073. Reexecução sem alteração de código: tentativa 2 SUCCESS, job #138711354938, 44/44 etapas, 7052 Python PASS, 1 SKIP em tests/runtime/test_p02_t02_fiscal_surfaces.py:389 (composição produtiva exige PostgreSQL), 86 E2E PASS. Governança #45467532344 SUCCESS.
+- Issue #605 CLOSED; #604 P2-01/02 resolvidos e marcados, P3 permanecem. #607 mantém refinamentos T14. T15 liberada por ordem do diretor (#608). Sem deploy, homologação oficial ou emissão real.

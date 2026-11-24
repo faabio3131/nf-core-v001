@@ -28,6 +28,7 @@ from kordena_fiscal.cognitive.federal_benefits_api import (
     build_federal_benefit_runner,
     build_federal_benefit_search_runner,
 )
+from kordena_fiscal.cognitive.historical_audit_api import build_historical_audit_runner
 from kordena_fiscal.cognitive.normative_radar_api import build_normative_reader
 from kordena_fiscal.cognitive.opportunity_radar_api import build_opportunity_runner
 from kordena_fiscal.cognitive.quarterly_simulation_api import build_simulation_runner
@@ -1287,6 +1288,14 @@ def create_runtime_app(
                 ),
                 annual_comparison_runner=(
                     build_annual_comparison_runner(
+                        portal_executor, partial(runtime.database.economy, read_only=True),
+                        runtime.database,
+                    )
+                    if runtime.database is not None and portal_executor is not None
+                    and os.environ.get("NFCORE_ECONOMY_ENABLED") == "true" else None
+                ),
+                historical_audit_runner=(
+                    build_historical_audit_runner(
                         portal_executor, partial(runtime.database.economy, read_only=True),
                         runtime.database,
                     )
