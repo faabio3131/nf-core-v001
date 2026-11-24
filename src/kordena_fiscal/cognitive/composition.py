@@ -25,6 +25,7 @@ from .durable_usage import DurableTokenQuotaStore
 from .economy_reader import EconomyReader
 from .federal_benefits_api import FederalBenefitRunner, FederalBenefitSearchRunner
 from .governance import DEFAULT_PILOT_DAILY_LIMIT, InMemoryUsageLedger, pilot_entitlement
+from .historical_audit_api import HistoricalAuditRunner
 from .knowledge.official import OfficialTablesError, cached_official_catalog
 from .normative_radar_api import build_normative_reader
 from .opportunity_radar_api import OpportunityRunner
@@ -69,6 +70,7 @@ def build_cognitive_routers(
     simulation_runner: OpportunityRunner | None = None,
     annual_comparison_runner: OpportunityRunner | None = None,
     accounting_review_runner: AccountingReviewRunner | None = None,
+    historical_audit_runner: HistoricalAuditRunner | None = None,
 ) -> list[APIRouter]:
     """Portal advisory route (opt-in) plus the Command read-only metrics route (always mounted).
 
@@ -154,6 +156,7 @@ def build_cognitive_routers(
             simulation_runner=simulation_runner,
             annual_comparison_runner=annual_comparison_runner,
             accounting_review_runner=accounting_review_runner,
+            historical_audit_runner=historical_audit_runner,
         ),
         create_command_metrics_router(aggregates, environ, ai_enabled=model is not None),
     ]
@@ -180,6 +183,7 @@ def build_cognitive_router(
     simulation_runner: OpportunityRunner | None = None,
     annual_comparison_runner: OpportunityRunner | None = None,
     accounting_review_runner: AccountingReviewRunner | None = None,
+    historical_audit_runner: HistoricalAuditRunner | None = None,
 ) -> APIRouter | None:
     """One router mounting the Portal advisory route and the Command metrics route."""
     routers = build_cognitive_routers(
@@ -200,6 +204,7 @@ def build_cognitive_router(
         simulation_runner=simulation_runner,
         annual_comparison_runner=annual_comparison_runner,
         accounting_review_runner=accounting_review_runner,
+        historical_audit_runner=historical_audit_runner,
     )
     if not routers:
         return None

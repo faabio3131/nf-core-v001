@@ -36,6 +36,7 @@ from .accounting_review_api import AccountingReviewRunner
 from .contracts import AdviceRequest, AdviceResult, AdviceStatus, Capability, Evidence, stable_hash
 from .economy_contract import CAPABILITIES, EconomyAdvice, project_economy
 from .federal_benefits_api import FederalBenefitRunner, FederalBenefitSearchRunner
+from .historical_audit_api import HistoricalAuditRunner
 from .opportunity_radar_api import OpportunityRunner
 from .service import CognitiveAdviceService
 from .simples_diagnostic_api import DiagnosticRunner
@@ -134,6 +135,7 @@ def create_cognitive_router(
     simulation_runner: OpportunityRunner | None = None,
     annual_comparison_runner: OpportunityRunner | None = None,
     accounting_review_runner: AccountingReviewRunner | None = None,
+    historical_audit_runner: HistoricalAuditRunner | None = None,
 ) -> APIRouter:
     router = APIRouter(prefix="/v1/portal/cognitive", tags=["cognitive-advisory"])
 
@@ -443,6 +445,41 @@ def create_cognitive_router(
         if annual_comparison_runner is None:
             raise _bad("ANNUAL_COMPARISON_UNAVAILABLE", "Comparison unavailable", 503)
         return await run_in_threadpool(annual_comparison_runner, auth, unit, environment, month)
+
+    @router.post("/economy/historical-audit")
+    async def historical_audit(
+        request: Request, body: Annotated[dict[str, Any], Body()],
+    ) -> dict[str, Any]:
+        _reject_browser_authority(body)
+        required = {"unit_id", "environment", "competence"}
+        if not required <= set(body) or set(body) - required - {"detail"}:
+            raise _bad("INVALID_HISTORICAL_AUDIT_REQUEST", "Invalid historical audit request")
+        auth, unit, environment, month = authorized_month(
+            request, {key: body[key] for key in required},
+        )
+        detail = body.get("detail")
+        if "detail" in body:
+            try:
+                if not isinstance(detail, dict) or set(detail) != {
+                    "month", "page", "snapshot_digest", "window_digest",
+                }:
+                    raise ValueError
+                selected = date.fromisoformat(detail["month"])
+                if (selected.day != 1 or selected.isoformat() != detail["month"]
+                        or type(detail["page"]) is not int or not 0 <= detail["page"] <= 310
+                        or any(not isinstance(detail[k], str) or len(detail[k]) != 64
+                               or any(c not in "0123456789abcdef" for c in detail[k])
+                               for k in ("snapshot_digest", "window_digest"))):
+                    raise ValueError
+            except (ValueError, TypeError):
+                raise _bad(
+                    "INVALID_HISTORICAL_AUDIT_REQUEST", "Invalid historical audit page",
+                ) from None
+        if historical_audit_runner is None:
+            raise _bad("HISTORICAL_AUDIT_UNAVAILABLE", "Historical audit unavailable", 503)
+        return await run_in_threadpool(
+            historical_audit_runner, auth, unit, environment, month, detail,
+        )
 
     @router.post("/economy/accounting-review")
     async def accounting_review(

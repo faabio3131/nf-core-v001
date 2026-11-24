@@ -796,3 +796,66 @@ test("accounting review exposes immutable decision and requires step-up before a
   await expect(page.getByText(/Conta accountant-test/)).toBeVisible();
   await expect(page.getByText("Revogar aprovação", {exact: true})).toBeAttached();
 });
+
+test("T15 historical audit shows 60 months and paginated evidence without creating credits", async ({page, context}) => {
+  await page.route("**/v1/portal/bootstrap", route => route.fulfill({json:{
+    tenant_id:"tenant-e2e", unit_ids:["unit-a"], role:"auditor",
+    permissions:["portal.read","document.query","audit.read"], supported_documents:["nfe"],
+    projection:{authorized_units:[{unit_id:"unit-a", display_name:"Unidade A", environments:["homologation"]}]},
+  }}));
+  await context.addCookies([{name:"nfcore_csrf",value:"csrf-e2e",domain:"127.0.0.1",path:"/"}]);
+  await page.route("**/v1/portal/surfaces/**", route => route.fulfill({json:{rows:[]}}));
+  const digest="a".repeat(64), windowDigest="b".repeat(64);
+  const month={competence:"2026-01-01",status:"reviewed_scope",document_count:12,item_count:36,pages:2,
+    snapshot:{record_id:"history",version:2,digest},review_reference:"synthetic-review",as_of:"2026-11-24",
+    groups:[{tax:"pis",collection:"direct",declared_cents:365,observed_paid_cents:365,
+      reviewed_due_cents:235,paid_candidate_cents:130,status:"potential_undue_payment"}]};
+  const months=Array.from({length:60},(_,i)=>{
+    const dt=new Date(Date.UTC(2021,2+i,1)).toISOString().slice(0,10);
+    return dt===month.competence?month:{competence:dt,status:"missing",document_count:null,
+      item_count:null,snapshot:null,pages:0,groups:[]};
+  });
+  let queries=0;
+  await page.route("**/v1/portal/cognitive/economy/historical-audit", route=>{
+    const body=route.request().postDataJSON();
+    expect(route.request().headers()["x-csrf-token"]).toBe("csrf-e2e");
+    expect(body.unit_id).toBe("unit-a");
+    expect(body.environment).toBe("homologation");
+    expect(body.competence).toBe("2026-02-01");
+    if (!body.detail) {
+      queries++;
+      if (queries>1) return route.fulfill({status:503,json:{detail:{code:"HISTORICAL_AUDIT_UNAVAILABLE"}}});
+      return route.fulfill({json:{window_start:"2021-03-01",window_end:"2026-02-01",
+        reviewed_months:1,available_months:1,competences:60,status:"partial_basis",months,
+        window_digest:windowDigest,partial_totals_by_tax:{pis:{classified_months:1,paid_candidate_cents:130},
+          cofins:{classified_months:0,paid_candidate_cents:null},icms:{classified_months:0,paid_candidate_cents:null}},
+        advisory_only:true,credit_recognized:false}});
+    }
+    expect(body.detail).toEqual({month:"2026-01-01",page:expect.any(Number),
+      snapshot_digest:digest,window_digest:windowDigest});
+    if (body.detail.page===1) return route.fulfill({status:409,json:{detail:{code:"HISTORICAL_AUDIT_CHANGED"}}});
+    return route.fulfill({json:{page:0,next_page:1,rows:[{access_key:"1234567890",
+      item_number:1,ncm:"30049099",cfop:"5102",tax:"pis",reason:"monophase_downstream",
+      declared_cents:100,reviewed_due_cents:0,difference_cents:100,
+      paid_candidate_cents:100,status:"potential_undue_payment",xml_sha256:"c".repeat(64),
+      status_reference:"status",assessment_reference:"assessment",
+      citation:{act:"Norma sintética",provision:"Art. 1",source_url:"https://www.gov.br/teste",
+        source_sha256:"d".repeat(64)}}]}});
+  });
+  await page.goto("/");
+  await page.getByRole("button",{name:"Reforma Tributária",exact:true}).click();
+  await page.getByLabel("Última competência encerrada").fill("2026-02");
+  await page.getByRole("button",{name:"Auditar histórico de 60 meses"}).click();
+  await expect(page.getByText(/1\/60 competências reconciliadas/)).toBeVisible();
+  await expect(page.getByRole("table",{name:"Competências e evidências"}).locator("tbody tr")).toHaveCount(60);
+  await expect(page.getByText(/Cofins · Indícios em competências classificadas: Não disponível/)).toBeVisible();
+  await page.getByRole("button",{name:"Detalhar 2026-01"}).click();
+  await expect(page.getByText(/Item 1 · NCM 30049099.*Monofásico/)).toBeVisible();
+  await expect(page.getByText(/Norma sintética · Art. 1/)).toBeVisible();
+  await expect(page.getByText(/Página 1 de 2/)).toBeVisible();
+  await page.getByRole("button",{name:"Próxima página de itens"}).click();
+  await expect(page.getByText(/Consulte novamente a janela/)).toBeVisible();
+  await page.getByRole("button",{name:"Auditar histórico de 60 meses"}).click();
+  await expect(page.getByText(/Falha HTTP 503|HISTORICAL_AUDIT_UNAVAILABLE/)).toBeVisible();
+  await expect(page.getByRole("table",{name:"Competências e evidências"})).toHaveCount(0);
+});

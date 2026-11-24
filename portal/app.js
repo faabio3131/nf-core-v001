@@ -3762,6 +3762,7 @@ async function renderSurface(viewId) {
         appendQuarterlySimulation(article);
         appendAnnualRegimeComparison(article);
         appendAccountingReviewLookup(article);
+        appendHistoricalAudit(article);
       }
     } else {
       article.append(grid);
@@ -5416,5 +5417,193 @@ function appendAccountingReviewLookup(article) {
       {kind: "benefit", source: source.value, benefit_id: benefit.value.trim()};
     appendAccountingReview(result, {unit_id: selectedFiscalUnit, environment: selectedFiscalEnvironment,
       competence: competence.value + "-01", target}, null);
+  });
+}
+
+/** @param {HTMLElement} article */
+function appendHistoricalAudit(article) {
+  const form = document.createElement("form");
+  const heading = document.createElement("h3");
+  heading.textContent = "Auditoria histórica de 60 meses";
+  const note = document.createElement("p");
+  note.textContent = "XMLs NF-e/NFC-e e apurações revisadas de PIS, Cofins e ICMS. Indícios de pagamento indevido não são créditos reconhecidos. Meses sem documentação permanecem indisponíveis.";
+  const label = document.createElement("label");
+  label.textContent = "Última competência encerrada";
+  const end = document.createElement("input");
+  end.type = "month";
+  end.required = true;
+  const now = new Date();
+  const current = new Intl.DateTimeFormat("en-CA", {timeZone: "America/Sao_Paulo", year: "numeric", month: "2-digit"}).formatToParts(now);
+  const year = Number(current.find(x => x.type === "year")?.value);
+  const month = Number(current.find(x => x.type === "month")?.value);
+  const previous = new Date(Date.UTC(year, month - 2, 1));
+  end.max = previous.toISOString().slice(0, 7);
+  end.value = end.max;
+  label.append(end);
+  const submit = document.createElement("button");
+  submit.textContent = "Auditar histórico de 60 meses";
+  const feedback = document.createElement("p");
+  feedback.setAttribute("role", "status");
+  const output = document.createElement("div");
+  form.append(heading, note, label, submit, feedback, output);
+  article.append(form);
+  const formatter = new Intl.NumberFormat("pt-BR", {style:"currency", currency:"BRL"});
+  /** @param {number|null|undefined} value */
+  const money = value => value == null ? "Não disponível" : formatter.format(value / 100);
+  const taxNames = {pis:"PIS", cofins:"Cofins", icms:"ICMS"};
+  const states = {reviewed_scope:"Base revisada no recorte", partial_basis:"Cobertura parcial",
+    issuer_history_unavailable:"Cadastro histórico indisponível", issuer_history_changed:"Cadastro histórico alterado",
+    missing:"Sem evidências", insufficient_basis:"Base insuficiente", payment_unconfirmed:"Pagamento não conciliado",
+    duplicate_receipt_in_window:"Comprovante duplicado na janela", mixed_difference:"Divergências mistas",
+    potential_undue_payment:"Indício de pagamento indevido", no_difference:"Sem diferença no recorte",
+    unresolved:"Tratamento não resolvido", possible_underassessment:"Possível insuficiência de apuração",
+    assessment_difference_payment_unconfirmed:"Divergência sem pagamento comprovado",
+    document_cancelled:"Documento cancelado", document_unresolved:"Situação documental não resolvida"};
+  const reasons = {monophase_downstream:"Monofásico (revenda)", icms_substituted:"ICMS-ST substituído",
+    icms_final_advance:"Antecipação final", pis_cofins_base_divergence:"Base de PIS/Cofins",
+    reviewed_no_adjustment:"Sem ajuste no recorte revisado", unresolved_treatment:"Tratamento não resolvido",
+    xml_assessment_mismatch:"XML e apuração divergentes", document_cancelled:"Documento cancelado",
+    document_unresolved:"Situação não resolvida"};
+  /** @param {string} value */
+  const status = value => Reflect.get(states, value) || "Estado indisponível";
+  /** @param {any} body */
+  const query = body => api("/v1/portal/cognitive/economy/historical-audit", {
+    method:"POST", headers:{"X-CSRF-Token":csrfToken()}, body:JSON.stringify(body),
+  });
+  let generation = 0;
+  end.addEventListener("change", () => {
+    generation++;
+    output.replaceChildren();
+    feedback.textContent = "Consulte a nova janela.";
+  });
+  form.addEventListener("submit", async event => {
+    event.preventDefault();
+    if (!selectedFiscalUnit) { feedback.textContent = "Selecione uma unidade."; return; }
+    const unit = selectedFiscalUnit, environment = selectedFiscalEnvironment;
+    const competence = end.value + "-01";
+    const token = ++generation;
+    const active = () => token === generation && form.isConnected &&
+      unit === selectedFiscalUnit && environment === selectedFiscalEnvironment;
+    const body = {unit_id:unit, environment, competence};
+    submit.disabled = end.disabled = true;
+    feedback.textContent = "Consultando evidências revisadas…";
+    output.replaceChildren();
+    try {
+      const report = await query(body);
+      if (!active()) return;
+      feedback.textContent = report.window_start.slice(0,7) + " a " + report.window_end.slice(0,7) +
+        " · " + report.reviewed_months + "/60 competências reconciliadas no recorte · " + status(report.status);
+      const totals = document.createElement("ul");
+      for (const [tax, value] of Object.entries(/** @type {Record<string,any>} */ (report.partial_totals_by_tax))) {
+        const li = document.createElement("li");
+        li.textContent = Reflect.get(taxNames, tax) + " · Indícios em competências classificadas: " +
+          money(value.paid_candidate_cents) + " · " + value.classified_months + "/60 meses. Não constitui saldo recuperável.";
+        totals.append(li);
+      }
+      output.append(totals);
+      const table = document.createElement("table");
+      const caption = document.createElement("caption");
+      caption.textContent = "Competências e evidências";
+      table.append(caption);
+      const head = document.createElement("thead"), hr = document.createElement("tr");
+      for (const text of ["Competência", "Situação", "XMLs / itens", "Detalhes"]) {
+        const th = document.createElement("th");
+        th.scope = "col"; th.textContent = text; hr.append(th);
+      }
+      head.append(hr); table.append(head);
+      const tbody = document.createElement("tbody");
+      const detailBox = document.createElement("section");
+      let detailGeneration = 0;
+      for (const entry of report.months) {
+        const tr = document.createElement("tr");
+        for (const text of [entry.competence.slice(0,7), status(entry.status),
+          entry.document_count == null ? "—" : entry.document_count + " / " + entry.item_count]) {
+          const td = document.createElement("td"); td.textContent = text; tr.append(td);
+        }
+        const actionCell = document.createElement("td");
+        if (entry.snapshot) {
+          const button = document.createElement("button");
+          button.type = "button";
+          button.textContent = "Detalhar " + entry.competence.slice(0,7);
+          actionCell.append(button);
+          button.addEventListener("click", () => {
+            if (!active()) return;
+            const detailToken = ++detailGeneration;
+            const title = document.createElement("h4");
+            title.textContent = "Apuração " + entry.competence.slice(0,7);
+            const evidence = document.createElement("p");
+            evidence.textContent = "Versão " + entry.snapshot.version + " · SHA-256 " + entry.snapshot.digest +
+              " · Revisão " + entry.review_reference + " · Evidência até " + entry.as_of;
+            const groups = document.createElement("ul");
+            for (const g of entry.groups) {
+              const li = document.createElement("li");
+              li.textContent = Reflect.get(taxNames,g.tax) + ": declarado " + money(g.declared_cents) +
+                " · principal pago documentado " + money(g.observed_paid_cents) +
+                " · devido no recorte revisado " + money(g.reviewed_due_cents) +
+                " · indício " + money(g.paid_candidate_cents) + " · " + status(g.status) +
+                " · " + (g.collection === "das_components" ? "Componente do DAS" : "Recolhimento direto");
+              groups.append(li);
+            }
+            const pageBox = document.createElement("div");
+            pageBox.setAttribute("role","status");
+            const more = document.createElement("button");
+            more.type = "button";
+            more.textContent = "Próxima página de itens";
+            more.hidden = true;
+            detailBox.replaceChildren(title,evidence,groups,pageBox,more);
+            /** @param {number} page */
+            async function load(page) {
+              more.disabled = true;
+              pageBox.textContent = "Consultando itens e fontes…";
+              try {
+                const data = await query({...body, detail:{month:entry.competence,page,
+                  snapshot_digest:entry.snapshot.digest,window_digest:report.window_digest}});
+                if (!active() || detailToken !== detailGeneration) return;
+                const list = document.createElement("ul");
+                for (const item of data.rows) {
+                  const li = document.createElement("li");
+                  const text = document.createElement("p");
+                  text.textContent = "Chave " + item.access_key + " · " +
+                    (item.item_number == null ? (Reflect.get(reasons,item.reason) || item.reason) :
+                      "Item " + item.item_number + " · NCM " + item.ncm + " · CFOP " + item.cfop +
+                      " · " + Reflect.get(taxNames,item.tax) + " · " + (Reflect.get(reasons,item.reason) || item.reason) +
+                      " · apurado " + money(item.declared_cents) + " · devido revisado " + money(item.reviewed_due_cents) +
+                      " · diferença " + money(item.difference_cents) + " · " + status(item.status) +
+                      " · indício " + money(item.paid_candidate_cents));
+                  const ref = document.createElement("p");
+                  ref.textContent = "XML SHA-256 " + item.xml_sha256 + " · Situação " + item.status_reference +
+                    (item.assessment_reference ? " · Apuração " + item.assessment_reference : "");
+                  li.append(text,ref);
+                  for (const citation of [item.citation,item.base_citation]) {
+                    if (!citation) continue;
+                    const source = document.createElement("p");
+                    source.textContent = citation.act + " · " + citation.provision + " · " +
+                      citation.source_url + " · SHA-256 " + citation.source_sha256;
+                    li.append(source);
+                  }
+                  list.append(li);
+                }
+                const pageLabel = document.createElement("p");
+                pageLabel.textContent = "Página " + (data.page+1) + " de " + entry.pages;
+                pageBox.replaceChildren(pageLabel,list);
+                more.hidden = data.next_page == null;
+                more.onclick = () => { if (data.next_page != null) void load(data.next_page); };
+              } catch (error) {
+                if (active() && detailToken === detailGeneration) {
+                  pageBox.textContent = errorMessage(error) + " Consulte novamente a janela se as evidências mudaram.";
+                  more.hidden = true;
+                }
+              } finally { more.disabled = false; }
+            }
+            if (entry.pages) void load(0);
+            else pageBox.textContent = "Sem itens documentados nesta competência.";
+          });
+        } else actionCell.textContent = "—";
+        tr.append(actionCell); tbody.append(tr);
+      }
+      table.append(tbody); output.append(table,detailBox);
+    } catch (error) {
+      if (active()) feedback.textContent = errorMessage(error);
+    } finally { submit.disabled = end.disabled = false; }
   });
 }

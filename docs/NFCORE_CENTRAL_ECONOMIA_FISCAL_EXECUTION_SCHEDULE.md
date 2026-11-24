@@ -20,7 +20,9 @@ A [PR #592](https://github.com/faabio3131/nf-core-v001/pull/592) integrou as set
 
 **T13 ENTREGUE — 24/11/2026.** PR #603 integrada em 1d675ae9384c15d1b79012c4f07d3ef20ab501c4; CI pós-merge #45434601978 SUCCESS (44/44, 7.034 Python PASS, 1 SKIP de ambiente, 85 E2E), governança #45434601658 SUCCESS. Gemini aprovou HEAD 1d2e9defbb4353be836807672b2876d7be4bf514, zero P0/P1; refinamentos P2/P3 #604. [Handoff T13](NFCORE_T13_ACCOUNTING_REVIEW_HANDOFF.md). Issue #602: fechamento após reconciliação documental.
 
-**T14 em execução — #605.** Base main 1d675ae9384c15d1b79012c4f07d3ef20ab501c4, branch feat/nfcore-economy-t14-authorized-issuance. [Handoff T14](NFCORE_T14_AUTHORIZED_ISSUANCE_HANDOFF.md). T15 bloqueada até CI, revisão independente, autorização de merge e CI pós-merge. Sem promoção produtiva ou emissão real.
+**T14 ENTREGUE — 24/11/2026.** PR #606 integrada na main 9435cd0165b477c853d34354a02dafaf0afb2833, árvore idêntica ao HEAD ca8655b3b17ae86c8f639976cabbf695fc2afbb2 aprovado pelo Gemini (0 P0/P1/P2; 3 P3 na #607). CI pós-merge #45467529956 tentativa 2 SUCCESS (44/44, 7.052 Python PASS, 1 SKIP de ambiente, 86 E2E), governança #45467532344 SUCCESS. Primeira tentativa interrompida por HTTP 429 Maven Central na geração RFB V0073; resolvida por reexecução sem alteração de código. Issue #605 CLOSED. #604 P2-01/02 resolvidos, P3 preservados. [Handoff T14](NFCORE_T14_AUTHORIZED_ISSUANCE_HANDOFF.md).
+
+**T15 em execução — #608.** Base main certificada 9435cd0165b477c853d34354a02dafaf0afb2833, branch feat/nfcore-economy-t15-historical-audit. Escopo oficial confirmado na planilha mestre, Trilha 1, linha 20: processador em lote de XMLs e apurações dos últimos 60 meses, divergências item a item (monofásicos, ST, base PIS/Cofins), classificação de indícios de pagamentos indevidos. [Handoff T15](NFCORE_T15_HISTORICAL_AUDIT_HANDOFF.md). T16 bloqueada até CI, auditoria independente, merge autorizado e CI pós-merge. Sem crédito, prescrição/SELIC, restituição ou ativação real.
 
 **Curadoria fiscal — [#593](https://github.com/faabio3131/nf-core-v001/issues/593).** O acompanhamento documental de AP, PA, RR e SE segue até 07/12/2026. Por modalidade e competência, registrar vigência, vínculo com registro e depósito quando aplicáveis e parecer independente. Até lá, as quatro candidatas seguem excluídas da importação e do cálculo. Essa pendência permite avançar na construção da T10. A expansão do catálogo de operações da T06 segue sujeita a revisão fiscal de cada nova regra.
 
@@ -42,8 +44,8 @@ A folha T23–T33, a Trilha 2 H01–H06 e a reformulação Enterprise não integ
 | T11 | Simulação Presumido/Real e IVA | ENTREGUE — #598, CI pós-merge 45394058836 |
 | T12 | Comparador multi-regime | ENTREGUE — #600, CI pós-merge #45414580213 SUCCESS e Gemini aprovado |
 | T13 | Aprovação contábil auditável | ENTREGUE — #603, CI pós-merge #45434601978 SUCCESS e Gemini aprovado |
-| T14 | Aplicação autorizada emissão | EM EXECUÇÃO — #605, candidata a certificar |
-| T15 | Auditoria histórica 60 meses | Bloqueado |
+| T14 | Aplicação autorizada emissão | ENTREGUE — #606, CI pós-merge #45467529956 tentativa 2 SUCCESS e Gemini aprovado |
+| T15 | Auditoria histórica 60 meses | EM EXECUÇÃO — #608, candidata a certificar |
 | T16 | Créditos não aproveitados | Bloqueado |
 | T17 | Recuperação/prescrição/SELIC | Bloqueado |
 | T18 | Ledger partidas dobradas | Bloqueado |
