@@ -299,6 +299,8 @@ class HumanAdministrationService:
     ) -> None:
         if not self._role_within_actor(authority, role):
             raise HumanAuthorizationError("role would grant authority the actor does not hold")
+        if role is PortalRole.ACCOUNTANT and unit_ids is None:
+            raise HumanAuthorizationError("accountant requires explicitly assigned units")
         if not self._scope_within_actor(authority, unit_ids):
             raise HumanAuthorizationError("unit scope would exceed the actor scope")
         if unit_ids is not None and not unit_ids <= known_unit_ids:

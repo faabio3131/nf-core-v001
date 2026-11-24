@@ -16,6 +16,7 @@ from typing import Annotated, Any, Protocol
 from fastapi import APIRouter, Body, HTTPException, Request, status
 from fastapi.concurrency import run_in_threadpool
 
+from kordena_fiscal.application.accounting_review import ReviewDecision, ReviewTarget
 from kordena_fiscal.domain import ExecutionScope, FiscalEnvironment
 from kordena_fiscal.security.human_identity import (
     AuthenticatedHuman,
@@ -31,6 +32,7 @@ from kordena_fiscal.web.portal_api import (
     _reject_browser_authority,
 )
 
+from .accounting_review_api import AccountingReviewRunner
 from .contracts import AdviceRequest, AdviceResult, AdviceStatus, Capability, Evidence, stable_hash
 from .economy_contract import CAPABILITIES, EconomyAdvice, project_economy
 from .federal_benefits_api import FederalBenefitRunner, FederalBenefitSearchRunner
@@ -131,6 +133,7 @@ def create_cognitive_router(
     opportunity_runner: OpportunityRunner | None = None,
     simulation_runner: OpportunityRunner | None = None,
     annual_comparison_runner: OpportunityRunner | None = None,
+    accounting_review_runner: AccountingReviewRunner | None = None,
 ) -> APIRouter:
     router = APIRouter(prefix="/v1/portal/cognitive", tags=["cognitive-advisory"])
 
@@ -440,6 +443,33 @@ def create_cognitive_router(
         if annual_comparison_runner is None:
             raise _bad("ANNUAL_COMPARISON_UNAVAILABLE", "Comparison unavailable", 503)
         return await run_in_threadpool(annual_comparison_runner, auth, unit, environment, month)
+
+    @router.post("/economy/accounting-review")
+    async def accounting_review(
+        request: Request, body: Annotated[dict[str, Any], Body()],
+    ) -> dict[str, Any]:
+        _reject_browser_authority(body)
+        required = {"unit_id", "environment", "competence", "target"}
+        if not required <= set(body) or set(body) - required - {"command", "before_version"}:
+            raise _bad("INVALID_ACCOUNTING_REVIEW_REQUEST", "Invalid accounting review request")
+        auth, unit, environment, month = authorized_month(
+            request, {key: body[key] for key in ("unit_id", "environment", "competence")},
+        )
+        try:
+            target = ReviewTarget.model_validate(body["target"])
+            command = ReviewDecision.model_validate(body["command"]) if "command" in body else None
+            before = body.get("before_version")
+            if before is not None and (type(before) is not int or not 2 <= before <= 2147483647):
+                raise ValueError("invalid history cursor")
+            if command is not None and before is not None:
+                raise ValueError("cursor cannot accompany decision")
+        except ValueError:
+            raise _bad("INVALID_ACCOUNTING_REVIEW_REQUEST", "Invalid review data") from None
+        if accounting_review_runner is None:
+            raise _bad("ACCOUNTING_REVIEW_UNAVAILABLE", "Accounting review unavailable", 503)
+        return await run_in_threadpool(
+            accounting_review_runner, auth, unit, environment, month, target, command, before,
+        )
 
     @router.get("/economy/schema")
     async def economy_schema(request: Request) -> dict[str, Any]:

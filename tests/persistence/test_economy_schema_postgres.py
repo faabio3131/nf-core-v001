@@ -1164,6 +1164,7 @@ def _certify_t12(database, monkeypatch, tmp_path):
     assert len(result.json()["registered_regime_by_month"]) == 12
     assert set(result.json()["registered_regime_by_month"].values()) == {"simples_nacional"}
     assert result.json()["source_mode"] == "linked_t11_snapshots"
+    accountant, body, command = _t13_review_journey(database, scope)
     updated = facts.model_dump()
     updated["margin"]["quarters"][0]["real_accounting_result"] += 100000
     revised = AnnualComparison.model_validate(updated)
@@ -1181,6 +1182,10 @@ def _certify_t12(database, monkeypatch, tmp_path):
         result = compare(AnnualComparison.model_validate(row["content"]))
         assert result["scenarios"]["baseline"]["annual_tax_cents"]["simples_nacional"] == 1860012
         assert result["sensitivity_tax_delta_cents"]["margin"]["lucro_real"] == 96000
+    stale = _t13_http(accountant, body).json()
+    assert stale["status"] == "stale" and stale["latest"]["decision"] == "approved"
+    assert stale["subject_digest"] != command["subject_digest"]
+    assert _t13_http(accountant, body | {"command": command}).status_code == 409
     for other in (
         _scope(tenant="other", unit=bundle["unit"]),
         _scope(tenant=bundle["tenant"], unit="other"),
@@ -1210,6 +1215,10 @@ def _certify_t12(database, monkeypatch, tmp_path):
         import_quarter(store, issuer, 2, quarter)
     response = _t12_http(web, scope)
     assert response.status_code == 422
+    invalidated = _t13_http(accountant, body).json()
+    assert invalidated["status"] == "stale" and invalidated["subject"] is None
+    assert invalidated["can_decide"] is False
+    assert invalidated["latest"]["decision"] == "approved"
 
 
 def _t12_register_issuer(database, scope, *, changed_uf=False):
@@ -1267,11 +1276,12 @@ def _t12_register_issuer(database, scope, *, changed_uf=False):
     )
 
 
-def _t12_real_web(database, scope, *, role="owner", configured=True):
+def _t12_real_web(database, scope, *, role="owner", configured=True, step_up=None):
     from datetime import timedelta
 
     from fastapi.testclient import TestClient
 
+    from kordena_fiscal.cognitive.accounting_review_api import build_accounting_review_runner
     from kordena_fiscal.cognitive.annual_regime_comparison_api import (
         build_annual_comparison_runner,
     )
@@ -1322,6 +1332,9 @@ def _t12_real_web(database, scope, *, role="owner", configured=True):
     router = build_cognitive_router(
         identity, reader, {"NFCORE_COGNITIVE_ENABLED": "true"},
         annual_comparison_runner=runner if configured else None,
+        accounting_review_runner=build_accounting_review_runner(
+            reader, database.economy, database, step_up,
+        ) if configured else None,
     )
     web = TestClient(
         create_app(human_identity=identity, portal_executor=reader, cognitive_router=router),
@@ -1373,3 +1386,145 @@ def _t12_cli_replay(database, scope, fixture, monkeypatch, tmp_path):
     with pytest.raises(SystemExit) as caught:
         module.main()
     assert caught.value.code == 2
+
+def _t13_http(web, body, *, csrf=True):
+    from kordena_fiscal.web.human_auth import CSRF_COOKIE, CSRF_HEADER
+
+    return web.post(
+        "/v1/portal/cognitive/economy/accounting-review", json=body,
+        headers={CSRF_HEADER: web.cookies.get(CSRF_COOKIE)} if csrf else {},
+    )
+
+
+def _t13_review_journey(database, scope):
+    from fastapi.testclient import TestClient
+
+    from kordena_fiscal.application.accounting_review import TABLE
+
+    body = {"unit_id": scope.unit_id, "environment": scope.environment.value,
+            "competence": "2026-01-01", "target": {"kind": "annual_comparison"}}
+    owner = _t12_real_web(database, scope)
+    # Inject the canonical step-up verifier at its boundary. MFA issuance,
+    # expiry and replay are separately exercised by test_human_mfa.py.
+    fresh = False
+
+    def step_up(session_id, instant):
+        return fresh and bool(session_id) and instant.tzinfo is not None
+
+    accountant = _t12_real_web(database, scope, role="accountant", step_up=step_up)
+    anonymous = TestClient(accountant.app, base_url="https://nfcore.test")
+    assert _t13_http(anonymous, body, csrf=False).status_code == 401
+    assert _t13_http(accountant, body, csrf=False).status_code == 403
+    assert _t13_http(accountant, body | {"unit_id": "foreign"}).status_code == 403
+    assert _t13_http(accountant, body | {"tenant_id": "fake"}).status_code == 400
+    assert _t13_http(_t12_real_web(database, scope, role="operator"), body).status_code == 403
+    assert _t13_http(_t12_real_web(database, scope, configured=False), body).status_code == 503
+    pending = _t13_http(accountant, body)
+    assert pending.status_code == 200, pending.text
+    preview = pending.json()
+    assert preview["status"] == "pending" and preview["can_decide"]
+    assert preview["subject"]["annual_tax_cents"]["simples_nacional"] == 1860012
+    command = {"decision": "approved", "subject_digest": preview["subject_digest"],
+               "expected_version": 0, "request_id": "review-t13-1",
+               "opinion_reference": "synthetic-opinion-1", "professional_reference": "CRC-TEST",
+               "rationale": "Synthetic accounting assessment; no fiscal execution."}
+    assert not _t13_http(owner, body).json()["can_decide"]
+    assert _t13_http(owner, body | {"command": command}).status_code == 403
+    no_mfa = _t12_real_web(database, scope, role="accountant")
+    assert _t13_http(no_mfa, body | {"command": command}).status_code == 503
+    refused = _t13_http(accountant, body | {"command": command})
+    assert refused.status_code == 403 and refused.json()["detail"]["code"] == "STEP_UP_REQUIRED"
+    fresh = True
+    assert _t13_http(accountant, body | {"command": command | {
+        "actor_id": "forged",
+    }}).status_code == 400
+    assert _t13_http(accountant, body | {"command": command | {
+        "subject_digest": "0" * 64,
+    }}).status_code == 409
+    approved = _t13_http(accountant, body | {"command": command})
+    assert approved.status_code == 200, approved.text
+    event = approved.json()
+    assert event["status"] == "approved" and event["current_version"] == 1
+    assert event["latest"]["actor_id"] == "t12-accountant"
+    assert event["latest"]["previous_digest"] is None
+    assert not event["issuance_authorized"] and event["realized_cents"] is None
+    assert not event["professional_registration_verified"]
+    assert _t13_http(accountant, body | {"command": command}).json() == event
+    assert _t13_http(accountant, body | {"command": command | {
+        "request_id": "conflicting-review",
+    }}).status_code == 409
+    revoke = command | {"decision": "revoked", "request_id": "review-t13-2", "expected_version": 1}
+    revoked = _t13_http(accountant, body | {"command": revoke}).json()
+    assert revoked["status"] == "revoked" and revoked["current_version"] == 2
+    assert revoked["latest"]["previous_digest"] == event["latest"]["event_digest"]
+    reject = command | {"decision": "rejected", "request_id": "review-t13-3", "expected_version": 2}
+    rejected = _t13_http(accountant, body | {"command": reject}).json()
+    assert rejected["status"] == "rejected" and rejected["current_version"] == 3
+    again = command | {"request_id": "review-t13-4", "expected_version": 3}
+    final = _t13_http(accountant, body | {"command": again}).json()
+    assert final["status"] == "approved" and final["current_version"] == 4
+    assert [e["event_version"] for e in final["history"]] == [4, 3, 2, 1]
+    for other in (
+        _scope(tenant="foreign", unit=scope.unit_id),
+        _scope(tenant=scope.tenant_id, unit="foreign"),
+        _scope(tenant=scope.tenant_id, unit=scope.unit_id, host="foreign-host"),
+        _scope(tenant=scope.tenant_id, unit=scope.unit_id,
+               environment=FiscalEnvironment.PRODUCTION),
+    ):
+        with database.economy(other, read_only=True) as store:
+            assert store.record(TABLE, final["record_id"]) is None
+    # A previously used idempotency key cannot represent a different later event.
+    duplicate = command | {"decision": "revoked", "expected_version": 4}
+    assert _t13_http(accountant, body | {"command": duplicate}).status_code == 409
+    _t13_municipal_journey(database, scope, accountant)
+    return accountant, body, again
+
+def _t13_municipal_journey(database, scope, accountant):
+    from kordena_fiscal.application.opportunity_radar import ISS_FACTS, ISS_RULE
+
+    city = "3550308"
+    issuer = Cnpj("12345678000195")
+    month = date(2026, 11, 1)
+    policy = {"schema_version": ISS_RULE, "modality": "exemption", "review_status": "reviewed",
+              "review_reference": "synthetic-t13", "citation": {
+                  "act": "Ato sintetico T13", "provision": "Art. 1",
+                  "review_reference": "synthetic-t13", "published_on": "2020-01-01",
+                  "valid_from": "2020-01-01", "valid_until": None,
+                  "source_url": "https://example.gov.br/fixture", "source_sha256": "a" * 64,
+              }}
+    args = dict(record_id="t13-iss", tax_code="ISS", jurisdiction=city,
+                normative_reference="Ato sintetico T13", valid_until=None)
+    with database.economy(scope) as store:
+        digest = store.append_benefit(**args, version=1, valid_from=date(2020, 1, 1),
+                                      content=policy)
+        store.append_snapshot(
+            record_id="t13-iss-facts", version=1, competence=month, issuer=issuer,
+            content={"schema_version": ISS_FACTS, "review_status": "reviewed",
+                     "municipality_ibge_code": city, "assessments": {"t13-iss": {
+                         "criteria_verified": True, "rule_digest": digest,
+                         "iss_incidence_ibge_code": city, "modality": "exemption",
+                         "review_reference": "synthetic-issuer-review",
+                         "ordinary_iss_cents": 1000, "incentivized_iss_cents": 0,
+                     }}},
+        )
+    body = {"unit_id": scope.unit_id, "environment": scope.environment.value,
+            "competence": month.isoformat(),
+            "target": {"kind": "benefit", "source": "municipal", "benefit_id": "t13-iss"}}
+    preview = _t13_http(accountant, body)
+    assert preview.status_code == 200, preview.text
+    assert preview.json()["subject"]["estimated_cents"] == 1000
+    command = {"decision": "approved", "subject_digest": preview.json()["subject_digest"],
+               "expected_version": 0, "request_id": "municipal-review-1",
+               "opinion_reference": "synthetic-opinion", "professional_reference": "CRC-TEST",
+               "rationale": "Synthetic test only, no tax benefit granted."}
+    result = _t13_http(accountant, body | {"command": command})
+    assert result.status_code == 200, result.text
+    assert result.json()["status"] == "approved"
+    assert result.json()["issuance_authorized"] is False
+    with database.economy(scope) as store:
+        store.append_benefit(**args, version=2, valid_from=date(2026, 11, 15),
+                             content={"schema_version": ISS_RULE, "review_status": "revoked"})
+    stale = _t13_http(accountant, body).json()
+    assert stale["status"] == "stale" and stale["subject"] is None
+    assert stale["can_decide"] is False
+    assert _t13_http(accountant, body | {"command": command}).status_code == 422

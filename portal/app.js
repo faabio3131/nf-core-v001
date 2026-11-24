@@ -2136,7 +2136,7 @@ const termLabels = {
   versioned: "Versionado", audited: "Auditado", session_authority: "Autoridade da sessão", scoped: "Com escopo",
   homologation: "Homologação", production: "Produção", capability: "capacidade",
   owner: "Proprietário", admin: "Administrador", manager: "Gerente", operator: "Operador", viewer: "Leitor",
-  auditor: "Auditor", support: "Suporte", billing: "Cobrança", fiscal_operator: "Operador fiscal", platform_admin: "Administrador da plataforma",
+  auditor: "Auditor", accountant: "Contador", support: "Suporte", billing: "Cobrança", fiscal_operator: "Operador fiscal", platform_admin: "Administrador da plataforma",
   human_approval_required: "Aguardando aprovação humana", blocked_external: "Bloqueado por dependência externa",
   ready: "Pronto", approved: "Aprovado", pending: "Pendente", failed: "Falhou", active: "Ativo", disabled: "Desabilitado",
   registered: "Registrado", registrado: "Registrado", configured: "Configurado", not_configured: "Não configurado",
@@ -3023,7 +3023,7 @@ function appendEgressReview(article) {
 
 /** @returns {string[]} */
 function assignableUserRoles() {
-  if (bootstrapState?.role === "owner") return ["owner", "admin", "operator", "auditor", "billing"];
+  if (bootstrapState?.role === "owner") return ["owner", "admin", "operator", "auditor", "accountant", "billing"];
   if (bootstrapState?.role === "admin") return ["operator", "auditor", "billing"];
   return [];
 }
@@ -3756,6 +3756,7 @@ async function renderSurface(viewId) {
         appendOpportunityRadar(article);
         appendQuarterlySimulation(article);
         appendAnnualRegimeComparison(article);
+        appendAccountingReviewLookup(article);
       }
     } else {
       article.append(grid);
@@ -4959,17 +4960,24 @@ function appendOpportunityRadar(article) {
     month.disabled = true;
     result.textContent = "Consultando catálogos e atos revisados…";
     try {
+      const unit = selectedFiscalUnit;
+      const environment = selectedFiscalEnvironment;
+      const competence = month.value + "-01";
       const report = await api("/v1/portal/cognitive/economy/opportunity-radar", {
         method: "POST", headers: {"X-CSRF-Token": csrfToken()},
-        body: JSON.stringify({unit_id: selectedFiscalUnit, environment: selectedFiscalEnvironment,
-          competence: month.value + "-01"}),
+        body: JSON.stringify({unit_id: unit, environment, competence}),
       });
+      if (unit !== selectedFiscalUnit || environment !== selectedFiscalEnvironment) return;
       const list = document.createElement("ul");
       for (const item of report.opportunities) {
         const row = document.createElement("li");
         const amount = item.estimated_cents === null ? "sem estimativa" :
           (item.estimated_cents / 100).toLocaleString("pt-BR", {style: "currency", currency: "BRL"});
         row.textContent = (item.legal_act || item.state_normative_reference || item.program_code || item.benefit_id) + " — " + amount;
+        appendAccountingReview(row, {unit_id: unit, environment, competence,
+          target: {kind: "benefit", source: item.source, benefit_id: item.benefit_id}},
+        (/** @type {any} */ subject) => subject.benefit_digest === item.benefit_digest &&
+          subject.snapshot_digest === item.snapshot_digest && subject.estimated_cents === item.estimated_cents);
         list.append(row);
       }
       const names = {federal: "Federal", state: "Estadual", municipal: "Municipal", public_signals: "Anistias e editais"};
@@ -5089,6 +5097,8 @@ function appendAnnualRegimeComparison(article) {
       }
       if (report.status !== "compared") {
         result.textContent = "Falta base revisada comparável para o ano e a unidade.";
+        appendAccountingReview(result, {unit_id: unit, environment, competence: "2026-01-01",
+          target: {kind: "annual_comparison"}}, () => false);
         return;
       }
       const names = [
@@ -5152,6 +5162,9 @@ function appendAnnualRegimeComparison(article) {
       sensitivity.textContent = "Ranking nos cenários alternativos: " +
         (report.recommendation.sensitivity_stable ? "estável" : "variável — revisar margem e folha");
       result.replaceChildren(summary, registry, snapshot, sensitivity, list, breakdown);
+      appendAccountingReview(result, {unit_id: unit, environment, competence: "2026-01-01",
+        target: {kind: "annual_comparison"}},
+      (/** @type {any} */ subject) => subject.snapshot?.digest === report.snapshot.digest);
     } catch (error) {
       if (unit !== selectedFiscalUnit || environment !== selectedFiscalEnvironment) {
         result.textContent = "";
@@ -5159,5 +5172,212 @@ function appendAnnualRegimeComparison(article) {
       }
       result.textContent = error instanceof Error ? error.message : "Comparação indisponível.";
     } finally { action.disabled = false; }
+  });
+}
+
+/**
+ * T13 — decisions on the current server-resolved evidence, not fiscal execution.
+ * @param {HTMLElement} parent
+ * @param {{unit_id:string,environment:string,competence:string,target:Record<string,string>}} selection
+ * @param {((subject:any)=>boolean)|null} matchesDisplayed
+ */
+function appendAccountingReview(parent, selection, matchesDisplayed) {
+  const panel = document.createElement("section");
+  const title = document.createElement("h4");
+  title.textContent = "Aprovação contábil auditável";
+  const note = document.createElement("p");
+  note.textContent = "Parecer humano vinculado às evidências atuais. Não autoriza emissão, opção tributária ou pagamento.";
+  const load = document.createElement("button");
+  load.type = "button";
+  load.textContent = "Consultar decisão contábil";
+  const result = document.createElement("div");
+  result.setAttribute("role", "status");
+  panel.append(title, note, load, result);
+  parent.append(panel);
+  const active = () => panel.isConnected && selection.unit_id === selectedFiscalUnit &&
+    selection.environment === selectedFiscalEnvironment;
+  /** @param {Record<string,any>} body */
+  const request = (body) => api("/v1/portal/cognitive/economy/accounting-review", {
+    method: "POST", headers: {"X-CSRF-Token": csrfToken()}, body: JSON.stringify(body),
+  });
+  const labels = {pending: "Aguardando parecer", approved: "Aprovado pelo contador",
+    rejected: "Rejeitado", revoked: "Revogado", stale: "Evidência alterada — novo parecer necessário",
+    insufficient_basis: "Base insuficiente — nenhuma decisão válida"};
+  /** @param {any} report */
+  function render(report) {
+    if (!active()) return;
+    if (report.subject && matchesDisplayed && !matchesDisplayed(report.subject)) {
+      result.textContent = "As evidências mudaram. Consulte novamente o resultado fiscal antes de decidir.";
+      return;
+    }
+    const state = document.createElement("p");
+    state.textContent = Reflect.get(labels, report.status) || "Estado indisponível";
+    const evidence = document.createElement("p");
+    evidence.textContent = "Versão da decisão: " + report.current_version + " · Evidência SHA-256 " +
+      (report.subject_digest || "indisponível") + " · Resultado SHA-256 " +
+      (report.subject?.result_digest || "indisponível");
+    const history = document.createElement("ul");
+    /** @param {any[]} events */
+    function addEvents(events) {
+      for (const item of events) {
+        const row = document.createElement("li");
+        row.textContent = "v" + item.event_version + " · " + Reflect.get(labels, item.decision) +
+          " · " + new Date(item.recorded_at).toLocaleString("pt-BR") + " · Conta " + item.actor_id +
+          " · Referência profissional declarada " + item.professional_reference +
+          " · Parecer " + item.opinion_reference + " · " + item.rationale +
+          " · SHA-256 " + item.event_digest;
+        history.append(row);
+      }
+    }
+    addEvents(report.history);
+    result.replaceChildren(state, evidence, history);
+    if (report.subject?.kind === "benefit") {
+      const subject = report.subject;
+      const references = document.createElement("p");
+      references.textContent = "Benefício " + subject.benefit_id + " · versão " + subject.benefit_version +
+        " · SHA-256 " + subject.benefit_digest + " · Snapshot " + subject.snapshot_id +
+        " v" + subject.snapshot_version + " · SHA-256 " + subject.snapshot_digest;
+      const sources = document.createElement("ul");
+      const candidate = subject.candidate || {};
+      const citations = candidate.legal_citations || (candidate.citation ? [candidate.citation] : []);
+      for (const citation of citations) {
+        const item = document.createElement("li");
+        item.textContent = citation.act + " · " + citation.provision + " · " +
+          citation.source_url + " · SHA-256 " + citation.source_sha256;
+        sources.append(item);
+      }
+      const context = document.createElement("p");
+      context.textContent = "Revisão dos fatos: " + (candidate.fact_review_reference || "consulte o dossiê") +
+        " · Estimativa: " + (subject.estimated_cents === null ? "não quantificada" :
+          (subject.estimated_cents / 100).toLocaleString("pt-BR", {style: "currency", currency: "BRL"}));
+      result.prepend(references, context, sources);
+    }
+    if (report.next_before_version) {
+      const older = document.createElement("button");
+      older.type = "button";
+      older.textContent = "Carregar decisões anteriores";
+      let cursor = report.next_before_version;
+      older.addEventListener("click", async () => {
+        older.disabled = true;
+        try {
+          const page = await request({...selection, before_version: cursor});
+          if (!active()) return;
+          if (page.current_version !== report.current_version || page.subject_digest !== report.subject_digest) {
+            result.textContent = "O histórico mudou. Consulte novamente.";
+            return;
+          }
+          addEvents(page.history);
+          cursor = page.next_before_version;
+          if (!cursor) older.remove();
+        } catch (error) {
+          older.textContent = errorMessage(error);
+        } finally { older.disabled = false; }
+      });
+      result.append(older);
+    }
+    if (!report.can_decide || !matchesDisplayed) return;
+    const fields = document.createElement("fieldset");
+    const legend = document.createElement("legend");
+    legend.textContent = "Registrar parecer com confirmação MFA";
+    const decision = document.createElement("select");
+    decision.setAttribute("aria-label", "Decisão contábil");
+    const choices = report.status === "approved" ? [["revoked", "Revogar aprovação"]] :
+      [["approved", "Aprovar parecer"], ["rejected", "Rejeitar"]];
+    for (const [value, label] of choices) decision.add(new Option(label, value));
+    const professional = document.createElement("input");
+    professional.maxLength = 128;
+    professional.placeholder = "Ex.: CRC-SP/123456";
+    const opinion = document.createElement("input");
+    opinion.maxLength = 128;
+    opinion.placeholder = "Identificador do parecer";
+    const rationale = document.createElement("textarea");
+    rationale.maxLength = 2000;
+    rationale.minLength = 10;
+    /** @param {string} text @param {HTMLElement} input */
+    function labeled(text, input) {
+      const label = document.createElement("label");
+      label.textContent = text;
+      label.append(input);
+      return label;
+    }
+    const save = document.createElement("button");
+    save.type = "button";
+    save.textContent = "Registrar decisão";
+    const feedback = document.createElement("p");
+    feedback.setAttribute("role", "alert");
+    fields.append(legend, labeled("Decisão", decision),
+      labeled("Referência profissional (declarada, não verificada)", professional),
+      labeled("Referência do parecer", opinion), labeled("Fundamentação", rationale), save, feedback);
+    result.append(fields);
+    let requestId = crypto.randomUUID();
+    let lastCommand = "";
+    save.addEventListener("click", async () => {
+      if (!active()) return;
+      if (!professional.value.trim() || !opinion.value.trim() || rationale.value.trim().length < 10) {
+        feedback.textContent = "Informe a referência profissional, o parecer e a fundamentação (mínimo 10 caracteres).";
+        return;
+      }
+      const command = {decision: decision.value, subject_digest: report.subject_digest,
+        expected_version: report.current_version, opinion_reference: opinion.value.trim(),
+        professional_reference: professional.value.trim(), rationale: rationale.value.trim()};
+      const fingerprint = JSON.stringify(command);
+      if (lastCommand && lastCommand !== fingerprint) requestId = crypto.randomUUID();
+      lastCommand = fingerprint;
+      save.disabled = load.disabled = true;
+      try {
+        const updated = await request({...selection, command: {...command, request_id: requestId}});
+        if (active()) render(updated);
+      } catch (error) {
+        if (active()) feedback.textContent = errorMessage(error);
+      } finally { save.disabled = load.disabled = false; }
+    });
+  }
+  load.addEventListener("click", async () => {
+    if (!active()) return;
+    load.disabled = true;
+    result.textContent = "Consultando decisão e evidências atuais…";
+    try {
+      render(await request(selection));
+    } catch (error) {
+      if (active()) result.textContent = errorMessage(error);
+    } finally { load.disabled = false; }
+  });
+}
+
+/** @param {HTMLElement} article */
+function appendAccountingReviewLookup(article) {
+  const form = document.createElement("form");
+  const heading = document.createElement("h3");
+  heading.textContent = "Histórico de pareceres contábeis";
+  const competence = document.createElement("input");
+  competence.type = "month";
+  competence.required = true;
+  competence.setAttribute("aria-label", "Competência do parecer");
+  const source = document.createElement("select");
+  source.setAttribute("aria-label", "Origem do parecer");
+  for (const [value, label] of [["annual_comparison", "Comparador anual"], ["federal", "Federal"],
+    ["state", "Estadual"], ["municipal", "Municipal"]]) source.add(new Option(label, value));
+  const benefit = document.createElement("input");
+  benefit.setAttribute("aria-label", "Identificador do benefício");
+  benefit.maxLength = 128;
+  benefit.hidden = true;
+  source.addEventListener("change", () => {
+    benefit.hidden = source.value === "annual_comparison";
+    benefit.required = !benefit.hidden;
+  });
+  const button = document.createElement("button");
+  button.textContent = "Localizar histórico";
+  const result = document.createElement("div");
+  form.append(heading, competence, source, benefit, button, result);
+  article.append(form);
+  form.addEventListener("submit", event => {
+    event.preventDefault();
+    if (!selectedFiscalUnit) { result.textContent = "Selecione uma unidade."; return; }
+    result.replaceChildren();
+    /** @type {Record<string,string>} */
+    const target = source.value === "annual_comparison" ? {kind: "annual_comparison"} :
+      {kind: "benefit", source: source.value, benefit_id: benefit.value.trim()};
+    appendAccountingReview(result, {unit_id: selectedFiscalUnit, environment: selectedFiscalEnvironment,
+      competence: competence.value + "-01", target}, null);
   });
 }

@@ -87,11 +87,21 @@ def test_owner_can_create_declared_roles_without_granting_platform_authority() -
     assert all("password" not in row for row in rows)
 
 
+def test_owner_cannot_create_accountant_without_explicit_units() -> None:
+    owner = account("owner", PortalRole.OWNER)
+    with pytest.raises(HumanAuthorizationError):
+        service(owner).create_user(
+            authority=authority(owner), email="accountant@example.com",
+            target_role=PortalRole.ACCOUNTANT, target_unit_ids=None,
+            known_unit_ids=KNOWN_UNITS, idempotency_key="accountant-all", now=NOW,
+        )
+
+
 def test_admin_cannot_grant_permissions_or_unit_scope_it_does_not_hold() -> None:
     admin = account("admin", PortalRole.ADMIN, units=frozenset({"unit-a"}))
     users = service(admin)
 
-    for forbidden_role in (PortalRole.OWNER, PortalRole.ADMIN):
+    for forbidden_role in (PortalRole.OWNER, PortalRole.ADMIN, PortalRole.ACCOUNTANT):
         with pytest.raises(HumanAuthorizationError):
             users.create_user(
                 authority=authority(admin),
@@ -137,7 +147,9 @@ def test_admin_cannot_grant_permissions_or_unit_scope_it_does_not_hold() -> None
         assert allowed.account.role is allowed_role
 
 
-@pytest.mark.parametrize("role", [PortalRole.OPERATOR, PortalRole.AUDITOR, PortalRole.BILLING])
+@pytest.mark.parametrize("role", [
+    PortalRole.OPERATOR, PortalRole.AUDITOR, PortalRole.BILLING, PortalRole.ACCOUNTANT,
+])
 def test_non_manager_roles_fail_closed(role: PortalRole) -> None:
     actor = account(role.value, role)
     users = service(actor)

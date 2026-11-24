@@ -296,7 +296,9 @@ class HumanMfaService:
 
     # --- policy ---------------------------------------------------------------
     def required_for(self, account: HumanAccount) -> bool:
-        if account.platform_admin or account.role in {PortalRole.OWNER, PortalRole.ADMIN}:
+        if account.platform_admin or account.role in {
+            PortalRole.OWNER, PortalRole.ADMIN, PortalRole.ACCOUNTANT,
+        }:
             return True
         if account.permissions & _MANDATORY_PERMISSIONS:
             return True

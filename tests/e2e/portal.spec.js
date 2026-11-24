@@ -728,3 +728,71 @@ test("annual regime comparison presents reviewed scenarios and insufficient basi
   await expect(page.getByText(/Falha HTTP 503|UNAVAILABLE/)).toBeVisible();
   await expect(page.getByText(/Menor carga estimada/)).toHaveCount(0);
 });
+
+test("accounting review exposes immutable decision and requires step-up before approval", async ({page, context}) => {
+  await page.route("**/v1/portal/bootstrap", route => route.fulfill({json: {
+    tenant_id: "tenant-e2e", unit_ids: ["unit-a"], role: "accountant",
+    permissions: ["portal.read", "document.query", "audit.read"], supported_documents: ["nfse"],
+    projection: {authorized_units: [{unit_id: "unit-a", display_name: "Unidade A", environments: ["homologation"]}]},
+  }}));
+  await context.addCookies([{name: "nfcore_csrf", value: "csrf-e2e", domain: "127.0.0.1", path: "/"}]);
+  await page.route("**/v1/portal/surfaces/**", route => route.fulfill({json: {rows: []}}));
+  const subject = {kind: "benefit", benefit_id: "municipal-rule", source: "municipal",
+    benefit_version: 1, snapshot_id: "facts", snapshot_version: 1,
+    benefit_digest: "a".repeat(64), snapshot_digest: "b".repeat(64),
+    estimated_cents: 1000, result_digest: "c".repeat(64),
+    candidate: {citation: {act: "Ato sintetico", provision: "Art. 1",
+      source_url: "https://example.gov.br/test", source_sha256: "f".repeat(64)},
+      fact_review_reference: "reviewed-facts"}};
+  const selection = {unit_id: "unit-a", environment: "homologation", competence: "2026-11-01",
+    target: {kind: "benefit", source: "municipal", benefit_id: "municipal-rule"}};
+  await page.route("**/v1/portal/cognitive/economy/opportunity-radar", route => route.fulfill({json: {
+    opportunities: [{...subject, legal_act: "Ato sintetico", status: "potential"}],
+    coverage: {municipal: {status: "advisory"}}, public_signals: [],
+  }}));
+  let confirmed = false;
+  let requestId;
+  await page.route("**/v1/auth/mfa/step-up", route => {
+    confirmed = true;
+    return route.fulfill({json: {step_up_active: true}});
+  });
+  await page.route("**/v1/portal/cognitive/economy/accounting-review", route => {
+    const body = route.request().postDataJSON();
+    expect(route.request().headers()["x-csrf-token"]).toBe("csrf-e2e");
+    const base = {subject, subject_digest: "d".repeat(64), current_version: 0, status: "pending",
+      can_decide: true, latest: null, history: [], next_before_version: null, issuance_authorized: false};
+    if (!body.command) {
+      expect(body).toEqual(selection);
+      return route.fulfill({json: base});
+    }
+    const {command, ...rest} = body;
+    expect(rest).toEqual(selection);
+    expect(command).toEqual({decision: "approved", subject_digest: "d".repeat(64),
+      expected_version: 0, request_id: expect.any(String), opinion_reference: "parecer-teste",
+      professional_reference: "CRC-TEST", rationale: "Parecer sintético de revisão contábil."});
+    if (!confirmed) {
+      requestId = command.request_id;
+      return route.fulfill({status: 403, json: {detail: {code: "STEP_UP_REQUIRED"}}});
+    }
+    expect(command.request_id).toBe(requestId);
+    const event = {...command, event_version: 1, event_digest: "e".repeat(64),
+      actor_id: "accountant-test", recorded_at: "2026-11-24T12:00:00Z"};
+    return route.fulfill({json: {...base, current_version: 1, status: "approved", history: [event], latest: event}});
+  });
+  await page.goto("/");
+  await page.getByRole("button", {name: "Reforma Tributária", exact: true}).click();
+  await page.getByLabel("Competência", {exact: true}).fill("2026-11");
+  await page.getByRole("button", {name: "Consultar oportunidades da unidade"}).click();
+  await page.getByRole("button", {name: "Consultar decisão contábil", exact: true}).click();
+  await expect(page.getByText("Aguardando parecer", {exact: true})).toBeVisible();
+  await page.getByLabel("Referência profissional (declarada, não verificada)").fill("CRC-TEST");
+  await page.getByLabel("Referência do parecer").fill("parecer-teste");
+  await page.getByLabel("Fundamentação").fill("Parecer sintético de revisão contábil.");
+  await page.getByRole("button", {name: "Registrar decisão", exact: true}).click();
+  await expect(page.locator("#step-up-dialog")).toBeVisible();
+  await page.locator("#step-up-code").fill("123456");
+  await page.locator("#step-up-form").evaluate(form => form.requestSubmit());
+  await expect(page.getByText("Aprovado pelo contador", {exact: true})).toBeVisible();
+  await expect(page.getByText(/Conta accountant-test/)).toBeVisible();
+  await expect(page.getByText("Revogar aprovação", {exact: true})).toBeAttached();
+});
