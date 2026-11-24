@@ -10,11 +10,19 @@ import base64
 import hashlib
 import json
 from collections.abc import Callable
+from contextlib import ExitStack
 from dataclasses import asdict
 from datetime import datetime
 
 from lxml import etree
 
+from kordena_fiscal.application.authorized_issuance import (
+    MEDIA_TYPE as APPROVAL_MEDIA_TYPE,
+)
+from kordena_fiscal.application.authorized_issuance import (
+    current_issuance_claims,
+    proof_bytes,
+)
 from kordena_fiscal.archive import FiscalArchiveEntry, FiscalArchiveKind, RetentionPolicyMetadata
 from kordena_fiscal.documents import CanonicalFiscalDocument, to_canonical_json
 from kordena_fiscal.domain import ElectronicInvoiceModel, FiscalDocumentKind, FiscalValidationError
@@ -80,7 +88,7 @@ def prepare_nfe_sale(
     fingerprint = hashlib.sha256(snapshot).hexdigest()
     key = build_issuance_key(document)
     state_machine = FiscalStateMachine()
-    with factory() as uow:
+    with ExitStack() as approval_stack, factory() as uow:
         reservation = uow.idempotency.reserve(key, fingerprint, document.document_id)
         persisted_id = reservation.attempt.document_id
         if reservation.replay:
@@ -94,6 +102,9 @@ def prepare_nfe_sale(
                 commit_preparation(uow, persisted_id)
                 uow.commit()
             return persisted_id
+        claims = approval_stack.enter_context(
+            current_issuance_claims(factory, document.scope, json.loads(snapshot)["document"], now),
+        )
         if certificate is None:
             raise FiscalValidationError("certificate material is not configured")
         validate_a1_for_issuer(
@@ -171,6 +182,14 @@ def prepare_nfe_sale(
                     retention=RetentionPolicyMetadata("nfcore-nfe-preparation", 1),
                 )
             )
+        if claims:
+            uow.archive.append(FiscalArchiveEntry.build(
+                scope=document.scope, document_reference=document.document_id,
+                kind=FiscalArchiveKind.OTHER,
+                content=proof_bytes(claims, fingerprint, signed),
+                media_type=APPROVAL_MEDIA_TYPE, archived_at=now,
+                retention=RetentionPolicyMetadata("nfcore-nfe-preparation", 1),
+            ))
         if commit_preparation is not None:
             commit_preparation(uow, document.document_id)
         uow.commit()

@@ -18,7 +18,9 @@ A [PR #592](https://github.com/faabio3131/nf-core-v001/pull/592) integrou as set
 
 **T12 ENTREGUE — 24/11/2026.** PR #600 integrada em `db75317f26b8a56b23b2d6f0266befc629db2bd1`; CI pós-merge #45414580213 SUCCESS (44/44 etapas, 7.032 Python PASS, 1 SKIP de ambiente, 84 E2E), governança #45414580325 SUCCESS. Reauditoria Gemini no HEAD `adadaeadfd31151cbe1aa52356b7a0e130218e70`: todos os P1/P2 anteriores resolvidos, zero P0/P1/P2 novos; refinamentos P3 na #601. Issue #599 fechada. Tree integrada idêntica à revisada. Handoff T12 atualizado.
 
-**T13 em execução — #602.** Base main certificada db75317f. Branch `feat/nfcore-economy-t13-accounting-approval`; escopo, gates e continuidade em [NFCORE_T13_ACCOUNTING_REVIEW_HANDOFF.md](NFCORE_T13_ACCOUNTING_REVIEW_HANDOFF.md). T14 bloqueada. Aprovação contábil não é emissão, pagamento, compensação, opção fiscal ou homologação.
+**T13 ENTREGUE — 24/11/2026.** PR #603 integrada em 1d675ae9384c15d1b79012c4f07d3ef20ab501c4; CI pós-merge #45434601978 SUCCESS (44/44, 7.034 Python PASS, 1 SKIP de ambiente, 85 E2E), governança #45434601658 SUCCESS. Gemini aprovou HEAD 1d2e9defbb4353be836807672b2876d7be4bf514, zero P0/P1; refinamentos P2/P3 #604. [Handoff T13](NFCORE_T13_ACCOUNTING_REVIEW_HANDOFF.md). Issue #602: fechamento após reconciliação documental.
+
+**T14 em execução — #605.** Base main 1d675ae9384c15d1b79012c4f07d3ef20ab501c4, branch feat/nfcore-economy-t14-authorized-issuance. [Handoff T14](NFCORE_T14_AUTHORIZED_ISSUANCE_HANDOFF.md). T15 bloqueada até CI, revisão independente, autorização de merge e CI pós-merge. Sem promoção produtiva ou emissão real.
 
 **Curadoria fiscal — [#593](https://github.com/faabio3131/nf-core-v001/issues/593).** O acompanhamento documental de AP, PA, RR e SE segue até 07/12/2026. Por modalidade e competência, registrar vigência, vínculo com registro e depósito quando aplicáveis e parecer independente. Até lá, as quatro candidatas seguem excluídas da importação e do cálculo. Essa pendência permite avançar na construção da T10. A expansão do catálogo de operações da T06 segue sujeita a revisão fiscal de cada nova regra.
 
@@ -39,8 +41,8 @@ A folha T23–T33, a Trilha 2 H01–H06 e a reformulação Enterprise não integ
 | T10 | Benefícios municipais e radar unificado | ENTREGUE — #596 integrada, CI pós-merge 45381597371 |
 | T11 | Simulação Presumido/Real e IVA | ENTREGUE — #598, CI pós-merge 45394058836 |
 | T12 | Comparador multi-regime | ENTREGUE — #600, CI pós-merge #45414580213 SUCCESS e Gemini aprovado |
-| T13 | Aprovação contábil auditável | EM EXECUÇÃO — #602, candidata a certificar |
-| T14 | Aplicação autorizada emissão | Bloqueado; protótipo de engenharia preservado |
+| T13 | Aprovação contábil auditável | ENTREGUE — #603, CI pós-merge #45434601978 SUCCESS e Gemini aprovado |
+| T14 | Aplicação autorizada emissão | EM EXECUÇÃO — #605, candidata a certificar |
 | T15 | Auditoria histórica 60 meses | Bloqueado |
 | T16 | Créditos não aproveitados | Bloqueado |
 | T17 | Recuperação/prescrição/SELIC | Bloqueado |

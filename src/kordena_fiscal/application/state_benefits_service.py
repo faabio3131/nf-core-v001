@@ -9,6 +9,7 @@ from collections.abc import Callable
 from datetime import date
 from typing import Any
 
+from kordena_fiscal.application.issuance_terms import reviewed_issuance_terms
 from kordena_fiscal.application.state_review_gate import verify_internal_review_approval
 from kordena_fiscal.cognitive.economy_contract import LegalCitation
 from kordena_fiscal.domain import Cnpj, FiscalValidationError
@@ -87,6 +88,11 @@ def _evaluate(
             benefit_version=benefit["version"],
         )
         result = assess_state_rule(rule, facts, issuer, competence)
+        application = reviewed_issuance_terms(
+            benefit["content"], snapshot["content"], benefit["record_id"], benefit["version"],
+        )
+        if application is not None and result["status"] == "potential":
+            result["issuance_application"] = application[0]
         return {
             **result,
             "schema_version": ENGINE_VERSION,

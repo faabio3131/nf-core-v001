@@ -6,6 +6,7 @@ import base64
 import hashlib
 import json
 from collections.abc import Callable
+from contextlib import ExitStack
 from dataclasses import dataclass, replace
 from datetime import UTC, date, datetime
 from enum import StrEnum
@@ -1477,7 +1478,7 @@ class FiscalApplicationService:
             if ready:
                 gateway.validate_pre_dispatch(request)
 
-        with self._uow_factory() as uow:
+        with ExitStack() as approval_stack, self._uow_factory() as uow:
             uow.lifecycle.assert_scope(document_id, scope)
             attempts = uow.idempotency.attempts(request.idempotency_key)
             if not attempts:
@@ -1542,6 +1543,12 @@ class FiscalApplicationService:
                     media_type="application/vnd.nfcore.national-substitution-intent.v1+json",
                     archived_at=occurred_at,
                     retention=RetentionPolicyMetadata("nfcore-fiscal-archive", 1),
+                ))
+            if isinstance(request, AuthorizationRequest):
+                from kordena_fiscal.application.authorized_issuance import revalidate_dispatch
+
+                approval_stack.enter_context(revalidate_dispatch(
+                    self._uow_factory, uow, document_id, request, occurred_at,
                 ))
             transmitting = self._state_machine.transition(
                 current,

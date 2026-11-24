@@ -13,6 +13,7 @@ from typing import Any
 
 from fastapi import HTTPException
 
+from kordena_fiscal.application.authorized_issuance import IssuanceApprovalRequired
 from kordena_fiscal.application.nfe_preparation import prepare_nfe_sale
 from kordena_fiscal.application.service import FiscalApplicationService
 from kordena_fiscal.archive import FiscalArchiveEntry, FiscalArchiveKind, RetentionPolicyMetadata
@@ -221,6 +222,15 @@ def native_sale_operation(
                 "version": policy["version"],
                 "document_kind": kind.value,
                 "series": policy["series"],
+                "accounting_approval_required": [
+                    {
+                        "rule_id": rule["rule_id"],
+                        "benefit_id": rule["outcome"]["nfe_rates"]["icms_benefit"]["benefit_id"],
+                        "benefit_code": rule["outcome"]["nfe_rates"]["icms_benefit"]["code"],
+                    }
+                    for rule in policy["rules"]
+                    if "icms_benefit" in rule["outcome"]["nfe_rates"]
+                ],
                 "products": [
                     {
                         "product_id": pid,
@@ -398,6 +408,8 @@ def native_sale_operation(
             "environment": "homologation",
             "numbering_authority": "fiscal_sequence_durable",
         }
+    except IssuanceApprovalRequired as exc:
+        raise HTTPException(409, detail={"code": "ACCOUNTING_ISSUANCE_BLOCKED"}) from exc
     except HumanAuthorizationError as exc:
         raise HTTPException(403, detail={"code": "NATIVE_SALE_UNIT_FORBIDDEN"}) from exc
     except (

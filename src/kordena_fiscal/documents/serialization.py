@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+from dataclasses import asdict
 from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Any
@@ -120,6 +121,33 @@ def _tax_decision(decision: TaxDecision) -> dict[str, Any]:
             "pis_base": rates.pis_base,
             "cofins_base": rates.cofins_base,
         }
+        benefit = rates.icms_benefit
+        if benefit is not None:
+            payload["outcome"]["nfe_rates"]["icms_benefit"] = {
+                "code": benefit.code,
+                "benefit_id": benefit.benefit_id,
+                "reviewed_by": benefit.reviewed_by,
+                "approval_reference": benefit.approval_reference,
+                "deson_mode": benefit.deson_mode,
+                "deson_rate": (
+                    _decimal_text(benefit.deson_rate) if benefit.deson_rate is not None else None
+                ),
+                "deson_reason": benefit.deson_reason,
+                "deduct_deson": benefit.deduct_deson,
+                "deferral_rate": (
+                    _decimal_text(benefit.deferral_rate)
+                    if benefit.deferral_rate is not None else None
+                ),
+            }
+            # All rate parameters are included for this opt-in path; legacy
+            # decisions retain their original fingerprint byte-for-byte.
+            payload["outcome"]["reviewed_rate_parameters"] = json.loads(
+                json.dumps(asdict(rates), default=_decimal_text, sort_keys=True),
+            )
+            if rates.icms_reduction_rate is not None:
+                payload["outcome"]["nfe_rates"]["icms_reduction_rate"] = _decimal_text(
+                    rates.icms_reduction_rate
+                )
         if rates.fcp_rate is not None:
             payload["outcome"]["nfe_rates"]["fcp_rate"] = _decimal_text(rates.fcp_rate)
         if rates.ipi_rate is not None:

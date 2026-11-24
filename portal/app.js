@@ -371,7 +371,12 @@ function appendNativeSalePreparation(article) {
       configuration = {digest:String(data.policy_sha256), unit, model:kind, products:data.products};
       rows.forEach(r => r.element.remove()); rows = []; appendItem();
       addItem.disabled = false; submit.disabled = false;
-      result.textContent = "Configuração carregada. Confira destinatário, itens e pagamentos antes de preparar.";
+      /** @type {{benefit_code:string,benefit_id:string}[]} */
+      const approval = Array.isArray(data.accounting_approval_required) ? data.accounting_approval_required : [];
+      result.textContent = "Configuração carregada. Confira destinatário, itens e pagamentos antes de preparar." +
+        (approval.length ? " Benefícios ICMS sujeitos a parecer contábil vigente: " +
+          approval.map(item => item.benefit_code + " (" + item.benefit_id + ")").join(", ") +
+          ". A aprovação será revalidada na preparação e na emissão; sem parecer válido, a operação é bloqueada." : "");
     } catch (error) {
       configuration = null; addItem.disabled = true;
       result.textContent = (error instanceof Error ? error.message : "Configuração indisponível") + " Revise perfis, regras e provedor na unidade.";
@@ -5251,6 +5256,38 @@ function appendAccountingReview(parent, selection, matchesDisplayed) {
         " · Estimativa: " + (subject.estimated_cents === null ? "não quantificada" :
           (subject.estimated_cents / 100).toLocaleString("pt-BR", {style: "currency", currency: "BRL"}));
       result.prepend(references, context, sources);
+      const terms = candidate.issuance_application;
+      if (terms) {
+        const box = document.createElement("section");
+        const heading = document.createElement("h5");
+        heading.textContent = "Termos revisados para aplicação ICMS na NF-e";
+        const rule = terms.sale_rule, rates = rule.outcome.nfe_rates, benefit = rates.icms_benefit;
+        const fields = [
+          ["Código cBenef", benefit.code], ["Regra / versão", rule.rule_id + " / " + rule.version],
+          ["Norma", rule.source_normative], ["CST / CFOP", rule.outcome.icms_code + " / " + rule.outcome.cfop],
+          ["UF origem / destino", rule.selector.state_code + " / " + rule.selector.destination_state_code],
+          ["NCM / perfil do destinatário", rule.selector.ncm_prefix + " / " + rule.selector.recipient_profile],
+          ["Emissor / versão", terms.issuer_profile_id + " / " + terms.issuer_profile_version],
+          ["Produto / perfil / versão", terms.product_id + " / " + terms.product_profile_id + " / " + terms.product_profile_version],
+          ["Vigência", rule.effective_from + " até " + rule.effective_to],
+          ["ICMS / redução da base (%)", rates.icms_rate + " / " + (rates.icms_reduction_rate ?? "não aplicável")],
+          ["Desoneração / motivo / dedução", (benefit.deson_rate ?? "não aplicável") + " / " +
+            (benefit.deson_reason ?? "não aplicável") + " / " + (benefit.deduct_deson === true ? "sim" : "não")],
+          ["Diferimento (%)", benefit.deferral_rate ?? "não aplicável"],
+          ["PIS / Cofins (%) e base", rates.pis_rate + " / " + rates.cofins_rate + " · " + rates.pis_base + " / " + rates.cofins_base],
+          ["Referência de aplicação", terms.application_reference],
+        ];
+        const rows = document.createElement("ul");
+        for (const [label, value] of fields) {
+          const item = document.createElement("li");
+          item.textContent = label + ": " + value;
+          rows.append(item);
+        }
+        const limit = document.createElement("p");
+        limit.textContent = "Somente NF-e em homologação, operação interna e produto nacional, sem limite acumulado declarado. Parecer não substitui os gates da emissão fiscal.";
+        box.append(heading, rows, limit);
+        result.prepend(box);
+      }
     }
     if (report.next_before_version) {
       const older = document.createElement("button");

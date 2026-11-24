@@ -109,6 +109,10 @@ def _load_sale_policy(
             raise ValueError("rules required")
         for rule in policy["rules"]:
             parsed = parse_sale_rule(rule, document_kind=kind)
+            rates = parsed.outcome.nfe_rates
+            if rates is not None and rates.icms_benefit is not None:
+                if rates.icms_benefit.benefit_id is None:
+                    raise ValueError("canonical T14 benefit identifier required")
             origin = parsed.selector.state_code
             destination = parsed.selector.destination_state_code
             if require_reviewed_destination and parsed.outcome.cfop.startswith("6") and (
