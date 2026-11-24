@@ -63,6 +63,8 @@ def build_annual_comparison_runner(
                 report["registered_regime_by_month"] = registered
                 return report
         except (FiscalValidationError, ValidationError):
-            raise HTTPException(422, detail={"code": "ANNUAL_COMPARISON_EVIDENCE_INVALID"}) from None
+            raise HTTPException(
+                422, detail={"code": "ANNUAL_COMPARISON_EVIDENCE_INVALID"},
+            ) from None
 
     return run

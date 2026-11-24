@@ -210,7 +210,8 @@ def _year(scenario: Scenario) -> dict[str, Any]:
         "real_accounting_result_cents": accounting_result,
         "accounting_margin_bps": (1 if accounting_result >= 0 else -1) * rounded(
             Fraction(abs(accounting_result) * 10000, revenue)),
-        "qualifying_payroll_bps": rounded(Fraction(sum(m.payroll for m in months) * 10000, revenue)),
+        "qualifying_payroll_bps": rounded(
+            Fraction(sum(m.payroll for m in months) * 10000, revenue)),
         "annual_tax_cents": totals,
         "lowest_tax_burden": cheapest,
         "difference_to_lowest_cents": {regime: totals[regime] - minimum for regime in REGIMES},

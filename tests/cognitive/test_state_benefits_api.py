@@ -135,7 +135,9 @@ def test_state_api_fails_closed_when_unconfigured_or_unauthorized():
     ).status_code == 403
 
 
-@pytest.mark.parametrize("path", ["opportunity-radar", "quarterly-simulation", "annual-regime-comparison"])
+@pytest.mark.parametrize("path", [
+    "opportunity-radar", "quarterly-simulation", "annual-regime-comparison",
+])
 def test_economy_unit_csrf_and_month_authority(path):
     calls = []
 

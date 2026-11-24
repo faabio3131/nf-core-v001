@@ -1127,8 +1127,8 @@ def _certify_t12(database):
     from kordena_fiscal.application.annual_regime_comparison import PERIOD, import_annual
     from kordena_fiscal.tax.annual_regime_comparison import SCHEMA, AnnualComparison, compare
 
-    bundle = json.loads((Path(__file__).parents[1] / "tax/fixtures/t12_reviewed_annual_example.json")
-                         .read_text(encoding="utf-8"))
+    fixture = Path(__file__).parents[1] / "tax/fixtures/t12_reviewed_annual_example.json"
+    bundle = json.loads(fixture.read_text(encoding="utf-8"))
     scope = _scope(tenant=bundle["tenant"], unit=bundle["unit"])
     issuer = Cnpj(bundle["issuer_cnpj"])
     facts = AnnualComparison.model_validate(bundle["facts"])
