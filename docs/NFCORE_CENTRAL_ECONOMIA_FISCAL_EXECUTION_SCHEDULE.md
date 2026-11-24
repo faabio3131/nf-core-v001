@@ -1,22 +1,16 @@
 # Central de Economia Fiscal — execução T01–T22
 
-## CURRENT superior — reconciliação de engenharia T01–T09, 23/11/2026
+## Ponto de retomada em 24/11/2026
 
-Este bloco **sobrepõe somente os estados históricos de integração/CI** no quadro de T01–T09 abaixo; não altera escopo, amplia programa fiscal nem habilita T10. Trilha canônica candidata: merge multi-parent sem perda de commits, herdeira de `#592@c083595b`, `#468/#556@5cb2f4e9` e `#591@30b9d1e9`. Auditoria: [NFCORE_7PRS_ZERO_LOSS_CANDIDATE_20261123.md](audit/NFCORE_7PRS_ZERO_LOSS_CANDIDATE_20261123.md).
+A [PR #592](https://github.com/faabio3131/nf-core-v001/pull/592) integrou as sete PRs de T01–T09 na `main` pelo commit `f19122a8b158a3910271890a74a3f4f66a7d5852`. O responsável pelo projeto autorizou o merge após reavaliação técnica pelo agente. A árvore integrada é idêntica à da revisão `85ed8703`. [CI da revisão](https://github.com/faabio3131/nf-core-v001/actions/runs/45313958431) · [CI do merge](https://github.com/faabio3131/nf-core-v001/actions/runs/45316804802).
 
-| Etapa | CODE_IMPLEMENTED | CI do baseline `#592@c083595b` | Certificação / restrição | Main final |
-|---|---|---|---|---|
-| T01 | SIM, migração/RLS e store | SUCCESS #45273717614 | Certificação interna histórica registrada | PENDENTE DA PR ÚNICA |
-| T02 | SIM, contrato cognitivo | SUCCESS #45273717614 | Interna histórica; IA não é autoridade | PENDENTE DA PR ÚNICA |
-| T03 | SIM, sentinela | SUCCESS #45273717614 | Interna histórica; mudança normativa não concede direito | PENDENTE DA PR ÚNICA |
-| T04 | SIM, Simples/Fator R | SUCCESS #45273717614 | Interna histórica; não transmite PGDAS | PENDENTE DA PR ÚNICA |
-| T05 | SIM, diagnóstico | SUCCESS #45273717614 | Entrega interna histórica; integração na candidata | PENDENTE DA PR ÚNICA |
-| T06 | SIM, segregação | SUCCESS #45273717614 | Entrega interna histórica; integração na candidata | PENDENTE DA PR ÚNICA |
-| T07 | SIM, apuração consultiva | SUCCESS #45273717614 | Implementação testada; aceite legal/paridade PGDAS real **não inferidos** | PENDENTE DA PR ÚNICA |
-| T08 | SIM, catálogo federal consultivo | SUCCESS #45273717614 | Motor testado; abrangência e revisão legal externa/independente não inferidas | PENDENTE DA PR ÚNICA |
-| T09 | SIM, motor estadual de triagem 27 UFs | SUCCESS #45273717614 | `T09_ENGINEERING_CERTIFIED_INTERNAL` no baseline; 0/27 curadorias aplicáveis, 4 UFs em bloqueio explícito | PENDENTE DA PR ÚNICA |
+**Trabalho atual — [T10 / #594](https://github.com/faabio3131/nf-core-v001/issues/594).** Etapa de preparação. Implementação e aceite do radar municipal e unificado seguem em aberto. A T11 depende da entrega da T10.
 
-**Gate único para T10:** `BLOCKED_UNTIL_MAIN_INTEGRATED_AND_T01_T09_ACCEPTED`. A CI do baseline não certifica novo commit; após SUCCESS da candidata, registrar o run na PR. Nenhum trabalho T10–T22 iniciado. Estados dos benefícios SE/AP/PA/RR: bloqueados, não importáveis e fora de cálculo e emissão, sem pesquisa jurídica nesta execução.
+1. Partir da `main` integrada. Conferir o contrato da T02 em `src/kordena_fiscal/cognitive/economy_contract.py`, a leitura em `economy_reader.py` no mesmo diretório e os serviços `federal_benefits_service.py` e `state_benefits_service.py` em `src/kordena_fiscal/application/`. Identificar as anistias da T03 que podem entrar na varredura.
+2. Cobrir ISS por município (código IBGE), modalidade, competência e ato aplicável. Integrar as oportunidades elegíveis das três esferas e as anistias na consulta por empresa.
+3. Antes de entregar, testar isolamento por tenant e unidade, vigência, exclusão de candidatas bloqueadas e ordenação determinística por economia estimada. Registrar na #594 a PR, o SHA testado e a CI.
+
+**Curadoria fiscal — [#593](https://github.com/faabio3131/nf-core-v001/issues/593).** O acompanhamento documental de AP, PA, RR e SE segue até 07/12/2026. Por modalidade e competência, registrar vigência, vínculo com registro e depósito quando aplicáveis e parecer independente. Até lá, as quatro candidatas seguem excluídas da importação e do cálculo. Essa pendência permite avançar na construção da T10. A expansão do catálogo de operações da T06 segue sujeita a revisão fiscal de cada nova regra.
 
 Fonte: NFCore_Cronograma_Master_v3_Trilhas_Com_Trava.xlsx, Trilha 1, linhas 6–27.
 A folha T23–T33, a Trilha 2 H01–H06 e a reformulação Enterprise não integram esta rodada. A futura oitava tela é a Central de Economia Fiscal; T21 exige interface funcional antes do redesign. Nenhuma tarefa é ENTREGUE sem DoD, data e evidência.
@@ -27,12 +21,12 @@ A folha T23–T33, a Trilha 2 H01–H06 e a reformulação Enterprise não integ
 | T02 | Contrato Core Cognitivo | ENTREGUE — DoD interno aprovado em 20/11/2026; 308 PASS, 0 SKIP/FAIL; 24 casos focais (44718504072, d53a2c62) |
 | T03 | Sentinela Normativa e anistias/REFIS | ENTREGUE — DoD interno aprovado em 20/11/2026; 525 PASS, 0 SKIP/FAIL; 6 casos focais (44720120616, 6a0cf5be) |
 | T04 | Motor Simples e Fator R | ENTREGUE — DoD interno aprovado em 20/11/2026; 114 casos focais PASS, 831 PASS na regressão, 0 FAIL, 1 SKIP externo RTC (44722887552, 8dc7c482) |
-| T05 | Diagnóstico e otimizador Fator R | ENTREGUE INTERNAMENTE — CI integral SUCCESS (44735022830, bd3e8d01); integração pendente |
-| T06 | Classificador de receitas segregáveis | CERTIFICADO INTERNAMENTE no escopo implementado — CI integral SUCCESS (44747030794, 3c59ffb8); integração/revisão pendentes |
-| T07 | Apuração/PGDAS segregada | EM CERTIFICAÇÃO PARCIAL — apuração consultiva 2026; limites e caixa pendentes |
-| T08 | Catálogo federal | EM CONSTRUÇÃO — 8 programas indexados; certificação e revisão normativa pendentes |
-| T09 | Catálogo estadual 27 UFs | ENGENHARIA DE TRIAGEM IMPLEMENTADA; 27 candidatas draft; consolidação normativa integral INTERNA designada a IA especialista (pendente); parecer contador EXTERNO pendente; homologação real 0/27 |
-| T10 | Benefícios municipais e radar unificado | Bloqueado |
+| T05 | Diagnóstico e otimizador Fator R | Engenharia integrada na #592 |
+| T06 | Classificador de receitas segregáveis | Engenharia integrada no escopo revisado. Ampliação do catálogo por operação em aberto |
+| T07 | Apuração/PGDAS segregada | Apuração consultiva integrada na #592 |
+| T08 | Catálogo federal | Catálogo consultivo integrado na #592, com seleção temporal e autoridade da T07 para IBS/CBS |
+| T09 | Catálogo estadual 27 UFs | Motor de triagem integrado. Curadoria e revisão independente acompanhadas na #593 |
+| T10 | Benefícios municipais e radar unificado | EM EXECUÇÃO — preparação e critérios de entrega na #594 |
 | T11 | Simulação Presumido/Real e IVA | Bloqueado |
 | T12 | Comparador multi-regime | Bloqueado |
 | T13 | Aprovação contábil auditável | Bloqueado; referência anterior preservada |
@@ -45,6 +39,10 @@ A folha T23–T33, a Trilha 2 H01–H06 e a reformulação Enterprise não integ
 | T20 | Dossiê PDF/Excel/XML | Bloqueado |
 | T21 | Interface Central vinculada a APIs reais | Bloqueado |
 | T22 | E2E interno seis blocos | Bloqueado |
+
+## Histórico das entregas e decisões anteriores
+
+Os registros datados abaixo descrevem o estado em cada revisão. Para retomar a execução, consulte o ponto de retomada no início deste documento.
 
 ## T01 — incremento 20/11/2026
 Base 52568a3df46dc6cf608a22c7b9971266ce71cbef; migração MFA v24 está em PR #586 concorrente. Construído esquema aditivo de cinco tabelas com chaves e FKs completas por host/tenant/unidade/ambiente, RLS FORCE, políticas de SELECT/INSERT, índices, montantes em centavos e versões imutáveis. Acrescentado repositório PostgreSQL inicial para snapshots e teste de migração isolada, papel sem BYPASSRLS, isolamento, imutabilidade e rollback. A numeração/integração na autoridade canônica de migrations e configuração do papel runtime restrito ainda precisam ser feitas após conciliação da v24; não existe execução DDL de produção. Ledger é somente estrutura inicial, não motor de partidas dobradas T18. T01 permanece EM CONSTRUÇÃO, não certificado. T13/T14 preservados na branch feat/nfcore-fiscal-benefits-20261120 (1a839b3bf51f9920c79b3d1f4ef7e099e10c24c5), sem merge antecipado.
