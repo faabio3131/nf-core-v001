@@ -14,7 +14,11 @@ A [PR #592](https://github.com/faabio3131/nf-core-v001/pull/592) integrou as set
 
 **T10 entregue e integrada.** A #596 foi mergeada em 24/11/2026 na main `8f48f5af241e02315800055477b8aeca1450b5b7`. A [CI pós-merge](https://github.com/faabio3131/nf-core-v001/actions/runs/45381597371) aprovou 6.979 testes Python e 82 E2E, com um teste Python ignorado. Registro na #594.
 
-**T11 integrada.** PR #598 mergeada em `7e1d797a40c444db90a18eb66506d9fa5d025bf3`; CI pós-merge #45394058836 SUCCESS (6.991 Python PASS, 1 SKIP, 83 E2E PASS), governança #45394058967 SUCCESS. O escopo da planilha inclui IRPJ, adicional, CSLL, PIS/Cofins cumulativo e não cumulativo e IVA Dual. Consultar a [issue #597](https://github.com/faabio3131/nf-core-v001/issues/597) para PR, HEAD e CI, e o [handoff de engenharia](NFCORE_T11_SIMULATION_HANDOFF.md) para o recorte, reprodução e fontes de referência. T12 liberada e em implementação na [#599](https://github.com/faabio3131/nf-core-v001/issues/599), branch `feat/nfcore-economy-t12-comparison`.
+**T11 integrada.** PR #598 mergeada em `7e1d797a40c444db90a18eb66506d9fa5d025bf3`; CI pós-merge #45394058836 SUCCESS (6.991 Python PASS, 1 SKIP, 83 E2E PASS), governança #45394058967 SUCCESS. O escopo da planilha inclui IRPJ, adicional, CSLL, PIS/Cofins cumulativo e não cumulativo e IVA Dual. Consultar a [issue #597](https://github.com/faabio3131/nf-core-v001/issues/597) para PR, HEAD e CI, e o [handoff de engenharia](NFCORE_T11_SIMULATION_HANDOFF.md) para o recorte, reprodução e fontes de referência. T12 posteriormente integrada e certificada, conforme registro seguinte.
+
+**T12 ENTREGUE — 24/11/2026.** PR #600 integrada em `db75317f26b8a56b23b2d6f0266befc629db2bd1`; CI pós-merge #45414580213 SUCCESS (44/44 etapas, 7.032 Python PASS, 1 SKIP de ambiente, 84 E2E), governança #45414580325 SUCCESS. Reauditoria Gemini no HEAD `adadaeadfd31151cbe1aa52356b7a0e130218e70`: todos os P1/P2 anteriores resolvidos, zero P0/P1/P2 novos; refinamentos P3 na #601. Issue #599 fechada. Tree integrada idêntica à revisada. Handoff T12 atualizado.
+
+**T13 em execução — #602.** Base main certificada db75317f. Branch `feat/nfcore-economy-t13-accounting-approval`; escopo, gates e continuidade em [NFCORE_T13_ACCOUNTING_REVIEW_HANDOFF.md](NFCORE_T13_ACCOUNTING_REVIEW_HANDOFF.md). T14 bloqueada. Aprovação contábil não é emissão, pagamento, compensação, opção fiscal ou homologação.
 
 **Curadoria fiscal — [#593](https://github.com/faabio3131/nf-core-v001/issues/593).** O acompanhamento documental de AP, PA, RR e SE segue até 07/12/2026. Por modalidade e competência, registrar vigência, vínculo com registro e depósito quando aplicáveis e parecer independente. Até lá, as quatro candidatas seguem excluídas da importação e do cálculo. Essa pendência permite avançar na construção da T10. A expansão do catálogo de operações da T06 segue sujeita a revisão fiscal de cada nova regra.
 
@@ -34,8 +38,8 @@ A folha T23–T33, a Trilha 2 H01–H06 e a reformulação Enterprise não integ
 | T09 | Catálogo estadual 27 UFs | Motor de triagem integrado. Curadoria e revisão independente acompanhadas na #593 |
 | T10 | Benefícios municipais e radar unificado | ENTREGUE — #596 integrada, CI pós-merge 45381597371 |
 | T11 | Simulação Presumido/Real e IVA | ENTREGUE — #598, CI pós-merge 45394058836 |
-| T12 | Comparador multi-regime | EM IMPLEMENTAÇÃO — #599/#600; CI c3619a05 verde, Gemini REPROVADO (4 P1 internos); remediação candidata, nova CI e reauditoria obrigatórias |
-| T13 | Aprovação contábil auditável | Bloqueado; referência anterior preservada |
+| T12 | Comparador multi-regime | ENTREGUE — #600, CI pós-merge #45414580213 SUCCESS e Gemini aprovado |
+| T13 | Aprovação contábil auditável | EM EXECUÇÃO — #602, candidata a certificar |
 | T14 | Aplicação autorizada emissão | Bloqueado; protótipo de engenharia preservado |
 | T15 | Auditoria histórica 60 meses | Bloqueado |
 | T16 | Créditos não aproveitados | Bloqueado |

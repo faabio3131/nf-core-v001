@@ -1,3 +1,5 @@
+> **CURRENT — 24/11/2026 — T13 (Aprovação Contábil Auditável).** Main de partida certificada `db75317f26b8a56b23b2d6f0266befc629db2bd1`: T12 #600 MERGED, CI pós-merge #45414580213 SUCCESS (7032 Python PASS, 1 SKIP, 84 E2E), governança #45414580325 SUCCESS; #599 CLOSED, parecer Gemini no HEAD adadaead e P3 #601 preservados. T13 em execução na #602, branch `feat/nfcore-economy-t13-accounting-approval`. Handoff: `docs/NFCORE_T13_ACCOUNTING_REVIEW_HANDOFF.md`. T14 bloqueada até certificação, revisão independente e integração autorizada da T13. Não promover produção, emissão, pagamento, opção fiscal ou catálogo não revisado; #593 segue em paralelo. Os checkpoints T12/T11 abaixo são históricos.
+
 
 > **Checkpoint T12 — 24/11/2026 (remediação pós-revisão Gemini).** Issue #599 / PR #600 Draft; base main T11 7e1d797a; HEAD auditado c3619a05 CI 45399043217 SUCCESS (7010 PASS/1 SKIP/84 E2E), reprovado com 4 P1 internos. Candidato corrige causalidade/folha, proveniência T11/T01, runner/CLI/regressões e Portal; ver docs/NFCORE_T12_COMPARISON_HANDOFF.md. Nova CI e reauditoria independente obrigatórias; T13 bloqueada, sem merge/deploy; #593 paralelo.
 

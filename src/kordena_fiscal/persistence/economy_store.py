@@ -464,6 +464,22 @@ class EconomyStore:
                 raise FiscalValidationError("state candidate record integrity mismatch")
         return results, truncated
 
+    def accounting_review_request_version(self, record_id: str, request_id: str) -> int | None:
+        """Resolve an idempotency key within one immutable accounting review stream."""
+        self._require_active()
+        self._identity(record_id, 1)
+        self._text(request_id, "accounting review request")
+        rows = self._conn.execute(
+            """SELECT version FROM fm_economy_snapshots
+               WHERE host_namespace=%s AND tenant_id=%s AND unit_id=%s AND environment=%s
+                 AND record_id=%s AND content->>'schema_version'='nfcore.accounting-review/v1'
+                 AND content->>'request_id'=%s LIMIT 2""",
+            (*self._scope.identity_material, record_id, request_id),
+        ).fetchall()
+        if len(rows) > 1:
+            raise FiscalValidationError("duplicate accounting review request")
+        return int(rows[0][0]) if rows else None
+
     def lock_state_review_import(self, snapshot_id: str, benefit_id: str) -> None:
         """Serialize same-scope imports across PostgreSQL transactions."""
         self._require_active()

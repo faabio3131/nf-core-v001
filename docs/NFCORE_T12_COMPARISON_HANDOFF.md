@@ -39,3 +39,12 @@ CI integral 45399043217 SUCCESS: 7.010 Python PASS, 1 SKIP (test_p02_t02_fiscal_
 Executar testes locais e CI integral do novo HEAD. Revisar evidências de RLS, runner, CLI, Portal e correção contábil com Gemini. Somente depois de aprovação independente e autorização humana específica proceder com merge e CI pós-merge. A expansão territorial #593 e homologações reais continuam em trilha separada. A T12 ainda não está entregue.
 
 Gate local: 105 testes Python focais PASS (T12/T11/T07 e HTTP), 2 testes do arquivo PostgreSQL T01 PASS em cluster PostgreSQL 16 descartável (runner, CLI, RLS); Ruff e Mypy focais PASS; frontend lint/typecheck/build e 30 testes Node PASS. E2E focal PASS (1 teste, Chromium; configuração local estática isolada), CI remota do novo candidato ainda pendente. Não incluir alteração de template causada pela colisão de caixa de nomes no Windows nem ferramentas temporárias.
+
+## Fechamento definitivo — 24/11/2026
+
+- PR #600 MERGED por autorização expressa do diretor em 24/11/2026 11:28 BRT.
+- HEAD reauditado adadaeadfd31151cbe1aa52356b7a0e130218e70. Gemini aprovou a remediação de todos os P1/P2; zero novos P0/P1/P2. Parecer completo arquivado no Drive privado (10_PARECER_FINAL_REAUDITORIA_GEMINI_adadaea.txt), registrado na issue #599.
+- CI pré-merge #45409279433 SUCCESS (44/44 etapas, 7.032 Python PASS, 1 SKIP, 84 E2E).
+- Main db75317f26b8a56b23b2d6f0266befc629db2bd1, tree idêntica à reauditada. CI pós-merge #45414580213 SUCCESS (44/44 etapas, 7.032 Python PASS, 1 SKIP em tests/runtime/test_p02_t02_fiscal_surfaces.py:389 por exigência PostgreSQL na composição de produção, 84 E2E); governança #45414580325 SUCCESS.
+- #599 CLOSED; #601 preserva P3-01 (justificativas de zero) e P3-02 (asserção DAS misto), sem bloquear avanço. P3-03 reconciliado neste documento, AGENTS e cronograma.
+- T12 ENTREGUE no recorte consultivo certificado; T13 liberada na #602. Nenhuma autorização fiscal, homologação externa, deploy ou promoção produtiva.

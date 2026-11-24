@@ -69,6 +69,7 @@ class PortalRole(StrEnum):
     ADMIN = "admin"
     OPERATOR = "operator"
     AUDITOR = "auditor"
+    ACCOUNTANT = "accountant"
     BILLING = "billing"
 
 
@@ -107,6 +108,9 @@ _ROLE_PERMISSIONS: dict[PortalRole, frozenset[PortalPermission]] = {
             PortalPermission.BILLING_READ,
             PortalPermission.AUDIT_READ,
         }
+    ),
+    PortalRole.ACCOUNTANT: frozenset(
+        {PortalPermission.PORTAL_READ, PortalPermission.DOCUMENT_QUERY, PortalPermission.AUDIT_READ}
     ),
     PortalRole.BILLING: frozenset(
         {
