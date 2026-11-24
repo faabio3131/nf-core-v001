@@ -3755,6 +3755,7 @@ async function renderSurface(viewId) {
       if (bootstrapState?.permissions.includes("audit.read")) {
         appendOpportunityRadar(article);
         appendQuarterlySimulation(article);
+        appendAnnualRegimeComparison(article);
       }
     } else {
       article.append(grid);
@@ -5047,5 +5048,116 @@ function appendQuarterlySimulation(article) {
     } catch (error) {
       result.textContent = error instanceof Error ? error.message : "Simulação indisponível.";
     } finally { action.disabled = quarter.disabled = false; }
+  });
+}
+
+/** @param {HTMLElement} article */
+function appendAnnualRegimeComparison(article) {
+  const form = document.createElement("form");
+  const heading = document.createElement("h3");
+  heading.textContent = "Comparador anual de regimes tributários";
+  const note = document.createElement("p");
+  note.textContent = "Cenários revisados de 2026, não exercício encerrado: Simples Nacional, Lucro Presumido e Lucro Real trimestral. Valores consultivos, não apuração oficial nem opção fiscal.";
+  const limits = document.createElement("details");
+  const limitTitle = document.createElement("summary");
+  limitTitle.textContent = "Limites do comparador";
+  const limitText = document.createElement("p");
+  limitText.textContent = "Empresa estabelecida até janeiro de 2025; receitas ordinárias nacionais por competência e abaixo do sublimite ICMS/ISS. Não contempla majoração de presunção, compensação de prejuízos, outras receitas tributáveis, benefícios automáticos nem Lucro Real anual. Evidências vinculadas não equivalem a aprovação contábil.";
+  limits.append(limitTitle, limitText);
+  const action = document.createElement("button");
+  action.textContent = "Comparar regimes de 2026";
+  const result = document.createElement("div");
+  result.setAttribute("role", "status");
+  form.append(heading, note, limits, action, result);
+  article.append(form);
+  const money = new Intl.NumberFormat("pt-BR", {style: "currency", currency: "BRL"});
+  form.addEventListener("submit", async event => {
+    event.preventDefault();
+    if (!selectedFiscalUnit) { result.textContent = "Selecione uma unidade."; return; }
+    const unit = selectedFiscalUnit;
+    const environment = selectedFiscalEnvironment;
+    action.disabled = true;
+    result.textContent = "Consultando cenários anuais revisados…";
+    try {
+      const report = await api("/v1/portal/cognitive/economy/annual-regime-comparison", {
+        method: "POST", headers: {"X-CSRF-Token": csrfToken()},
+        body: JSON.stringify({unit_id: unit, environment, competence: "2026-01-01"}),
+      });
+      if (unit !== selectedFiscalUnit || environment !== selectedFiscalEnvironment) {
+        result.textContent = "";
+        return;
+      }
+      if (report.status !== "compared") {
+        result.textContent = "Falta base revisada comparável para o ano e a unidade.";
+        return;
+      }
+      const names = [
+        ["simples_nacional", "Simples Nacional"],
+        ["lucro_presumido", "Lucro Presumido"],
+        ["lucro_real", "Lucro Real trimestral"],
+      ];
+      const list = document.createElement("ul");
+      for (const [key, name] of names) {
+        const row = document.createElement("li");
+        row.textContent = name + " · Carga anual " +
+          money.format(report.scenarios.baseline.annual_tax_cents[key] / 100) +
+          " · Variação margem " + money.format(report.sensitivity_tax_delta_cents.margin[key] / 100) +
+          " · Variação folha " + money.format(report.sensitivity_tax_delta_cents.payroll[key] / 100);
+        list.append(row);
+      }
+      const candidate = names.filter(([key]) => report.recommendation.candidates.includes(key))
+        .map(([, name]) => name).join(" / ");
+      const baseline = report.scenarios.baseline;
+      const summary = document.createElement("p");
+      summary.textContent = (report.recommendation.status === "tie"
+        ? "Empate técnico — revisão contábil obrigatória: " : "Menor carga estimada: ") + candidate +
+        ". Sujeita a revisão contábil. Receita anual " + money.format(baseline.revenue_cents / 100) +
+        " · Folha " + money.format(baseline.payroll_cents / 100) +
+        " · Resultado contábil " + money.format(baseline.real_accounting_result_cents / 100) +
+        " · Margem " + (baseline.accounting_margin_bps / 100).toLocaleString("pt-BR") + "%" +
+        " · Folha qualificada " + (baseline.qualifying_payroll_bps / 100).toLocaleString("pt-BR") + "%";
+      const registry = document.createElement("p");
+      const registered = Object.entries(report.registered_regime_by_month);
+      registry.textContent = "Regime cadastrado por competência: " + registered.map(([period, regime]) =>
+        period.slice(0, 7) + " " + (names.find(([key]) => key === regime)?.[1] || regime)).join("; ");
+      const snapshot = document.createElement("p");
+      snapshot.textContent = "Snapshot revisado: versão " + report.snapshot.version +
+        " · SHA-256 " + report.snapshot.digest + " · " + report.source_mode;
+      const breakdown = document.createElement("details");
+      const breakdownTitle = document.createElement("summary");
+      breakdownTitle.textContent = "Tributos externos e RTC bruto por cenário";
+      breakdown.append(breakdownTitle);
+      const externalFields = [
+        ["icms", "ICMS"], ["iss", "ISS"], ["employer_contributions", "Patronal"],
+        ["other_mandatory_taxes", "Outros"], ["rtc_net_increment", "RTC líquido incremental"],
+      ];
+      for (const [scenarioKey, scenarioName] of [["baseline", "Base"], ["margin", "Margem"], ["payroll", "Folha"]]) {
+        const scenario = report.scenarios[scenarioKey];
+        const section = document.createElement("p");
+        section.textContent = scenarioName + " · Margem " +
+          (scenario.accounting_margin_bps / 100).toLocaleString("pt-BR") + "% · Folha qualificada " +
+          (scenario.qualifying_payroll_bps / 100).toLocaleString("pt-BR") + "% · RTC bruto IBS " +
+          money.format(scenario.months.reduce((/** @type {number} */ sum, /** @type {any} */ m) => sum + m.gross_rtc.ibs_balance, 0) / 100) +
+          " / CBS " + money.format(scenario.months.reduce((/** @type {number} */ sum, /** @type {any} */ m) => sum + m.gross_rtc.cbs_balance, 0) / 100) +
+          " (exibido separadamente, não somado novamente).";
+        breakdown.append(section);
+        for (const [key, name] of names) {
+          const line = document.createElement("p");
+          line.textContent = name + ": " + externalFields.map(([field, label]) =>
+            label + " " + money.format(scenario.months.reduce((/** @type {number} */ sum, /** @type {any} */ m) => sum + m.outside[key][field], 0) / 100)).join(" · ");
+          breakdown.append(line);
+        }
+      }
+      const sensitivity = document.createElement("p");
+      sensitivity.textContent = "Ranking nos cenários alternativos: " +
+        (report.recommendation.sensitivity_stable ? "estável" : "variável — revisar margem e folha");
+      result.replaceChildren(summary, registry, snapshot, sensitivity, list, breakdown);
+    } catch (error) {
+      if (unit !== selectedFiscalUnit || environment !== selectedFiscalEnvironment) {
+        result.textContent = "";
+        return;
+      }
+      result.textContent = error instanceof Error ? error.message : "Comparação indisponível.";
+    } finally { action.disabled = false; }
   });
 }

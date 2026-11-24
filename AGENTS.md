@@ -1,3 +1,8 @@
+
+> **Checkpoint T12 — 24/11/2026 (remediação pós-revisão Gemini).** Issue #599 / PR #600 Draft; base main T11 7e1d797a; HEAD auditado c3619a05 CI 45399043217 SUCCESS (7010 PASS/1 SKIP/84 E2E), reprovado com 4 P1 internos. Candidato corrige causalidade/folha, proveniência T11/T01, runner/CLI/regressões e Portal; ver docs/NFCORE_T12_COMPARISON_HANDOFF.md. Nova CI e reauditoria independente obrigatórias; T13 bloqueada, sem merge/deploy; #593 paralelo.
+
+> **CURRENT 24/11/2026 — T12.** T11 #598 integrada em main `7e1d797a40c444db90a18eb66506d9fa5d025bf3`, CI integral #45394058836 e governança #45394058967 SUCCESS (6.991 Python PASS, 1 SKIP, 83 E2E PASS). T12 em execução na [#599](https://github.com/faabio3131/nf-core-v001/issues/599), branch `feat/nfcore-economy-t12-comparison`; [cronograma](docs/NFCORE_CENTRAL_ECONOMIA_FISCAL_EXECUTION_SCHEDULE.md) e [handoff](docs/NFCORE_T12_COMPARISON_HANDOFF.md). Sem integração T12 até DoD, CI exata, revisão e autorização. T13 bloqueada. Curadoria #593 em paralelo.
+
 > **Retomada em 24/11/2026 — T11.** A T10 foi integrada pela #596 e certificada na main em `8f48f5af`. Consulte o [cronograma](docs/NFCORE_CENTRAL_ECONOMIA_FISCAL_EXECUTION_SCHEDULE.md), a [issue #597](https://github.com/faabio3131/nf-core-v001/issues/597) e o [handoff T11](docs/NFCORE_T11_SIMULATION_HANDOFF.md). Confirme o HEAD e a CI antes da integração. A expansão territorial #593 prossegue em paralelo.
 
 

@@ -28,7 +28,7 @@ def _scope(tenant="tenant-a", unit="unit-a", host="fm-nfcore",
     return ExecutionScope(tenant, unit, environment, "test", host)
 
 
-def test_real_postgres_economy_schema_scope_and_immutability(monkeypatch):
+def test_real_postgres_economy_schema_scope_and_immutability(monkeypatch, tmp_path):
     dsn = os.environ.get("NFCORE_TEST_POSTGRES_DSN")
     if not dsn:
         pytest.skip("real PostgreSQL required for T01")
@@ -79,6 +79,7 @@ def test_real_postgres_economy_schema_scope_and_immutability(monkeypatch):
             _certify_t09_state(database, monkeypatch)
             _certify_t10_municipal(database)
             _certify_t11(database)
+            _certify_t12(database, monkeypatch, tmp_path)
             admin.execute(sql.SQL("SET search_path TO {}").format(sql.Identifier(schema_name)))
             # Explicitly add DML permissions only in this sandbox to prove
             # that the RLS policies, not solely GRANTs, deny mutation.
@@ -1117,3 +1118,258 @@ def _certify_t11(database):
     for other in (_scope(tenant="other"), _scope(tenant=bundle["tenant"], unit="other")):
         with database.economy(other, read_only=True) as store:
             assert store.unique_monthly_snapshot(issuer.value, month, SCHEMA) is None
+
+
+def _certify_t12(database, monkeypatch, tmp_path):
+    import json
+    from pathlib import Path
+
+    from kordena_fiscal.application.annual_regime_comparison import PERIOD, import_annual
+    from kordena_fiscal.application.quarterly_simulation import import_quarter
+    from kordena_fiscal.tax.annual_regime_comparison import SCHEMA, AnnualComparison, compare
+
+    fixture = Path(__file__).parents[1] / "tax/fixtures/t12_reviewed_annual_example.json"
+    bundle = json.loads(fixture.read_text(encoding="utf-8"))
+    scope = _scope(tenant=bundle["tenant"], unit=bundle["unit"])
+    issuer = Cnpj(bundle["issuer_cnpj"])
+    facts = AnnualComparison.model_validate(bundle["facts"])
+    _t12_register_issuer(database, scope)
+    web = _t12_real_web(database, scope)
+    assert _t12_http(web, scope, competence="2026-02-01").json()["detail"]["code"] == (
+        "UNSUPPORTED_COMPARISON_YEAR"
+    )
+    assert _t12_http(web, scope).json()["status"] == "insufficient_basis"
+    assert _t12_http(_t12_real_web(database, scope, configured=False), scope).status_code == 503
+    assert _t12_http(_t12_real_web(database, scope, role="operator"), scope).status_code == 403
+    with database.economy(scope) as store:
+        with pytest.raises(FiscalValidationError, match="scoped T11"):
+            import_annual(store, issuer, 1, facts)
+        for link, quarter in zip(
+            facts.baseline_quarter_links, facts.baseline.quarters, strict=True,
+        ):
+            assert import_quarter(store, issuer, 1, quarter) == link.digest
+        wrong = facts.model_dump()
+        wrong["baseline_quarter_links"][0]["digest"] = "0" * 64
+        with pytest.raises(FiscalValidationError, match="scoped T11"):
+            import_annual(store, issuer, 1, AnnualComparison.model_validate(wrong))
+        digest = import_annual(store, issuer, 1, facts)
+        assert import_annual(store, issuer, 1, facts) == digest
+        with pytest.raises(FiscalValidationError):
+            import_annual(store, issuer, 3, facts)
+    with monkeypatch.context() as patch:
+        _t12_cli_replay(database, scope, fixture, patch, tmp_path)
+    result = _t12_http(web, scope)
+    assert result.status_code == 200
+    assert result.json()["snapshot"]["digest"] == digest
+    assert len(result.json()["registered_regime_by_month"]) == 12
+    assert set(result.json()["registered_regime_by_month"].values()) == {"simples_nacional"}
+    assert result.json()["source_mode"] == "linked_t11_snapshots"
+    updated = facts.model_dump()
+    updated["margin"]["quarters"][0]["real_accounting_result"] += 100000
+    revised = AnnualComparison.model_validate(updated)
+    with database.economy(scope) as store:
+        with pytest.raises(FiscalValidationError):
+            import_annual(store, issuer, 1, revised)
+        latest_digest = import_annual(store, issuer, 2, revised)
+        assert latest_digest != digest
+    with database.economy(scope, read_only=True) as store:
+        row = store.unique_monthly_snapshot(issuer.value, PERIOD, SCHEMA)
+        assert row["version"] == 2
+        assert row["digest"] == latest_digest
+        original = store.record("fm_economy_snapshots", row["record_id"], 1)
+        assert original["digest"] == digest
+        result = compare(AnnualComparison.model_validate(row["content"]))
+        assert result["scenarios"]["baseline"]["annual_tax_cents"]["simples_nacional"] == 1860012
+        assert result["sensitivity_tax_delta_cents"]["margin"]["lucro_real"] == 96000
+    for other in (
+        _scope(tenant="other", unit=bundle["unit"]),
+        _scope(tenant=bundle["tenant"], unit="other"),
+        _scope(tenant=bundle["tenant"], unit=bundle["unit"], host="other-host"),
+        _scope(tenant=bundle["tenant"], unit=bundle["unit"],
+               environment=FiscalEnvironment.PRODUCTION),
+    ):
+        with database.economy(other, read_only=True) as store:
+            assert store.unique_monthly_snapshot(issuer.value, PERIOD, SCHEMA) is None
+        with database.economy(other) as store:
+            with pytest.raises(FiscalValidationError, match="scoped T11"):
+                import_annual(store, issuer, 1, facts)
+
+    # Use a second canonical issuer profile with a midyear UF change.
+    changed = _scope(tenant=scope.tenant_id, unit="unit-t12-changed")
+    _t12_register_issuer(database, changed, changed_uf=True)
+    with database.economy(changed) as store:
+        for quarter in facts.baseline.quarters:
+            import_quarter(store, issuer, 1, quarter)
+        import_annual(store, issuer, 1, facts)
+    response = _t12_http(_t12_real_web(database, changed), changed)
+    assert response.status_code == 422
+    assert response.json()["detail"]["code"] == "ANNUAL_COMPARISON_EVIDENCE_INVALID"
+    # A newer T11 review invalidates a stale T12 comparison at read time.
+    with database.economy(scope) as store:
+        quarter = facts.baseline.quarters[0].model_copy(update={"review_reference": "superseded"})
+        import_quarter(store, issuer, 2, quarter)
+    response = _t12_http(web, scope)
+    assert response.status_code == 422
+
+
+def _t12_register_issuer(database, scope, *, changed_uf=False):
+    from datetime import UTC, datetime
+
+    from kordena_fiscal.application.federal_regime_store import declare_federal_regime
+    from kordena_fiscal.control_plane import FiscalOrganization, FiscalUnitRegistration
+    from kordena_fiscal.domain import (
+        BrazilianJurisdiction,
+        CnaeCode,
+        FiscalAddress,
+        FiscalProfile,
+        StateRegistration,
+        TaxRegimeCode,
+    )
+    from kordena_fiscal.tax.regimes import FederalIncomeTaxRegime
+
+    effective = datetime(2025, 1, 1, tzinfo=UTC)
+    transition = datetime(2026, 7, 1, 3, tzinfo=UTC)
+    with database() as uow:
+        if uow.control_plane.get_organization(scope.tenant_id) is None:
+            uow.control_plane.add_organization(FiscalOrganization(
+                tenant_id=scope.tenant_id, legal_name="T12 synthetic organization",
+            ))
+        uow.control_plane.add_unit(FiscalUnitRegistration(
+            tenant_id=scope.tenant_id, unit_id=scope.unit_id,
+            display_name="T12 synthetic unit",
+            enabled_environments=frozenset({scope.environment}),
+        ))
+        for uf, ibge, start, end in (
+            [("SP", "3550308", effective, transition),
+             ("RJ", "3304557", transition, None)] if changed_uf
+            else [("SP", "3550308", effective, None)]
+        ):
+            uow.control_plane.add_profile(FiscalProfile(
+                profile_id=f"t12-{scope.unit_id}-{uf}", scope=scope,
+                cnpj=Cnpj("12345678000195"), legal_name="T12 synthetic issuer",
+                tax_regime=TaxRegimeCode.SIMPLES_NACIONAL,
+                primary_cnae=CnaeCode("6201501"),
+                state_registration=StateRegistration(uf, "123456789"),
+                address=FiscalAddress(
+                    street="Rua Sintetica", number="1", district="Centro",
+                    municipality_name="Sao Paulo" if uf == "SP" else "Rio de Janeiro",
+                    jurisdiction=BrazilianJurisdiction(uf, ibge), postal_code="01001000",
+                ),
+                effective_from=start, effective_to=end,
+            ))
+        uow.commit()
+    declare_federal_regime(
+        database, scope=scope, crt=TaxRegimeCode.SIMPLES_NACIONAL,
+        issuer_cnpj=Cnpj("12345678000195"),
+        federal_income_tax_regime=FederalIncomeTaxRegime.SIMPLES_NACIONAL,
+        effective_from=effective, source_reference="synthetic-test-regime",
+        actor="t12-test", idempotency_key="t12-test-regime", occurred_at=effective,
+    )
+
+
+def _t12_real_web(database, scope, *, role="owner", configured=True):
+    from datetime import timedelta
+
+    from fastapi.testclient import TestClient
+
+    from kordena_fiscal.cognitive.annual_regime_comparison_api import (
+        build_annual_comparison_runner,
+    )
+    from kordena_fiscal.cognitive.composition import build_cognitive_router
+    from kordena_fiscal.security.human_identity import (
+        HumanAccount,
+        HumanIdentityService,
+        InMemoryHumanAccountRepository,
+        InMemoryWebSessionRepository,
+        PortalRole,
+        ScryptPasswordHasher,
+    )
+    from kordena_fiscal.web import create_app
+
+    class Reader:
+        def snapshot(self, *, authority):
+            return {}
+
+        def execute(self, **kwargs):
+            raise AssertionError("T12 must never execute an operation")
+
+        def surface(self, *, surface_id, authority, unit_id=None, environment=None, **kwargs):
+            if surface_id != "units":
+                return ()
+            with database() as uow:
+                unit = uow.control_plane.get_unit(authority.tenant_id, unit_id)
+            if unit is None:
+                return ()
+            return ({"unit_id": unit.unit_id, "tenant_id": unit.tenant_id,
+                     "enabled_environments": [e.value for e in unit.enabled_environments]},)
+
+    reader = Reader()
+    password = "synthetic-t12-test-password"
+    hasher = ScryptPasswordHasher()
+    account = HumanAccount(
+        account_id=f"t12-{role}", email=f"{role}@example.com",
+        password_hash=hasher.hash(password), tenant_id=scope.tenant_id,
+        role=PortalRole(role), unit_ids=frozenset({scope.unit_id}),
+    )
+    identity = HumanIdentityService(
+        accounts=InMemoryHumanAccountRepository((account,)),
+        sessions=InMemoryWebSessionRepository(), password_hasher=hasher,
+        session_ttl=timedelta(hours=8),
+    )
+    runner = build_annual_comparison_runner(
+        reader, lambda current: database.economy(current, read_only=True), database,
+    )
+    router = build_cognitive_router(
+        identity, reader, {"NFCORE_COGNITIVE_ENABLED": "true"},
+        annual_comparison_runner=runner if configured else None,
+    )
+    web = TestClient(
+        create_app(human_identity=identity, portal_executor=reader, cognitive_router=router),
+        base_url="https://nfcore.test",
+    )
+    assert web.post("/v1/auth/login", json={"email": account.email, "password": password}
+                    ).status_code == 200
+    return web
+
+
+def _t12_http(web, scope, **changes):
+    from kordena_fiscal.web.human_auth import CSRF_COOKIE, CSRF_HEADER
+
+    body = {"unit_id": scope.unit_id, "environment": scope.environment.value,
+            "competence": "2026-01-01"}
+    return web.post("/v1/portal/cognitive/economy/annual-regime-comparison",
+                    json=body | changes, headers={CSRF_HEADER: web.cookies.get(CSRF_COOKIE)})
+
+
+def _t12_cli_replay(database, scope, fixture, monkeypatch, tmp_path):
+    import importlib.util
+    import sys
+    from pathlib import Path
+
+    path = Path(__file__).parents[2] / "scripts/nfcore_annual_regime_comparison_import.py"
+    spec = importlib.util.spec_from_file_location("t12_cli", path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    monkeypatch.setenv("NFCORE_ENVIRONMENT", "test")
+    monkeypatch.setenv("DATABASE_URL", database._dsn)
+    monkeypatch.setattr(sys, "argv", [str(path), str(fixture), "--tenant", scope.tenant_id,
+                                     "--unit", scope.unit_id])
+    module.main()  # separate real PostgreSQL pool; exact version-1 replay
+    monkeypatch.setenv("NFCORE_ENVIRONMENT", "production")
+    with pytest.raises(SystemExit) as caught:
+        module.main()
+    assert caught.value.code == 2
+    monkeypatch.setenv("NFCORE_ENVIRONMENT", "test")
+    monkeypatch.setattr(sys, "argv", [str(path), str(fixture), "--tenant", "foreign",
+                                     "--unit", scope.unit_id])
+    with pytest.raises(SystemExit) as caught:
+        module.main()
+    assert caught.value.code == 2
+    oversized = tmp_path / "oversized.json"
+    oversized.write_bytes(b" " * 1048577)
+    monkeypatch.setattr(sys, "argv", [str(path), str(oversized), "--tenant", scope.tenant_id,
+                                     "--unit", scope.unit_id])
+    with pytest.raises(SystemExit) as caught:
+        module.main()
+    assert caught.value.code == 2

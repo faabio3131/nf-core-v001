@@ -66,6 +66,7 @@ def build_cognitive_routers(
     state_search_runner: StateSearchRunner | None = None,
     opportunity_runner: OpportunityRunner | None = None,
     simulation_runner: OpportunityRunner | None = None,
+    annual_comparison_runner: OpportunityRunner | None = None,
 ) -> list[APIRouter]:
     """Portal advisory route (opt-in) plus the Command read-only metrics route (always mounted).
 
@@ -149,6 +150,7 @@ def build_cognitive_routers(
             state_search_runner=state_search_runner,
             opportunity_runner=opportunity_runner,
             simulation_runner=simulation_runner,
+            annual_comparison_runner=annual_comparison_runner,
         ),
         create_command_metrics_router(aggregates, environ, ai_enabled=model is not None),
     ]
@@ -173,6 +175,7 @@ def build_cognitive_router(
     state_search_runner: StateSearchRunner | None = None,
     opportunity_runner: OpportunityRunner | None = None,
     simulation_runner: OpportunityRunner | None = None,
+    annual_comparison_runner: OpportunityRunner | None = None,
 ) -> APIRouter | None:
     """One router mounting the Portal advisory route and the Command metrics route."""
     routers = build_cognitive_routers(
@@ -191,6 +194,7 @@ def build_cognitive_router(
         state_search_runner=state_search_runner,
         opportunity_runner=opportunity_runner,
         simulation_runner=simulation_runner,
+        annual_comparison_runner=annual_comparison_runner,
     )
     if not routers:
         return None

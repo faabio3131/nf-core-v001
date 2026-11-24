@@ -135,7 +135,9 @@ def test_state_api_fails_closed_when_unconfigured_or_unauthorized():
     ).status_code == 403
 
 
-@pytest.mark.parametrize("path", ["opportunity-radar", "quarterly-simulation"])
+@pytest.mark.parametrize("path", [
+    "opportunity-radar", "quarterly-simulation", "annual-regime-comparison",
+])
 def test_economy_unit_csrf_and_month_authority(path):
     calls = []
 
@@ -146,7 +148,8 @@ def test_economy_unit_csrf_and_month_authority(path):
     ident = identity(PortalRole.OWNER)
     executor = Executor()
     router = build_cognitive_router(ident, executor, {"NFCORE_COGNITIVE_ENABLED": "true"},
-                                    opportunity_runner=scan, simulation_runner=scan)
+                                    opportunity_runner=scan, simulation_runner=scan,
+                                    annual_comparison_runner=scan)
     web = TestClient(create_app(human_identity=ident, portal_executor=executor,
                                 cognitive_router=router), base_url="https://nfcore.test")
     url = PREFIX + "/" + path
