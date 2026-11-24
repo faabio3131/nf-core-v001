@@ -24,7 +24,7 @@ from kordena_fiscal.tax.regimes import (
     SimplesRenunciationReceipt2027H2,
     resolve_simples_ibs_cbs_mode,
 )
-from kordena_fiscal.tax.revenue_item_catalog import ReviewedItemCatalog
+from kordena_fiscal.tax.revenue_item_catalog import ReviewedItemCatalog, materialize_item_release
 from kordena_fiscal.tax.rfb_regime_regular_calculator import RfbRegimeRegularCalculatorClient
 from kordena_fiscal.tax.rfb_simples_calculator import RfbSimplesCalculatorClient
 from kordena_fiscal.tax.simples_cash import reconcile_cash_detail, verify_cash_continuity
@@ -473,6 +473,7 @@ def import_reviewed_segregation(
     Trusted operational caller only. Review references are supplied by the
     responsible reviewer, not inferred by the classifier.
     """
+    rule_content = materialize_item_release(rule_content, competence)
     snapshot = {
         "record_id": snapshot_id, "version": snapshot_version,
         "competence": competence.isoformat(), "issuer_cnpj": issuer.value,
@@ -481,6 +482,10 @@ def import_reviewed_segregation(
     transition = competence.year == 2027
     valid_from = date(2027 if transition else 2026, 1, 1)
     valid_until = date(valid_from.year + 1, 1, 1)
+    if "item_catalog_sha256" in rule_content:
+        active = rule_content["item_rules"]
+        valid_from = max(date.fromisoformat(row["valid_from"]) for row in active)
+        valid_until = min(date.fromisoformat(row["valid_until"]) for row in active)
     normative = "CGSN190/2026 art.21-26" if transition else NORMATIVE_REFERENCE
     rule = {
         "record_id": rule_id, "version": rule_version, "tax_code": TAX_CODE,

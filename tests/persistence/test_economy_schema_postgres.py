@@ -450,6 +450,36 @@ def _certify_t06(database):
         assert assessment["estimated_das_cents"] == 12
         assert assessment["advisory_only"] is True
         assert assessment == evaluate_segregation(store, **refs, assessment=True)
+    # Exercise the release pin through the production importer, SQL and reload.
+    import hashlib
+    import json
+    from importlib.resources import files
+
+    raw = files("kordena_fiscal.tax").joinpath("official/sp_2026s1_v1.json").read_bytes()
+    pack = json.loads(raw)
+    release_policy = deepcopy(policy)
+    release_policy["item_catalog_sha256"] = hashlib.sha256(raw).hexdigest()
+    jan_rules = [r for r in pack["item_rules"] if r["valid_from"] <= competence.isoformat()
+                 < r["valid_until"]]
+    for key in sorted({key for r in jan_rules for key in r["sources"]}):
+        source = pack["sources"][key]
+        release_policy["legal_citations"].append({
+            **policy["legal_citations"][0], "source_url": source["url"],
+            "source_sha256": source["sha256"], "provision": source["provision"],
+        })
+    release_input = deepcopy(coded)
+    release_input["lines"][0]["operation_context"] = jan_rules[0]["operation_context"]
+    release_refs = {**refs, "snapshot_id": "release-coded", "rule_id": "release-policy"}
+    with database.economy(scope) as store:
+        actual = import_reviewed_segregation(store, **{
+            **kwargs, **release_refs, "content": release_input, "rule_content": release_policy,
+        })
+        assert actual["buckets"] == imported["buckets"]
+        saved = store.record("fm_economy_benefits", "release-policy", 1)
+        assert saved["valid_until"] == "2026-04-01"
+        assert saved["content"]["item_rules"] == jan_rules
+    with database.economy(scope, read_only=True) as store:
+        assert actual == evaluate_segregation(store, **release_refs)
     # Reference fixtures are synthetic, never evidence of official parity.
     reviewed = deepcopy(content)
     reviewed["pgdas_reference"] = {

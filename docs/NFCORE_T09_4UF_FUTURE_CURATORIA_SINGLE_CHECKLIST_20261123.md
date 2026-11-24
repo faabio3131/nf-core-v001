@@ -7,7 +7,7 @@
 ## RR — RICMS-RR, Anexo I, art. 1º, LXVII (insumos agropecuários)
 
 - [ ] **Consulta Tributária SEFAZ-RR nº 24/2024, 05/11/2024**, inteiro teor oficial e SHA-256. Fonte oficial identificada: `https://www.sefaz.rr.gov.br/downloads?catid=1404&id=25395&m=0&task=download.send` (redirecionamento não arquivado).
-- [ ] **RICMS-RR Decreto 4.335-E/2001, Anexo I, art. 1º, LXVII**, texto consolidado **até a competência de 2026** e SHA-256; conferir Decreto **30.363-E/2021** e limite histórico de **31/12/2025**. A consolidação de outubro/2026 foi identificada, mas seus bytes não foram obtidos.
+- [x] **RICMS-RR, consolidação oficial até outubro de 2026.** Na p. 517, o inciso LXVII conserva o limite de 31/12/2025 dado pelo Decreto 30.363-E. O texto consolidado sustenta a negativa da hipótese baseada exclusivamente nesse inciso nas competências de janeiro a outubro de 2026. Novembro e dezembro exigem conferência de atos posteriores. SHA-256 e URL no [registro de fontes](NFCORE_T09_PROVAS_DEPOSITO_STF_RR.json).
 - [ ] **Atos estaduais publicados nos DOEs de 2025/2026** que prorroguem, alterem ou extingam expressamente o **inciso LXVII**; se inexistentes, obter **consolidação/certidão oficial abrangente** da competência e documentar critério de exaustividade. Índices SEFAZ já hashados não substituem a certidão.
 - [ ] **Convênio ICMS 100/1997 e alterações CONFAZ** aplicáveis a 2026, com internalização estadual específica: não equiparar prorrogação CONFAZ automaticamente à vigência estadual nem confundir isenção com redução de base.
 - [ ] Revisão contraditória e testes positivos/negativos por produto, operação interna, temporalidade e exceções, mantendo negativa operacional enquanto não comprovado.
@@ -16,17 +16,19 @@
 
 - [x] **DOE-PA nº 33.584 de 23/03/2018**, Decreto **2.014/2018** Apêndice I itens **13 e 32**: original arquivado com SHA-256 `6dbf8fdb313e6673ce6105b9c6e74714070adaa220e39cbd2187840ef4abf0a0`.
 - [x] **Decreto 2.490/2006** histórico ALEPA, SHA-256 `313fe0b074d55dedbff71ba148b7e703a96da1611341aee0ae074ceaa5278ad3`; **STF ADI 3779** HTML de decisão SHA-256 `aede1b1a62bca6bdf677a8c0a54313a61785cd538a1b05ce6a91a96e2c0b5ac5`.
-- [ ] **Acórdão/dispositivo final e eventuais efeitos supervenientes da ADI 3779**, com fonte oficial e SHA-256, confrontando expressamente a Lei **6.913/2006**.
+- [x] **ADI 3779, acórdão integral e certidão de trânsito** de 13/12/2019 arquivados. O dispositivo alcança expressamente a Lei 6.913/2006. A análise de eventual fundamento sucessor permanece no item próprio.
 - [x] **Lei estadual 8.930/2019**, arts. 2º–8º. Original integral [DOE-PA 34.038, 19/11/2019, pp. 7–8](https://www.ioepa.com.br/arquivos/2019/2019.11.19.DOE.pdf), SHA-256 `8b47d30789c701bee2b51c9140cd9fc5d29cad92f29dc41f22d2d6febcebed95`.
 - [x] **Lei estadual 9.707/2022**, alteração do art. 6º da Lei 8.930/2019. Original integral [DOE-PA 35.121, 20/09/2022, p. 4](https://ioepa.com.br/pages/2022/2022.09.20.DOE.pdf), SHA-256 `ca540f47b920ccab76fe14715af34de93ec9316a7374beb339a0fc3dc574f402`. Falta vincular cada modalidade ao inventário e ao depósito.
-- [ ] **Certificado de Registro e Depósito / planilha PNTT-CONFAZ** vinculada ao inventário da Lei **6.913/2006** e do Decreto **2.490/2006**, incluindo o alcance material de cada modalidade e prazo/concessão após 2019.
+- [x] **PA, certificados CONFAZ 16/2018 e 57/2018.** O 16 identifica o Decreto 2.014/2018; o 57 trata de atos concessivos complementares e alterações.
+- [ ] Conciliar as linhas das planilhas com as modalidades, a sucessão e o período de fruição aplicável.
 - [ ] Consolidar eventual **lei/decreto sucessor, alterações e outorgas vigentes na competência 2026**, sem revalidar automaticamente lei inconstitucional.
 - [ ] Revisão independente e testes positivos/negativos para eventual sucessão; manter **`NAO_APLICAVEL_CERTIFICADO` apenas quanto à utilização isolada da Lei 6.913/2006 original**, nunca à totalidade das possíveis sucessões.
 
 ## AP — pescado (Decreto 3.599/2001; legislação 2025/2026)
 
 - [ ] **Decreto AP 3.599/2001 integral**, DOE **nº 2.669, de 21/11/2001**, e sua **republicação DOE nº 2.751, de 25/03/2002**, com SHA-256 e alterações até 2026.
-- [ ] **Certificado AP/CONFAZ nº 14/2018, Anexo I item 11**, respectiva planilha de depósito/PNTT, original e SHA-256; vincular ao diferimento do pescado sem confundir com crédito presumido industrial.
+- [x] **AP, certificado CONFAZ 14/2018 integral**, vinculado ao Decreto 0839/2018.
+- [ ] Identificar o item 11 na planilha e reconciliar o diferimento do pescado com as alterações posteriores.
 - [x] **Lei AP 3.395/2025, DOE nº 8.566**, Anexo II item 8, SHA-256 `d4c6b485514ac97dc3bbe8418b07ff7324984e58670d056601be0d6c8a3fff44`.
 - [x] **Decreto AP 2.349/2026, DOE nº 8.631, 07/04/2026**, SHA-256 `8db2b8901a3774739846444691b8caced5bd549759537e28182fc19782bcf9c5`; **Decreto AP 2.656/2026, DOE nº 8.639, 17/04/2026**, SHA-256 `6b0c7f575d89cea05b7d031778a326d2a4d85f51458abf052a63720a576f7bd0`.
 - [x] **Lei AP 3.490/2026, DOE nº 8.659**, SHA-256 `9180d91856bd3d955cc99a1a1e5b9c5f789131253e97a947e2d2f3ffde3f9523`; ausência do Decreto 3.599 em seu Anexo não prova extinção do regime.
@@ -37,7 +39,8 @@
 
 - [x] **Lei 3.140/1991**, compilação ALESE até 2026, SHA-256 `520b1a1f93b9a1c6c8ec5d315d5d885ec436df4236f7c46dfbdc9a21b9c080a5`; **Decreto 29.935/2014** histórico PGE, SHA-256 `ca18358fccdfd93259819b1ab1d2fe7347b7084cde54d9660b3c8d0ffc67b3b8`.
 - [ ] **Lei SE 8.490/2018**, arts. 1º–3º e Anexo Único item 1, publicação original/DOE integral e SHA-256. Texto ALESE localizado: `https://aleselegis.al.se.leg.br/Arquivo/Documents/legislacao/html/l84902018.html`.
-- [ ] **Certificado de Registro e Depósito SE/CONFAZ nº 13/2018**, **planilha/atos depositados por modalidade**, original e SHA-256. **Certificado nº 126/2024 não substitui 13/2018**, porque tem outro escopo.
+- [x] **SE, certificado CONFAZ 13/2018 integral**, vinculado ao Decreto 30.992/2018.
+- [ ] Conciliar a planilha de depósito por modalidade do PSDI e os atos posteriores.
 - [ ] **DOE-SE de 16/10/2024, Decreto 820/2024** (efeitos indicados a partir de 23/07/2024), original e SHA-256.
 - [ ] **DOE-SE de 26/11/2024, Decreto 868/2024** (efeitos intramês), original e SHA-256.
 - [ ] Consolidar leis/decretos de 2025–2026, inclusive **Lei 9.494/2024, 9.812/2025 e 9.943/2026**, com provas e competência de efeitos.

@@ -1,0 +1,326 @@
+{
+  "release": "SP-2026S1-v1",
+  "scope": "Triagem T06 de revenda pelo Simples Nacional em SP, janeiro a junho de 2026. O contexto exige confirmação documental por item. ICMS isento e imune seguem para análise da apuração.",
+  "sources": {
+    "cat68": {
+      "url": "https://legislacao.fazenda.sp.gov.br/paginas/Portaria-CAT-68-de-2019.aspx",
+      "provision": "Anexo XI, itens 9 a 14",
+      "sha256": "61169997f37aac7c70073ec2a277a12f0bb460f599d099b7dc29a55533e356ba"
+    },
+    "sre94": {
+      "url": "https://legislacao.fazenda.sp.gov.br/Paginas/Portaria-SRE-94-de-2025.aspx",
+      "provision": "Revogação do Anexo XI e data de efeitos",
+      "sha256": "80c9290048b616c3e5e72bfe6d367aeab918e62adb3274ccba3ff511fade8071"
+    },
+    "lei10147": {
+      "url": "https://www2.camara.leg.br/legin/fed/lei/2000/lei-10147-21-dezembro-2000-377630-normaatualizada-pl.html",
+      "provision": "Lei 10.147/2000, arts. 1º e 2º",
+      "sha256": "0302c7681410d0f6d616c24421ffa6be177b8cb5bb7b02646428d8f7bd873b88"
+    },
+    "horti": {
+      "url": "https://legislacao.fazenda.sp.gov.br/Paginas/an1art036.aspx",
+      "sha256": "019ba7f857f72b33cffe5dff21542bbde247ec493b5ec0dfd7d1261e85c85f0d",
+      "provision": "Anexo I, art. 36, XII e § 7º"
+    },
+    "optante": {
+      "url": "https://legislacao.fazenda.sp.gov.br/Paginas/RC18963_2019.aspx",
+      "sha256": "5d23628a82efc93b8ed6ed711880e8b0bae13dbde06d070c481010b843e25dc2",
+      "provision": "RC 18963/2019, itens 8 e seguintes e ementa III e IV"
+    },
+    "livros": {
+      "url": "https://legislacao.fazenda.sp.gov.br/Paginas/art007.aspx",
+      "sha256": "0be3635ed9ca067078fd0e8c9d5be356d6f2865068ad7b6a2a90fa549101fc32",
+      "provision": "RICMS/SP art. 7º XIII"
+    },
+    "exportacao": {
+      "url": "https://www2.camara.leg.br/legin/fed/leicom/2006/leicomplementar-123-14-dezembro-2006-548099-normaatualizada-pl.html",
+      "sha256": "ad9b586fdf7864ba47dcdeabb20af2cdc9882c8a7511e75461b4321c2e59e459",
+      "provision": "LC 123/2006 art. 18, § 4º-A IV e § 14"
+    }
+  },
+  "item_rules": [
+    {
+      "ncm": "33041000",
+      "cest": "2000900",
+      "cfop": "5405",
+      "uf": "SP",
+      "activity": "commerce",
+      "market": "domestic",
+      "operation_context": "revenda_interna_varejista_nao_industrial_nao_importador_st_retida_comprovada",
+      "valid_from": "2026-01-01",
+      "valid_until": "2026-04-01",
+      "federal": "monophase_downstream",
+      "local": "icms_substituted",
+      "rule_reference": "SP-5405-33041000-26Q1",
+      "source_url": "https://legislacao.fazenda.sp.gov.br/paginas/Portaria-CAT-68-de-2019.aspx",
+      "sources": [
+        "cat68",
+        "lei10147"
+      ]
+    },
+    {
+      "ncm": "33041000",
+      "cest": "2000900",
+      "cfop": "5102",
+      "uf": "SP",
+      "activity": "commerce",
+      "market": "domestic",
+      "operation_context": "revenda_interna_varejista_nao_industrial_nao_importador_aquisicao_pos_revogacao_sem_regime_especial",
+      "valid_from": "2026-04-01",
+      "valid_until": "2026-07-01",
+      "federal": "monophase_downstream",
+      "local": "ordinary",
+      "rule_reference": "SP-5102-33041000-26Q2",
+      "source_url": "https://legislacao.fazenda.sp.gov.br/Paginas/Portaria-SRE-94-de-2025.aspx",
+      "sources": [
+        "sre94",
+        "lei10147"
+      ]
+    },
+    {
+      "ncm": "33042010",
+      "cest": "2001000",
+      "cfop": "5405",
+      "uf": "SP",
+      "activity": "commerce",
+      "market": "domestic",
+      "operation_context": "revenda_interna_varejista_nao_industrial_nao_importador_st_retida_comprovada",
+      "valid_from": "2026-01-01",
+      "valid_until": "2026-04-01",
+      "federal": "monophase_downstream",
+      "local": "icms_substituted",
+      "rule_reference": "SP-5405-33042010-26Q1",
+      "source_url": "https://legislacao.fazenda.sp.gov.br/paginas/Portaria-CAT-68-de-2019.aspx",
+      "sources": [
+        "cat68",
+        "lei10147"
+      ]
+    },
+    {
+      "ncm": "33042010",
+      "cest": "2001000",
+      "cfop": "5102",
+      "uf": "SP",
+      "activity": "commerce",
+      "market": "domestic",
+      "operation_context": "revenda_interna_varejista_nao_industrial_nao_importador_aquisicao_pos_revogacao_sem_regime_especial",
+      "valid_from": "2026-04-01",
+      "valid_until": "2026-07-01",
+      "federal": "monophase_downstream",
+      "local": "ordinary",
+      "rule_reference": "SP-5102-33042010-26Q2",
+      "source_url": "https://legislacao.fazenda.sp.gov.br/Paginas/Portaria-SRE-94-de-2025.aspx",
+      "sources": [
+        "sre94",
+        "lei10147"
+      ]
+    },
+    {
+      "ncm": "33042090",
+      "cest": "2001100",
+      "cfop": "5405",
+      "uf": "SP",
+      "activity": "commerce",
+      "market": "domestic",
+      "operation_context": "revenda_interna_varejista_nao_industrial_nao_importador_st_retida_comprovada",
+      "valid_from": "2026-01-01",
+      "valid_until": "2026-04-01",
+      "federal": "monophase_downstream",
+      "local": "icms_substituted",
+      "rule_reference": "SP-5405-33042090-26Q1",
+      "source_url": "https://legislacao.fazenda.sp.gov.br/paginas/Portaria-CAT-68-de-2019.aspx",
+      "sources": [
+        "cat68",
+        "lei10147"
+      ]
+    },
+    {
+      "ncm": "33042090",
+      "cest": "2001100",
+      "cfop": "5102",
+      "uf": "SP",
+      "activity": "commerce",
+      "market": "domestic",
+      "operation_context": "revenda_interna_varejista_nao_industrial_nao_importador_aquisicao_pos_revogacao_sem_regime_especial",
+      "valid_from": "2026-04-01",
+      "valid_until": "2026-07-01",
+      "federal": "monophase_downstream",
+      "local": "ordinary",
+      "rule_reference": "SP-5102-33042090-26Q2",
+      "source_url": "https://legislacao.fazenda.sp.gov.br/Paginas/Portaria-SRE-94-de-2025.aspx",
+      "sources": [
+        "sre94",
+        "lei10147"
+      ]
+    },
+    {
+      "ncm": "33043000",
+      "cest": "2001200",
+      "cfop": "5405",
+      "uf": "SP",
+      "activity": "commerce",
+      "market": "domestic",
+      "operation_context": "revenda_interna_varejista_nao_industrial_nao_importador_st_retida_comprovada",
+      "valid_from": "2026-01-01",
+      "valid_until": "2026-04-01",
+      "federal": "monophase_downstream",
+      "local": "icms_substituted",
+      "rule_reference": "SP-5405-33043000-26Q1",
+      "source_url": "https://legislacao.fazenda.sp.gov.br/paginas/Portaria-CAT-68-de-2019.aspx",
+      "sources": [
+        "cat68",
+        "lei10147"
+      ]
+    },
+    {
+      "ncm": "33043000",
+      "cest": "2001200",
+      "cfop": "5102",
+      "uf": "SP",
+      "activity": "commerce",
+      "market": "domestic",
+      "operation_context": "revenda_interna_varejista_nao_industrial_nao_importador_aquisicao_pos_revogacao_sem_regime_especial",
+      "valid_from": "2026-04-01",
+      "valid_until": "2026-07-01",
+      "federal": "monophase_downstream",
+      "local": "ordinary",
+      "rule_reference": "SP-5102-33043000-26Q2",
+      "source_url": "https://legislacao.fazenda.sp.gov.br/Paginas/Portaria-SRE-94-de-2025.aspx",
+      "sources": [
+        "sre94",
+        "lei10147"
+      ]
+    },
+    {
+      "ncm": "33049100",
+      "cest": "2001300",
+      "cfop": "5405",
+      "uf": "SP",
+      "activity": "commerce",
+      "market": "domestic",
+      "operation_context": "revenda_interna_varejista_nao_industrial_nao_importador_st_retida_comprovada",
+      "valid_from": "2026-01-01",
+      "valid_until": "2026-04-01",
+      "federal": "monophase_downstream",
+      "local": "icms_substituted",
+      "rule_reference": "SP-5405-33049100-26Q1",
+      "source_url": "https://legislacao.fazenda.sp.gov.br/paginas/Portaria-CAT-68-de-2019.aspx",
+      "sources": [
+        "cat68",
+        "lei10147"
+      ]
+    },
+    {
+      "ncm": "33049100",
+      "cest": "2001300",
+      "cfop": "5102",
+      "uf": "SP",
+      "activity": "commerce",
+      "market": "domestic",
+      "operation_context": "revenda_interna_varejista_nao_industrial_nao_importador_aquisicao_pos_revogacao_sem_regime_especial",
+      "valid_from": "2026-04-01",
+      "valid_until": "2026-07-01",
+      "federal": "monophase_downstream",
+      "local": "ordinary",
+      "rule_reference": "SP-5102-33049100-26Q2",
+      "source_url": "https://legislacao.fazenda.sp.gov.br/Paginas/Portaria-SRE-94-de-2025.aspx",
+      "sources": [
+        "sre94",
+        "lei10147"
+      ]
+    },
+    {
+      "ncm": "33049910",
+      "cest": "2001400",
+      "cfop": "5405",
+      "uf": "SP",
+      "activity": "commerce",
+      "market": "domestic",
+      "operation_context": "revenda_interna_varejista_nao_industrial_nao_importador_st_retida_comprovada",
+      "valid_from": "2026-01-01",
+      "valid_until": "2026-04-01",
+      "federal": "monophase_downstream",
+      "local": "icms_substituted",
+      "rule_reference": "SP-5405-33049910-26Q1",
+      "source_url": "https://legislacao.fazenda.sp.gov.br/paginas/Portaria-CAT-68-de-2019.aspx",
+      "sources": [
+        "cat68",
+        "lei10147"
+      ]
+    },
+    {
+      "ncm": "33049910",
+      "cest": "2001400",
+      "cfop": "5102",
+      "uf": "SP",
+      "activity": "commerce",
+      "market": "domestic",
+      "operation_context": "revenda_interna_varejista_nao_industrial_nao_importador_aquisicao_pos_revogacao_sem_regime_especial",
+      "valid_from": "2026-04-01",
+      "valid_until": "2026-07-01",
+      "federal": "monophase_downstream",
+      "local": "ordinary",
+      "rule_reference": "SP-5102-33049910-26Q2",
+      "source_url": "https://legislacao.fazenda.sp.gov.br/Paginas/Portaria-SRE-94-de-2025.aspx",
+      "sources": [
+        "sre94",
+        "lei10147"
+      ]
+    },
+    {
+      "ncm": "07020000",
+      "cest": null,
+      "cfop": "5102",
+      "uf": "SP",
+      "activity": "commerce",
+      "market": "domestic",
+      "operation_context": "tomate_fresco_natural_revenda_interna_consumidor_final_sem_industrializacao",
+      "valid_from": "2026-01-01",
+      "valid_until": "2026-07-01",
+      "federal": "ordinary",
+      "local": "icms_exempt",
+      "rule_reference": "SP-5102-07020000-26S1",
+      "source_url": "https://legislacao.fazenda.sp.gov.br/Paginas/an1art036.aspx",
+      "sources": [
+        "horti",
+        "optante"
+      ]
+    },
+    {
+      "ncm": "49019900",
+      "cest": null,
+      "cfop": "5102",
+      "uf": "SP",
+      "activity": "commerce",
+      "market": "domestic",
+      "operation_context": "livro_impresso_literario_revenda_interna_sem_brinde_sem_suporte_avulso",
+      "valid_from": "2026-01-01",
+      "valid_until": "2026-07-01",
+      "federal": "ordinary",
+      "local": "icms_immune",
+      "rule_reference": "SP-5102-49019900-26S1",
+      "source_url": "https://legislacao.fazenda.sp.gov.br/Paginas/art007.aspx",
+      "sources": [
+        "livros"
+      ]
+    },
+    {
+      "ncm": "07020000",
+      "cest": null,
+      "cfop": "7102",
+      "uf": "SP",
+      "activity": "commerce",
+      "market": "export",
+      "operation_context": "tomate_fresco_revenda_exportacao_direta_embarque_comprovado",
+      "valid_from": "2026-01-01",
+      "valid_until": "2026-07-01",
+      "federal": "ordinary",
+      "local": "ordinary",
+      "rule_reference": "SP-7102-07020000-26S1",
+      "source_url": "https://www2.camara.leg.br/legin/fed/leicom/2006/leicomplementar-123-14-dezembro-2006-548099-normaatualizada-pl.html",
+      "sources": [
+        "exportacao"
+      ]
+    }
+  ]
+}

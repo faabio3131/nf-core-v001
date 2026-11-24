@@ -83,3 +83,41 @@ def test_documented_sp_candidate_ends_before_april():
         result = catalog.resolve(item, "SP")
         assert result[1] == ("icms_substituted" if month < 4 else "unknown")
         assert catalog.resolve(item | {"cfop": "5102"}, "SP")[0] == "unknown"
+
+
+def test_fiscal_release_routes_each_reviewed_item_across_april():
+    import hashlib
+    from importlib.resources import files
+
+    from kordena_fiscal.tax.revenue_item_catalog import materialize_item_release
+
+    assert materialize_item_release({}, MONTH) == {}
+    raw = files("kordena_fiscal.tax").joinpath("official/sp_2026s1_v1.json").read_bytes()
+    pack = json.loads(raw)
+    citations = [{"source_url": s["url"], "source_sha256": s["sha256"]}
+                 for s in pack["sources"].values()]
+    policy = {"review_status": "reviewed", "item_catalog_sha256": hashlib.sha256(raw).hexdigest(),
+              "legal_citations": citations}
+    sources = {c["source_url"] for c in citations}
+    assert len(pack["item_rules"]) == 15
+    for month in (1, 3, 4, 6):
+        day = date(2026, month, 1)
+        active = materialize_item_release(policy, day)["item_rules"]
+        catalog = ReviewedItemCatalog(active, day, sources)
+        for rule in pack["item_rules"]:
+            item = {k: rule[k] for k in ITEM}
+            result = catalog.resolve(item, "SP")
+            if rule["valid_from"] <= day.isoformat() < rule["valid_until"]:
+                assert result[:3] == (rule["federal"], rule["local"], rule["rule_reference"])
+            else:
+                assert result[0] == "unknown"
+            assert catalog.resolve(item, "RJ")[0] == "unknown"
+            undocumented = item | {"operation_context": "sem_comprovacao"}
+            assert catalog.resolve(undocumented, "SP")[0] == "unknown"
+    with pytest.raises(FiscalValidationError, match="competence"):
+        materialize_item_release(policy, date(2026, 7, 1))
+    for overrides in ({"item_catalog_sha256": "f" * 64}, {"item_rules": []},
+                      {"review_status": "draft"}, {"legal_citations": []},
+                      {"legal_citations": None}):
+        with pytest.raises(FiscalValidationError):
+            materialize_item_release(policy | overrides, date(2026, 1, 1))
