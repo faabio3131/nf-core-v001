@@ -10,15 +10,20 @@ from pathlib import Path
 from zoneinfo import ZoneInfo
 
 from kordena_fiscal.application.historical_audit import MAX_INPUT_BYTES, import_month
+from kordena_fiscal.application.unused_credits import import_credits, verify_credit_unit
 from kordena_fiscal.cognitive.historical_audit_api import historical_issuer_context
 from kordena_fiscal.domain import Cnpj, ExecutionScope, FiscalEnvironment, FiscalValidationError
 from kordena_fiscal.persistence.postgres import PostgresFiscalDatabase
 from kordena_fiscal.tax.historical_audit import Month, closed_months
+from kordena_fiscal.tax.unused_credits import Batch
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("bundle", type=Path)
+    parser.add_argument(
+        "--unused-credits", action="store_true", help="import a reviewed T16 purchase bundle"
+    )
     parser.add_argument("--tenant", required=True)
     parser.add_argument("--unit", required=True)
     args = parser.parse_args()
@@ -50,7 +55,11 @@ def main() -> None:
         version = bundle["version"]
         if type(version) is not int or not 1 <= version <= 2147483647:
             raise ValueError("invalid bundle version")
-        facts = Month.model_validate(bundle["facts"])
+        facts = (
+            Batch.model_validate(bundle["facts"])
+            if args.unused_credits
+            else Month.model_validate(bundle["facts"])
+        )
         period = date.fromisoformat(facts.competence)
         today = datetime.now(ZoneInfo("America/Sao_Paulo")).date()
         closed_months(period, today)
@@ -72,16 +81,23 @@ def main() -> None:
         canonical_issuer, context = historical_issuer_context(db, scope, period)
         if canonical_issuer != issuer:
             parser.error("canonical issuer mismatch")
+        if isinstance(facts, Batch):
+            verify_credit_unit(db, scope, issuer)
         with db.economy(scope) as store:
-            report = import_month(
-                store,
-                issuer,
-                period,
-                version,
-                facts,
-                context=context,
-                as_of=today,
-            )
+            if isinstance(facts, Batch):
+                report = import_credits(
+                    store, issuer, period, version, facts, context=context, as_of=today
+                )
+            else:
+                report = import_month(
+                    store,
+                    issuer,
+                    period,
+                    version,
+                    facts,
+                    context=context,
+                    as_of=today,
+                )
         print(json.dumps(report))
     except (FiscalValidationError, ValueError, TypeError, KeyError):
         parser.error("historical evidence invalid or version conflict")

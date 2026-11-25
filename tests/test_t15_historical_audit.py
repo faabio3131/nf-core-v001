@@ -472,12 +472,12 @@ def test_malformed_or_unsupported_evidence_fails_closed(change):
         _run(data)
 
 
-def _setup(db, mapping):
+def _setup(db, mapping, issuer=ISSUER):
     scope = replace(mapping["issuer"].scope, host_namespace="fm-nfcore")
     profile = replace(
         mapping["issuer"],
         scope=scope,
-        cnpj=ISSUER,
+        cnpj=issuer,
         tax_regime=TaxRegimeCode.NORMAL,
         effective_from=datetime(2021, 1, 1, tzinfo=UTC),
     )
@@ -510,7 +510,7 @@ def _setup(db, mapping):
         db,
         scope=scope,
         crt=TaxRegimeCode.NORMAL,
-        issuer_cnpj=ISSUER,
+        issuer_cnpj=issuer,
         federal_income_tax_regime=FederalIncomeTaxRegime.LUCRO_REAL,
         effective_from=datetime(2021, 1, 1, tzinfo=UTC),
         source_reference="synthetic-regime-t15",
@@ -824,6 +824,16 @@ def test_postgres_http_regime_revision_invalidates_prior_month(economy_database,
         return response.json()["months"][-1]
 
     assert current_month()["status"] == "reviewed_scope"
+    with db() as uow:
+        previous = uow.control_plane.get_profile(
+            old_context.profile_id, old_context.profile_version
+        )
+        successor = replace(
+            previous, version=previous.version + 1, effective_from=datetime(2025, 12, 1, tzinfo=UTC)
+        )
+        uow.control_plane.supersede_profile(previous, successor)
+        uow.commit()
+    assert current_month()["status"] == "issuer_history_changed"
     declare_federal_regime(
         db,
         scope=scope,
