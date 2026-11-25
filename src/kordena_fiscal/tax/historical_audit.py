@@ -296,8 +296,11 @@ def parse_document(
         raise FiscalValidationError("historical XML key components mismatch")
     items: dict[int, dict[str, Any]] = {}
     for det in inf.findall(NS + "det"):
-        number = int(det.get("nItem") or "0")
-        if not 1 <= number <= 990 or number in items:
+        lexical_number = det.get("nItem") or ""
+        if not re.fullmatch(r"[1-9][0-9]{0,2}", lexical_number):
+            raise FiscalValidationError("invalid historical XML item number")
+        number = int(lexical_number)
+        if number > 990 or number in items:
             raise FiscalValidationError("duplicate or invalid historical XML item")
         prod, tax = _required(det, "prod"), _required(det, "imposto")
         ncm, cfop, cest = (

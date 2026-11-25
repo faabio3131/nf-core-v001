@@ -73,14 +73,14 @@ def _artifact(ref, kind, content=None):
     }
 
 
-def _xml(period, number, crt=3, issuer=ISSUER):
+def _xml(period, number, crt=3, issuer=ISSUER, model=55):
     issued = datetime(period.year, period.month, 15, 12, tzinfo=UTC)
     key = build_access_key(
         AccessKeyInput(
             "35",
             issued,
             issuer,
-            ElectronicInvoiceModel(55),
+            ElectronicInvoiceModel(model),
             1,
             number,
             1,
@@ -113,7 +113,7 @@ def _xml(period, number, crt=3, issuer=ISSUER):
         )
     raw = (
         f'<nfeProc xmlns="{NS}" versao="4.00"><NFe><infNFe Id="NFe{key}" versao="4.00">'
-        f"<ide><cUF>35</cUF><cNF>{number:08}</cNF><mod>55</mod><serie>1</serie><nNF>{number}</nNF>"
+        f"<ide><cUF>35</cUF><cNF>{number:08}</cNF><mod>{model}</mod><serie>1</serie><nNF>{number}</nNF>"
         f"<dhEmi>{issued.isoformat()}</dhEmi><tpNF>1</tpNF><tpEmis>1</tpEmis>"
         f"<cDV>{key[-1]}</cDV><tpAmb>1</tpAmb><finNFe>1</finNFe></ide>"
         f"<emit><CNPJ>{issuer.value}</CNPJ><enderEmit><UF>SP</UF></enderEmit><CRT>{crt}</CRT></emit>"
@@ -284,6 +284,44 @@ def _run(data, period=MONTH, crt=3):
     return analyze_month(Month.model_validate(data), ISSUER, period, _context(crt), as_of=TODAY)
 
 
+def _replace_xml(data, raw):
+    doc = data["documents"][0]
+    doc["xml_b64"] = base64.b64encode(raw).decode()
+    doc["xml_sha256"] = hashlib.sha256(raw).hexdigest()
+
+
+@pytest.mark.parametrize("model,cfop,status", [(65, "5102", "100"), (55, "6102", "150")])
+def test_authorized_document_variants(model, cfop, status):
+    data = fixture()
+    raw = _xml(MONTH, 1, model=model).replace(b"5102</CFOP>", cfop.encode() + b"</CFOP>")
+    _replace_xml(data, raw.replace(b"100</cStat>", status.encode() + b"</cStat>"))
+    for rule in data["catalog"]:
+        rule["cfop"] = cfop
+    assert _run(data)["groups"] == _run(fixture())["groups"]
+
+
+@pytest.mark.parametrize("status", ["110", None])
+def test_unauthorized_or_missing_protocol(status):
+    data = fixture()
+    raw = _xml(MONTH, 1)
+    if status is None:
+        raw = raw[: raw.index(b"<protNFe ")] + b"</nfeProc>"
+    else:
+        raw = raw.replace(b"100</cStat>", status.encode() + b"</cStat>")
+    _replace_xml(data, raw)
+    with pytest.raises(FiscalValidationError):
+        _run(data)
+
+
+@pytest.mark.parametrize("number", ["01", "+1", " 1", "1 ", "١", "1_0", "0", "991", ""])
+def test_item_number_preserves_xsd_lexical_space(number):
+    data = fixture()
+    raw = _xml(MONTH, 1).replace(b'nItem="1"', f'nItem="{number}"'.encode())
+    _replace_xml(data, raw)
+    with pytest.raises(FiscalValidationError):
+        _run(data)
+
+
 def test_exact_window_and_leap_boundary():
     months = closed_months(date(2026, 10, 1), TODAY)
     assert len(months) == 60 and months[0] == date(2021, 11, 1)
@@ -434,12 +472,12 @@ def test_malformed_or_unsupported_evidence_fails_closed(change):
         _run(data)
 
 
-def _setup(db, mapping):
+def _setup(db, mapping, issuer=ISSUER):
     scope = replace(mapping["issuer"].scope, host_namespace="fm-nfcore")
     profile = replace(
         mapping["issuer"],
         scope=scope,
-        cnpj=ISSUER,
+        cnpj=issuer,
         tax_regime=TaxRegimeCode.NORMAL,
         effective_from=datetime(2021, 1, 1, tzinfo=UTC),
     )
@@ -472,7 +510,7 @@ def _setup(db, mapping):
         db,
         scope=scope,
         crt=TaxRegimeCode.NORMAL,
-        issuer_cnpj=ISSUER,
+        issuer_cnpj=issuer,
         federal_income_tax_regime=FederalIncomeTaxRegime.LUCRO_REAL,
         effective_from=datetime(2021, 1, 1, tzinfo=UTC),
         source_reference="synthetic-regime-t15",
@@ -762,3 +800,63 @@ def test_explicit_reviewed_zero_activity_is_distinct_from_missing_or_cancelled()
     assert all(g["paid_candidate_cents"] == 0 for g in result["groups"])
     data["coverage_complete"] = False
     assert all(g["paid_candidate_cents"] is None for g in _run(data)["groups"])
+
+
+def test_postgres_http_regime_revision_invalidates_prior_month(economy_database, mapping):
+    db = economy_database
+    scope = _setup(db, mapping)
+    _, old_context = historical_issuer_context(db, scope, MONTH)
+    data = fixture()
+    with db.economy(scope) as store:
+        import_month(
+            store, ISSUER, MONTH, 1, Month.model_validate(data), context=old_context, as_of=TODAY
+        )
+    client = _client(db, scope)
+    body = {
+        "unit_id": scope.unit_id,
+        "environment": scope.environment.value,
+        "competence": MONTH.isoformat(),
+    }
+
+    def current_month():
+        response = _post(client, body)
+        assert response.status_code == 200, response.text
+        return response.json()["months"][-1]
+
+    assert current_month()["status"] == "reviewed_scope"
+    with db() as uow:
+        previous = uow.control_plane.get_profile(
+            old_context.profile_id, old_context.profile_version
+        )
+        successor = replace(
+            previous, version=previous.version + 1, effective_from=datetime(2025, 12, 1, tzinfo=UTC)
+        )
+        uow.control_plane.supersede_profile(previous, successor)
+        uow.commit()
+    assert current_month()["status"] == "issuer_history_changed"
+    declare_federal_regime(
+        db,
+        scope=scope,
+        crt=TaxRegimeCode.NORMAL,
+        issuer_cnpj=ISSUER,
+        federal_income_tax_regime=FederalIncomeTaxRegime.LUCRO_PRESUMIDO,
+        effective_from=datetime(2025, 12, 1, tzinfo=UTC),
+        source_reference="review-revision",
+        actor="synthetic-t15",
+        idempotency_key="review-revision",
+        occurred_at=datetime.now(UTC),
+    )
+    changed = current_month()
+    assert changed["status"] == "issuer_history_changed"
+    assert changed["snapshot"] is None and changed["groups"] == []
+    _, new_context = historical_issuer_context(db, scope, MONTH)
+    assert new_context.regime == "lucro_presumido"
+    data["regime"] = new_context.regime
+    for rule in data["catalog"]:
+        rule["regime"] = new_context.regime
+    with db.economy(scope) as store:
+        import_month(
+            store, ISSUER, MONTH, 2, Month.model_validate(data), context=new_context, as_of=TODAY
+        )
+    revised = current_month()
+    assert revised["status"] == "reviewed_scope" and revised["snapshot"]["version"] == 2

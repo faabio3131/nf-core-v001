@@ -1,0 +1,11 @@
+{
+  "artifact_id": "IBSCBS-CCREDPRES",
+  "version": "IT-2025.002-v1.70",
+  "published_on": "2026-10-01",
+  "source": "https://dfe-portal.svrs.rs.gov.br/CFF/TabelaCreditoPresumido",
+  "scope": "NF-e de aquisição; subconjunto por evento com comprovação de pagamento",
+  "rows": {
+    "1": {"article": "168", "ibs_presumido": "2027-01-01", "cbs_presumido": "2027-01-01", "condition": "rural_non_contributor"},
+    "3": {"article": "170", "ibs_presumido": "2029-01-01", "cbs_presumido": "2027-01-01", "condition": "eligible_recycling_acquisition"}
+  }
+}

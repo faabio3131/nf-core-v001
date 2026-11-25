@@ -1,5 +1,9 @@
 # T15 — Auditoria Histórica de XMLs e Apurações (60 meses)
 
+## Fechamento em 24/11/2026
+
+A PR #609 integrou a T15 na main `c4026bb0b4a5e47c523a674bc70408ecd602698a`. A revisão Gemini de `335498d776ea4c5efbc8a03db3e12e24a9c98ac1` e o merge têm a mesma árvore `4a8ea62672e9199e9d44fe5df4213af335f77476`. A CI pós-merge #45504585819 passou nas 44 etapas (7.092 testes Python aprovados, 1 skip, 87 Playwright aprovados). Governança #45504585565 e completude efetiva #45517996984 aprovadas. O parecer registrou zero P0/P1, dois P2 e dois P3 acompanhados na #610. [Parecer independente](https://drive.google.com/file/d/17NRY2kDh5DFWCJPA9VsWjdoTdQjolCH4/view). A #611 inicia a T16. As seções a seguir documentam a candidata antes da integração.
+
 Data: 24/11/2026. Issue #608. Branch feat/nfcore-economy-t15-historical-audit. Base main 9435cd0165b477c853d34354a02dafaf0afb2833, T14 certificada pela CI #45467529956 tentativa 2. Estado: candidata em construção/certificação.
 
 ## Escopo e DoD oficial
