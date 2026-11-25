@@ -28,6 +28,8 @@ A [PR #592](https://github.com/faabio3131/nf-core-v001/pull/592) integrou as set
 
 **T17 entregue e certificada — 25/11/2026.** T17 integrada pela PR #615 na main `1b802189b144bd3dc4eca4bb66be90e2b92adfb1`, com autorização expressa do proprietário no HEAD auditado `660b86e26ad82b914caf323f51905a0011451ab6`. Árvores Git idênticas `d2582048ee67508c1a9aefc1d75ee32932e51014`. CI pré-merge #45533679231 SUCCESS (44/44, 7.177 Python PASS, 1 SKIP fora da T17, 87 E2E PASS), governança #45533679277 SUCCESS e completude efetiva fora de Draft #45614859660 SUCCESS. Gemini: aprovado para solicitar merge, zero P0/P1; 3 P2 e 3 P3 na #616. Governança pós-merge #45615039934 SUCCESS. CI pós-merge [#45615039868](https://github.com/faabio3131/nf-core-v001/actions/runs/45615039868) SUCCESS no SHA integrado (44/44 etapas, 7.177 Python PASS, 1 SKIP fora de T17 e 87 Playwright E2E PASS). **T17 INTEGRADA E CERTIFICADA NO ESCOPO INTERNO EM 25/11/2026.** T18 tecnicamente liberada após reconciliação documental, sem início de implementação nesta PR. A advertência de depreciação de Node.js 20 não impediu a CI. Production inalterada; sem deploy, operação fiscal, reconhecimento, restituição ou compensação. #613 e #616 preservadas. [Handoff T17](NFCORE_T17_RECOVERY_HANDOFF.md).
 
+**T18 em construção — #618.** T17 encerrada após integração documental #617 na main `6b1f940bcad984a5800abcaa7c0104a58e169491`; CI pós-merge #45651616041 e governança #45651615956 SUCCESS. T18: conta-corrente por tributo, principal/SELIC e saldos disponível/reservado/compensado/estornado; partidas dobradas, histórico integral e reconciliação sem saldo negativo. [Handoff T18](NFCORE_T18_CREDIT_LEDGER_HANDOFF.md). T19 aguarda certificação e integração autorizada.
+
 **Curadoria fiscal — [#593](https://github.com/faabio3131/nf-core-v001/issues/593).** O acompanhamento documental de AP, PA, RR e SE segue até 07/12/2026. Por modalidade e competência, registrar vigência, vínculo com registro e depósito quando aplicáveis e parecer independente. Até lá, as quatro candidatas seguem excluídas da importação e do cálculo. Essa pendência permite avançar na construção da T10. A expansão do catálogo de operações da T06 segue sujeita a revisão fiscal de cada nova regra.
 
 Fonte: NFCore_Cronograma_Master_v3_Trilhas_Com_Trava.xlsx, Trilha 1, linhas 6–27.
@@ -52,7 +54,7 @@ A folha T23–T33, a Trilha 2 H01–H06 e a reformulação Enterprise não integ
 | T15 | Auditoria histórica 60 meses | ENTREGUE — #609, CI pós-merge #45504585819 |
 | T16 | Créditos não aproveitados | ENTREGUE — #612, CI pós-merge #45527493411 |
 | T17 | Recuperação/prescrição/SELIC | ENTREGUE — #615; CI pós-merge #45615039868 SUCCESS |
-| T18 | Ledger partidas dobradas | Liberada após integração desta atualização documental; não iniciada |
+| T18 | Ledger partidas dobradas | EM CONSTRUÇÃO — #618 |
 | T19 | Restituição/compensação | Bloqueado |
 | T20 | Dossiê PDF/Excel/XML | Bloqueado |
 | T21 | Interface Central vinculada a APIs reais | Bloqueado |

@@ -304,6 +304,52 @@ class EconomyStore:
         return record
 
 
+    def credit_journal_rows(
+        self, record_id: str, *, limit: int
+    ) -> list[dict[str, Any]]:
+        """Exact ordered T18 lot history; caller rejects one-row overflow."""
+        self._require_active()
+        self._identity(record_id, 1)
+        if not re.fullmatch(r"credit-ledger-[0-9]{14}-[0-9a-f]{64}", record_id):
+            raise FiscalValidationError("invalid credit journal identity")
+        if type(limit) is not int or not 1 <= limit <= 1001:
+            raise FiscalValidationError("invalid credit journal bound")
+        rows = self._conn.execute(
+            """SELECT to_jsonb(r) FROM fm_economy_snapshots r
+               WHERE host_namespace=%s AND tenant_id=%s AND unit_id=%s
+                 AND environment=%s AND record_id=%s
+               ORDER BY version LIMIT %s""",
+            (*self._scope.identity_material, record_id, limit),
+        ).fetchall()
+        result = [dict(row[0]) for row in rows]
+        for row in result:
+            content = row["content"]
+            if not isinstance(content, dict) or _digest(content)[1] != row["digest"]:
+                raise FiscalValidationError("credit journal integrity mismatch")
+        return result
+
+    def credit_journal_ids(
+        self, issuer: Cnpj, period: date | None, *, limit: int
+    ) -> list[tuple[str, str]]:
+        """Enumerate scoped lot identities without the general projection cap."""
+        self._require_active()
+        if not isinstance(issuer, Cnpj) or type(limit) is not int or not 1 <= limit <= 1001:
+            raise FiscalValidationError("invalid credit journal report")
+        if period is not None and (type(period) is not date or period.day != 1):
+            raise FiscalValidationError("invalid credit journal competence")
+        rows = self._conn.execute(
+            """SELECT DISTINCT record_id, competence FROM fm_economy_snapshots
+               WHERE host_namespace=%s AND tenant_id=%s AND unit_id=%s
+                 AND environment=%s AND issuer_cnpj=%s AND record_id LIKE %s
+                 AND (%s::date IS NULL OR competence=%s::date)
+               ORDER BY record_id, competence LIMIT %s""",
+            (
+                *self._scope.identity_material, issuer.value,
+                f"credit-ledger-{issuer.value}-%", period, period, limit,
+            ),
+        ).fetchall()
+        return [(str(row[0]), row[1].isoformat()) for row in rows]
+
     def unique_monthly_snapshot(
         self, issuer: str, competence: date, schema: str,
     ) -> dict[str, Any] | None:

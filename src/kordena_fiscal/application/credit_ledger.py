@@ -1,0 +1,351 @@
+"""T18 immutable, scoped journal with replay and T17 provenance.
+
+A journal version is one atomic double-entry document in the T01 snapshot
+authority. The older T01 movement primitive is not a second balance authority.
+Only homologation simulations are supported; T19 owns actual lifecycle events.
+"""
+
+from __future__ import annotations
+
+import base64
+import hashlib
+import json
+from datetime import date
+from typing import Any
+
+from kordena_fiscal.application.historical_audit import MAX_INPUT_BYTES, TABLE
+from kordena_fiscal.application.tax_recovery import (
+    PAGE_SCHEMA,
+    SOURCE_SCHEMA,
+    _children,
+    _payments,
+    _verified_t16,
+)
+from kordena_fiscal.domain import Cnpj, FiscalValidationError
+from kordena_fiscal.persistence.economy_store import EconomyStore
+from kordena_fiscal.tax.credit_ledger import (
+    MAX_EVENTS,
+    MAX_LOTS,
+    SCHEMA,
+    Amount,
+    Command,
+    State,
+    transition,
+)
+from kordena_fiscal.tax.historical_audit import IssuerContext, Strict, closed_months
+from kordena_fiscal.tax.tax_recovery import (
+    SCHEMA as RECOVERY_SCHEMA,
+)
+from kordena_fiscal.tax.tax_recovery import (
+    RecoveryBatch,
+    estimate,
+    invoice_dates,
+    selic_reference,
+)
+from kordena_fiscal.tax.unused_credits import Evidence, _unique_fields
+
+
+class ReviewedMovement(Strict):
+    command: Command
+    review: Evidence
+
+    def verify(self, scope: tuple[str, ...], issuer: Cnpj) -> None:
+        expected = {
+            "scope": list(scope),
+            "issuer_cnpj": issuer.value,
+            "simulation_only": True,
+            "command": self.command.model_dump(),
+        }
+        observed = json.loads(self.review.contents(), object_pairs_hook=_unique_fields)
+        if json.dumps(observed, sort_keys=True) != json.dumps(expected, sort_keys=True):
+            raise FiscalValidationError("ledger reviewed movement differs from original evidence")
+
+
+def journal_id(issuer: Cnpj, finding_id: str) -> str:
+    # T16 identity is already SHA256(recipient/access key/item/tax). No version
+    # or date of assessment in the lot key: a new T17 estimate cannot duplicate it.
+    return f"credit-ledger-{issuer.value}-{finding_id}"
+
+
+def _require_scope(store: EconomyStore) -> tuple[str, ...]:
+    scope = store.scope_identity
+    if scope[-1] != "homologation":
+        raise FiscalValidationError("ledger requires non-production homologation scope")
+    return scope
+
+
+def _source_key(issuer: Cnpj, period: date) -> str:
+    return f"tax-recovery-{issuer.value}-{period.isoformat()}"
+
+
+def _verified_source(
+    store: EconomyStore,
+    issuer: Cnpj,
+    period: date,
+    command: Command,
+    context: IssuerContext,
+    as_of: date,
+) -> Amount:
+    """Recompute current T17 from original T17/T16/T15 evidence, never trust totals."""
+    row = store.record(TABLE, _source_key(issuer, period))
+    if (
+        row is None
+        or row["version"] != command.recovery_version
+        or row["digest"] != command.recovery_digest
+        or row["issuer_cnpj"] != issuer.value
+        or row["competence"] != period.isoformat()
+    ):
+        raise FiscalValidationError("current scoped T17 snapshot required")
+    index = row["content"]
+    if (
+        index["schema_version"] != RECOVERY_SCHEMA
+        or index["recipient"] != issuer.value
+        or index["competence"] != period.isoformat()
+        or index["as_of"] != as_of.isoformat()
+        or index["issuer_context"] != context.model_dump()
+        or index["selic"] != selic_reference()
+        or index["advisory_only"] is not True
+        or index["credit_recognized"] is not False
+        or index["realized_cents"] is not None
+    ):
+        raise FiscalValidationError("T17 context or cutoff changed; refresh source")
+    raw = b"".join(
+        base64.b64decode(part["data_b64"], validate=True)
+        for part in _children(store, row, "source", SOURCE_SCHEMA)
+    )
+    if len(raw) > MAX_INPUT_BYTES or hashlib.sha256(raw).hexdigest() != index["input_sha256"]:
+        raise FiscalValidationError("T17 source digest mismatch")
+    facts = RecoveryBatch.model_validate_json(raw)
+    if (
+        facts.competence != command.competence
+        or facts.t16_version != index["t16_version"]
+        or facts.t16_digest != index["t16_digest"]
+    ):
+        raise FiscalValidationError("T17 source binding mismatch")
+    batch, findings, t16 = _verified_t16(store, issuer, period, facts, context, as_of)
+    if index["historical_digest"] != t16["historical_digest"]:
+        raise FiscalValidationError("T17 historical digest mismatch")
+    payments = _payments(store, issuer, period, context, as_of, t16)
+    computed = estimate(facts, issuer, context, as_of, findings, invoice_dates(batch), payments)
+    stored = [
+        finding
+        for page in _children(store, row, "page", PAGE_SCHEMA)
+        for finding in page["findings"]
+    ]
+    if computed != stored or len(stored) != index["finding_count"]:
+        raise FiscalValidationError("T17 findings recomputation mismatch")
+    totals: dict[str, dict[str, int]] = {}
+    counts: dict[str, int] = {}
+    for finding in computed:
+        status = finding["status"]
+        counts[status] = counts.get(status, 0) + 1
+        if status == "potential":
+            total = totals.setdefault(finding["tax"], {})
+            for name in ("principal_cents", "adjustment_cents", "estimated_cents"):
+                total[name] = total.get(name, 0) + finding[name]
+    if totals != index["partial_totals_cents"] or counts != index["status_counts"]:
+        raise FiscalValidationError("T17 index totals mismatch")
+    matches = [item for item in computed if item["finding_id"] == command.finding_id]
+    if len(matches) != 1:
+        raise FiscalValidationError("T17 finding missing or ambiguous")
+    candidate = matches[0]
+    expected_id = hashlib.sha256(
+        (
+            f"{issuer.value}/{candidate['access_key']}/{candidate['item']}/{candidate['tax']}"
+        ).encode()
+    ).hexdigest()
+    if (
+        candidate["status"] != "potential"
+        or candidate["credit_recognized"] is not False
+        or candidate["tax"] != command.tax
+        or expected_id != command.finding_id
+    ):
+        raise FiscalValidationError("T17 finding not eligible for simulated ledger")
+    amount = Amount(
+        principal_cents=candidate["principal_cents"], selic_cents=candidate["adjustment_cents"]
+    )
+    if amount.total != candidate["estimated_cents"] or amount.principal_cents <= 0:
+        raise FiscalValidationError("T17 amount mismatch")
+    return amount
+
+
+def _binding(command: Command) -> tuple[str, str, str, int, str]:
+    return (
+        command.competence, command.finding_id, command.tax,
+        command.recovery_version, command.recovery_digest,
+    )
+
+
+def _replay(
+    store: EconomyStore, issuer: Cnpj, period: date, key: str
+) -> tuple[State, list[dict[str, Any]]]:
+    scope = _require_scope(store)
+    rows = store.credit_journal_rows(key, limit=MAX_EVENTS + 1)
+    if len(rows) > MAX_EVENTS:
+        raise FiscalValidationError("ledger history exceeds supported bound")
+    state = State()
+    previous: str | None = None
+    binding: tuple[str, str, str, int, str] | None = None
+    last_date: date | None = None
+    for version, row in enumerate(rows, 1):
+        content = row["content"]
+        reviewed = ReviewedMovement.model_validate(content["reviewed"])
+        command = reviewed.command
+        reviewed.verify(scope, issuer)
+        event_date = date.fromisoformat(content["as_of"])
+        if (
+            row["version"] != version
+            or row["record_id"] != key
+            or row["issuer_cnpj"] != issuer.value
+            or row["competence"] != period.isoformat()
+            or journal_id(issuer, command.finding_id) != key
+            or command.competence != period.isoformat()
+            or content["schema_version"] != SCHEMA
+            or content["event_version"] != version
+            or content["previous_digest"] != previous
+            or content["scope"] != list(scope)
+            or content["issuer_cnpj"] != issuer.value
+            or content["simulation_only"] is not True
+            or content["credit_recognized"] is not False
+            or content["realized_cents"] is not None
+            or (binding is not None and _binding(command) != binding)
+            or (last_date is not None and event_date < last_date)
+        ):
+            raise FiscalValidationError("ledger history integrity mismatch")
+        closed_months(period, event_date)
+        if binding is None:
+            binding = _binding(command)
+            original = store.record(TABLE, _source_key(issuer, period), command.recovery_version)
+            if (
+                original is None
+                or original["digest"] != command.recovery_digest
+                or original["issuer_cnpj"] != issuer.value
+                or original["competence"] != period.isoformat()
+                or original["content"]["schema_version"] != RECOVERY_SCHEMA
+            ):
+                raise FiscalValidationError("original ledger source missing or changed")
+        postings = transition(state, command)
+        if postings != content["postings"] or state.projection() != content["balances"]:
+            raise FiscalValidationError("ledger postings or balance projection mismatch")
+        previous = row["digest"]
+        last_date = event_date
+    return state, rows
+
+
+def post_movement(
+    store: EconomyStore,
+    issuer: Cnpj,
+    reviewed: ReviewedMovement,
+    *,
+    context: IssuerContext,
+    as_of: date,
+) -> dict[str, Any]:
+    """Post one simulated movement after replaying the entire locked lot."""
+    scope = _require_scope(store)
+    reviewed.verify(scope, issuer)
+    command = reviewed.command
+    period = date.fromisoformat(command.competence)
+    closed_months(period, as_of)
+    key = journal_id(issuer, command.finding_id)
+    # Same scoped lock as T13/T14/T15/T16/T17 snapshot mutations. No race
+    # between checking the current source and publishing a journal version.
+    store.lock_state_review_import(key, key)
+    state, history = _replay(store, issuer, period, key)
+    for row in history:
+        prior = row["content"]["reviewed"]
+        if prior["command"]["request_id"] == command.request_id:
+            if prior != reviewed.model_dump():
+                raise FiscalValidationError("ledger request id conflict")
+            return {
+                "version": row["version"], "digest": row["digest"], "replay": True,
+                "balances": state.projection(), "simulation_only": True,
+            }
+    if len(history) != command.expected_version or len(history) >= MAX_EVENTS:
+        raise FiscalValidationError("ledger optimistic version conflict")
+    if history:
+        first = Command.model_validate(history[0]["content"]["reviewed"]["command"])
+        if _binding(first) != _binding(command):
+            raise FiscalValidationError("ledger source binding cannot change")
+        if as_of < date.fromisoformat(history[-1]["content"]["as_of"]):
+            raise FiscalValidationError("ledger event date moved backwards")
+    if command.movement in {"identified", "reserved", "compensated"}:
+        current = _verified_source(store, issuer, period, command, context, as_of)
+        expected = command.amount if command.movement == "identified" else state.original
+        if current != expected:
+            raise FiscalValidationError("ledger identification differs from current T17 amount")
+    postings = transition(state, command)
+    version = len(history) + 1
+    projection = state.projection()
+    digest = store.append_snapshot(
+        record_id=key,
+        version=version,
+        competence=period,
+        issuer=issuer,
+        content={
+            "schema_version": SCHEMA,
+            "event_version": version,
+            "previous_digest": history[-1]["digest"] if history else None,
+            "scope": list(scope),
+            "issuer_cnpj": issuer.value,
+            "as_of": as_of.isoformat(),
+            "reviewed": reviewed.model_dump(),
+            "postings": postings,
+            "balances": projection,
+            "simulation_only": True,
+            "credit_recognized": False,
+            "realized_cents": None,
+        },
+    )
+    return {
+        "version": version, "digest": digest, "replay": False,
+        "balances": projection, "simulation_only": True,
+    }
+
+
+def reconcile(
+    store: EconomyStore, issuer: Cnpj, period: date | None = None
+) -> dict[str, Any]:
+    """Reconcile every recorded lot by tax/competence, with no silent truncation."""
+    _require_scope(store)
+    if period is not None and (type(period) is not date or period.day != 1):
+        raise FiscalValidationError("invalid ledger reporting competence")
+    store.lock_accounting_issuance()
+    ids = store.credit_journal_ids(issuer, period, limit=MAX_LOTS + 1)
+    if len(ids) > MAX_LOTS:
+        raise FiscalValidationError("ledger report exceeds supported lot bound")
+    totals: dict[str, dict[str, dict[str, int]]] = {}
+    periods: dict[str, dict[str, dict[str, dict[str, int]]]] = {}
+    entries = 0
+
+    def accumulate(
+        target: dict[str, dict[str, dict[str, int]]],
+        tax: str,
+        projection: dict[str, Any],
+    ) -> None:
+        bucket = target.setdefault(tax, {})
+        for name in ("identified", "available", "reserved", "compensated", "reversed"):
+            account = bucket.setdefault(name, {})
+            for component in ("principal_cents", "selic_cents"):
+                account[component] = account.get(component, 0) + projection[name][component]
+                if account[component] > 2**63 - 1:
+                    raise FiscalValidationError("ledger aggregate exceeds bigint range")
+
+    for key, competence in ids:
+        state, rows = _replay(store, issuer, date.fromisoformat(competence), key)
+        if not rows:
+            raise FiscalValidationError("ledger lot missing")
+        tax = rows[0]["content"]["reviewed"]["command"]["tax"]
+        projection = state.projection()
+        accumulate(totals, tax, projection)
+        accumulate(periods.setdefault(competence, {}), tax, projection)
+        entries += len(rows)
+    return {
+        "by_tax": totals,
+        "by_competence": periods,
+        "lot_count": len(ids),
+        "event_count": entries,
+        "simulation_only": True,
+        "historical_balances_not_current_entitlement": True,
+        "credit_recognized": False,
+        "realized_cents": None,
+    }
