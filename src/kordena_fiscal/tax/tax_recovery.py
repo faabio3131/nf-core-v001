@@ -240,6 +240,12 @@ def estimate(
             != (issuer.value, batch.competence, batch.t16_digest, row["tax"])
         ):
             raise FiscalValidationError("recovery claim scope or identity mismatch")
+        if (
+            row["status"] != "unused_candidate"
+            or not row["candidate_cents"]
+            or not 0 < claim.principal_cents <= row["candidate_cents"]
+        ):
+            raise FiscalValidationError("recovery principal exceeds eligible T16 balance")
         claims[claim.finding_id] = submitted
         if claim.modality == "federal_undue_payment" and claim.receipt_id is not None:
             payment_key = (claim.receipt_id, claim.tax)

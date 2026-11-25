@@ -327,8 +327,9 @@ def test_postgres_scope_replay_revision_and_rollback(economy_database, mapping):
         assert store.record(TABLE, key)["version"] == 1
         assert store.record(TABLE, key + "-source-0", 2) is None
         import_credits(store, BUYER, MONTH, 2, facts, context=context, as_of=TODAY)
-    with pytest.raises(FiscalValidationError, match="current scoped T16"), db.economy(scope) as store:
-        write(store, 2)
+    with pytest.raises(FiscalValidationError, match="current scoped T16"):
+        with db.economy(scope) as store:
+            write(store, 2)
 
 
 def test_cli_recovery(economy_database, mapping, tmp_path):
