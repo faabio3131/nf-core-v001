@@ -12,6 +12,8 @@
 
 # FM NFCORE V1 — CRONOGRAMA MESTRE DE CONCLUSÃO E CERTIFICAÇÃO
 
+> **Diretriz aprovada pelo proprietário em 25/11/2026 — Universal ERP Integration Hub:** a [Trilha ERP-01–ERP-15](NFCORE_V1_UNIVERSAL_ERP_INTEGRATION_EXECUTION_SCHEDULE.md) (issue #620) passa a integrar o escopo obrigatório de construção interna V1, com conectores receptivos, declarativos e reutilizáveis, sem dependência genérica de homologação externa. Ordem da trilha específica: T18–T22 preservadas → ERP-01–ERP-15 → T23–T33 (folha) → gates externos H01–H06. Os 59 IDs históricos do mestre e a ordem dos respectivos itens/ledger permanecem intactos; o novo anexo tem seu próprio controle de dependência e evidência. Não encerrar o marco interno global/autorizar go-live sem ERP-15 certificada. Nenhum item externo fica aprovado por construção interna. PR #619 não alterada.
+
 > **Decisão posterior aprovada (18/10/2026) — execução BUILD-ONLY antes de homologação externa:** `docs/NFCORE_V1_BUILD_INTEGRATION_EXECUTION_2026-10-18.md` é o **anexo subordinado de execução** para concluir **código e integração na mesma Web** sem reabrir fases internas certificadas. Seu estado/provas estão em `docs/NFCORE_V1_BUILD_INTEGRATION_LEDGER.md`, com governança em `AGENTS.md`. Isto **não acrescenta, renumera nem encerra** nenhum dos 59 itens deste mestre; a precedência interna BLD não transforma P05/P07/P08/P09/P10/P11/P12 em DONE. A homologação fiscal e comercial real, operações finais, backups periódicos e produção permanecem pendentes e ocorrerão no momento próprio. Autorização de merge automático **somente** para PRs BUILD-ONLY inteiramente verdes, não para deploy, gasto, credenciais, DNS ou operações irreversíveis.
 
 

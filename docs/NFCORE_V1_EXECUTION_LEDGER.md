@@ -12,6 +12,8 @@
 
 # FM NFCORE V1 — LEDGER CANÔNICO DE EXECUÇÃO
 
+> **Decisão de escopo 25/11/2026 — issue #620:** [Trilha ERP-01–ERP-15](NFCORE_V1_UNIVERSAL_ERP_INTEGRATION_EXECUTION_SCHEDULE.md) é parte obrigatória da construção V1; ERP-01–ERP-15 estão PROGRAMADAS / NÃO INICIADAS, com execução após T22 certificada e antes da folha T23–T33. As evidências e travas próprias estão no anexo, sem alterar os IDs/estados históricos deste ledger. Nenhuma homologação externa presumida, nenhuma conclusão, merge ou deploy implícito.
+
 ## CURRENT superior — mapa de aceite 59 IDs por dimensão (23/11/2026)
 
 **Este registro não altera nenhuma das 59 caixas históricas nem o validador.** 32/59 constam marcadas com aceite histórico; 27/59 ainda sem aceite formal individual. Os **149 caminhos referenciados** nos 59 IDs estão na árvore da #592, o que prova existência de arquivos, **não implementação completa de uma tarefa**. `#45273717614` = SUCCESS somente no HEAD `c083595b`; a candidata final e eventual merge exigem gates próprios. `PRODUCTION_APPROVED=NO` em todos os 59 IDs (nenhum Go/No-Go). [Mapa Git/PRs](audit/NFCORE_7PRS_ZERO_LOSS_CANDIDATE_20261123.md) e [manifesto de arquivos](audit/NFCORE_7PRS_ZERO_LOSS_149_PATHS_20261123.json).

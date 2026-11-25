@@ -12,6 +12,8 @@
 
 # FM NFCORE V1 — Ledger da trilha BUILD-ONLY
 
+> **Decisão de escopo 25/11/2026 — issue #620:** [Trilha ERP-01–ERP-15](NFCORE_V1_UNIVERSAL_ERP_INTEGRATION_EXECUTION_SCHEDULE.md) é parte obrigatória da construção V1; ERP-01–ERP-15 estão PROGRAMADAS / NÃO INICIADAS, com execução após T22 certificada e antes da folha T23–T33. As evidências e travas próprias estão no anexo, sem alterar os IDs/estados históricos deste ledger. Nenhuma homologação externa presumida, nenhuma conclusão, merge ou deploy implícito.
+
 **Estado:** EM_EXECUCAO (trilha subordinada ao cronograma mestre de 59 IDs).
 **Decisão:** autorização explícita do proprietário em 18/10/2026 para construir/corrigir autonomamente e **mergear PRs BUILD-ONLY 100% verdes**, preservando decisões humanas para credenciais, custos, preço, segurança nova, deploy, produção e atos irreversíveis.
 **Cronograma de escopo:** `docs/NFCORE_V1_BUILD_INTEGRATION_EXECUTION_2026-10-18.md` — anexo, **não substitui** `docs/NFCORE_V1_EXECUTION_LEDGER.md`.

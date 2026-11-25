@@ -8,6 +8,12 @@ A cobertura territorial cresce conforme a programação de expansão. Registrar 
 
 No radar, uma lacuna deve aparecer como cobertura indisponível ou base insuficiente. Uma regra sem comprovação continua excluída da estimativa e do cálculo naquele escopo. Para a T10, cadastrar um primeiro incentivo municipal real ou concluir a curadoria estadual da [#593](https://github.com/faabio3131/nf-core-v001/issues/593) não é pré-requisito para integrar o motor nem para iniciar a T11 após os gates de integração. A [#594](https://github.com/faabio3131/nf-core-v001/issues/594) acompanha a entrega técnica.
 
+## Diretriz do proprietário — integração universal com ERPs (25/11/2026)
+
+O NFCore deve ser plataforma fiscal e tributária independente, com conectores receptivos, avançados, parametrizáveis e reutilizáveis para ERPs/SaaS. A construção e certificação internas independem de clientes, tokens e homologação externa. Documentar lacunas de contratos e nunca inventar operações. Reutilizar o Core e as autoridades canônicas.
+
+A [issue #620](https://github.com/faabio3131/nf-core-v001/issues/620) e a [Trilha ERP-01–ERP-15](NFCORE_V1_UNIVERSAL_ERP_INTEGRATION_EXECUTION_SCHEDULE.md) acrescentam uma entrega obrigatória da V1 **após T22 certificada e antes de T23–T33 (folha completa)**. Não renumerar T01–T33 ou H01–H06; acrescentar a dependência ERP-15 para início da folha e fechamento interno anterior à homologação externa. A T18 continua na PR #619, sem alteração de seu HEAD por esta atualização. Todas as etapas ERP estão PROGRAMADAS / NÃO INICIADAS. Nenhuma promoção ou operação externa autorizada.
+
 ## Ponto de retomada em 24/11/2026
 
 A [PR #592](https://github.com/faabio3131/nf-core-v001/pull/592) integrou as sete PRs de T01–T09 na `main` pelo commit `f19122a8b158a3910271890a74a3f4f66a7d5852`. O responsável pelo projeto autorizou o merge após reavaliação técnica pelo agente. A árvore integrada é idêntica à da revisão `85ed8703`. [CI da revisão](https://github.com/faabio3131/nf-core-v001/actions/runs/45313958431) · [CI do merge](https://github.com/faabio3131/nf-core-v001/actions/runs/45316804802).
