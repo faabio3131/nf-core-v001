@@ -169,11 +169,49 @@ def _verified_source(
     return amount
 
 
-def _binding(command: Command) -> tuple[str, str, str, int, str]:
-    return (
-        command.competence, command.finding_id, command.tax,
-        command.recovery_version, command.recovery_digest,
-    )
+def _lot_binding(command: Command) -> tuple[str, str, str]:
+    return command.competence, command.finding_id, command.tax
+
+
+def _source_binding(command: Command) -> tuple[int, str]:
+    return command.recovery_version, command.recovery_digest
+
+
+def _historical_source(
+    store: EconomyStore, issuer: Cnpj, period: date, command: Command
+) -> Amount:
+    """Verify an exact immutable T17 source for historical replay, not new eligibility."""
+    row = store.record(TABLE, _source_key(issuer, period), command.recovery_version)
+    if (
+        row is None
+        or row["digest"] != command.recovery_digest
+        or row["issuer_cnpj"] != issuer.value
+        or row["competence"] != period.isoformat()
+        or row["content"]["schema_version"] != RECOVERY_SCHEMA
+        or row["content"]["advisory_only"] is not True
+        or row["content"]["credit_recognized"] is not False
+        or row["content"]["realized_cents"] is not None
+    ):
+        raise FiscalValidationError("original ledger source missing or changed")
+    matches = [
+        item
+        for page in _children(store, row, "page", PAGE_SCHEMA)
+        for item in page["findings"]
+        if item["finding_id"] == command.finding_id
+    ]
+    if len(matches) != 1:
+        raise FiscalValidationError("historical ledger finding missing or ambiguous")
+    item = matches[0]
+    if (
+        item["status"] != "potential"
+        or item["tax"] != command.tax
+        or item["credit_recognized"] is not False
+    ):
+        raise FiscalValidationError("historical ledger finding invalid")
+    amount = Amount(principal_cents=item["principal_cents"], selic_cents=item["adjustment_cents"])
+    if amount.total != item["estimated_cents"]:
+        raise FiscalValidationError("historical ledger amount mismatch")
+    return amount
 
 
 def _replay(
@@ -185,7 +223,9 @@ def _replay(
         raise FiscalValidationError("ledger history exceeds supported bound")
     state = State()
     previous: str | None = None
-    binding: tuple[str, str, str, int, str] | None = None
+    binding: tuple[str, str, str] | None = None
+    previous_source: tuple[int, str] | None = None
+    verified_sources: dict[tuple[int, str], Amount] = {}
     last_date: date | None = None
     for version, row in enumerate(rows, 1):
         content = row["content"]
@@ -208,27 +248,28 @@ def _replay(
             or content["simulation_only"] is not True
             or content["credit_recognized"] is not False
             or content["realized_cents"] is not None
-            or (binding is not None and _binding(command) != binding)
+            or (binding is not None and _lot_binding(command) != binding)
             or (last_date is not None and event_date < last_date)
         ):
             raise FiscalValidationError("ledger history integrity mismatch")
         closed_months(period, event_date)
         if binding is None:
-            binding = _binding(command)
-            original = store.record(TABLE, _source_key(issuer, period), command.recovery_version)
-            if (
-                original is None
-                or original["digest"] != command.recovery_digest
-                or original["issuer_cnpj"] != issuer.value
-                or original["competence"] != period.isoformat()
-                or original["content"]["schema_version"] != RECOVERY_SCHEMA
-            ):
-                raise FiscalValidationError("original ledger source missing or changed")
+            binding = _lot_binding(command)
+        source = _source_binding(command)
+        if command.movement in {"identified", "reserved", "compensated"}:
+            if source not in verified_sources:
+                verified_sources[source] = _historical_source(store, issuer, period, command)
+            expected = command.amount if command.movement == "identified" else state.original
+            if verified_sources[source] != expected:
+                raise FiscalValidationError("historical ledger amount differs from source")
+        elif previous_source != source:
+            raise FiscalValidationError("unwinding movement must retain last source binding")
         postings = transition(state, command)
         if postings != content["postings"] or state.projection() != content["balances"]:
             raise FiscalValidationError("ledger postings or balance projection mismatch")
         previous = row["digest"]
         last_date = event_date
+        previous_source = source
     return state, rows
 
 
@@ -263,9 +304,14 @@ def post_movement(
     if len(history) != command.expected_version or len(history) >= MAX_EVENTS:
         raise FiscalValidationError("ledger optimistic version conflict")
     if history:
-        first = Command.model_validate(history[0]["content"]["reviewed"]["command"])
-        if _binding(first) != _binding(command):
-            raise FiscalValidationError("ledger source binding cannot change")
+        last = Command.model_validate(history[-1]["content"]["reviewed"]["command"])
+        if _lot_binding(last) != _lot_binding(command):
+            raise FiscalValidationError("ledger lot identity cannot change")
+        if (
+            command.movement not in {"identified", "reserved", "compensated"}
+            and _source_binding(last) != _source_binding(command)
+        ):
+            raise FiscalValidationError("unwinding movement must retain last source binding")
         if as_of < date.fromisoformat(history[-1]["content"]["as_of"]):
             raise FiscalValidationError("ledger event date moved backwards")
     if command.movement in {"identified", "reserved", "compensated"}:
@@ -348,4 +394,23 @@ def reconcile(
         "historical_balances_not_current_entitlement": True,
         "credit_recognized": False,
         "realized_cents": None,
+    }
+
+
+def history(
+    store: EconomyStore, issuer: Cnpj, period: date, finding_id: str
+) -> dict[str, Any]:
+    """Return the complete verified journal, not a best-effort list of movements."""
+    _require_scope(store)
+    store.lock_accounting_issuance()
+    key = journal_id(issuer, finding_id)
+    state, rows = _replay(store, issuer, period, key)
+    if not rows:
+        raise FiscalValidationError("ledger lot missing")
+    return {
+        "record_id": key,
+        "events": rows,
+        "balances": state.projection(),
+        "simulation_only": True,
+        "historical_balances_not_current_entitlement": True,
     }

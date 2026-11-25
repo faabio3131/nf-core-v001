@@ -9,7 +9,12 @@ from datetime import date, datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
-from kordena_fiscal.application.credit_ledger import ReviewedMovement, post_movement, reconcile
+from kordena_fiscal.application.credit_ledger import (
+    ReviewedMovement,
+    history,
+    post_movement,
+    reconcile,
+)
 from kordena_fiscal.application.historical_audit import MAX_INPUT_BYTES
 from kordena_fiscal.application.unused_credits import verify_credit_unit
 from kordena_fiscal.cognitive.historical_audit_api import historical_issuer_context
@@ -23,6 +28,7 @@ def main() -> None:
     mode = parser.add_mutually_exclusive_group(required=True)
     mode.add_argument("--post", type=Path)
     mode.add_argument("--report", action="store_true")
+    mode.add_argument("--history", metavar="FINDING_ID")
     parser.add_argument("--tenant", required=True)
     parser.add_argument("--unit", required=True)
     parser.add_argument("--issuer", required=True)
@@ -64,11 +70,12 @@ def main() -> None:
         verify_credit_unit(db, scope, issuer)
         today = datetime.now(ZoneInfo("America/Sao_Paulo")).date()
         with db.economy(scope) as store:
-            report = (
-                reconcile(store, issuer, period)
-                if reviewed is None
-                else post_movement(store, issuer, reviewed, context=context, as_of=today)
-            )
+            if reviewed is not None:
+                report = post_movement(store, issuer, reviewed, context=context, as_of=today)
+            elif args.history:
+                report = history(store, issuer, period, args.history)
+            else:
+                report = reconcile(store, issuer, period)
         print(json.dumps(report))
     except (FiscalValidationError, ValueError, TypeError, KeyError):
         parser.error("ledger evidence invalid or balance/version conflict")
