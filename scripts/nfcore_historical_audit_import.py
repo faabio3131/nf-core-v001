@@ -10,20 +10,24 @@ from pathlib import Path
 from zoneinfo import ZoneInfo
 
 from kordena_fiscal.application.historical_audit import MAX_INPUT_BYTES, import_month
+from kordena_fiscal.application.tax_recovery import import_recovery
 from kordena_fiscal.application.unused_credits import import_credits, verify_credit_unit
 from kordena_fiscal.cognitive.historical_audit_api import historical_issuer_context
 from kordena_fiscal.domain import Cnpj, ExecutionScope, FiscalEnvironment, FiscalValidationError
 from kordena_fiscal.persistence.postgres import PostgresFiscalDatabase
 from kordena_fiscal.tax.historical_audit import Month, closed_months
+from kordena_fiscal.tax.tax_recovery import RecoveryBatch
 from kordena_fiscal.tax.unused_credits import Batch
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("bundle", type=Path)
-    parser.add_argument(
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument(
         "--unused-credits", action="store_true", help="import a reviewed T16 purchase bundle"
     )
+    mode.add_argument("--recovery", action="store_true", help="estimate reviewed T17 recovery")
     parser.add_argument("--tenant", required=True)
     parser.add_argument("--unit", required=True)
     args = parser.parse_args()
@@ -55,11 +59,13 @@ def main() -> None:
         version = bundle["version"]
         if type(version) is not int or not 1 <= version <= 2147483647:
             raise ValueError("invalid bundle version")
-        facts = (
-            Batch.model_validate(bundle["facts"])
-            if args.unused_credits
-            else Month.model_validate(bundle["facts"])
-        )
+        facts: Batch | Month | RecoveryBatch
+        if args.recovery:
+            facts = RecoveryBatch.model_validate(bundle["facts"])
+        elif args.unused_credits:
+            facts = Batch.model_validate(bundle["facts"])
+        else:
+            facts = Month.model_validate(bundle["facts"])
         period = date.fromisoformat(facts.competence)
         today = datetime.now(ZoneInfo("America/Sao_Paulo")).date()
         closed_months(period, today)
@@ -81,10 +87,14 @@ def main() -> None:
         canonical_issuer, context = historical_issuer_context(db, scope, period)
         if canonical_issuer != issuer:
             parser.error("canonical issuer mismatch")
-        if isinstance(facts, Batch):
+        if isinstance(facts, (Batch, RecoveryBatch)):
             verify_credit_unit(db, scope, issuer)
         with db.economy(scope) as store:
-            if isinstance(facts, Batch):
+            if isinstance(facts, RecoveryBatch):
+                report = import_recovery(
+                    store, issuer, period, version, facts, context=context, as_of=today
+                )
+            elif isinstance(facts, Batch):
                 report = import_credits(
                     store, issuer, period, version, facts, context=context, as_of=today
                 )
