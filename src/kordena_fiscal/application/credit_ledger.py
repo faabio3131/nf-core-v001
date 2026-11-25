@@ -295,7 +295,9 @@ def _replay(
             expected = command.amount if command.movement == "identified" else state.original
             verified = verified_sources[source]
             if verified.amount != expected or verified.as_of != event_date.isoformat():
-                raise FiscalValidationError("historical ledger amount or cutoff differs from source")
+                raise FiscalValidationError(
+                    "historical ledger amount or cutoff differs from source"
+                )
             if first_source is None:
                 first_source = verified
             elif verified.fiscal_identity != first_source.fiscal_identity:
