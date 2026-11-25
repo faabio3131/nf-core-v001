@@ -121,6 +121,10 @@ def transition(state: State, command: Command) -> list[dict[str, Any]]:
     if amount.total <= 0:
         raise FiscalValidationError("ledger movement must be positive")
     movement = command.movement
+    # Conservative internal gate only. No legal proportionality is inferred:
+    # T19 must apply the reviewed rule before any real fiscal compensation.
+    if movement in {"reserved", "compensated"} and amount.principal_cents == 0:
+        raise FiscalValidationError("ledger reservation or compensation requires principal")
     reservation = command.reservation_id
     compensation = command.compensation_id
     source: Account | Literal["origin"]

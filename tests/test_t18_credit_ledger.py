@@ -26,17 +26,23 @@ from kordena_fiscal.application.credit_ledger import (
     ReviewedMovement,
     history,
     journal_id,
-    post_movement,
+    post_movement as _post_movement,
     reconcile,
 )
 from kordena_fiscal.application.historical_audit import TABLE, import_month
 from kordena_fiscal.application.tax_recovery import import_recovery
-from kordena_fiscal.application.unused_credits import import_credits
+from kordena_fiscal.application.unused_credits import import_credits, verify_credit_unit
 from kordena_fiscal.cognitive.historical_audit_api import historical_issuer_context
 from kordena_fiscal.domain import FiscalEnvironment, FiscalValidationError
 from kordena_fiscal.tax.credit_ledger import Amount, Command, State, transition
 from kordena_fiscal.tax.historical_audit import Month
 from kordena_fiscal.tax.unused_credits import Batch, detect
+
+
+def post_movement(store, issuer, reviewed, *, context, as_of, unit):
+    return _post_movement(
+        store, issuer, reviewed, context=context, as_of=as_of, unit=unit
+    )
 
 
 def _cmd(version=0, movement="identified", principal=334, selic=37, **changes):
@@ -173,13 +179,14 @@ def _bound(finding, digest, version=0, movement="identified", principal=334, **c
 def test_postgres_full_history_scope_idempotence_and_rollback(economy_database, mapping):
     db = economy_database
     scope = _setup(db, mapping, BUYER)
+    proof = verify_credit_unit(db, scope, BUYER)
     _, context = historical_issuer_context(db, scope, MONTH)
     finding, digest = _seed(db, scope, context)
     key = journal_id(BUYER, finding)
 
     def post(store, command, as_of=TODAY):
         return post_movement(
-            store, BUYER, _reviewed(scope, command), context=context, as_of=as_of
+            store, BUYER, _reviewed(scope, command), context=context, as_of=as_of, unit=proof
         )
 
     first = _bound(finding, digest)
@@ -193,6 +200,11 @@ def test_postgres_full_history_scope_idempotence_and_rollback(economy_database, 
         with pytest.raises(FiscalValidationError, match="request id conflict"):
             post(store, first.model_copy(update={"review_reference": "different"}))
         assert post(store, _bound(finding, digest, 1, "reserved", 100))["version"] == 2
+        retry = post(store, first)
+        assert retry["version"] == 1 and retry["digest"] == initial["digest"]
+        assert retry["balances"] == initial["balances"]
+        assert retry["current_version"] == 2
+        assert retry["current_balances"]["reserved"]["principal_cents"] == 100
     with pytest.raises(RuntimeError), db.economy(scope) as store:
         post(store, _bound(finding, digest, 2, "compensated", 50, reservation_id="request-1"))
         raise RuntimeError("induced rollback")
@@ -241,12 +253,13 @@ def test_postgres_full_history_scope_idempotence_and_rollback(economy_database, 
 def test_postgres_stale_source_refresh_and_stable_lot(economy_database, mapping):
     db = economy_database
     scope = _setup(db, mapping, BUYER)
+    proof = verify_credit_unit(db, scope, BUYER)
     _, context = historical_issuer_context(db, scope, MONTH)
     finding, digest = _seed(db, scope, context)
 
     def post(store, command, day):
         return post_movement(
-            store, BUYER, _reviewed(scope, command), context=context, as_of=day
+            store, BUYER, _reviewed(scope, command), context=context, as_of=day, unit=proof
         )
 
     with db.economy(scope) as store:
@@ -278,11 +291,12 @@ def test_postgres_stale_source_refresh_and_stable_lot(economy_database, mapping)
 def test_postgres_concurrent_overreservation(economy_database, mapping):
     db = economy_database
     scope = _setup(db, mapping, BUYER)
+    proof = verify_credit_unit(db, scope, BUYER)
     _, context = historical_issuer_context(db, scope, MONTH)
     finding, digest = _seed(db, scope, context)
     with db.economy(scope) as store:
         post_movement(store, BUYER, _reviewed(scope, _bound(finding, digest)),
-                      context=context, as_of=TODAY)
+                      context=context, as_of=TODAY, unit=proof)
     barrier = Barrier(2)
 
     def reserve(number):
@@ -291,7 +305,7 @@ def test_postgres_concurrent_overreservation(economy_database, mapping):
         try:
             with db.economy(scope) as store:
                 post_movement(store, BUYER, _reviewed(scope, command),
-                              context=context, as_of=TODAY)
+                              context=context, as_of=TODAY, unit=proof)
             return "committed"
         except FiscalValidationError:
             return "conflict"
@@ -308,6 +322,7 @@ def test_postgres_concurrent_overreservation(economy_database, mapping):
 def test_postgres_federal_principal_and_selic(economy_database, mapping):
     db = economy_database
     scope = _setup(db, mapping, BUYER)
+    proof = verify_credit_unit(db, scope, BUYER)
     _, context = historical_issuer_context(db, scope, MONTH)
     source = fixture()
     original = _xml(MONTH, 1, issuer=BUYER)
@@ -357,7 +372,7 @@ def test_postgres_federal_principal_and_selic(economy_database, mapping):
     with db.economy(scope) as store:
         def post(command):
             return post_movement(store, BUYER, _reviewed(scope, command),
-                                 context=context, as_of=TODAY)
+                                 context=context, as_of=TODAY, unit=proof)
 
         post(_cmd(**binding))
         post(_cmd(1, "reserved", 200, 20, **binding))
@@ -372,6 +387,7 @@ def test_postgres_federal_principal_and_selic(economy_database, mapping):
 def test_cli_and_tampered_review(economy_database, mapping, tmp_path):
     db = economy_database
     scope = _setup(db, mapping, BUYER)
+    proof = verify_credit_unit(db, scope, BUYER)
     _, context = historical_issuer_context(db, scope, MONTH)
     today = datetime.now(ZoneInfo("America/Sao_Paulo")).date()
     finding, digest = _seed(db, scope, context, as_of=today)
@@ -381,7 +397,7 @@ def test_cli_and_tampered_review(economy_database, mapping, tmp_path):
     with db.economy(scope) as store:
         with pytest.raises(FiscalValidationError, match="reviewed movement differs"):
             post_movement(store, BUYER, ReviewedMovement.model_validate(changed),
-                          context=context, as_of=today)
+                          context=context, as_of=today, unit=proof)
     payload = tmp_path / "ledger.json"
     payload.write_text(json.dumps(reviewed.model_dump()), encoding="utf-8")
     cli = Path(__file__).parents[1] / "scripts/nfcore_credit_ledger.py"
@@ -396,6 +412,14 @@ def test_cli_and_tampered_review(economy_database, mapping, tmp_path):
     result = subprocess.run([*args, "--report"], env=env,
                             capture_output=True, text=True, check=True)
     assert json.loads(result.stdout)["lot_count"] == 1
+    result = subprocess.run([*args[:-2], "--report"], env=env,
+                            capture_output=True, text=True, check=True)
+    assert json.loads(result.stdout)["lot_count"] == 1
+    oversized = tmp_path / "oversized.json"
+    oversized.write_bytes(b" " * 65537)
+    result = subprocess.run([*args, "--post", str(oversized)], env=env,
+                            capture_output=True, text=True)
+    assert result.returncode == 2 and not result.stdout
     result = subprocess.run([*args, "--history", finding], env=env,
                             capture_output=True, text=True, check=True)
     assert len(json.loads(result.stdout)["events"]) == 1
@@ -407,12 +431,13 @@ def test_cli_and_tampered_review(economy_database, mapping, tmp_path):
 def test_postgres_new_source_cannot_reallocate_an_active_lot(economy_database, mapping):
     db = economy_database
     scope = _setup(db, mapping, BUYER)
+    proof = verify_credit_unit(db, scope, BUYER)
     _, context = historical_issuer_context(db, scope, MONTH)
     finding, digest = _seed(db, scope, context)
     with db.economy(scope) as store:
         post_movement(
             store, BUYER, _reviewed(scope, _bound(finding, digest)),
-            context=context, as_of=TODAY,
+            context=context, as_of=TODAY, unit=proof,
         )
     data = batch()
     data["rules"][0]["cnae"] = context.cnae
@@ -439,10 +464,10 @@ def test_postgres_new_source_cannot_reallocate_an_active_lot(economy_database, m
     with db.economy(scope) as store:
         with pytest.raises(FiscalValidationError, match="active ledger lot absent"):
             post_movement(store, BUYER, _reviewed(scope, candidate),
-                          context=context, as_of=TODAY)
+                          context=context, as_of=TODAY, unit=proof)
         cancel = _bound(finding, digest, 1, "reversed")
-        post_movement(store, BUYER, _reviewed(scope, cancel), context=context, as_of=TODAY)
-        post_movement(store, BUYER, _reviewed(scope, candidate), context=context, as_of=TODAY)
+        post_movement(store, BUYER, _reviewed(scope, cancel), context=context, as_of=TODAY, unit=proof)
+        post_movement(store, BUYER, _reviewed(scope, candidate), context=context, as_of=TODAY, unit=proof)
         result = reconcile(store, BUYER)
         assert result["lot_count"] == 2
         assert result["by_tax"]["icms"]["available"]["principal_cents"] == 334
@@ -452,13 +477,14 @@ def test_postgres_new_source_cannot_reallocate_an_active_lot(economy_database, m
 def test_postgres_forged_postings_fail_closed_on_replay(economy_database, mapping):
     db = economy_database
     scope = _setup(db, mapping, BUYER)
+    proof = verify_credit_unit(db, scope, BUYER)
     _, context = historical_issuer_context(db, scope, MONTH)
     finding, digest = _seed(db, scope, context)
     key = journal_id(BUYER, finding)
     with db.economy(scope) as store:
         result = post_movement(
             store, BUYER, _reviewed(scope, _bound(finding, digest)),
-            context=context, as_of=TODAY,
+            context=context, as_of=TODAY, unit=proof,
         )
         row = store.record(TABLE, key, 1)
         forged = copy.deepcopy(row["content"])

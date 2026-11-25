@@ -243,9 +243,18 @@ class EconomyStore:
         tax_code: str, competence: date, movement: str, amount_cents: int,
         evidence_reference: str,
     ) -> None:
-        """Storage primitive only; T18 must enforce balanced postings and limits."""
+        """Deprecated T01 primitive, retained only for legacy opportunity records.
+
+        Never use for T18/T19 balances. The canonical double-entry journal is
+        stored in fm_economy_snapshots by application.credit_ledger.
+        """
         self._identity(record_id, 1)
         self._identity(opportunity_id, opportunity_version)
+        if any(
+            name.startswith(("credit-ledger-", "tax-recovery-"))
+            for name in (record_id, opportunity_id)
+        ):
+            raise FiscalValidationError("legacy credit entry cannot represent T18/T19 ledger")
         self._text(tax_code, "tax code")
         self._text(evidence_reference, "evidence reference")
         self._cents(amount_cents, positive=True)

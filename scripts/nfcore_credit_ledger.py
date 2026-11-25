@@ -5,7 +5,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
@@ -15,7 +15,6 @@ from kordena_fiscal.application.credit_ledger import (
     post_movement,
     reconcile,
 )
-from kordena_fiscal.application.historical_audit import MAX_INPUT_BYTES
 from kordena_fiscal.application.unused_credits import verify_credit_unit
 from kordena_fiscal.cognitive.historical_audit_api import historical_issuer_context
 from kordena_fiscal.domain import Cnpj, ExecutionScope, FiscalEnvironment, FiscalValidationError
@@ -32,7 +31,7 @@ def main() -> None:
     parser.add_argument("--tenant", required=True)
     parser.add_argument("--unit", required=True)
     parser.add_argument("--issuer", required=True)
-    parser.add_argument("--competence", required=True)
+    parser.add_argument("--competence", help="required for --post and --history")
     args = parser.parse_args()
     if os.environ.get("NFCORE_ENVIRONMENT") not in {"development", "test", "staging"}:
         parser.error("credit ledger requires a non-production environment")
@@ -40,17 +39,21 @@ def main() -> None:
         parser.error("credit ledger unavailable")
     try:
         issuer = Cnpj(args.issuer)
-        period = date.fromisoformat(args.competence)
-        if period.day != 1 or period.isoformat() != args.competence:
+        period = date.fromisoformat(args.competence) if args.competence else None
+        if period is None and not args.report:
+            raise ValueError("competence required for movement or history")
+        if period is not None and (period.day != 1 or period.isoformat() != args.competence):
             raise ValueError("invalid competence")
         reviewed = None
         if args.post:
-            if args.post.stat().st_size > MAX_INPUT_BYTES:
-                raise ValueError("ledger bundle exceeds 32 MiB")
+            with args.post.open("rb") as source:
+                raw = source.read(65537)
+            if len(raw) > 65536:
+                raise ValueError("ledger bundle exceeds 64 KiB")
             reviewed = ReviewedMovement.model_validate(
-                json.loads(args.post.read_text(encoding="utf-8"), object_pairs_hook=_unique_fields)
+                json.loads(raw, object_pairs_hook=_unique_fields)
             )
-            if reviewed.command.competence != period.isoformat():
+            if period is None or reviewed.command.competence != period.isoformat():
                 raise ValueError("ledger competence mismatch")
     except (OSError, FiscalValidationError, ValueError, TypeError, KeyError):
         parser.error("invalid ledger bundle or scope")
@@ -64,15 +67,20 @@ def main() -> None:
             unit = uow.control_plane.get_unit(scope.tenant_id, scope.unit_id)
         if unit is None or scope.environment not in unit.enabled_environments:
             parser.error("unit not enabled in homologation")
-        canonical, context = historical_issuer_context(db, scope, period)
+        today = datetime.now(ZoneInfo("America/Sao_Paulo")).date()
+        anchor = period or (today.replace(day=1) - timedelta(days=1)).replace(day=1)
+        canonical, context = historical_issuer_context(db, scope, anchor)
         if canonical != issuer:
             parser.error("canonical issuer mismatch")
-        verify_credit_unit(db, scope, issuer)
-        today = datetime.now(ZoneInfo("America/Sao_Paulo")).date()
+        unit_proof = verify_credit_unit(db, scope, issuer)
         with db.economy(scope) as store:
             if reviewed is not None:
-                report = post_movement(store, issuer, reviewed, context=context, as_of=today)
+                report = post_movement(
+                    store, issuer, reviewed, context=context, as_of=today, unit=unit_proof
+                )
             elif args.history:
+                if period is None:
+                    raise FiscalValidationError("history requires competence")
                 report = history(store, issuer, period, args.history)
             else:
                 report = reconcile(store, issuer, period)

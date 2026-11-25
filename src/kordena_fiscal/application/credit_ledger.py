@@ -22,6 +22,7 @@ from kordena_fiscal.application.tax_recovery import (
     _payments,
     _verified_t16,
 )
+from kordena_fiscal.application.unused_credits import VerifiedCreditUnit
 from kordena_fiscal.domain import Cnpj, FiscalValidationError
 from kordena_fiscal.persistence.economy_store import EconomyStore
 from kordena_fiscal.tax.credit_ledger import (
@@ -61,7 +62,10 @@ class ReviewedMovement(Strict):
         raw = self.review.contents()
         if len(raw) > 16384:
             raise FiscalValidationError("ledger movement evidence exceeds 16 KiB")
-        observed = json.loads(raw, object_pairs_hook=_unique_fields)
+        try:
+            observed = json.loads(raw, object_pairs_hook=_unique_fields)
+        except (ValueError, UnicodeError) as exc:
+            raise FiscalValidationError("invalid ledger review JSON") from exc
         if json.dumps(observed, sort_keys=True) != json.dumps(expected, sort_keys=True):
             raise FiscalValidationError("ledger reviewed movement differs from original evidence")
 
@@ -336,9 +340,15 @@ def _guard_existing_lots(
         if first is None:
             raise FiscalValidationError("ledger lot first event missing")
         initial = Command.model_validate(first["content"]["reviewed"]["command"])
-        if initial.tax != command.tax:
-            continue
         other_period = date.fromisoformat(competence)
+        # Cross-competence receipt identity is independent of tax. PIS and
+        # Cofins may share one receipt only within a single competence.
+        if other_period == period and initial.tax != command.tax:
+            continue
+        if other_period != period and (
+            current.receipt_id is None or initial.tax not in {"pis", "cofins"}
+        ):
+            continue
         state, rows = _replay(store, issuer, other_period, key)
         scanned += len(rows)
         if scanned > MAX_SCAN_EVENTS:
@@ -373,9 +383,13 @@ def post_movement(
     *,
     context: IssuerContext,
     as_of: date,
+    unit: VerifiedCreditUnit,
 ) -> dict[str, Any]:
     """Post one simulated movement after replaying the entire locked lot."""
     scope = _require_scope(store)
+    if not isinstance(unit, VerifiedCreditUnit):
+        raise FiscalValidationError("verified credit recipient unit required")
+    unit.require(scope, issuer)
     reviewed.verify(scope, issuer)
     command = reviewed.command
     period = date.fromisoformat(command.competence)
@@ -392,7 +406,8 @@ def post_movement(
                 raise FiscalValidationError("ledger request id conflict")
             return {
                 "version": row["version"], "digest": row["digest"], "replay": True,
-                "balances": state.projection(), "simulation_only": True,
+                "balances": row["content"]["balances"], "simulation_only": True,
+                "current_version": len(history), "current_balances": state.projection(),
             }
     if len(history) != command.expected_version or len(history) >= MAX_EVENTS:
         raise FiscalValidationError("ledger optimistic version conflict")
@@ -444,6 +459,7 @@ def post_movement(
     return {
         "version": version, "digest": digest, "replay": False,
         "balances": projection, "simulation_only": True,
+        "current_version": version, "current_balances": projection,
     }
 
 
@@ -461,6 +477,7 @@ def reconcile(
     totals: dict[str, dict[str, dict[str, int]]] = {}
     periods: dict[str, dict[str, dict[str, dict[str, int]]]] = {}
     entries = 0
+    receipt_periods: dict[tuple[str, str], str] = {}
 
     def accumulate(
         target: dict[str, dict[str, dict[str, int]]],
@@ -479,7 +496,20 @@ def reconcile(
         state, rows = _replay(store, issuer, date.fromisoformat(competence), key)
         if not rows:
             raise FiscalValidationError("ledger lot missing")
-        tax = rows[0]["content"]["reviewed"]["command"]["tax"]
+        initial = Command.model_validate(rows[0]["content"]["reviewed"]["command"])
+        tax = initial.tax
+        if state.balances["reversed"] != state.original and tax in {"pis", "cofins"}:
+            source = _historical_source(store, issuer, date.fromisoformat(competence), initial)
+            for kind, value in (
+                ("receipt", source.receipt_id), ("payment", source.payment_sha256)
+            ):
+                if value is None:
+                    raise FiscalValidationError("federal ledger receipt provenance missing")
+                bound = receipt_periods.setdefault((kind, value), competence)
+                if bound != competence:
+                    raise FiscalValidationError(
+                        "federal receipt already attributed to another period"
+                    )
         projection = state.projection()
         accumulate(totals, tax, projection)
         accumulate(periods.setdefault(competence, {}), tax, projection)
