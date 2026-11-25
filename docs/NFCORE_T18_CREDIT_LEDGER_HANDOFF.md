@@ -1,5 +1,11 @@
 # T18 — Ledger de saldo de créditos tributários
 
+## CURRENT — Certificação pós-merge em 25/11/2026
+
+T18 #619 integrada por autorização expressa do proprietário no HEAD `b2d682da66f62fcbe50c8b2465f1e5e1e8182c0a`; main `e8ded78f3b3c5bd484b8d35b1904f0db7c61f317`; árvore auditada e integrada idêntica `bf9ca5cf99c6cb6676a85b84f5bfb8e96055cbb0`. CI pré-merge #45687246955 SUCCESS, governança #45687246913 SUCCESS, completude efetiva #45696419876 SUCCESS. [Parecer Gemini rodada 02](https://drive.google.com/file/d/1NNdAKH7F3tPxJXkB4xUY3AHILwBbC4Jt/view): 7/7 achados originais resolvidos, P0/P1/P2=0, 3 P3 não bloqueantes na #622. CI pós-merge [#45696838699](https://github.com/faabio3131/nf-core-v001/actions/runs/45696838699) SUCCESS (44/44 etapas, 7.215 Python PASS, 1 skip fora de T18, 87 Playwright E2E PASS); governança #45696838637 SUCCESS. Aviso Node.js 20 não bloqueante. **T18 CERTIFICADA TECNICAMENTE NO ESCOPO INTERNO EM 25/11/2026.** #618 permanece aberta até integração autorizada e CI pós-merge desta reconciliação documental #621. T19 próxima, ainda bloqueada por esse gate documental; não iniciar implementação antecipada. Production `a5989e523c871c288bc2388c9508c1738082bb9a` preservada, sem deploy, reconhecimento real de crédito ou operação fiscal externa. #613, #616, #622 preservadas.
+
+Gate T19: antes de qualquer reconhecimento, reserva, compensação ou restituição real, verificar proporcionalidade legal principal/SELIC, autorização contábil e identidade fiscal com controle de concorrência, vigência e autoridade canônica; tratar #622-R2-P3-03 antes das capacidades T19/T21 correspondentes. Testes internos podem usar contratos e evidências sintéticos; homologação externa é gate operacional específico. Os checkpoints abaixo registram a evolução histórica, não o status atual.
+
 Issue #618. Base main certificada 6b1f940bcad984a5800abcaa7c0104a58e169491, #617 integrada; CI pós-merge #45651616041 SUCCESS (44/44, 7177 Python, 1 skip, 87 E2E); governança #45651615956 SUCCESS. T17 #614 CLOSED. DoD da planilha mestre: conta-corrente por tributo, principal, SELIC, disponível, reservado, compensado, estornado; partidas dobradas sem saldo negativo, histórico completo, reconciliação dos totais.
 
 ## Autoridade e recorte
@@ -16,7 +22,7 @@ Cada versão imutável do lote em fm_economy_snapshots (T01, RLS FORCE) é um la
 
 ## Gates
 
-Implementação candidata não certificada. Exigir testes unitários, PostgreSQL, isolamento, concorrência, rollback, CLI e reconciliação; CI integral no HEAD exato e revisão Gemini independente antes de solicitar merge. T19 bloqueada. #613 e #616 preservadas. Nenhum deploy ou operação fiscal real.
+Checkpoint histórico anterior ao merge: implementação candidata não certificada. Exigir testes unitários, PostgreSQL, isolamento, concorrência, rollback, CLI e reconciliação; CI integral no HEAD exato e revisão Gemini independente antes de solicitar merge. T19 bloqueada. #613 e #616 preservadas. Nenhum deploy ou operação fiscal real.
 
 ## Correção pós-auditoria Gemini — 25/11/2026
 
@@ -24,4 +30,4 @@ Parecer do HEAD 17e368a2b6cdf525524930a2fe20350e9e9f0e56: REPROVADO, P0=0, P1=1,
 
 ### Regressões pós-parecer
 
-A suíte candidata usa os serviços reais de importação T15–T17 e PostgreSQL 16 para gerar lotes federais sintéticos. Casos de reuso intercompetência PIS→PIS e PIS→Cofins por identificador ou hash; bloqueio com estorno parcial e liberação após estorno total; compartilhamento PIS/Cofins e múltiplos findings na mesma competência; alteração de valor/identidade T17; reconciliação multitributo/multicompetência; retorno idempotente histórico; limites de eventos/lotes/varredura, evidência e CLI; prova de unidade ausente, incompatível ou impossível de emitir por ambiguidade canônica; estorno parcial e SELIC residual; bloqueio de namespaces T18 no primitivo legado. CI integral e reauditoria do novo SHA ainda obrigatórias. Os testes usam evidências sintéticas e não comprovam homologação fiscal real.
+A suíte candidata usa os serviços reais de importação T15–T17 e PostgreSQL 16 para gerar lotes federais sintéticos. Casos de reuso intercompetência PIS→PIS e PIS→Cofins por identificador ou hash; bloqueio com estorno parcial e liberação após estorno total; compartilhamento PIS/Cofins e múltiplos findings na mesma competência; alteração de valor/identidade T17; reconciliação multitributo/multicompetência; retorno idempotente histórico; limites de eventos/lotes/varredura, evidência e CLI; prova de unidade ausente, incompatível ou impossível de emitir por ambiguidade canônica; estorno parcial e SELIC residual; bloqueio de namespaces T18 no primitivo legado. Naquele checkpoint, CI integral e reauditoria ainda obrigatórias (agora aprovadas; ver CURRENT). Os testes usam evidências sintéticas e não comprovam homologação fiscal real.
