@@ -664,28 +664,28 @@ def test_postgres_shared_receipt_and_multitax_multiperiod_reconcile(economy_data
     proof = verify_credit_unit(db, scope, BUYER)
     _, context = historical_issuer_context(db, scope, MONTH)
     commands = _federal_seed(db, scope, MONTH, [("pis", 150), ("pis", 184), ("cofins", 334)])
-    feb = date(2026, 2, 1)
-    _, feb_context = historical_issuer_context(db, scope, feb)
-    facts, rows = _t16(period=feb, context=feb_context)
+    apr = date(2026, 4, 1)
+    _, apr_context = historical_issuer_context(db, scope, apr)
+    facts, rows = _t16(period=apr, context=apr_context)
     with db.economy(scope) as store:
-        t16 = import_credits(store, BUYER, feb, 1, facts, context=feb_context, as_of=TODAY)
+        t16 = import_credits(store, BUYER, apr, 1, facts, context=apr_context, as_of=TODAY)
         digest = t16["snapshot_digest"]
         t17 = import_recovery(
-            store, BUYER, feb, 1, _bundle(facts, [_review(facts, rows[0], digest)], digest),
-            context=feb_context, as_of=TODAY,
+            store, BUYER, apr, 1, _bundle(facts, [_review(facts, rows[0], digest)], digest),
+            context=apr_context, as_of=TODAY,
         )
     icms = _bound(
-        rows[0]["identity"], t17["snapshot_digest"], competence=feb.isoformat()
+        rows[0]["identity"], t17["snapshot_digest"], competence=apr.isoformat()
     )
     with db.economy(scope) as store:
         for command in commands:
             _write(store, scope, proof, context, command)
-        _write(store, scope, proof, feb_context, icms)
+        _write(store, scope, proof, apr_context, icms)
         report = reconcile(store, BUYER)
         assert report["lot_count"] == 4
         assert report["event_count"] == 4
         assert set(report["by_tax"]) == {"icms", "pis", "cofins"}
-        assert set(report["by_competence"]) == {MONTH.isoformat(), feb.isoformat()}
+        assert set(report["by_competence"]) == {MONTH.isoformat(), apr.isoformat()}
         assert report["by_tax"]["pis"]["available"]["principal_cents"] == 334
         assert report["by_tax"]["pis"]["available"]["selic_cents"] == sum(
             command.amount.selic_cents for command in commands if command.tax == "pis"
@@ -787,7 +787,8 @@ def test_postgres_unit_proof_and_legacy_entry_gate(economy_database, mapping):
         with pytest.raises(FiscalValidationError, match="verified credit recipient unit required"):
             _write(store, scope, None, context, command)
         with pytest.raises(FiscalValidationError, match="scope mismatch"):
-            _write(store, scope, replace(proof, scope_identity=("wrong", *proof.scope_identity[1:])), context, command)
+            wrong = replace(proof, scope_identity=("wrong", *proof.scope_identity[1:]))
+            _write(store, scope, wrong, context, command)
         with pytest.raises(FiscalValidationError, match="legacy credit entry"):
             store.append_credit_entry(
                 record_id=journal_id(BUYER, finding), opportunity_id="legacy",
@@ -795,6 +796,26 @@ def test_postgres_unit_proof_and_legacy_entry_gate(economy_database, mapping):
                 movement="identified", amount_cents=334, evidence_reference="test",
             )
         assert reconcile(store, BUYER)["lot_count"] == 0
+
+
+def test_postgres_ambiguous_cnpj_cannot_obtain_unit_proof(economy_database, mapping):
+    db = economy_database
+    scope = _setup(db, mapping, BUYER)
+    _, context = historical_issuer_context(db, scope, MONTH)
+    proof = verify_credit_unit(db, scope, BUYER)
+    assert proof.scope_identity == scope.identity_material
+    assert proof.issuer == BUYER
+    other = replace(scope, unit_id="second-unit")
+    with db() as uow:
+        old = uow.control_plane.get_profile(context.profile_id, context.profile_version)
+        unit = uow.control_plane.get_unit(scope.tenant_id, scope.unit_id)
+        assert old is not None and unit is not None
+        uow.control_plane.add_unit(replace(unit, unit_id=other.unit_id))
+        uow.control_plane.add_profile(replace(old, profile_id="second-profile", scope=other))
+        uow.commit()
+    for unit_scope in (scope, other):
+        with pytest.raises(FiscalValidationError, match="ambiguous credit recipient"):
+            verify_credit_unit(db, unit_scope, BUYER)
 
 
 def test_postgres_scan_bounds_fail_closed(economy_database, mapping, monkeypatch):
