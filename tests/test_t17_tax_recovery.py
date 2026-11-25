@@ -16,14 +16,15 @@ from zoneinfo import ZoneInfo
 import pytest
 from test_bling_canonical import mapping  # noqa: F401
 from test_t14_authorized_issuance import economy_database  # noqa: F401
-from test_t15_historical_audit import MONTH, TODAY, _context, _setup
+from test_t15_historical_audit import MONTH, TODAY, _context, _setup, _xml, fixture
 from test_t16_unused_credits import BUYER, batch, bind_book, evidence
 
-from kordena_fiscal.application.historical_audit import TABLE
+from kordena_fiscal.application.historical_audit import TABLE, import_month
 from kordena_fiscal.application.tax_recovery import import_recovery
 from kordena_fiscal.application.unused_credits import import_credits
 from kordena_fiscal.cognitive.historical_audit_api import historical_issuer_context
 from kordena_fiscal.domain import FiscalEnvironment, FiscalValidationError
+from kordena_fiscal.tax.historical_audit import Month
 from kordena_fiscal.tax.tax_recovery import (
     RecoveryBatch,
     estimate,
@@ -94,7 +95,7 @@ def test_missing_rate_reversed_dates_and_no_forecast():
 def test_deadlines_calendar():
     assert ordinary_deadline(date(2021, 11, 24)) == TODAY
     assert ordinary_deadline(date(2020, 2, 29)) is None
-    assert ordinary_deadline(date(2021, 11, 27)) is None  # weekend anniversary
+    assert ordinary_deadline(date(2021, 11, 28)) is None  # weekend anniversary
 
 
 def _t16(tax="icms", period=MONTH, as_of=TODAY, context=None):
@@ -130,10 +131,25 @@ def _review(facts, row, digest, as_of=TODAY, **updates):
     # Fixture sources are explicitly synthetic. Legal validity spans the test clock.
     claim["citation"]["valid_until"] = None
     claim.update(updates)
+    correction_source = None
+    if claim["federal_correction"] is not None:
+        correction = claim["federal_correction"].copy()
+        corrected = correction | {
+            "issuer_cnpj": claim["issuer_cnpj"],
+            "competence": claim["competence"],
+            "tax": claim["tax"],
+            "receipt_id": claim["receipt_id"],
+            "t16_digest": claim["t16_digest"],
+        }
+        correction_source = evidence(json.dumps(corrected, sort_keys=True).encode())
+        claim["federal_correction"] = correction | {
+            "corrected_assessment_sha256": correction_source["sha256"]
+        }
     return {
         "claim": claim,
         "review": evidence(json.dumps(claim, sort_keys=True).encode()),
         "legal_source": rule.legal_source.model_dump(),
+        "corrected_assessment": correction_source,
     }
 
 
@@ -345,3 +361,71 @@ def test_cli_recovery(economy_database, mapping, tmp_path):
         args, env=env | {"NFCORE_ENVIRONMENT": "production"}, capture_output=True, text=True
     )
     assert result.returncode == 2 and not result.stdout
+
+
+def test_postgres_federal_receipt_and_no_t15_overlap(economy_database, mapping):
+    db = economy_database
+    scope = _setup(db, mapping, BUYER)
+    _, context = historical_issuer_context(db, scope, MONTH)
+    historical = fixture()
+    original = _xml(MONTH, 1, issuer=BUYER)
+    historical["documents"][0]["xml_b64"] = evidence(original)["data_b64"]
+    historical["documents"][0]["xml_sha256"] = evidence(original)["sha256"]
+    historical["catalog"][0]["federal"] = "ordinary"
+    for item in historical["documents"][0]["items"]:
+        for allocation in item["allocations"]:
+            for field in (
+                "reviewed_base_cents", "base_review_reference", "base_mode", "reviewed_rate",
+            ):
+                allocation[field] = None
+            if item["number"] == 2 and allocation["tax"] == "icms":
+                allocation["declared_cents"] = 0
+    historical["controls"][2]["declared_principal_cents"] = 3600
+    payment = historical["payments"][0]
+    payment["issuer_cnpj"] = BUYER.value
+    payment["allocations"]["icms"] = 3600
+    payment["principal_cents"] = sum(payment["allocations"].values()) + 100
+    history_facts = Month.model_validate(historical)
+    credits, rows = _t16(tax="pis", context=context)
+    with db.economy(scope) as store:
+        history = import_month(
+            store, BUYER, MONTH, 1, history_facts, context=context, as_of=TODAY
+        )
+        t16 = import_credits(
+            store, BUYER, MONTH, 1, credits, context=context, as_of=TODAY
+        )
+    digest = t16["snapshot_digest"]
+    correction = {
+        "historical_digest": history["snapshot_digest"],
+        "payment_sha256": historical["artifacts"][3]["sha256"],
+        "assessment_reference": "assessment",
+        "corrected_assessment_reference": "rectified",
+        "originally_due_cents": 365,
+        "corrected_due_cents": 31,
+    }
+    review = _review(
+        credits, rows[0], digest, modality="federal_undue_payment",
+        receipt_id=payment["receipt_id"], anchor=payment["paid_on"],
+        ordinary_deadline="2031-01-20", federal_correction=correction,
+    )
+    payload = _bundle(credits, [review], digest)
+    with db.economy(scope) as store:
+        receipt = import_recovery(
+            store, BUYER, MONTH, 1, payload, context=context, as_of=TODAY
+        )
+        assert receipt["status_counts"] == {"potential": 1}
+        key = f"tax-recovery-{BUYER.value}-{MONTH.isoformat()}"
+        index = store.record(TABLE, key)
+        assert index["content"]["partial_totals_cents"]["pis"] == {
+            "principal_cents": 334, "adjustment_cents": 37, "estimated_cents": 371,
+        }
+        assert index["content"]["realized_cents"] is None
+    forged = copy.deepcopy(review)
+    forged["corrected_assessment"] = evidence(b'{"wrong":"scope"}')
+    with pytest.raises(FiscalValidationError, match="corrected assessment"):
+        _estimate(credits, rows, [forged])
+    with db.economy(scope) as store:
+        import_month(store, BUYER, MONTH, 2, history_facts, context=context, as_of=TODAY)
+    with pytest.raises(FiscalValidationError, match="historical snapshot changed"):
+        with db.economy(scope) as store:
+            import_recovery(store, BUYER, MONTH, 2, payload, context=context, as_of=TODAY)

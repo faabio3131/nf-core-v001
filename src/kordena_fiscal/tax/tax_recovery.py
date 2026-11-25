@@ -126,6 +126,7 @@ class FederalCorrection(Strict):
     payment_sha256: Digest
     assessment_reference: Id
     corrected_assessment_reference: Id
+    corrected_assessment_sha256: Digest
     originally_due_cents: Cents
     corrected_due_cents: Cents
 
@@ -154,6 +155,7 @@ class ReviewedClaim(Strict):
     claim: Claim
     review: Evidence
     legal_source: Evidence
+    corrected_assessment: Evidence | None = None
 
     def verify(self) -> None:
         normalized = json.loads(self.review.contents(), object_pairs_hook=_unique_fields)
@@ -164,6 +166,27 @@ class ReviewedClaim(Strict):
         self.legal_source.contents()
         if self.legal_source.sha256 != self.claim.citation.source_sha256:
             raise FiscalValidationError("recovery legal source digest mismatch")
+        correction = self.claim.federal_correction
+        if correction is None and self.corrected_assessment is not None:
+            raise FiscalValidationError("correction source without reviewed correction")
+        if correction is not None:
+            if (
+                self.corrected_assessment is None
+                or self.corrected_assessment.sha256 != correction.corrected_assessment_sha256
+            ):
+                raise FiscalValidationError("missing or mismatched corrected assessment source")
+            corrected = json.loads(
+                self.corrected_assessment.contents(), object_pairs_hook=_unique_fields
+            )
+            expected = correction.model_dump(exclude={"corrected_assessment_sha256"}) | {
+                "issuer_cnpj": self.claim.issuer_cnpj,
+                "competence": self.claim.competence,
+                "tax": self.claim.tax,
+                "receipt_id": self.claim.receipt_id,
+                "t16_digest": self.claim.t16_digest,
+            }
+            if json.dumps(corrected, sort_keys=True) != json.dumps(expected, sort_keys=True):
+                raise FiscalValidationError("corrected assessment differs from reviewed source")
 
 
 class RecoveryBatch(Strict):
@@ -259,6 +282,7 @@ def estimate(
                 legal_source_sha256=reviewed.legal_source.sha256,
                 anchor=claim.anchor,
                 deadline=claim.ordinary_deadline,
+                receipt_id=claim.receipt_id,
             )
             if not 0 < claim.principal_cents <= finding["candidate_cents"]:
                 raise FiscalValidationError("recovery principal exceeds T16 balance")
@@ -343,4 +367,26 @@ def estimate(
                             rate_memory=memory,
                         )
         rows.append(row)
+    # A shared correction is atomic for valuation: do not count an apparently
+    # valid fraction if another allocation of the same receipt is unresolved.
+    incomplete = {
+        (row.get("receipt_id"), row["tax"])
+        for row in rows
+        if row.get("modality") == "federal_undue_payment"
+        and row["status"] == "insufficient_basis"
+    }
+    for row in rows:
+        if (
+            row.get("modality") == "federal_undue_payment"
+            and row["status"] == "potential"
+            and (row.get("receipt_id"), row["tax"]) in incomplete
+        ):
+            row.update(
+                status="insufficient_basis",
+                reason="shared_receipt_correction_incomplete",
+                principal_cents=None,
+                adjustment_cents=None,
+                estimated_cents=None,
+                rate_memory=[],
+            )
     return rows

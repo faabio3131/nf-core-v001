@@ -22,3 +22,5 @@ Fonte primária: Sicalc RFB emitido em 01/11/2026, páginas 3 e 4, [espelho ofic
 ### Gates
 
 Testes novos em `tests/test_t17_tax_recovery.py`: tabela integral, limites, centavos, prazo, revisão/recibo, idempotência, rollback, isolamento por tenant/unidade/host/ambiente, CLI e bloqueio produtivo. O HEAD inicial 30f3416b falhou no Mypy #45533080608; correção da variável opcional publicada nesta revisão. Não declarar testes aprovados antes de CI do HEAD novo. Auditoria Gemini e autorização de merge específicas do SHA final obrigatórias. Nenhum ledger, deploy, reconhecimento de crédito ou operação fiscal real. T18 bloqueada.
+
+A retificação federal exige ainda extrato normalizado separado, com digest vinculado e correspondência de CNPJ, competência, tributo, recibo, digest T16, apuração anterior e corrigida. Um grupo de recibo com alocação insuficiente não gera estimativa parcial sobre as demais. O extrato revisado não é prova de transmissão oficial. Foi incluída regressão PostgreSQL da jornada T15→T16→T17 para indébito federal e substituição de snapshot T15.
