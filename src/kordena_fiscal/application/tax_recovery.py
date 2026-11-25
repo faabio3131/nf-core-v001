@@ -137,10 +137,21 @@ def _payments(
         return {}
     # A positive T15 undue-payment candidate may overlap T16. Do not attribute
     # another amount until the separate assessment has no existing difference.
+    if any(
+        historical["content"].get(name) != report[name]
+        for name in ("groups", "receipts", "competence", "credit_recognized", "realized_cents")
+    ):
+        raise FiscalValidationError("T15 payment recomputation mismatch")
     taxes = {
-        group["tax"]
+        group["tax"]: group
         for group in report["groups"]
         if group["status"] == "no_difference" and group["paid_candidate_cents"] == 0
+    }
+    # No inferred split between multiple payments: require one fully reconciled
+    # receipt for each supported tax component.
+    payment_counts = {
+        tax: sum(1 for payment in original.payments if payment.allocations.get(tax, 0) > 0)
+        for tax in taxes
     }
     receipts = {row["receipt_id"]: row for row in report["receipts"]}
     return {
@@ -150,10 +161,15 @@ def _payments(
             "sha256": receipts[payment.receipt_id]["sha256"],
             "allocated_cents": amount,
             "historical_digest": historical["digest"],
+            "assessment_reference": taxes[tax]["assessment_reference"],
         }
         for payment in original.payments
         for tax, amount in payment.allocations.items()
-        if tax in taxes and tax in {"pis", "cofins"} and amount > 0
+        if tax in taxes
+        and tax in {"pis", "cofins"}
+        and amount > 0
+        and payment_counts[tax] == 1
+        and amount == taxes[tax]["reviewed_due_cents"]
     }
 
 

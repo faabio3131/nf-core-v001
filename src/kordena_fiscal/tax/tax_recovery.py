@@ -30,6 +30,7 @@ from kordena_fiscal.tax.unused_credits import Batch, CreditTax, Evidence, _uniqu
 
 SCHEMA = "nfcore.tax-recovery/v1"
 TABLE_VERSION = "sicalc-2026-11-01-v1"
+TABLE_VALUATION_MONTH = date(2026, 11, 1)
 TABLE_URL = "https://www5.sefaz.mt.gov.br/documents/d/sefaz/selic-acumulada-11-2026-pdf"
 # Sicalc accumulated percentages for payment in November 2026 (pp. 3-4).
 # Integer hundredths of one percent, transcribed from the official RFB report.
@@ -78,6 +79,7 @@ def selic_reference() -> dict[str, Any]:
         "first_month": min(data),
         "last_month": max(data),
         "unit": "basis_points",
+        "last_valuation_month": TABLE_VALUATION_MONTH.isoformat(),
     }
 
 
@@ -90,6 +92,8 @@ def federal_interest(
     rates = monthly_selic()
     final = valuation.replace(day=1)
     current = payment.replace(day=1)
+    if final > TABLE_VALUATION_MONTH:
+        return None
     if current == final:
         return 0, []
     current = next_month(current)
@@ -108,9 +112,22 @@ def federal_interest(
 def ordinary_deadline(anchor: date) -> date | None:
     # Exceptional calendars and leap-day anniversaries need specific legal review.
     try:
-        return anchor.replace(year=anchor.year + 5)
+        deadline = anchor.replace(year=anchor.year + 5)
+        # Weekend and non-working-day extensions are not assumed.
+        return deadline if deadline.weekday() < 5 else None
     except ValueError:
         return None
+
+
+class FederalCorrection(Strict):
+    """Reviewed rectification for one fully reconciled receipt/tax component."""
+
+    historical_digest: Digest
+    payment_sha256: Digest
+    assessment_reference: Id
+    corrected_assessment_reference: Id
+    originally_due_cents: Cents
+    corrected_due_cents: Cents
 
 
 class Claim(Strict):
@@ -129,6 +146,7 @@ class Claim(Strict):
     no_prior_use_or_claim: bool
     causal_basis_confirmed: bool
     receipt_id: Id | None = None
+    federal_correction: FederalCorrection | None = None
     citation: LegalCitation
 
 
@@ -187,9 +205,10 @@ def estimate(
         raise FiscalValidationError("duplicate T16 finding identity")
     claims = {}
     allocated: dict[tuple[str, str], int] = {}
-    for reviewed in batch.claims:
-        reviewed.verify()
-        claim = reviewed.claim
+    corrections: dict[tuple[str, str], FederalCorrection] = {}
+    for submitted in batch.claims:
+        submitted.verify()
+        claim = submitted.claim
         row = by_id.get(claim.finding_id)
         if (
             row is None
@@ -198,13 +217,19 @@ def estimate(
             != (issuer.value, batch.competence, batch.t16_digest, row["tax"])
         ):
             raise FiscalValidationError("recovery claim scope or identity mismatch")
-        claims[claim.finding_id] = reviewed
+        claims[claim.finding_id] = submitted
         if claim.modality == "federal_undue_payment" and claim.receipt_id is not None:
             payment_key = (claim.receipt_id, claim.tax)
             if payment_key in payments:
                 allocated[payment_key] = allocated.get(payment_key, 0) + claim.principal_cents
                 if allocated[payment_key] > payments[payment_key]["allocated_cents"]:
                     raise FiscalValidationError("recovery receipt principal overallocated")
+                correction = claim.federal_correction
+                if correction is not None:
+                    prior = corrections.get(payment_key)
+                    if prior is not None and prior != correction:
+                        raise FiscalValidationError("conflicting reviewed receipt corrections")
+                    corrections[payment_key] = correction
 
     rows = []
     for finding in findings:
@@ -264,19 +289,36 @@ def estimate(
                     eligible = (
                         claim.tax == "icms"
                         and claim.receipt_id is None
+                        and claim.federal_correction is None
+                        and context.regime != "simples_nacional"
                         and anchor == issued
                     )
                     row["policy"] = {"source": ICMS_SOURCE, "provision": "art. 23"}
                 elif claim.tax in {"pis", "cofins"} and context.regime != "simples_nacional":
                     payment = payments.get((claim.receipt_id or "", claim.tax))
-                    eligible = payment is not None and payment["paid_on"] == claim.anchor
-                    if eligible:
+                    correction = claim.federal_correction
+                    payment_key = (claim.receipt_id or "", claim.tax)
+                    eligible = (
+                        payment is not None
+                        and correction is not None
+                        and payment["paid_on"] == claim.anchor
+                        and correction.historical_digest == payment["historical_digest"]
+                        and correction.payment_sha256 == payment["sha256"]
+                        and correction.assessment_reference == payment["assessment_reference"]
+                        and correction.corrected_assessment_reference
+                        != correction.assessment_reference
+                        and correction.originally_due_cents == payment["allocated_cents"]
+                        and correction.originally_due_cents - correction.corrected_due_cents
+                        == allocated.get(payment_key)
+                    )
+                    if eligible and correction is not None:
                         row["payment"] = payment
+                        row["federal_correction"] = correction.model_dump()
                     row["policy"] = {
                         "deadline_source": CTN_SOURCE,
                         "deadline_provision": "art. 168, I",
                         "interest_source": RFB_SOURCE,
-                        "interest_provision": "arts. 148-149",
+                        "interest_provision": "arts. 148, 149 and 151",
                     }
                 if not eligible:
                     row["reason"] = "modality_or_payment_unconfirmed"
