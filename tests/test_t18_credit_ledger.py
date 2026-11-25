@@ -10,7 +10,7 @@ import subprocess
 import sys
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import replace
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 from pathlib import Path
 from threading import Barrier
 from zoneinfo import ZoneInfo
@@ -22,11 +22,12 @@ from test_t15_historical_audit import MONTH, TODAY, _setup, _xml, fixture
 from test_t16_unused_credits import BUYER, batch, bind_book, evidence
 from test_t17_tax_recovery import _bundle, _review, _t16
 
+from kordena_fiscal.application import credit_ledger as ledger
 from kordena_fiscal.application.credit_ledger import (
     ReviewedMovement,
     history,
     journal_id,
-    post_movement as _post_movement,
+    post_movement,
     reconcile,
 )
 from kordena_fiscal.application.historical_audit import TABLE, import_month
@@ -36,13 +37,8 @@ from kordena_fiscal.cognitive.historical_audit_api import historical_issuer_cont
 from kordena_fiscal.domain import FiscalEnvironment, FiscalValidationError
 from kordena_fiscal.tax.credit_ledger import Amount, Command, State, transition
 from kordena_fiscal.tax.historical_audit import Month
+from kordena_fiscal.tax.tax_recovery import federal_interest, ordinary_deadline
 from kordena_fiscal.tax.unused_credits import Batch, detect
-
-
-def post_movement(store, issuer, reviewed, *, context, as_of, unit):
-    return _post_movement(
-        store, issuer, reviewed, context=context, as_of=as_of, unit=unit
-    )
 
 
 def _cmd(version=0, movement="identified", principal=334, selic=37, **changes):
@@ -466,8 +462,12 @@ def test_postgres_new_source_cannot_reallocate_an_active_lot(economy_database, m
             post_movement(store, BUYER, _reviewed(scope, candidate),
                           context=context, as_of=TODAY, unit=proof)
         cancel = _bound(finding, digest, 1, "reversed")
-        post_movement(store, BUYER, _reviewed(scope, cancel), context=context, as_of=TODAY, unit=proof)
-        post_movement(store, BUYER, _reviewed(scope, candidate), context=context, as_of=TODAY, unit=proof)
+        post_movement(
+            store, BUYER, _reviewed(scope, cancel), context=context, as_of=TODAY, unit=proof
+        )
+        post_movement(
+            store, BUYER, _reviewed(scope, candidate), context=context, as_of=TODAY, unit=proof
+        )
         result = reconcile(store, BUYER)
         assert result["lot_count"] == 2
         assert result["by_tax"]["icms"]["available"]["principal_cents"] == 334
@@ -500,3 +500,329 @@ def test_postgres_forged_postings_fail_closed_on_replay(economy_database, mappin
     with db.economy(scope) as store:
         with pytest.raises(FiscalValidationError, match="postings or balance"):
             reconcile(store, BUYER)
+
+
+def _federal_seed(db, scope, period, claims, *, receipt="receipt-1", raw=None, version=1):
+    """Import authentic-shaped synthetic T15/T16/T17 through their real services.
+
+    claims: ordered (tax, principal) pairs, one distinct purchase per pair.
+    No monkeypatch of provenance or journal persistence in the receipt tests.
+    """
+    _, context = historical_issuer_context(db, scope, period)
+    source = fixture(period=period, receipt=receipt)
+    original = _xml(period, 1, issuer=BUYER)
+    source["documents"][0]["xml_b64"] = evidence(original)["data_b64"]
+    source["documents"][0]["xml_sha256"] = evidence(original)["sha256"]
+    source["catalog"][0]["federal"] = "ordinary"
+    for item in source["documents"][0]["items"]:
+        for allocation in item["allocations"]:
+            for field in (
+                "reviewed_base_cents", "base_review_reference", "base_mode", "reviewed_rate",
+            ):
+                allocation[field] = None
+            if item["number"] == 2 and allocation["tax"] == "icms":
+                allocation["declared_cents"] = 0
+    source["controls"][2]["declared_principal_cents"] = 3600
+    payment = source["payments"][0]
+    payment["issuer_cnpj"] = BUYER.value
+    payment["allocations"]["icms"] = 3600
+    payment["principal_cents"] = sum(payment["allocations"].values()) + 100
+    if raw is not None:
+        source["artifacts"][3].update(evidence(raw))
+
+    data = batch(tax=claims[0][0], period=period)
+    data["rules"] = []
+    data["purchases"] = []
+    data["books"]["complete_taxes"] = sorted({tax for tax, _ in claims})
+    for number, (tax, _) in enumerate(claims, 1):
+        one = batch(tax=tax, period=period)
+        if not any(rule["tax"] == tax for rule in data["rules"]):
+            rule = one["rules"][0]
+            rule["citation"]["review_reference"] = f"synthetic-{tax}"
+            rule["cnae"] = context.cnae
+            data["rules"].append(rule)
+        purchase = one["purchases"][0]
+        purchase["xml"] = evidence(
+            _xml(period, number)
+            .replace(b"</emit>", f"</emit><dest><CNPJ>{BUYER.value}</CNPJ></dest>".encode())
+            .replace(b"</prod>", b"<vProd>100.00</vProd></prod>")
+            .replace(b"</imposto>", b"<IPI><IPITrib><vIPI>18.00</vIPI></IPITrib></IPI></imposto>")
+        )
+        data["purchases"].append(purchase)
+    bind_book(data)
+    facts = Batch.model_validate(data)
+    rows = detect(facts, BUYER, context, TODAY)["findings"]
+    assert len(rows) == len(claims)
+    amounts = {
+        tax: [principal for name, principal in claims if name == tax]
+        for tax, _ in claims
+    }
+    totals = {tax: sum(principals) for tax, principals in amounts.items()}
+    with db.economy(scope) as store:
+        prior = import_month(
+            store, BUYER, period, version, Month.model_validate(source),
+            context=context, as_of=TODAY,
+        )
+        t16 = import_credits(store, BUYER, period, version, facts, context=context, as_of=TODAY)
+        digest = t16["snapshot_digest"]
+        reviewed, commands = [], []
+        paid_on = date.fromisoformat(payment["paid_on"])
+        deadline = ordinary_deadline(paid_on)
+        assert deadline is not None
+        for row in rows:
+            tax = row["tax"]
+            principal = amounts[tax].pop(0)
+            originally_due = payment["allocations"][tax]
+            reviewed.append(_review(
+                facts, row, digest, principal_cents=principal,
+                modality="federal_undue_payment", receipt_id=receipt,
+                anchor=paid_on.isoformat(), ordinary_deadline=deadline.isoformat(),
+                federal_correction={
+                    "historical_digest": prior["snapshot_digest"],
+                    "payment_sha256": source["artifacts"][3]["sha256"],
+                    "assessment_reference": "assessment",
+                    "corrected_assessment_reference": "rectified",
+                    "originally_due_cents": originally_due,
+                    "corrected_due_cents": originally_due - totals[tax],
+                },
+            ))
+            interest = federal_interest(principal, paid_on, TODAY)
+            assert interest is not None
+            commands.append(_cmd(
+                principal=principal, selic=interest[0],
+                competence=period.isoformat(), tax=tax,
+                recovery_version=version, finding_id=row["identity"],
+            ))
+        result = import_recovery(
+            store, BUYER, period, version,
+            _bundle(facts, reviewed, digest, t16_version=version),
+            context=context, as_of=TODAY,
+        )
+    assert result["status_counts"] == {"potential": len(claims)}
+    return [
+        Command.model_validate(cmd.model_dump() | {"recovery_digest": result["snapshot_digest"]})
+        for cmd in commands
+    ]
+
+
+def _event(command, version, movement, amount=None, **changes):
+    return Command.model_validate(command.model_dump() | {
+        "expected_version": version,
+        "request_id": f"request-{version}",
+        "movement": movement,
+        "amount": (amount or command.amount).model_dump(),
+    } | changes)
+
+
+def _write(store, scope, proof, context, command, day=TODAY):
+    return post_movement(
+        store, BUYER, _reviewed(scope, command), context=context, as_of=day, unit=proof
+    )
+
+
+@pytest.mark.parametrize("other_tax", ["pis", "cofins"])
+@pytest.mark.parametrize("match_by", ["receipt", "hash"])
+def test_postgres_federal_receipt_is_unique_across_competences(
+    economy_database, mapping, other_tax, match_by,
+):
+    db = economy_database
+    scope = _setup(db, mapping, BUYER)
+    proof = verify_credit_unit(db, scope, BUYER)
+    feb = date(2026, 2, 1)
+    _, jan_context = historical_issuer_context(db, scope, MONTH)
+    _, feb_context = historical_issuer_context(db, scope, feb)
+    first, = _federal_seed(db, scope, MONTH, [("pis", 334)], raw=b"same-DARF")
+    second, = _federal_seed(
+        db, scope, feb, [(other_tax, 334)],
+        receipt="receipt-1" if match_by == "receipt" else "receipt-alias",
+        raw=b"different-DARF" if match_by == "receipt" else b"same-DARF",
+    )
+    partial = Amount(principal_cents=1, selic_cents=0)
+    rest = Amount(principal_cents=333, selic_cents=first.amount.selic_cents)
+    with db.economy(scope) as store:
+        _write(store, scope, proof, jan_context, first)
+        for version in (1, 2):
+            with pytest.raises(FiscalValidationError, match="another period"):
+                _write(store, scope, proof, feb_context, second)
+            assert store.record(TABLE, journal_id(BUYER, second.finding_id)) is None
+            cancel = _event(first, version, "reversed", partial if version == 1 else rest)
+            _write(store, scope, proof, jan_context, cancel)
+        _write(store, scope, proof, feb_context, second)
+        report = reconcile(store, BUYER)
+        assert report["lot_count"] == 2
+        assert report["by_competence"][MONTH.isoformat()]["pis"]["reversed"] == (
+            first.amount.model_dump()
+        )
+        assert report["by_competence"][feb.isoformat()][other_tax]["available"] == (
+            second.amount.model_dump()
+        )
+
+
+def test_postgres_shared_receipt_and_multitax_multiperiod_reconcile(economy_database, mapping):
+    db = economy_database
+    scope = _setup(db, mapping, BUYER)
+    proof = verify_credit_unit(db, scope, BUYER)
+    _, context = historical_issuer_context(db, scope, MONTH)
+    commands = _federal_seed(db, scope, MONTH, [("pis", 150), ("pis", 184), ("cofins", 334)])
+    feb = date(2026, 2, 1)
+    _, feb_context = historical_issuer_context(db, scope, feb)
+    facts, rows = _t16(period=feb, context=feb_context)
+    with db.economy(scope) as store:
+        t16 = import_credits(store, BUYER, feb, 1, facts, context=feb_context, as_of=TODAY)
+        digest = t16["snapshot_digest"]
+        t17 = import_recovery(
+            store, BUYER, feb, 1, _bundle(facts, [_review(facts, rows[0], digest)], digest),
+            context=feb_context, as_of=TODAY,
+        )
+    icms = _bound(
+        rows[0]["identity"], t17["snapshot_digest"], competence=feb.isoformat()
+    )
+    with db.economy(scope) as store:
+        for command in commands:
+            _write(store, scope, proof, context, command)
+        _write(store, scope, proof, feb_context, icms)
+        report = reconcile(store, BUYER)
+        assert report["lot_count"] == 4
+        assert report["event_count"] == 4
+        assert set(report["by_tax"]) == {"icms", "pis", "cofins"}
+        assert set(report["by_competence"]) == {MONTH.isoformat(), feb.isoformat()}
+        assert report["by_tax"]["pis"]["available"]["principal_cents"] == 334
+        assert report["by_tax"]["pis"]["available"]["selic_cents"] == sum(
+            command.amount.selic_cents for command in commands if command.tax == "pis"
+        )
+        assert report["by_tax"]["cofins"]["available"]["principal_cents"] == 334
+        assert report["by_tax"]["icms"]["available"]["principal_cents"] == 334
+
+
+@pytest.mark.parametrize("change", ["amount", "identity"])
+def test_postgres_source_changes_block_new_commitments_but_allow_unwind(
+    economy_database, mapping, change,
+):
+    db = economy_database
+    scope = _setup(db, mapping, BUYER)
+    proof = verify_credit_unit(db, scope, BUYER)
+    _, context = historical_issuer_context(db, scope, MONTH)
+    first, = _federal_seed(db, scope, MONTH, [("pis", 334)])
+    reserved = Amount(principal_cents=200, selic_cents=20)
+    compensated = Amount(principal_cents=100, selic_cents=10)
+    with db.economy(scope) as store:
+        _write(store, scope, proof, context, first)
+        _write(store, scope, proof, context, _event(first, 1, "reserved", reserved))
+        _write(
+            store, scope, proof, context,
+            _event(first, 2, "compensated", compensated, reservation_id="request-1"),
+        )
+    revised, = _federal_seed(
+        db, scope, MONTH, [("pis", 333 if change == "amount" else 334)],
+        receipt="new-receipt" if change == "identity" else "receipt-1",
+        version=2,
+    )
+    assert revised.finding_id == first.finding_id
+    with db.economy(scope) as store:
+        for movement in ("reserved", "compensated"):
+            kwargs = {"reservation_id": "request-1"} if movement == "compensated" else {}
+            with pytest.raises(FiscalValidationError, match="amount|identity"):
+                _write(
+                    store, scope, proof, context,
+                    _event(revised, 3, movement, compensated, **kwargs),
+                )
+        release = _event(first, 3, "released", compensated, reservation_id="request-1")
+        with pytest.raises(FiscalValidationError, match="date moved backwards"):
+            _write(store, scope, proof, context, release, TODAY - timedelta(days=1))
+        _write(store, scope, proof, context, release)
+        _write(
+            store, scope, proof, context,
+            _event(first, 4, "compensation_reversed", compensated, compensation_id="request-2"),
+        )
+        _write(
+            store, scope, proof, context,
+            _event(first, 5, "released", compensated, reservation_id="request-1"),
+        )
+        _write(store, scope, proof, context, _event(first, 6, "reversed"))
+        assert reconcile(store, BUYER)["by_tax"]["pis"]["reversed"] == first.amount.model_dump()
+
+
+def test_partial_reversal_and_selic_only_gate():
+    state = State()
+    transition(state, _cmd())
+    transition(state, _cmd(1, "reversed", 100, 10))
+    before = copy.deepcopy(state)
+    with pytest.raises(FiscalValidationError, match="requires principal"):
+        transition(state, _cmd(2, "reserved", 0, 1))
+    assert state == before
+    transition(state, _cmd(2, "reserved", 100, 10))
+    before = copy.deepcopy(state)
+    with pytest.raises(FiscalValidationError, match="requires principal"):
+        transition(state, _cmd(3, "compensated", 0, 1, reservation_id="request-2"))
+    assert state == before
+    transition(state, _cmd(3, "compensated", 100, 9, reservation_id="request-2"))
+    # SELIC-only unwind remains possible: do not strand a residual component.
+    transition(state, _cmd(4, "released", 0, 1, reservation_id="request-2"))
+    assert state.balances["available"] == Amount(principal_cents=134, selic_cents=18)
+    assert state.balances["compensated"] == Amount(principal_cents=100, selic_cents=9)
+
+
+@pytest.mark.parametrize(
+    "raw,reason",
+    [(b"{", "invalid ledger review JSON"),
+     (b"\xff", "invalid ledger review JSON"),
+     (b" " * 16385, "exceeds 16 KiB")],
+)
+def test_invalid_evidence_is_normalized(raw, reason):
+    reviewed = ReviewedMovement.model_validate({
+        "command": _cmd().model_dump(), "review": evidence(raw),
+    })
+    with pytest.raises(FiscalValidationError, match=reason):
+        reviewed.verify(("host", "tenant", "unit", "homologation"), BUYER)
+
+
+def test_postgres_unit_proof_and_legacy_entry_gate(economy_database, mapping):
+    db = economy_database
+    scope = _setup(db, mapping, BUYER)
+    proof = verify_credit_unit(db, scope, BUYER)
+    _, context = historical_issuer_context(db, scope, MONTH)
+    finding, digest = _seed(db, scope, context)
+    command = _bound(finding, digest)
+    with db.economy(scope) as store:
+        with pytest.raises(FiscalValidationError, match="verified credit recipient unit required"):
+            _write(store, scope, None, context, command)
+        with pytest.raises(FiscalValidationError, match="scope mismatch"):
+            _write(store, scope, replace(proof, scope_identity=("wrong", *proof.scope_identity[1:])), context, command)
+        with pytest.raises(FiscalValidationError, match="legacy credit entry"):
+            store.append_credit_entry(
+                record_id=journal_id(BUYER, finding), opportunity_id="legacy",
+                opportunity_version=1, tax_code="icms", competence=MONTH,
+                movement="identified", amount_cents=334, evidence_reference="test",
+            )
+        assert reconcile(store, BUYER)["lot_count"] == 0
+
+
+def test_postgres_scan_bounds_fail_closed(economy_database, mapping, monkeypatch):
+    db = economy_database
+    scope = _setup(db, mapping, BUYER)
+    proof = verify_credit_unit(db, scope, BUYER)
+    _, context = historical_issuer_context(db, scope, MONTH)
+    commands = _federal_seed(db, scope, MONTH, [("pis", 150), ("pis", 184)])
+    with db.economy(scope) as store:
+        for command in commands:
+            _write(store, scope, proof, context, command)
+        first, second = commands
+        reserve = _event(first, 1, "reserved", Amount(principal_cents=10, selic_cents=1))
+        _write(store, scope, proof, context, reserve)
+        with monkeypatch.context() as patch:
+            patch.setattr(ledger, "MAX_EVENTS", 1)
+            with pytest.raises(FiscalValidationError, match="history exceeds"):
+                history(store, BUYER, MONTH, first.finding_id)
+        with monkeypatch.context() as patch:
+            patch.setattr(ledger, "MAX_LOTS", 1)
+            with pytest.raises(FiscalValidationError, match="lot bound"):
+                reconcile(store, BUYER)
+            with pytest.raises(FiscalValidationError, match="lot bound"):
+                _write(store, scope, proof, context, _event(second, 1, "reserved", reserve.amount))
+        with monkeypatch.context() as patch:
+            patch.setattr(ledger, "MAX_SCAN_EVENTS", 1)
+            with pytest.raises(FiscalValidationError, match="event bound"):
+                reconcile(store, BUYER)
+            with pytest.raises(FiscalValidationError, match="event bound"):
+                _write(store, scope, proof, context, _event(second, 1, "reserved", reserve.amount))
+        assert reconcile(store, BUYER)["event_count"] == 3
