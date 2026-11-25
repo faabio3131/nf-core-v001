@@ -1,5 +1,9 @@
 # T16 — Detector de créditos não aproveitados
 
+## Fechamento pós-merge
+
+T16 integrada pela PR #612 no commit `6f138449e0e8c51e51fcbde896618614721c78b1`. O HEAD aprovado pelo Gemini, `267b0b0306fde9dabd1750694b084d62cd86d66c`, e o merge têm a mesma árvore `062ca0f5b6e0c82cb08e4f969c5fd5546c93589d`. CI pós-merge #45527493411 aprovada na tentativa 2 (44/44 etapas, 7.151 testes Python aprovados, 1 skip e 87 Playwright aprovados). A primeira tentativa recebeu HTTP 429 do Maven Central. Governança pós-merge #45527493836 e completude efetiva pré-merge #45527067399 aprovadas. Parecer independente sem P0/P1. Os três P2 e dois P3 permanecem na #613. A #614 acompanha a tarefa seguinte. As seções abaixo preservam o histórico da candidata.
+
 Issue #611, PR #612. Base T15 integrada c4026bb0b4a5e47c523a674bc70408ecd602698a. A planilha mestre exige identificar automaticamente notas de entrada elegíveis sem crédito escriturado e separar os valores por tributo e competência. A integração depende de CI, revisão independente e autorização para o SHA final.
 
 ## Operação interna

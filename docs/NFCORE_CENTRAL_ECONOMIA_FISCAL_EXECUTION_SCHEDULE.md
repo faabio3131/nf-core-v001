@@ -24,7 +24,9 @@ A [PR #592](https://github.com/faabio3131/nf-core-v001/pull/592) integrou as set
 
 **T15 entregue.** A PR #609 integrou a T15 na main `c4026bb0b4a5e47c523a674bc70408ecd602698a`. A revisão Gemini de `335498d776ea4c5efbc8a03db3e12e24a9c98ac1` e o merge têm a mesma árvore `4a8ea62672e9199e9d44fe5df4213af335f77476`. A CI pós-merge #45504585819 passou nas 44 etapas (7.092 testes Python aprovados, 1 skip, 87 Playwright aprovados). Governança #45504585565 e completude efetiva #45517996984 aprovadas. O parecer registrou zero P0/P1, dois P2 e dois P3 acompanhados na #610. [Handoff T15](NFCORE_T15_HISTORICAL_AUDIT_HANDOFF.md).
 
-**T16 em construção (#611).** A planilha mestre exige identificação automática de notas de entrada elegíveis sem crédito escriturado, por tributo e competência. A T17 aguarda a integração e certificação pós-merge da T16.
+**T16 entregue.** T16 integrada pela PR #612 no commit `6f138449e0e8c51e51fcbde896618614721c78b1`. O HEAD aprovado pelo Gemini, `267b0b0306fde9dabd1750694b084d62cd86d66c`, e o merge têm a mesma árvore `062ca0f5b6e0c82cb08e4f969c5fd5546c93589d`. CI pós-merge #45527493411 aprovada na tentativa 2 (44/44 etapas, 7.151 testes Python aprovados, 1 skip e 87 Playwright aprovados). A primeira tentativa recebeu HTTP 429 do Maven Central. Governança pós-merge #45527493836 e completude efetiva pré-merge #45527067399 aprovadas. Parecer independente sem P0/P1. Os três P2 e dois P3 permanecem na #613. [Handoff T16](NFCORE_T16_UNUSED_CREDITS_HANDOFF.md).
+
+**T17 candidata em validação — #614 / PR #615 Draft.** DoD da planilha mestre: cálculo determinístico por competência, prescrição conforme o marco legal e tabela SELIC oficial versionada, com memória reproduzível. T18 aguarda integração e certificação da T17.
 
 **Curadoria fiscal — [#593](https://github.com/faabio3131/nf-core-v001/issues/593).** O acompanhamento documental de AP, PA, RR e SE segue até 07/12/2026. Por modalidade e competência, registrar vigência, vínculo com registro e depósito quando aplicáveis e parecer independente. Até lá, as quatro candidatas seguem excluídas da importação e do cálculo. Essa pendência permite avançar na construção da T10. A expansão do catálogo de operações da T06 segue sujeita a revisão fiscal de cada nova regra.
 
@@ -48,8 +50,8 @@ A folha T23–T33, a Trilha 2 H01–H06 e a reformulação Enterprise não integ
 | T13 | Aprovação contábil auditável | ENTREGUE — #603, CI pós-merge #45434601978 SUCCESS e Gemini aprovado |
 | T14 | Aplicação autorizada emissão | ENTREGUE — #606, CI pós-merge #45467529956 tentativa 2 SUCCESS e Gemini aprovado |
 | T15 | Auditoria histórica 60 meses | ENTREGUE — #609, CI pós-merge #45504585819 |
-| T16 | Créditos não aproveitados | EM CONSTRUÇÃO — #611 |
-| T17 | Recuperação/prescrição/SELIC | Bloqueado |
+| T16 | Créditos não aproveitados | ENTREGUE — #612, CI pós-merge #45527493411 |
+| T17 | Recuperação/prescrição/SELIC | EM VALIDAÇÃO — #614 / #615 Draft |
 | T18 | Ledger partidas dobradas | Bloqueado |
 | T19 | Restituição/compensação | Bloqueado |
 | T20 | Dossiê PDF/Excel/XML | Bloqueado |
