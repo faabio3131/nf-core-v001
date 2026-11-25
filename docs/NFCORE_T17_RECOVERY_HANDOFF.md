@@ -1,5 +1,11 @@
 # T17 — Motor de recuperação tributária
 
+## Checkpoint pós-merge — 25/11/2026
+
+T17 integrada pela PR #615 na main `1b802189b144bd3dc4eca4bb66be90e2b92adfb1`, com autorização expressa do proprietário no HEAD auditado `660b86e26ad82b914caf323f51905a0011451ab6`. Árvores Git idênticas `d2582048ee67508c1a9aefc1d75ee32932e51014`. CI pré-merge #45533679231 SUCCESS (44/44, 7.177 Python PASS, 1 SKIP fora da T17, 87 E2E PASS), governança #45533679277 SUCCESS e completude efetiva fora de Draft #45614859660 SUCCESS. Gemini: aprovado para solicitar merge, zero P0/P1; 3 P2 e 3 P3 na #616. Governança pós-merge #45615039934 SUCCESS. CI pós-merge #45615039868 EM EXECUÇÃO na captura. **T17 INTEGRADA, AINDA NÃO CERTIFICADA PÓS-MERGE.** T18 bloqueada e #614 aberta até CI integral pós-merge SUCCESS. Production inalterada; sem deploy, operação fiscal, reconhecimento, restituição ou compensação. #613 e #616 preservadas.
+
+Parecer independente arquivado: https://drive.google.com/file/d/1QB5-tHLcn8EOzODEaj9pWbAQQuDPigv0/view . Auditoria estática/matemática; não equivale à homologação fiscal externa. Atualizar o estado somente mediante comprovação do run pós-merge no SHA acima. As seções seguintes preservam o histórico da candidata.
+
 ## Fechamento da T16
 
 A PR #612 foi integrada com autorização expressa na main 6f138449e0e8c51e51fcbde896618614721c78b1. O HEAD auditado 267b0b0306fde9dabd1750694b084d62cd86d66c e o merge têm árvore 062ca0f5b6e0c82cb08e4f969c5fd5546c93589d. CI pós-merge #45527493411, tentativa 2, SUCCESS em 44/44 etapas (7.151 Python aprovados, 1 skip, 87 Playwright aprovados). A primeira tentativa recebeu HTTP 429 do Maven Central. Governança #45527493836 e completude efetiva #45527067399 aprovadas. Refinamentos abertos na #613.
