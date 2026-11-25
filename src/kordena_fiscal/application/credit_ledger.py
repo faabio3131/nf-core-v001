@@ -10,6 +10,7 @@ from __future__ import annotations
 import base64
 import hashlib
 import json
+from dataclasses import dataclass
 from datetime import date
 from typing import Any
 
@@ -26,6 +27,7 @@ from kordena_fiscal.persistence.economy_store import EconomyStore
 from kordena_fiscal.tax.credit_ledger import (
     MAX_EVENTS,
     MAX_LOTS,
+    MAX_SCAN_EVENTS,
     SCHEMA,
     Amount,
     Command,
@@ -56,7 +58,10 @@ class ReviewedMovement(Strict):
             "simulation_only": True,
             "command": self.command.model_dump(),
         }
-        observed = json.loads(self.review.contents(), object_pairs_hook=_unique_fields)
+        raw = self.review.contents()
+        if len(raw) > 16384:
+            raise FiscalValidationError("ledger movement evidence exceeds 16 KiB")
+        observed = json.loads(raw, object_pairs_hook=_unique_fields)
         if json.dumps(observed, sort_keys=True) != json.dumps(expected, sort_keys=True):
             raise FiscalValidationError("ledger reviewed movement differs from original evidence")
 
@@ -78,6 +83,61 @@ def _source_key(issuer: Cnpj, period: date) -> str:
     return f"tax-recovery-{issuer.value}-{period.isoformat()}"
 
 
+@dataclass(frozen=True)
+class SourceLot:
+    amount: Amount
+    as_of: str
+    modality: str
+    anchor: str
+    receipt_id: str | None
+    payment_sha256: str | None
+
+    @property
+    def fiscal_identity(self) -> tuple[str, str, str | None, str | None]:
+        return self.modality, self.anchor, self.receipt_id, self.payment_sha256
+
+
+def _candidate(
+    issuer: Cnpj, finding: dict[str, Any], tax: str, as_of: str
+) -> SourceLot:
+    expected_id = hashlib.sha256(
+        f"{issuer.value}/{finding['access_key']}/{finding['item']}/{finding['tax']}".encode()
+    ).hexdigest()
+    if (
+        finding["status"] != "potential"
+        or finding["credit_recognized"] is not False
+        or finding["tax"] != tax
+        or expected_id != finding["finding_id"]
+    ):
+        raise FiscalValidationError("T17 finding not eligible for simulated ledger")
+    amount = Amount(
+        principal_cents=finding["principal_cents"], selic_cents=finding["adjustment_cents"]
+    )
+    if amount.total != finding["estimated_cents"] or amount.principal_cents <= 0:
+        raise FiscalValidationError("T17 amount mismatch")
+    modality = finding["modality"]
+    receipt = finding.get("receipt_id")
+    payment = finding.get("payment")
+    if modality == "federal_undue_payment":
+        if (
+            tax not in {"pis", "cofins"}
+            or not isinstance(receipt, str)
+            or not receipt
+            or not isinstance(payment, dict)
+            or payment["receipt_id"] != receipt
+            or not isinstance(payment["sha256"], str)
+        ):
+            raise FiscalValidationError("federal ledger receipt provenance missing")
+        payment_sha = payment["sha256"]
+    elif modality == "icms_bookkeeping":
+        if tax != "icms" or receipt is not None or amount.selic_cents != 0:
+            raise FiscalValidationError("invalid bookkeeping ledger provenance")
+        payment_sha = None
+    else:
+        raise FiscalValidationError("unsupported ledger modality")
+    return SourceLot(amount, as_of, modality, finding["anchor"], receipt, payment_sha)
+
+
 def _verified_source(
     store: EconomyStore,
     issuer: Cnpj,
@@ -85,7 +145,7 @@ def _verified_source(
     command: Command,
     context: IssuerContext,
     as_of: date,
-) -> Amount:
+) -> tuple[SourceLot, list[dict[str, Any]]]:
     """Recompute current T17 from original T17/T16/T15 evidence, never trust totals."""
     row = store.record(TABLE, _source_key(issuer, period))
     if (
@@ -148,25 +208,7 @@ def _verified_source(
     matches = [item for item in computed if item["finding_id"] == command.finding_id]
     if len(matches) != 1:
         raise FiscalValidationError("T17 finding missing or ambiguous")
-    candidate = matches[0]
-    expected_id = hashlib.sha256(
-        (
-            f"{issuer.value}/{candidate['access_key']}/{candidate['item']}/{candidate['tax']}"
-        ).encode()
-    ).hexdigest()
-    if (
-        candidate["status"] != "potential"
-        or candidate["credit_recognized"] is not False
-        or candidate["tax"] != command.tax
-        or expected_id != command.finding_id
-    ):
-        raise FiscalValidationError("T17 finding not eligible for simulated ledger")
-    amount = Amount(
-        principal_cents=candidate["principal_cents"], selic_cents=candidate["adjustment_cents"]
-    )
-    if amount.total != candidate["estimated_cents"] or amount.principal_cents <= 0:
-        raise FiscalValidationError("T17 amount mismatch")
-    return amount
+    return _candidate(issuer, matches[0], command.tax, as_of.isoformat()), computed
 
 
 def _lot_binding(command: Command) -> tuple[str, str, str]:
@@ -179,7 +221,7 @@ def _source_binding(command: Command) -> tuple[int, str]:
 
 def _historical_source(
     store: EconomyStore, issuer: Cnpj, period: date, command: Command
-) -> Amount:
+) -> SourceLot:
     """Verify an exact immutable T17 source for historical replay, not new eligibility."""
     row = store.record(TABLE, _source_key(issuer, period), command.recovery_version)
     if (
@@ -201,17 +243,7 @@ def _historical_source(
     ]
     if len(matches) != 1:
         raise FiscalValidationError("historical ledger finding missing or ambiguous")
-    item = matches[0]
-    if (
-        item["status"] != "potential"
-        or item["tax"] != command.tax
-        or item["credit_recognized"] is not False
-    ):
-        raise FiscalValidationError("historical ledger finding invalid")
-    amount = Amount(principal_cents=item["principal_cents"], selic_cents=item["adjustment_cents"])
-    if amount.total != item["estimated_cents"]:
-        raise FiscalValidationError("historical ledger amount mismatch")
-    return amount
+    return _candidate(issuer, matches[0], command.tax, row["content"]["as_of"])
 
 
 def _replay(
@@ -225,7 +257,8 @@ def _replay(
     previous: str | None = None
     binding: tuple[str, str, str] | None = None
     previous_source: tuple[int, str] | None = None
-    verified_sources: dict[tuple[int, str], Amount] = {}
+    verified_sources: dict[tuple[int, str], SourceLot] = {}
+    first_source: SourceLot | None = None
     last_date: date | None = None
     for version, row in enumerate(rows, 1):
         content = row["content"]
@@ -260,8 +293,13 @@ def _replay(
             if source not in verified_sources:
                 verified_sources[source] = _historical_source(store, issuer, period, command)
             expected = command.amount if command.movement == "identified" else state.original
-            if verified_sources[source] != expected:
-                raise FiscalValidationError("historical ledger amount differs from source")
+            verified = verified_sources[source]
+            if verified.amount != expected or verified.as_of != event_date.isoformat():
+                raise FiscalValidationError("historical ledger amount or cutoff differs from source")
+            if first_source is None:
+                first_source = verified
+            elif verified.fiscal_identity != first_source.fiscal_identity:
+                raise FiscalValidationError("ledger fiscal identity cannot change")
         elif previous_source != source:
             raise FiscalValidationError("unwinding movement must retain last source binding")
         postings = transition(state, command)
@@ -271,6 +309,59 @@ def _replay(
         last_date = event_date
         previous_source = source
     return state, rows
+
+
+def _guard_existing_lots(
+    store: EconomyStore,
+    issuer: Cnpj,
+    period: date,
+    command: Command,
+    current: SourceLot,
+    findings: list[dict[str, Any]],
+) -> None:
+    """Prevent reallocation of an active lot and reuse of a federal payment."""
+    candidates = {item["finding_id"]: item for item in findings}
+    ids = store.credit_journal_ids(
+        issuer, None if current.receipt_id is not None else period, limit=MAX_LOTS + 1
+    )
+    if len(ids) > MAX_LOTS:
+        raise FiscalValidationError("ledger overlap check exceeds supported lot bound")
+    scanned = 0
+    for key, competence in ids:
+        if key == journal_id(issuer, command.finding_id):
+            continue
+        first = store.record(TABLE, key, 1)
+        if first is None:
+            raise FiscalValidationError("ledger lot first event missing")
+        initial = Command.model_validate(first["content"]["reviewed"]["command"])
+        if initial.tax != command.tax:
+            continue
+        other_period = date.fromisoformat(competence)
+        state, rows = _replay(store, issuer, other_period, key)
+        scanned += len(rows)
+        if scanned > MAX_SCAN_EVENTS:
+            raise FiscalValidationError("ledger overlap check exceeds event bound")
+        if state.balances["reversed"] == state.original:
+            continue
+        original = _historical_source(store, issuer, other_period, initial)
+        if other_period != period:
+            if current.receipt_id is not None and original.receipt_id is not None and (
+                current.receipt_id == original.receipt_id
+                or current.payment_sha256 == original.payment_sha256
+            ):
+                raise FiscalValidationError("federal receipt already attributed to another period")
+            continue
+        # Every active lot of this tax must still correspond to exactly one
+        # unchanged candidate in the current complete T17 recomputation.
+        candidate = candidates.get(initial.finding_id)
+        if candidate is None or candidate["status"] != "potential":
+            raise FiscalValidationError("active ledger lot absent from current T17")
+        updated = _candidate(issuer, candidate, command.tax, current.as_of)
+        if (
+            updated.amount != state.original
+            or updated.fiscal_identity != original.fiscal_identity
+        ):
+            raise FiscalValidationError("active ledger lot changed in current T17")
 
 
 def post_movement(
@@ -315,10 +406,16 @@ def post_movement(
         if as_of < date.fromisoformat(history[-1]["content"]["as_of"]):
             raise FiscalValidationError("ledger event date moved backwards")
     if command.movement in {"identified", "reserved", "compensated"}:
-        current = _verified_source(store, issuer, period, command, context, as_of)
+        current, findings = _verified_source(store, issuer, period, command, context, as_of)
         expected = command.amount if command.movement == "identified" else state.original
-        if current != expected:
+        if current.amount != expected:
             raise FiscalValidationError("ledger identification differs from current T17 amount")
+        if history:
+            first = Command.model_validate(history[0]["content"]["reviewed"]["command"])
+            original = _historical_source(store, issuer, period, first)
+            if original.fiscal_identity != current.fiscal_identity:
+                raise FiscalValidationError("ledger fiscal identity cannot change")
+        _guard_existing_lots(store, issuer, period, command, current, findings)
     postings = transition(state, command)
     version = len(history) + 1
     projection = state.projection()
@@ -385,6 +482,8 @@ def reconcile(
         accumulate(totals, tax, projection)
         accumulate(periods.setdefault(competence, {}), tax, projection)
         entries += len(rows)
+        if entries > MAX_SCAN_EVENTS:
+            raise FiscalValidationError("ledger report exceeds supported event bound")
     return {
         "by_tax": totals,
         "by_competence": periods,

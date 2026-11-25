@@ -14,6 +14,7 @@ from kordena_fiscal.tax.unused_credits import CreditTax
 SCHEMA = "nfcore.credit-ledger/v1"
 MAX_EVENTS = 1000
 MAX_LOTS = 1000
+MAX_SCAN_EVENTS = 5000
 Movement = Literal[
     "identified", "reserved", "released", "compensated", "reversed", "compensation_reversed"
 ]

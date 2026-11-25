@@ -19,7 +19,7 @@ import pytest
 from test_bling_canonical import mapping  # noqa: F401
 from test_t14_authorized_issuance import economy_database  # noqa: F401
 from test_t15_historical_audit import MONTH, TODAY, _setup, _xml, fixture
-from test_t16_unused_credits import BUYER, evidence
+from test_t16_unused_credits import BUYER, batch, bind_book, evidence
 from test_t17_tax_recovery import _bundle, _review, _t16
 
 from kordena_fiscal.application.credit_ledger import (
@@ -36,6 +36,7 @@ from kordena_fiscal.cognitive.historical_audit_api import historical_issuer_cont
 from kordena_fiscal.domain import FiscalEnvironment, FiscalValidationError
 from kordena_fiscal.tax.credit_ledger import Amount, Command, State, transition
 from kordena_fiscal.tax.historical_audit import Month
+from kordena_fiscal.tax.unused_credits import Batch, detect
 
 
 def _cmd(version=0, movement="identified", principal=334, selic=37, **changes):
@@ -401,3 +402,75 @@ def test_cli_and_tampered_review(economy_database, mapping, tmp_path):
     result = subprocess.run([*args, "--report"], env=env | {"NFCORE_ENVIRONMENT": "production"},
                             capture_output=True, text=True)
     assert result.returncode == 2 and not result.stdout
+
+
+def test_postgres_new_source_cannot_reallocate_an_active_lot(economy_database, mapping):
+    db = economy_database
+    scope = _setup(db, mapping, BUYER)
+    _, context = historical_issuer_context(db, scope, MONTH)
+    finding, digest = _seed(db, scope, context)
+    with db.economy(scope) as store:
+        post_movement(
+            store, BUYER, _reviewed(scope, _bound(finding, digest)),
+            context=context, as_of=TODAY,
+        )
+    data = batch()
+    data["rules"][0]["cnae"] = context.cnae
+    new_xml = (
+        _xml(MONTH, 2)
+        .replace(b"</emit>", f"</emit><dest><CNPJ>{BUYER.value}</CNPJ></dest>".encode())
+        .replace(b"</prod>", b"<vProd>100.00</vProd></prod>")
+        .replace(b"</imposto>", b"<IPI><IPITrib><vIPI>18.00</vIPI></IPITrib></IPI></imposto>")
+    )
+    data["purchases"][0]["xml"] = evidence(new_xml)
+    bind_book(data)
+    facts = Batch.model_validate(data)
+    rows = detect(facts, BUYER, context, TODAY)["findings"]
+    assert rows[0]["identity"] != finding
+    with db.economy(scope) as store:
+        t16 = import_credits(store, BUYER, MONTH, 2, facts, context=context, as_of=TODAY)
+        t16_digest = t16["snapshot_digest"]
+        reviewed = _review(facts, rows[0], t16_digest)
+        t17 = import_recovery(
+            store, BUYER, MONTH, 2, _bundle(facts, [reviewed], t16_digest, t16_version=2),
+            context=context, as_of=TODAY,
+        )
+    candidate = _bound(rows[0]["identity"], t17["snapshot_digest"], recovery_version=2)
+    with db.economy(scope) as store:
+        with pytest.raises(FiscalValidationError, match="active ledger lot absent"):
+            post_movement(store, BUYER, _reviewed(scope, candidate),
+                          context=context, as_of=TODAY)
+        cancel = _bound(finding, digest, 1, "reversed")
+        post_movement(store, BUYER, _reviewed(scope, cancel), context=context, as_of=TODAY)
+        post_movement(store, BUYER, _reviewed(scope, candidate), context=context, as_of=TODAY)
+        result = reconcile(store, BUYER)
+        assert result["lot_count"] == 2
+        assert result["by_tax"]["icms"]["available"]["principal_cents"] == 334
+        assert result["by_tax"]["icms"]["reversed"]["principal_cents"] == 334
+
+
+def test_postgres_forged_postings_fail_closed_on_replay(economy_database, mapping):
+    db = economy_database
+    scope = _setup(db, mapping, BUYER)
+    _, context = historical_issuer_context(db, scope, MONTH)
+    finding, digest = _seed(db, scope, context)
+    key = journal_id(BUYER, finding)
+    with db.economy(scope) as store:
+        result = post_movement(
+            store, BUYER, _reviewed(scope, _bound(finding, digest)),
+            context=context, as_of=TODAY,
+        )
+        row = store.record(TABLE, key, 1)
+        forged = copy.deepcopy(row["content"])
+        forged["event_version"] = 2
+        forged["previous_digest"] = result["digest"]
+        command = _bound(finding, digest, 1, "reserved", 1)
+        forged["reviewed"] = _reviewed(scope, command).model_dump()
+        # Even a valid hash over a tampered document is not accepted as a
+        # journal event: replay must derive both postings and every balance.
+        store.append_snapshot(
+            record_id=key, version=2, competence=MONTH, issuer=BUYER, content=forged
+        )
+    with db.economy(scope) as store:
+        with pytest.raises(FiscalValidationError, match="postings or balance"):
+            reconcile(store, BUYER)
