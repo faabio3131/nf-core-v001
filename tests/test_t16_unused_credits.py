@@ -25,19 +25,21 @@ def evidence(raw):
     return {"data_b64": base64.b64encode(raw).decode(), "sha256": hashlib.sha256(raw).hexdigest()}
 
 
-def batch(tax="icms", purpose="insumo"):
+def batch(tax="icms", purpose="insumo", period=MONTH, as_of=TODAY):
     original = fixture()
     raw = (
-        _xml(MONTH, 1)
+        _xml(period, 1)
         .replace(b"</emit>", f"</emit><dest><CNPJ>{BUYER.value}</CNPJ></dest>".encode())
         .replace(b"</prod>", b"<vProd>100.00</vProd></prod>")
         .replace(b"</imposto>", b"<IPI><IPITrib><vIPI>18.00</vIPI></IPITrib></IPI></imposto>")
     )
     legal = {k: original["artifacts"][4][k] for k in ("data_b64", "sha256")}
     citation = original["citations"][0]
+    if tax.endswith("_presumido"):
+        citation["valid_until"] = "2030-01-01"
     method = {"icms": "highlighted_icms", "ipi": "highlighted_ipi"}.get(tax, "reviewed_base")
     return {
-        "competence": MONTH.isoformat(),
+        "competence": period.isoformat(),
         "rules": [
             {
                 "tax": tax,
@@ -48,6 +50,7 @@ def batch(tax="icms", purpose="insumo"):
                 "ncm": "30049099",
                 "supplier_cfop": "5102",
                 "method": method,
+                "presumed_credit_code": "1" if tax.endswith("_presumido") else None,
                 "required_facts": {"synthetic-condition": True},
                 "numerator": 1,
                 "denominator": 3,
@@ -65,7 +68,14 @@ def batch(tax="icms", purpose="insumo"):
                         "item": 1,
                         "tax": tax,
                         "purpose": purpose,
-                        "observed_facts": {"synthetic-condition": True},
+                        "observed_facts": {
+                            "synthetic-condition": True,
+                            "rural_non_contributor": True,
+                            "regular_regime_buyer": True,
+                            "payment_documented": True,
+                            "appropriation_event_history_reviewed": True,
+                            "period_rate_officially_reviewed": True,
+                        },
                         "basis_cents": 1001,
                         "eligibility_evidence": evidence(b"fixture allocation"),
                     }
@@ -74,8 +84,8 @@ def batch(tax="icms", purpose="insumo"):
         ],
         "books": {
             "recipient": BUYER.value,
-            "competence": MONTH.isoformat(),
-            "checked_through": TODAY.isoformat(),
+            "competence": period.isoformat(),
+            "checked_through": as_of.isoformat(),
             "complete_taxes": [tax],
             "all_units_and_later_adjustments_reviewed": True,
             "entries": [],
@@ -91,25 +101,27 @@ def bind_book(data):
         books["source"] = evidence(json.dumps(extract, sort_keys=True).encode())
 
 
-def run(data):
+def run(data, as_of=TODAY):
     bind_book(data)
-    return detect(Batch.model_validate(data), BUYER, _context(), TODAY)
+    return detect(Batch.model_validate(data), BUYER, _context(), as_of)
 
 
 @pytest.mark.parametrize("tax", ["icms", "ipi", "pis", "cofins", "ibs_presumido", "cbs_presumido"])
 @pytest.mark.parametrize("purpose", ["insumo", "energia", "frete", "ativo_imobilizado"])
 def test_deterministic_reviewed_rule_and_prior_booking(tax, purpose):
-    data = batch(tax, purpose)
-    report = run(data)
+    as_of = date(2027, 2, 1) if tax.endswith("_presumido") else TODAY
+    period = date(2027, 1, 1) if tax.endswith("_presumido") else MONTH
+    data = batch(tax, purpose, period, as_of)
+    report = run(data, as_of)
     row = report["findings"][0]
     assert row["status"] == "unused_candidate" and row["candidate_cents"] == 334
     assert report["partial_totals_cents"] == {tax: 334} and not report["credit_recognized"]
     data["books"]["entries"].append(
         {"access_key": row["access_key"], "item": 1, "tax": tax, "booked_cents": 334}
     )
-    assert run(data)["findings"][0]["status"] == "fully_accounted"
+    assert run(data, as_of)["findings"][0]["status"] == "fully_accounted"
     data["books"]["entries"][0]["booked_cents"] = 34
-    assert run(data)["partial_totals_cents"] == {tax: 300}
+    assert run(data, as_of)["partial_totals_cents"] == {tax: 300}
 
 
 @pytest.mark.parametrize(
@@ -230,3 +242,24 @@ def test_postgres_replay_revision_rollback_rls_and_shared_cnpj(economy_database,
     for unit_scope in (scope, other):
         with pytest.raises(FiscalValidationError, match="ambiguous credit recipient"):
             verify_credit_unit(db, unit_scope, BUYER)
+
+
+@pytest.mark.parametrize(
+    "code,tax,year,expected",
+    [
+        ("1", "ibs_presumido", 2026, None),
+        ("3", "ibs_presumido", 2027, None),
+        ("3", "cbs_presumido", 2027, 334),
+        ("3", "ibs_presumido", 2029, 334),
+        ("2", "cbs_presumido", 2029, None),
+    ],
+)
+def test_presumed_catalog_filters_model_and_tax_effective_date(code, tax, year, expected):
+    as_of = date(year, 2, 1)
+    data = batch(tax, "insumo", date(year, 1, 1), as_of)
+    data["rules"][0]["presumed_credit_code"] = code
+    use = data["purchases"][0]["uses"][0]
+    use["observed_facts"]["eligible_recycling_acquisition"] = True
+    assert run(data, as_of)["findings"][0]["candidate_cents"] == expected
+    use["observed_facts"].pop("payment_documented")
+    assert run(data, as_of)["findings"][0]["candidate_cents"] is None

@@ -7,12 +7,16 @@ import json
 from collections import Counter
 from datetime import date
 from fractions import Fraction
+from functools import lru_cache
+from importlib.resources import files
 from typing import Annotated, Any, Literal
 
 from lxml import etree
 from pydantic import Field, StringConstraints
 
 from kordena_fiscal.cognitive.economy_contract import LegalCitation
+from kordena_fiscal.compliance.rtc import RegulatoryArtifactKind, RegulatoryArtifactPin
+from kordena_fiscal.compliance.rtc_evidence import verify_regulatory_artifact_bytes
 from kordena_fiscal.domain import Cnpj, FiscalValidationError
 from kordena_fiscal.tax.historical_audit import (
     NS,
@@ -55,6 +59,7 @@ class Rule(Strict):
     uf: Id
     cnae: Id
     ncm: Ncm
+    presumed_credit_code: Id | None = None
     supplier_cfop: Cfop
     required_facts: Annotated[dict[Id, bool], Field(min_length=1, max_length=32)]
     method: Literal["highlighted_icms", "highlighted_ipi", "reviewed_base"]
@@ -138,6 +143,39 @@ def _invoice(raw: bytes, recipient: Cnpj, period: date) -> tuple[str, dict[int, 
         ipi = det.find(NS + "imposto/" + NS + "IPI/" + NS + "IPITrib")
         line["ipi_cents"] = None if ipi is None else _money(_text(ipi, "vIPI", optional=True))
     return parsed["access_key"], items
+
+
+@lru_cache(maxsize=1)
+def _purchase_credit_catalog() -> dict[str, Any]:
+    # Pin the normalized, reviewed subset separately from the original SVRS publication.
+    raw = (
+        files("kordena_fiscal.tax").joinpath("official/t16_rtc_purchase_credits.json").read_bytes()
+    )
+    pin = RegulatoryArtifactPin(
+        artifact_id="IBSCBS-CCREDPRES",
+        kind=RegulatoryArtifactKind.OTHER,
+        version="IT-2025.002-v1.70",
+        published_on=date(2026, 10, 1),
+        source_reference="https://dfe-portal.svrs.rs.gov.br/CFF/TabelaCreditoPresumido",
+        checksum_sha256="d5d1d10c5b489dec932ea84dec36f087f049d7ad01e03a15845c5dd7bba7dc61",
+    )
+    verify_regulatory_artifact_bytes(pin, raw)
+    return dict(json.loads(raw)["rows"])
+
+
+def _required_credit_facts(rule: Rule, period: date) -> dict[str, bool] | None:
+    if rule.tax not in {"ibs_presumido", "cbs_presumido"}:
+        return rule.required_facts if rule.presumed_credit_code is None else None
+    row = _purchase_credit_catalog().get(rule.presumed_credit_code or "")
+    if row is None or period < date.fromisoformat(row[rule.tax]) or rule.method != "reviewed_base":
+        return None
+    return rule.required_facts | {
+        row["condition"]: True,
+        "regular_regime_buyer": True,
+        "payment_documented": True,
+        "appropriation_event_history_reviewed": True,
+        "period_rate_officially_reviewed": True,
+    }
 
 
 def _unique_fields(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
@@ -232,15 +270,18 @@ def detect(batch: Batch, recipient: Cnpj, context: IssuerContext, as_of: date) -
                 )
             ]
             rule = applicable[0] if len(applicable) == 1 else None
-            conditions = rule.required_facts if rule is not None else {}
+            conditions = _required_credit_facts(rule, period) if rule is not None else None
             observed = use.observed_facts
-            contradicted = any(k in observed and observed[k] != v for k, v in conditions.items())
+            contradicted = any(
+                k in observed and observed[k] != v for k, v in (conditions or {}).items()
+            )
             principal = None
             status = "insufficient_basis"
             if purchase.status == "cancelled" or contradicted:
                 status = "excluded"
             elif (
                 rule is not None
+                and conditions is not None
                 and conditions.keys() <= observed.keys()
                 and purchase.status == "active"
                 and use.tax in coverage
@@ -270,6 +311,7 @@ def detect(batch: Batch, recipient: Cnpj, context: IssuerContext, as_of: date) -
                     "purpose": use.purpose,
                     "observed_facts": observed,
                     "required_facts": conditions,
+                    "presumed_credit_code": rule.presumed_credit_code if rule else None,
                     "status": status,
                     "candidate_cents": principal,
                     "xml_sha256": purchase.xml.sha256,

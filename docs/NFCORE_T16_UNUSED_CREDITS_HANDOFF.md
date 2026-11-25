@@ -22,4 +22,9 @@ Esta versão não importa diretamente CT-e, NF3e ou EFD bruta. Exige extrato nor
 
 ## Verificação
 
-A suíte focal em PostgreSQL 16.2 isolado aprovou 93 casos T15/T16, sem skips. Inclui variações de protocolo, numeração de itens, reprocessamento após mudança de perfil/regime, seis tributos, quatro destinações, três resultados de escrituração, insuficiência documental, expiração, isolamento, conflito, replay e rollback. Resultados da CI do HEAD e parecer Gemini devem ser vinculados na PR antes de solicitar integração.
+A suíte focal em PostgreSQL 16.2 isolado aprovou 98 casos T15/T16, sem skips. Inclui variações de protocolo, numeração de itens, reprocessamento após mudança de perfil/regime, seis tributos, quatro destinações, três resultados de escrituração, insuficiência documental, expiração, isolamento, conflito, replay e rollback. Resultados da CI do HEAD e parecer Gemini devem ser vinculados na PR antes de solicitar integração.
+
+
+## Créditos presumidos do adquirente
+
+O detector consulta o recorte normalizado do catálogo IBSCBS-CCREDPRES da baseline RTC, referenciado ao IT 2025.002 v1.70. O verificador canônico de artefatos confere o SHA-256 dos bytes da normalização embarcada. O grupo na NF-e do fornecedor não estabelece, sozinho, direito do destinatário. No recorte de compras com evento, o código 1 admite IBS e CBS a partir de janeiro/2027. O código 3 tem datas distintas, janeiro/2027 para CBS e janeiro/2029 para IBS. As condições exigem revisão da hipótese material, pagamento, histórico de eventos e taxa da competência. Os demais códigos retornam base insuficiente nesta modalidade. O SHA da normalização não é o hash do arquivo original publicado. [Tabela oficial SVRS](https://dfe-portal.svrs.rs.gov.br/CFF/TabelaCreditoPresumido).
