@@ -5,8 +5,13 @@ import base64
 import copy
 import hashlib
 import json
+import os
+import subprocess
+import sys
 from dataclasses import replace
-from datetime import date
+from datetime import date, datetime
+from pathlib import Path
+from zoneinfo import ZoneInfo
 
 import pytest
 from test_bling_canonical import mapping  # noqa: F401
@@ -263,3 +268,48 @@ def test_presumed_catalog_filters_model_and_tax_effective_date(code, tax, year, 
     assert run(data, as_of)["findings"][0]["candidate_cents"] == expected
     use["observed_facts"].pop("payment_documented")
     assert run(data, as_of)["findings"][0]["candidate_cents"] is None
+
+
+def test_cli_to_postgres_from_reviewed_input(economy_database, mapping, tmp_path):
+    db = economy_database
+    scope = _setup(db, mapping, BUYER)
+    _, context = historical_issuer_context(db, scope, MONTH)
+    data = batch()
+    data["rules"][0]["cnae"] = context.cnae
+    data["books"]["checked_through"] = (
+        datetime.now(ZoneInfo("America/Sao_Paulo")).date().isoformat()
+    )
+    bind_book(data)
+    path = tmp_path / "purchase.json"
+    path.write_text(
+        json.dumps(
+            {
+                "tenant": scope.tenant_id,
+                "unit": scope.unit_id,
+                "issuer_cnpj": BUYER.value,
+                "version": 1,
+                "facts": data,
+            }
+        )
+    )
+    cli = Path(__file__).parents[1] / "scripts/nfcore_historical_audit_import.py"
+    args = [
+        sys.executable,
+        str(cli),
+        str(path),
+        "--tenant",
+        scope.tenant_id,
+        "--unit",
+        scope.unit_id,
+        "--unused-credits",
+    ]
+    env = os.environ | {"NFCORE_ENVIRONMENT": "test", "DATABASE_URL": db._dsn}
+    first = subprocess.run(args, env=env, capture_output=True, text=True, check=True)
+    receipt = json.loads(first.stdout)
+    assert receipt["finding_count"] == 1 and receipt["replay"] is False
+    repeat = subprocess.run(args, env=env, capture_output=True, text=True, check=True)
+    assert json.loads(repeat.stdout)["snapshot_digest"] == receipt["snapshot_digest"]
+    rejected = subprocess.run(
+        args, env=env | {"NFCORE_ENVIRONMENT": "production"}, capture_output=True, text=True
+    )
+    assert rejected.returncode == 2 and not rejected.stdout

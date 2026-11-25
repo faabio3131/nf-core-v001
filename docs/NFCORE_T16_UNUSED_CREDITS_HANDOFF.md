@@ -22,7 +22,7 @@ Esta versão não importa diretamente CT-e, NF3e ou EFD bruta. Exige extrato nor
 
 ## Verificação
 
-A suíte focal em PostgreSQL 16.2 isolado aprovou 98 casos T15/T16, sem skips. Inclui variações de protocolo, numeração de itens, reprocessamento após mudança de perfil/regime, seis tributos, quatro destinações, três resultados de escrituração, insuficiência documental, expiração, isolamento, conflito, replay e rollback. Resultados da CI do HEAD e parecer Gemini devem ser vinculados na PR antes de solicitar integração.
+A suíte focal em PostgreSQL 16.2 isolado aprovou 99 casos T15/T16, sem skips. Inclui variações de protocolo, numeração de itens, reprocessamento após mudança de perfil/regime, seis tributos, quatro destinações, três resultados de escrituração, insuficiência documental, expiração, isolamento, conflito, replay e rollback. A jornada CLI de ponta a ponta importa um pacote em processo separado, confirma o snapshot no PostgreSQL e o mesmo digest no replay, e exercita o bloqueio de ambiente produtivo. Resultados da CI do HEAD e parecer Gemini devem ser vinculados na PR antes de solicitar integração.
 
 
 ## Créditos presumidos do adquirente
