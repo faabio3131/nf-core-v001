@@ -5,6 +5,7 @@ from __future__ import annotations
 import base64
 import hashlib
 import json
+from dataclasses import dataclass
 from datetime import date
 from typing import Any
 
@@ -22,7 +23,24 @@ from kordena_fiscal.tax.historical_audit import IssuerContext, analyze_month
 from kordena_fiscal.tax.unused_credits import Batch, detect
 
 
-def verify_credit_unit(db: PostgresFiscalDatabase, scope: ExecutionScope, issuer: Cnpj) -> None:
+@dataclass(frozen=True)
+class VerifiedCreditUnit:
+    """Internal scoped result of the canonical historical CNPJ uniqueness query.
+
+    Not an authentication token; obtain immediately before each service transaction.
+    """
+
+    scope_identity: tuple[str, ...]
+    issuer: Cnpj
+
+    def require(self, scope_identity: tuple[str, ...], issuer: Cnpj) -> None:
+        if self.scope_identity != scope_identity or self.issuer != issuer:
+            raise FiscalValidationError("verified credit recipient scope mismatch")
+
+
+def verify_credit_unit(
+    db: PostgresFiscalDatabase, scope: ExecutionScope, issuer: Cnpj
+) -> VerifiedCreditUnit:
     """An issuer shared by multiple historic unit profiles needs allocation review."""
     with db.connection() as conn:
         rows = conn.execute(
@@ -33,6 +51,7 @@ def verify_credit_unit(db: PostgresFiscalDatabase, scope: ExecutionScope, issuer
         ).fetchall()
     if len(rows) != 1 or rows[0][0] != scope.unit_id:
         raise FiscalValidationError("ambiguous credit recipient unit")
+    return VerifiedCreditUnit(scope.identity_material, issuer)
 
 
 def import_credits(
