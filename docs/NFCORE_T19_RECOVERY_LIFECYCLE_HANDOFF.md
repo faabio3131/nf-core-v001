@@ -26,3 +26,5 @@ ou --report --competence AAAA-MM-01. Exige NFCORE_ENVIRONMENT development/test/s
 ## Gates
 
 Candidata em construção; não declarar teste executado sem logs. CI integral, teste adversarial independente Gemini, autorização específica de merge, certificação pós-merge e fechamento documental obrigatórios. T20 bloqueada. Nenhuma transmissão, compensação, restituição ou deploy autorizados.
+
+Regressões adicionais: roteiro administrativo ICMS sem SELIC (sandbox), parcela federal com juros recalculados e limite de saldo, ambiguidade de CNPJ dentro do serviço e tentativa de encadear evento falso a lançamento já utilizado. A soma de parcelas sujeita a arredondamento nunca pode exceder cada componente do lote; divergência de saldo/valoração exige revisão, sem inventar ajuste tributário.

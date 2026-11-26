@@ -14,7 +14,7 @@ from test_bling_canonical import mapping  # noqa: F401
 from test_t14_authorized_issuance import economy_database  # noqa: F401
 from test_t15_historical_audit import MONTH, TODAY, _setup
 from test_t16_unused_credits import BUYER, evidence
-from test_t18_credit_ledger import _federal_seed, _reviewed, _write
+from test_t18_credit_ledger import _bound, _federal_seed, _reviewed, _seed, _write
 
 from kordena_fiscal.application import credit_ledger as ledger
 from kordena_fiscal.application.credit_ledger import history, post_movement, reconcile
@@ -38,6 +38,7 @@ from kordena_fiscal.security.human_identity import (
 )
 from kordena_fiscal.tax.credit_ledger import Amount, Command
 from kordena_fiscal.tax.recovery_lifecycle import Event, Terms, alert, plan
+from kordena_fiscal.tax.tax_recovery import federal_interest
 
 NOW = datetime(TODAY.year, TODAY.month, TODAY.day, 15, tzinfo=UTC)
 
@@ -340,3 +341,92 @@ def test_postgres_legacy_reserved_prefixes_normalized(economy_database, mapping,
     with db.economy(scope) as store:
         with pytest.raises(FiscalValidationError, match="legacy credit entry"):
             store.append_credit_entry(**args)
+
+
+def test_postgres_administrative_icms_sandbox(economy_database, mapping):
+    db = economy_database
+    scope = _setup(db, mapping, BUYER)
+    _, context = historical_issuer_context(db, scope, MONTH)
+    proof = verify_credit_unit(db, scope, BUYER)
+    finding, digest = _seed(db, scope, context)
+    command = _bound(finding, digest)
+    with db.economy(scope) as store:
+        _write(store, scope, proof, context, command)
+    with pytest.raises(ValueError, match="federal credit"):
+        _case(command)
+    terms = _case(command, route="administrative")
+    service, token, csrf = _session(db, scope)
+    for version, action in enumerate(("request", "transmit", "approve")):
+        result = _run(service, token, csrf, scope, command, terms, version, action)
+    assert result["status"] == "homologated"
+    data = service.read(token, csrf, scope.unit_id, MONTH)
+    assert data["ledger"]["by_tax"]["icms"]["compensated"] == command.amount.model_dump()
+    assert data["simulation_only"] is True
+
+
+def test_postgres_partial_federal_principal_and_selic(economy_database, mapping):
+    db = economy_database
+    scope, cmd, terms = _fixture(db, mapping)
+    service, token, csrf = _session(db, scope)
+    # Derive the payment date from the immutable T17 source, not a rate guessed
+    # from the journal total; verify the exact partial value independently.
+    with db.economy(scope) as store:
+        origin = ledger._historical_source(store, BUYER, MONTH, cmd)
+    projected = federal_interest(100, date.fromisoformat(origin.anchor), TODAY)
+    assert projected is not None
+    partial = Amount(principal_cents=100, selic_cents=projected[0])
+    terms = Terms.model_validate(terms.model_dump() | {"amount": partial.model_dump()})
+    for version, action in enumerate(("request", "transmit", "approve")):
+        _run(service, token, csrf, scope, cmd, terms, version, action)
+    balance = service.read(token, csrf, scope.unit_id, MONTH)["ledger"]["by_tax"]["pis"]
+    assert balance["compensated"] == partial.model_dump()
+    assert balance["available"] == {
+        "principal_cents": cmd.amount.principal_cents - partial.principal_cents,
+        "selic_cents": cmd.amount.selic_cents - partial.selic_cents,
+    }
+    too_much = _case(cmd, case_id="f" * 64)
+    with pytest.raises(FiscalValidationError, match="negative ledger component"):
+        _run(service, token, csrf, scope, cmd, too_much, 0, "request")
+    assert len(service.read(token, csrf, scope.unit_id, MONTH)["cases"]) == 1
+
+
+def test_postgres_ambiguous_unit_fails_inside_case_service(economy_database, mapping):
+    db = economy_database
+    scope, cmd, terms = _fixture(db, mapping)
+    service, token, csrf = _session(db, scope)
+    _, context = historical_issuer_context(db, scope, MONTH)
+    other = replace(scope, unit_id="another-unit")
+    with db() as uow:
+        profile = uow.control_plane.get_profile(context.profile_id, context.profile_version)
+        unit = uow.control_plane.get_unit(scope.tenant_id, scope.unit_id)
+        assert profile is not None and unit is not None
+        uow.control_plane.add_unit(replace(unit, unit_id=other.unit_id))
+        uow.control_plane.add_profile(replace(profile, profile_id="other-profile", scope=other))
+        uow.commit()
+    with pytest.raises(FiscalValidationError, match="ambiguous credit recipient"):
+        _run(service, token, csrf, scope, cmd, terms, 0, "request")
+    with db.economy(scope) as store:
+        assert report(store, BUYER, TODAY)["cases"] == []
+
+
+def test_postgres_forged_case_link_is_rejected(economy_database, mapping):
+    db = economy_database
+    scope, cmd, terms = _fixture(db, mapping)
+    service, token, csrf = _session(db, scope)
+    _run(service, token, csrf, scope, cmd, terms, 0, "request")
+    _run(service, token, csrf, scope, cmd, terms, 1, "transmit")
+    # A valid snapshot hash alone cannot prove the event-to-ledger link.
+    with db.economy(scope) as store:
+        key = case_key(BUYER, terms)
+        previous = store.record("fm_economy_snapshots", key)
+        assert previous is not None
+        fake = dict(previous["content"])
+        fake["previous_digest"] = previous["digest"]
+        fake["reviewed"] = _event(scope, cmd, terms, 2, "deny").model_dump()
+        fake["status"] = "denied"
+        # Wrong link: repeats the already consumed compensation posting.
+        store.append_snapshot(record_id=key, version=3, competence=MONTH,
+                              issuer=BUYER, content=fake)
+    with db.economy(scope) as store:
+        with pytest.raises(FiscalValidationError, match="out of order|posting mismatch"):
+            report(store, BUYER, TODAY)
