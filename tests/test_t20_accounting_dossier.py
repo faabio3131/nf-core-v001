@@ -12,8 +12,8 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from openpyxl import load_workbook
-from test_bling_canonical import mapping  # noqa: F401
-from test_t14_authorized_issuance import economy_database  # noqa: F401
+from test_bling_canonical import mapping as _mapping_fixture
+from test_t14_authorized_issuance import economy_database as _economy_database_fixture
 from test_t15_historical_audit import MONTH, _setup
 from test_t16_unused_credits import BUYER
 from test_t18_credit_ledger import _seed
@@ -36,6 +36,11 @@ from kordena_fiscal.domain import FiscalValidationError
 from kordena_fiscal.persistence.economy_store import EconomyStore
 from kordena_fiscal.security.human_identity import CsrfValidationError, PortalRole
 from kordena_fiscal.web.human_auth import CSRF_COOKIE, CSRF_HEADER, SESSION_COOKIE
+
+# Register the imported pytest fixtures under their canonical names without
+# shadowing an import binding when the test requests the fixture by name.
+mapping = _mapping_fixture
+economy_database = _economy_database_fixture
 
 
 def _payload():
