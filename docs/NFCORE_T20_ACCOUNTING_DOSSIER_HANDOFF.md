@@ -1,6 +1,10 @@
 # T20 — Gerador de Dossiê Contábil PDF/Excel/XML
 
-## CURRENT — remediação da auditoria independente R1 (26/11/2026)
+## CURRENT — correção do gate de CI pós-R1 (26/11/2026)
+
+CI #45863217864, SHA `6f42038cbc93de4c3cae4960c59621c60269d23c`, FAILURE: 7276 Python PASS, 1 FAIL, 1 SKIP (fora T20), Ruff/Mypy PASS; frontend/containers/gates posteriores não executados. Governança #45863217830 SUCCESS. Falha única em `test_postgres_runtime_availability_and_real_http_mfa[production-None-503]`: `RuntimeConfigurationError: production requires NFCORE_PUBLIC_HOSTNAME`. O teste não atendia à política de configuração preexistente. Corrigida exclusivamente a fixture com hostname reservado `nfcore-t20.example.test`, HTTPS e backend externo, cliente HTTP in-process. Reforçados os asserts de candidatos/exportação bloqueados com/sem MFA recente, sem persistência T20. Não há alteração no código do produto ou nas proteções. A adaptação anterior do probe de schema isolado permanece restrita ao teste. A CI do novo HEAD deve comprovar o resultado, seguida de Gemini R2, T2 efetiva e autorização específica de merge. T21 continua bloqueada (#625); main e production preservadas. Registrar novo SHA/runs na PR #628 e issue #626.
+
+## HISTÓRICO — remediação da auditoria independente R1 (26/11/2026)
 
 **Estado:** IMPLEMENTED_NOT_CERTIFIED / R1_REPROVADO / R2_REQUIRED. PR #628 Draft, issue #626 aberta. Base main `188241b491e5e9712dc3214130c86bc8e8b9587d`; production `a5989e523c871c288bc2388c9508c1738082bb9a`. SHA auditado R1 `eb913f9988bc3c58d23c7a5dd7ef1a9b6cc8a91e`, árvore `3c974277ab83195bd042ed7eb2f974280021eff9`, CI #45833423112 SUCCESS (44/44, 7254 Python, 1 skip fora T20, 88 E2E), governança #45833423194 SUCCESS. Parecer R1 REPROVADO: 0 P0, 1 P1, 3 P2, 4 P3. [Parecer original](https://drive.google.com/file/d/1eN7nwb0qNfpPoesdoEHHbP0vsBmK0Hef/view).
 

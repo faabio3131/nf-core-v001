@@ -623,10 +623,19 @@ def test_postgres_runtime_availability_and_real_http_mfa(
             return expected_migrations
 
         monkeypatch.setattr(PostgresFiscalDatabase, "require_current_schema", isolated_schema)
-    settings = RuntimeSettings.from_mapping({
+    profile = {
         "NFCORE_ENVIRONMENT": environment, "NFCORE_PERSISTENCE_BACKEND": "postgres",
         "DATABASE_URL": db._dsn,
-    })
+    }
+    if environment == "production":
+        # Satisfy the unchanged production edge policy with a reserved test DNS
+        # name. TestClient is in-process; no DNS lookup or deployment occurs.
+        profile.update({
+            "NFCORE_PUBLIC_HOSTNAME": "nfcore-t20.example.test",
+            "NFCORE_REQUIRE_HTTPS": "true",
+            "NFCORE_SECRET_BACKEND": "external",
+        })
+    settings = RuntimeSettings.from_mapping(profile)
     app = runtime_api.create_runtime_app(settings)
     assert app.state.nfcore_runtime_composition is not None
     prefix = "/v1/portal/cognitive/economy/accounting-dossier"
@@ -634,7 +643,8 @@ def test_postgres_runtime_availability_and_real_http_mfa(
         "unit_id": scope.unit_id, "environment": "homologation", "competence": MONTH.isoformat(),
     }
     selection = body | {"finding_id": finding, "source_version": 1, "source_digest": source_digest}
-    with TestClient(app, base_url="https://testserver") as client:
+    base_url = f"https://{settings.public_hostname or 'testserver'}"
+    with TestClient(app, base_url=base_url) as client:
         client.cookies.set(SESSION_COOKIE, issued.session_token)
         client.cookies.set(CSRF_COOKIE, issued.csrf_token)
         headers = {CSRF_HEADER: issued.csrf_token}
@@ -643,9 +653,22 @@ def test_postgres_runtime_availability_and_real_http_mfa(
         assert bootstrap.json()["projection"]["accounting_dossier_available"] is (expected == 200)
         response = client.post(prefix + "/candidates", json=body, headers=headers)
         if expected != 200:
-            assert response.status_code == expected, response.text
-            if expected == 503:
-                assert response.json()["detail"]["code"] == "DOSSIER_UNAVAILABLE"
+            blocked_export = client.post(prefix + "/export", json=selection, headers=headers)
+            for blocked in (response, blocked_export):
+                assert blocked.status_code == expected, blocked.text
+                if expected == 503:
+                    assert blocked.json()["detail"]["code"] == "DOSSIER_UNAVAILABLE"
+            if environment == "production":
+                # Even a real recent MFA cannot activate the sandbox-only service.
+                assert client.post(
+                    "/v1/auth/mfa/step-up", json={"code": codes[0]}, headers=headers,
+                ).status_code == 200
+                for action, payload in (("candidates", body), ("export", selection)):
+                    blocked = client.post(prefix + "/" + action, json=payload, headers=headers)
+                    assert blocked.status_code == 503
+                    assert blocked.json()["detail"]["code"] == "DOSSIER_UNAVAILABLE"
+                with db.economy(scope) as store:
+                    assert store.records("fm_economy_dossiers") == ()
             return
         assert response.status_code == 403
         assert response.json()["detail"]["code"] == "STEP_UP_REQUIRED"
