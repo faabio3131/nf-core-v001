@@ -45,6 +45,8 @@ class Terms(Strict):
             raise ValueError("case requires principal")
         if self.route == "perdcomp" and self.tax not in {"pis", "cofins"}:
             raise ValueError("PER/DCOMP route requires a supported federal credit")
+        if self.tax == "icms" and self.kind != "compensation":
+            raise ValueError("ICMS bookkeeping supports only administrative compensation")
         if self.tax == "icms" and self.amount.selic_cents:
             raise ValueError("ICMS bookkeeping source has no SELIC")
         if date.fromisoformat(self.competence).day != 1:
@@ -72,7 +74,10 @@ class Event(Strict):
             raise ValueError("case event requires exact current source binding")
         if not needs_source and (self.source_version is not None or self.source_digest is not None):
             raise ValueError("unexpected current source binding")
-        if self.action in {"request", "transmit", "reject", "deny", "reverse", "approve"}:
+        needs_deadline = self.action in {"request", "transmit", "reject", "deny", "reverse"} or (
+            self.action == "approve" and self.terms.kind == "restitution"
+        )
+        if needs_deadline:
             if self.due_on is None:
                 raise ValueError("reviewed follow-up deadline required")
         elif self.due_on is not None:
@@ -118,7 +123,7 @@ def plan(previous: Status | None, event: Event) -> tuple[Status, tuple[Movement,
 
 
 def alert(status: Status, deadline: str | None, today: date) -> dict[str, object] | None:
-    if deadline is None or status in {"paid", "cancelled", "released", "invalidated"}:
+    if deadline is None or status in {"homologated", "paid", "cancelled", "released", "invalidated"}:
         return None
     days = (date.fromisoformat(deadline) - today).days
     if days > 30:

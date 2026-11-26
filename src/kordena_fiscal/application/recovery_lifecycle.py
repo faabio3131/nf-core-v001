@@ -218,7 +218,7 @@ def _case_history(
                     raise FiscalValidationError("historical case source or cutoff changed")
                 _validate_amount(source.modality, source.anchor, terms, day)
             if event.action == "pay":
-                _validate_amount(origin.modality, origin.anchor, terms, day)
+                _validate_payment(origin.modality, origin.anchor, terms, day)
             for index, (movement, link) in enumerate(
                 zip(movements, content["ledger_links"], strict=True), 1
             ):
@@ -249,7 +249,7 @@ def _case_history(
         actual_ids = {
             row["content"]["reviewed"]["command"]["request_id"]
             for row in journal
-            if row["content"]["reviewed"]["command"]["request_id"].startswith(
+            if row["content"]["reviewed"]["command"]["request_id"].casefold().startswith(
                 f"t19-{terms.case_id}-"
             )
         }
@@ -283,12 +283,28 @@ def _all_cases(
 
 
 def _validate_amount(modality: str, anchor: str, terms: Terms, day: date) -> None:
-    if modality == "federal_undue_payment":
+    if modality == "federal_undue_payment" and terms.tax in {"pis", "cofins"}:
         projected = federal_interest(terms.amount.principal_cents, date.fromisoformat(anchor), day)
         if projected is None or terms.amount.selic_cents != projected[0]:
             raise FiscalValidationError("case principal and SELIC differ from T17 valuation")
-    elif terms.amount.selic_cents != 0 or terms.route == "perdcomp":
-        raise FiscalValidationError("unsupported local recovery valuation or route")
+    elif not (
+        modality == "icms_bookkeeping" and terms.tax == "icms"
+        and terms.kind == "compensation" and terms.route == "administrative"
+        and terms.amount.selic_cents == 0
+    ):
+        raise FiscalValidationError("unsupported recovery modality, kind or route")
+
+
+def _validate_payment(modality: str, anchor: str, terms: Terms, day: date) -> None:
+    """Only a supported federal undue payment can reach simulated restitution."""
+    if (
+        modality != "federal_undue_payment" or terms.tax not in {"pis", "cofins"}
+        or terms.kind != "restitution"
+    ):
+        raise FiscalValidationError("restitution requires supported federal undue payment")
+    valuation = federal_interest(terms.amount.principal_cents, date.fromisoformat(anchor), day)
+    if valuation is None or valuation[0] != terms.amount.selic_cents:
+        raise FiscalValidationError("restitution settlement requires revaluation")
 
 
 def _validate_current(
@@ -343,7 +359,14 @@ def _apply(
         next_status, movements = plan(status, event)
         if event.due_on is not None and date.fromisoformat(event.due_on) < day:
             raise FiscalValidationError("new follow-up date is in the past")
-        for other, other_status in _all_cases(store, issuer):
+        existing = _all_cases(store, issuer)
+        # Preserve reportability at the boundary of the append-only sandbox.
+        # Check the prospective state under the same lock, before any posting.
+        if not rows and len(existing) >= MAX_CASES:
+            raise FiscalValidationError("recovery case count exceeds bound")
+        if sum(len(other) for other, _ in existing) >= MAX_CASE_SCAN_EVENTS:
+            raise FiscalValidationError("recovery case scan exceeds event bound")
+        for other, other_status in existing:
             previous = ReviewedEvent.model_validate(other[0]["content"]["reviewed"]).event
             for row in other:
                 old_event = row["content"]["reviewed"]["event"]
@@ -376,12 +399,9 @@ def _apply(
             # A deferment is not a payment; recompute the fixed lot at simulated
             # settlement date. Changed valuation must not be silently realized.
             origin = _historical_source(store, issuer, period, first)
-            if origin.modality == "federal_undue_payment":
-                valuation = federal_interest(
-                    terms.amount.principal_cents, date.fromisoformat(origin.anchor), day,
-                )
-                if valuation is None or valuation[0] != terms.amount.selic_cents:
-                    raise FiscalValidationError("restitution settlement requires revaluation")
+            _validate_payment(origin.modality, origin.anchor, terms, day)
+        if movements and reconcile(store, issuer)["event_count"] + len(movements) > MAX_SCAN_EVENTS:
+            raise FiscalValidationError("case reconciliation event bound exceeded")
         links = []
         for index, movement in enumerate(movements, 1):
             last_row = journal[-1]
@@ -442,7 +462,9 @@ def report(store: EconomyStore, issuer: Cnpj, today: date) -> dict[str, Any]:
             raise FiscalValidationError("case reconciliation event bound exceeded")
         for row in journal:
             request = row["content"]["reviewed"]["command"]["request_id"]
-            if request.startswith("t19-") and known.get(request.split("-")[1]) != key:
+            if request.casefold().startswith("t19-") and (
+                request != request.casefold() or known.get(request.split("-")[1]) != key
+            ):
                 raise FiscalValidationError("orphan recovery case ledger")
     return {
         "cases": cases, "ledger": reconcile(store, issuer),
