@@ -256,6 +256,9 @@ def _case_history(
         if actual_ids != linked:
             raise FiscalValidationError("orphan case ledger movement")
         return rows, status, settlement
+    except FiscalValidationError:
+        # Domain validation errors already describe the failed invariant.
+        raise
     except (KeyError, TypeError, ValueError) as exc:
         raise FiscalValidationError("invalid recovery case history") from exc
 

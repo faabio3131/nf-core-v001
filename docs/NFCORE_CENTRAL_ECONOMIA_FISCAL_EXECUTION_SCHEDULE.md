@@ -16,9 +16,11 @@ A [issue #620](https://github.com/faabio3131/nf-core-v001/issues/620) e a [Trilh
 
 > Revisão v4.1 (25/11/2026, parecer técnico): 18 entregas ERP internas (ERP-12 substituída por ERP-12A/B/C; ERP-16 exportação contábil obrigatória). ERP-12 permanece agrupador histórico, não conta como tarefa adicional. Ordem: ERP-01–11 → ERP-12A → ERP-12B → ERP-12C → ERP-16 → ERP-13 → ERP-14 → ERP-15. Marketplace incorporado ao ERP-02. T01–T18 certificadas tecnicamente no escopo interno da Central; T18 #619 integrada em `e8ded78f3b3c5bd484b8d35b1904f0db7c61f317`, HEAD auditado `b2d682da66f62fcbe50c8b2465f1e5e1e8182c0a`, CI pós-merge #45696838699 SUCCESS (7.215 Python PASS, 1 skip, 87 E2E, 44/44 etapas) e governança #45696838637 SUCCESS. T19 somente após integração autorizada e CI pós-merge desta reconciliação documental #621; nenhuma implementação T19 iniciada. Não rebaixar status certificados. T22 continua gate de início da implementação ERP; durante T18–T22 só preparação não invasiva (inventário documental, leitura de contratos, desenho de fixtures), sem iniciar tarefa formal, modificar branches concorrentes ou integrar código. Desde ERP-01–07, usar Bling como referência prática e testes de contrato desde o início; ERP-08 mantém seu gate formal após ERP-07. T23 exige T22 e ERP-15; H01 exige T33 e ERP-15. 51 entregas internas (33 T + 18 ERP) e 6 externas na planilha, sem renumerar os 59 IDs históricos de outro escopo mestre.
 
-## CURRENT — T19 em construção
+## CURRENT — T19 implementada, validação pendente
 
 T18 #618 CLOSED; documentação #621 MERGED na main ea9349539c14c51b1efb26a95548b1d2ab316a65, CI pós-merge #45704884105 SUCCESS (44/44, 7215 Python PASS, 1 SKIP, 87 Playwright), governança #45704883938 SUCCESS. T19 #623 em construção na branch feat/nfcore-economy-t19-recovery-lifecycle. Handoff docs/NFCORE_T19_RECOVERY_LIFECYCLE_HANDOFF.md. Sem merge T19 sem CI exata e auditoria independente/autorizações; T20 bloqueada. Preservar Master v4.1 e #613/#616/#622. Sem deploy, reconhecimento ou efeito fiscal real.
+
+CI #45728411909 no HEAD anterior 3e1472ff: 7.234 Python PASS, 2 FAIL T19, 1 SKIP; Ruff/Mypy/governança SUCCESS; gates posteriores não executados. Correções de expiração de sessão no teste e preservação de exceção de domínio publicadas na candidata #624; nova CI exata e Gemini pendentes. Ver handoff T19; sem certificação ou alteração de ordem.
 
 ## Ponto de retomada em 24/11/2026
 
@@ -69,7 +71,7 @@ A folha T23–T33, a Trilha 2 H01–H06 e a reformulação Enterprise não integ
 | T16 | Créditos não aproveitados | ENTREGUE — #612, CI pós-merge #45527493411 |
 | T17 | Recuperação/prescrição/SELIC | ENTREGUE — #615; CI pós-merge #45615039868 SUCCESS |
 | T18 | Ledger partidas dobradas | ENTREGUE / CERTIFICADA TECNICAMENTE — #619, CI pós-merge #45696838699 SUCCESS; fechamento documental #621 |
-| T19 | Restituição/compensação | EM CONSTRUÇÃO — #623; CI e auditoria pendentes |
+| T19 | Restituição/compensação | IMPLEMENTED_NOT_CERTIFIED — #623/#624; regressões corrigidas, nova CI e Gemini pendentes |
 | T20 | Dossiê PDF/Excel/XML | Bloqueado |
 | T21 | Interface Central vinculada a APIs reais | Bloqueado |
 | T22 | E2E interno seis blocos | Bloqueado |

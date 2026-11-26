@@ -30,6 +30,7 @@ from kordena_fiscal.domain import FiscalEnvironment, FiscalValidationError
 from kordena_fiscal.persistence.economy_store import EconomyStore
 from kordena_fiscal.security.human_identity import (
     HumanAccount,
+    HumanAuthenticationError,
     HumanIdentityService,
     InMemoryHumanAccountRepository,
     InMemoryWebSessionRepository,
@@ -293,7 +294,15 @@ def test_postgres_wrong_selic_and_stale_source(economy_database, mapping):
     with pytest.raises(FiscalValidationError, match="SELIC"):
         _run(service, token, csrf, scope, cmd, bad, 0, "request")
     _run(service, token, csrf, scope, cmd, terms, 0, "request")
-    service.clock = lambda: NOW + timedelta(days=1)
+    account = service.identity.authenticate_session(session_token=token, now=NOW).account
+    next_day = NOW + timedelta(days=1)
+    service.clock = lambda: next_day
+    # The expired session must fail closed before the fiscal cutoff is checked.
+    with pytest.raises(HumanAuthenticationError, match="web session is not usable"):
+        _run(service, token, csrf, scope, cmd, terms, 1, "transmit")
+    # Use the same canonical test identity with a newly issued session and CSRF.
+    renewed = service.identity.issue_session(account, now=next_day)
+    token, csrf = renewed.session_token, renewed.csrf_token
     with pytest.raises(FiscalValidationError, match="cutoff"):
         _run(service, token, csrf, scope, cmd, terms, 1, "transmit")
     assert _run(service, token, csrf, scope, cmd, terms, 1, "cancel")["status"] == "cancelled"
