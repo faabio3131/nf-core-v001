@@ -3763,6 +3763,7 @@ async function renderSurface(viewId) {
         appendAnnualRegimeComparison(article);
         appendAccountingReviewLookup(article);
         appendHistoricalAudit(article);
+        if (bootstrapState?.role === "accountant") appendAccountingDossier(article);
       }
     } else {
       article.append(grid);
@@ -5417,6 +5418,122 @@ function appendAccountingReviewLookup(article) {
       {kind: "benefit", source: source.value, benefit_id: benefit.value.trim()};
     appendAccountingReview(result, {unit_id: selectedFiscalUnit, environment: selectedFiscalEnvironment,
       competence: competence.value + "-01", target}, null);
+  });
+}
+
+/** @param {HTMLElement} article */
+function appendAccountingDossier(article) {
+  if (selectedFiscalEnvironment !== "homologation") return;
+  const form = document.createElement("form");
+  const heading = document.createElement("h3");
+  heading.textContent = "Dossiê contábil para revisão";
+  const note = document.createElement("p");
+  note.textContent = "Simulação interna: PDF para assinatura humana, Excel, XMLs originais e manifesto de integridade. Não reconhece crédito nem autoriza operação fiscal.";
+  const monthLabel = document.createElement("label");
+  monthLabel.textContent = "Competência do dossiê";
+  const month = document.createElement("input");
+  month.type = "month";
+  month.required = true;
+  monthLabel.append(month);
+  const consult = document.createElement("button");
+  consult.type = "button";
+  consult.textContent = "Consultar achados para dossiê";
+  const choiceLabel = document.createElement("label");
+  choiceLabel.textContent = "Achado para revisão";
+  const choice = document.createElement("select");
+  choice.required = true;
+  choice.disabled = true;
+  choiceLabel.append(choice);
+  const submit = document.createElement("button");
+  submit.textContent = "Exportar dossiê PDF/Excel/XML";
+  submit.disabled = true;
+  const feedback = document.createElement("p");
+  feedback.setAttribute("role", "status");
+  form.append(heading, note, monthLabel, consult, choiceLabel, submit, feedback);
+  article.append(form);
+  /** @type {{version: number, digest: string}|null} */
+  let source = null;
+  let generation = 0;
+  const unit = selectedFiscalUnit;
+  const active = () => form.isConnected && selectedFiscalUnit === unit
+    && selectedFiscalEnvironment === "homologation";
+  const clear = () => {
+    source = null;
+    choice.replaceChildren();
+    choice.disabled = true;
+    submit.disabled = true;
+  };
+  month.addEventListener("change", () => { generation++; clear(); feedback.textContent = ""; });
+  consult.addEventListener("click", async () => {
+    if (!active() || !month.reportValidity()) return;
+    const request = ++generation;
+    clear();
+    consult.disabled = true;
+    feedback.textContent = "Conferindo fontes revisadas...";
+    try {
+      const result = await api("/v1/portal/cognitive/economy/accounting-dossier/candidates", {
+        method: "POST",
+        headers: {"X-CSRF-Token": csrfToken()},
+        body: JSON.stringify({unit_id: unit, environment: "homologation", competence: month.value + "-01"})
+      });
+      if (!active() || request !== generation) return;
+      source = result.source;
+      for (const finding of result.candidates) {
+        const option = document.createElement("option");
+        option.value = finding.finding_id;
+        option.textContent = finding.tax + " | " + finding.estimated_cents + " centavos | " + finding.finding_id.slice(0, 12);
+        choice.append(option);
+      }
+      choice.disabled = submit.disabled = !choice.options.length;
+      feedback.textContent = choice.options.length ? "Fonte revisada em " + result.as_of + ". Selecione o achado e exporte." : "Nenhum achado revisável nesta competência.";
+    } catch (error) {
+      if (active() && request === generation) feedback.textContent = errorMessage(error);
+    } finally {
+      if (active()) consult.disabled = false;
+    }
+  });
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    if (!active() || !source || !choice.value || !month.reportValidity()) return;
+    const request = ++generation;
+    const body = JSON.stringify({
+      unit_id: unit, environment: "homologation", competence: month.value + "-01",
+      finding_id: choice.value, source_version: source.version, source_digest: source.digest
+    });
+    submit.disabled = consult.disabled = month.disabled = choice.disabled = true;
+    feedback.textContent = "Gerando pacote e verificando integridade...";
+    try {
+      const send = () => fetch("/v1/portal/cognitive/economy/accounting-dossier/export", {
+        credentials: "same-origin", method: "POST",
+        headers: {"Content-Type": "application/json", "X-CSRF-Token": csrfToken()}, body
+      });
+      let response = await send();
+      if (response.status === 403) {
+        const detail = await response.json().catch(() => ({}));
+        if (detail.detail?.code === "STEP_UP_REQUIRED" && active() && await requestStepUp()) {
+          if (!active() || request !== generation) return;
+          response = await send();
+        }
+      }
+      if (!response.ok || response.headers.get("content-type")?.split(";")[0] !== "application/zip") {
+        throw new Error("Dossiê indisponível. Confira a autorização e consulte novamente as fontes.");
+      }
+      const blob = await response.blob();
+      if (!active() || request !== generation) return;
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url; link.download = "nfcore-dossie.zip";
+      form.append(link); link.click(); link.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      feedback.textContent = "Dossiê exportado. Revisão e assinatura do contador ainda pendentes.";
+    } catch (error) {
+      if (active() && request === generation) feedback.textContent = errorMessage(error);
+    } finally {
+      if (active() && request === generation) {
+        consult.disabled = month.disabled = false;
+        choice.disabled = submit.disabled = !source || !choice.options.length;
+      }
+    }
   });
 }
 

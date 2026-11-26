@@ -29,7 +29,9 @@ from kordena_fiscal.application.historical_audit import (
 from kordena_fiscal.application.recovery_lifecycle import _canonical_guard, report
 from kordena_fiscal.application.unused_credits import verify_credit_unit
 from kordena_fiscal.archive.accounting_dossier import (
+    MAX_FILES,
     MAX_PACKAGE,
+    MAX_TOTAL,
     SCHEMA,
     digest,
     json_bytes,
@@ -115,34 +117,49 @@ def _evidence(
         "fontes/t17.json": _original(bundle.facts, bundle.index["content"]["input_sha256"]),
         "fontes/t16.json": _original(bundle.batch, bundle.t16_index["input_sha256"]),
     }
+    size = sum(map(len, files.values()))
+
+    def add(name: str, raw: bytes) -> None:
+        nonlocal size
+        if name in files:
+            if files[name] != raw:
+                raise FiscalValidationError("dossier evidence identity collision")
+            return
+        size += len(raw)
+        if len(files) + 7 > MAX_FILES or size > MAX_TOTAL:
+            raise FiscalValidationError("dossier evidence bound exceeded")
+        files[name] = raw
+
     for purchase in bundle.batch.purchases:
-        files[f"xml/t16-{purchase.xml.sha256}.xml"] = purchase.xml.contents()
-        for item in [purchase.status_evidence, *(use.eligibility_evidence for use in purchase.uses)]:
-            files[f"provas/{item.sha256}.bin"] = item.contents()
+        add(f"xml/t16-{purchase.xml.sha256}.xml", purchase.xml.contents())
+        add(f"provas/{purchase.status_evidence.sha256}.bin", purchase.status_evidence.contents())
+        for use in purchase.uses:
+            item = use.eligibility_evidence
+            add(f"provas/{item.sha256}.bin", item.contents())
     for rule in bundle.batch.rules:
-        files[f"provas/{rule.legal_source.sha256}.bin"] = rule.legal_source.contents()
+        add(f"provas/{rule.legal_source.sha256}.bin", rule.legal_source.contents())
     if bundle.batch.books is not None:
         book = bundle.batch.books.source
-        files[f"provas/{book.sha256}.bin"] = book.contents()
+        add(f"provas/{book.sha256}.bin", book.contents())
     for reviewed in bundle.facts.claims:
         for proof in (reviewed.review, reviewed.legal_source, reviewed.corrected_assessment):
             if proof is not None:
-                files[f"provas/{proof.sha256}.bin"] = proof.contents()
+                add(f"provas/{proof.sha256}.bin", proof.contents())
     prior = None
     if bundle.t16_index["historical_digest"] is not None:
         prior = store.record(TABLE, record_id(issuer, period))
         if prior is None or prior["digest"] != bundle.t16_index["historical_digest"]:
             raise FiscalValidationError("dossier historical binding changed")
         original = source_bundle(store, issuer, period, prior)
-        files["fontes/t15.json"] = _original(
+        add("fontes/t15.json", _original(
             original, prior["content"]["input_sha256"], unicode=True,
-        )
+        ))
         for doc in original.documents:
-            files[f"xml/t15-{doc.xml_sha256}.xml"] = source_bytes(doc.xml_b64, doc.xml_sha256)
+            add(f"xml/t15-{doc.xml_sha256}.xml", source_bytes(doc.xml_b64, doc.xml_sha256))
         for artifact in original.artifacts:
-            files[f"provas/{artifact.sha256}.bin"] = source_bytes(
+            add(f"provas/{artifact.sha256}.bin", source_bytes(
                 artifact.data_b64, artifact.sha256,
-            )
+            ))
     return files, prior
 
 
@@ -400,11 +417,27 @@ class AccountingDossierService:
                 ):
                     raise FiscalValidationError("dossier opportunity binding mismatch")
                 if opportunity["content"]["basis_digest"] == basis_digest:
+                    if (
+                        opportunity["snapshot_id"] != bundle.index["record_id"]
+                        or opportunity["snapshot_version"] != source_version
+                        or opportunity["estimated_cents"] != finding["estimated_cents"]
+                        or opportunity["benefit_id"] is not None
+                        or opportunity["content"]["basis"] != basis
+                        or opportunity["content"]["advisory_only"] is not True
+                        or opportunity["content"]["credit_recognized"] is not False
+                        or opportunity["content"]["realized_cents"] is not None
+                        or opportunity["content"]["issuance_authorized"] is not False
+                    ):
+                        raise FiscalValidationError("dossier replay evidence mismatch")
                     return _load_archive(store, issuer, period, previous, key, basis_digest)
             files["fontes/ledger-t18.json"] = json_bytes(ledger)
-            files["fontes/casos-t19.json"] = json_bytes(cases)
+            files["fontes/casos-t19.json"] = json_bytes([
+                {k: v for k, v in case.items() if k != "alert"} for case in cases
+            ])
             identification = {
-                **basis, "basis_digest": basis_digest, "dossier_id": key,
+                **{k: v for k, v in basis.items() if k not in {"ledger", "cases"}},
+                "ledger_events": len(basis["ledger"]), "case_count": len(case_summary),
+                "basis_digest": basis_digest, "dossier_id": key,
                 "dossier_version": version, "generated_at": now.isoformat(),
                 "source_cutoff": bundle.index["content"]["as_of"],
                 "issuer_context": context.model_dump(),
@@ -415,14 +448,17 @@ class AccountingDossierService:
                 "basis": "Candidato T17 revalidado no corte indicado; provas do mês anexadas.",
                 "limits": "Sem reconhecimento, liquidação ou autorização fiscal real.",
                 "t13": "Não aplicável a achado de recuperação; nenhuma aprovação presumida.",
-                "action": "Conferir base legal, provas, memória, vigência e histórico antes de assinar.",
+                "action": (
+                    "Conferir base legal, provas, memória, vigência e histórico antes de assinar."
+                ),
                 "residual_gate": "Refinamentos #625 obrigatórios antes de T21/Portal/produção.",
             }
             payload = {
-                "identification": identification, "t16": t16, "t17": finding,
+                "identification": identification, "basis": basis, "t16": t16, "t17": finding,
+                "simulation_only": True, "credit_recognized": False,
                 "legal": {"t16": t16["citation"], "t17": finding["citation"],
                           "policy": finding["policy"], "selic": bundle.index["content"]["selic"]},
-                "ledger": ledger, "ledger_summary": ledger["balances"] if ledger else None,
+                "ledger_summary": ledger["balances"] if ledger else None,
                 "cases": case_summary, "opinion": opinion,
             }
             raw = render_package(payload, files)

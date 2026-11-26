@@ -126,11 +126,11 @@ def _pdf(payload: dict[str, Any], entries: list[dict[str, Any]]) -> bytes:
     for key, value in _pairs(payload["legal"]):
         line(f"{key}: {_text(value)}")
     section("4. Histórico de simulação")
-    ledger = payload["ledger"]
+    ledger = payload["ledger_summary"]
     if ledger is None:
         line("Sem lote T18 registrado para este achado.")
     else:
-        for key, value in _pairs(ledger["balances"]):
+        for key, value in _pairs(ledger):
             line(f"T18 {key}: {_text(value)}")
     cases = payload["cases"]
     if not cases:
@@ -289,6 +289,14 @@ def verify_package(raw: bytes, basis_digest: str) -> None:
                 content = archive.read(entry["path"])
                 if len(content) != entry["bytes"] or digest(content) != entry["sha256"]:
                     raise ValueError("dossier member integrity")
+            memory = json.loads(archive.read("memoria.json"))
+            if (
+                digest(json_bytes(memory["basis"])) != basis_digest
+                or memory["identification"]["basis_digest"] != basis_digest
+                or memory["simulation_only"] is not True
+                or memory["credit_recognized"] is not False
+            ):
+                raise ValueError("dossier memory binding")
             if not archive.read("dossie.pdf").startswith(b"%PDF-"):
                 raise ValueError("invalid dossier PDF")
             if not archive.read("memoria.xlsx").startswith(b"PK"):
