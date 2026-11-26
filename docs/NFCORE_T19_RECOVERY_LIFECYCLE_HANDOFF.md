@@ -1,6 +1,50 @@
-# T19 — Restituições e compensações (candidata interna)
+# T19 — Restituições e compensações: certificação e continuidade
 
-T18 #618 CLOSED; documentação #621 MERGED na main ea9349539c14c51b1efb26a95548b1d2ab316a65, CI pós-merge #45704884105 SUCCESS (44/44, 7215 Python PASS, 1 SKIP, 87 Playwright), governança #45704883938 SUCCESS. T19 #623 em construção na branch feat/nfcore-economy-t19-recovery-lifecycle. Handoff docs/NFCORE_T19_RECOVERY_LIFECYCLE_HANDOFF.md. Sem merge T19 sem CI exata e auditoria independente/autorizações; T20 bloqueada. Preservar Master v4.1 e #613/#616/#622. Sem deploy, reconhecimento ou efeito fiscal real.
+## CURRENT — 26/11/2026
+
+**CERTIFICADA TECNICAMENTE NO ESCOPO INTERNO / SANDBOX.** [PR #624](https://github.com/faabio3131/nf-core-v001/pull/624) integrada em 26/11/2026 às 00:02:26 (America/Sao_Paulo), por autorização expressa do proprietário no HEAD auditado `970701f600574a86e143ef01ebede8e7cc611488`.
+
+| Evidência | Valor confirmado |
+|---|---|
+| Branch de implementação | `feat/nfcore-economy-t19-recovery-lifecycle` |
+| Base anterior | `ea9349539c14c51b1efb26a95548b1d2ab316a65` |
+| HEAD auditado/autorizado | `970701f600574a86e143ef01ebede8e7cc611488` |
+| Merge em main | `75542dd18d7a1521a33017f80395e24285c39fe4` |
+| Árvore auditada e integrada | `a78100476b06dc44192773eab9f73cb55f244290` — idêntica |
+| CI pré-merge | [#45739710170](https://github.com/faabio3131/nf-core-v001/actions/runs/45739710170) SUCCESS |
+| Governança pré-merge | [#45739710243](https://github.com/faabio3131/nf-core-v001/actions/runs/45739710243) SUCCESS |
+| T2 efetiva fora de Draft | [#45745759948](https://github.com/faabio3131/nf-core-v001/actions/runs/45745759948) SUCCESS; log: `Bloco completo: descrição e checklist conferem.` |
+| CI pós-merge push/main | [#45746332104](https://github.com/faabio3131/nf-core-v001/actions/runs/45746332104), tentativa 1, SUCCESS no merge exato |
+| Governança pós-merge | [#45746332101](https://github.com/faabio3131/nf-core-v001/actions/runs/45746332101) SUCCESS |
+| Production observada | `a5989e523c871c288bc2388c9508c1738082bb9a`; nenhuma promoção nesta entrega |
+
+[Reauditoria independente Gemini R2](https://drive.google.com/file/d/1E6fY0omdULKjb6qsNWceFjvtYP9TlfLj/view) registrada na PR no mesmo HEAD: P0/P1/P2=0; achados R1 bloqueantes corrigidos. O parecer relata leitura 9/9 TXT, análise estática e simulações independentes; não relata reexecução própria de Pytest/PostgreSQL/Playwright nem recálculo de hashes binários. As execuções reais são comprovadas pelos logs GitHub acima, não inferidas do parecer.
+
+A CI pós-merge concluiu **44/44 etapas**: **7.245 testes Python PASS, 1 SKIP, 30 testes frontend PASS, 87 Playwright E2E PASS, zero falhas**. Ruff, Mypy (489 arquivos), PostgreSQL 16.16, migrations, build, auditorias de dependências, containers, SBOM, readiness e ensaios isolados de backup/restore/transição aprovados. Skip explícito: `tests/runtime/test_p02_t02_fiscal_surfaces.py:389`, `runtime production composition requires PostgreSQL`; variante fora T19. A suíte principal usa PostgreSQL real. Não transformar esse skip em certificação da composição produtiva nem os ensaios isolados em prova de operação na Contabo.
+
+## Fechamento documental e próxima tarefa
+
+Branch de reconciliação: `docs/nfcore-t19-postmerge-closeout`. Escopo: somente documentação e estado das issues. O proprietário autorizou expressamente certificação pós-merge, atualização documental e liberação T20 na mesma decisão que autorizou o SHA da #624. Esta autorização não cobre implementação/merge futuro T20, deploy ou efeito fiscal real.
+
+A reconciliação deve passar revisão do diff, validadores do plano/BUILD, CI integral e governança no HEAD exato, T2 efetiva fora de Draft, integração por PR e CI/governança pós-merge próprias. Não reutilizar a CI de `75542dd1` como CI de um novo commit documental. A PR documental e a [issue #626](https://github.com/faabio3131/nf-core-v001/issues/626) registram os SHAs finais e os runs desta etapa sem criar um ciclo de commits somente para citar o próprio hash.
+
+Após esse gate: encerrar #622 e #623 com evidência, manter #625 aberta e marcar **T20 READY_TO_START / NOT_STARTED** na #626. [Handoff T20](NFCORE_T20_ACCOUNTING_DOSSIER_HANDOFF.md). A liberação é para iniciar a tarefa seguinte; nenhum gerador T20 está implementado por esta entrega. T21 continua bloqueada pela certificação T20 e pelos cinco refinamentos #625. Preservar #613/#616, Master v4.1, 18 etapas ERP e 59 IDs históricos.
+
+### Reconciliação #622 e riscos preservados em #625
+
+| Item #622 | Evidência integrada | Limite preservado |
+|---|---|---|
+| T18-R2-P3-01 | `EconomyStore.append_credit_entry` usa `strip().casefold()` nos dois identificadores; `test_postgres_legacy_reserved_prefixes_normalized` cobre seis combinações | Formato completo e vínculo único de movimentos T19 continuam no novo item #625 |
+| T18-R2-P3-02 | `test_postgres_reconciliation_independently_rejects_cross_tax_receipt` testa diretamente Cofins→PIS/competências por recibo e hash; regressões T18 cobrem estorno parcial/integral | Não representa reconhecimento real de crédito |
+| T18-R2-P3-03 | `RecoveryCaseService` revalida sessão/CSRF/RBAC/contador/MFA e identidade por operação; lock canônico mantido até commit; testes de concorrência, ambiguidade e leitura histórica | Contenção global e escala exigem solução/benchmark #625 antes da T21/Portal |
+
+A [#625](https://github.com/faabio3131/nf-core-v001/issues/625) permanece OPEN com cinco P3 internos: formato/vínculo de movimentos; capacidade prospectiva também na escrita avulsa T18; política de resíduo/SELIC; revaloração mensal e saída revisada de restituição deferida; contenção entre tenants e limites de varredura. Não são dependências externas nem motivos para ocultar bloqueios. Não bloqueiam a T20 documental após fechamento certificado da T19, mas todos devem estar resolvidos e testados antes da exposição HTTP/Portal T21 ou operação comercial/fiscal real.
+
+### Auditoria da continuidade histórica
+
+O nome histórico `kordena-fiscal-engine-v2` resolve ao mesmo repositório `nf-core-v001`, ID `1366374504`. CL-01 (#46) e CL-02–CL-07 (#47–#53, checkpoints #54/#56–#61) estão integradas; #55 consolidou a cadeia em `57812960ae09013a4540cfb01730facf47c37235`, ancestral da main T19. A PR #53 não está mais aberta. Não repetir esses blocos por causa de textos antigos que ainda dizem Draft; não confundir sua integração com homologação externa.
+
+## Escopo funcional certificado
 
 DoD Master: gestão de PER/DCOMP, compensação administrativa e restituição em sandbox/mock, estados solicitado/transmitido/homologado ou indeferido, reservas, baixas, liberações, estornos, reconciliação, rejeições, prazos e alertas. Testar duplicados, fora de ordem, falhas e reprocessamentos.
 
@@ -16,7 +60,7 @@ Fontes oficiais consultadas em 25/11/2026: Lei 9.430/1996 art. 74 §§ 2,5,7 (ht
 
 ## Fronteira humana e #622
 
-RecoveryCaseService recebe token de sessão/CSRF, deriva tenant e escopo, exige AUDIT_READ, contador designado por unidade e step-up MFA recente para escrita. Resolve CNPJ/perfil/regime históricos pelo control plane e valida perfil ativo/ambiente. Guard SHARE NOWAIT sobre unidades, perfis e configurações canônicas mantém predicados (inclusive inserção de segunda unidade) estáveis até commit da transação econômica; runtime econômico continua com RLS e menor privilégio. Esta solução conservadora é para sandbox: lock de tabela tem custo de contenção, deve ser medido e refinado antes de operação real/Portal em escala. Leitura histórica permite unidade ainda registrada, mesmo com ambiente desabilitado, com permissão e histórico estável, sem autorizar escrita. Autenticação é reconfirmada antes do serviço; nenhuma prova VerifiedCreditUnit é aceita de JSON. CLI usa serviços de identidade e MFA existentes. Testes usam sessões sintéticas, relógio e step-up controlados, não falsificam autorização fiscal real. #622: prefixos legado normalizados e testes diretos de guarda de recibos e reconciliação cruzada. Só fechar a issue após revisão e CI; autoridade/concorrência produtiva e volumetria continuam gates antes de expor T21.
+RecoveryCaseService recebe token de sessão/CSRF, deriva tenant e escopo, exige AUDIT_READ, contador designado por unidade e step-up MFA recente para escrita. Resolve CNPJ/perfil/regime históricos pelo control plane e valida perfil ativo/ambiente. Guard SHARE NOWAIT sobre unidades, perfis e configurações canônicas mantém predicados (inclusive inserção de segunda unidade) estáveis até commit da transação econômica; runtime econômico continua com RLS e menor privilégio. Esta solução conservadora é para sandbox: lock de tabela tem custo de contenção, deve ser medido e refinado antes de operação real/Portal em escala. Leitura histórica permite unidade ainda registrada, mesmo com ambiente desabilitado, com permissão e histórico estável, sem autorizar escrita. Autenticação é reconfirmada antes do serviço; nenhuma prova VerifiedCreditUnit é aceita de JSON. CLI usa serviços de identidade e MFA existentes. Testes usam sessões sintéticas, relógio e step-up controlados, não falsificam autorização fiscal real. #622: prefixos legado normalizados e testes diretos de guarda de recibos e reconciliação cruzada. Os três itens foram verificados no escopo interno integrado; fechar #622 após o gate documental acima. Autoridade/concorrência produtiva e volumetria continuam gates #625 antes de expor T21.
 
 ## Uso interno
 
@@ -25,15 +69,15 @@ ou --report --competence AAAA-MM-01. Exige NFCORE_ENVIRONMENT development/test/s
 
 ## Gates
 
-Candidata em construção; não declarar teste executado sem logs. CI integral, teste adversarial independente Gemini, autorização específica de merge, certificação pós-merge e fechamento documental obrigatórios. T20 bloqueada. Nenhuma transmissão, compensação, restituição ou deploy autorizados.
+Gates técnicos da T19 aprovados no SHA integrado conforme CURRENT acima. O fechamento documental tem CI própria; T20 é liberada somente quando essa reconciliação estiver integrada e certificada. T21 requer T20 certificada e #625 resolvida. Nenhuma transmissão, compensação, restituição ou deploy real foi autorizado.
 
 Regressões adicionais: roteiro administrativo ICMS sem SELIC (sandbox), parcela federal com juros recalculados e limite de saldo, ambiguidade de CNPJ dentro do serviço e tentativa de encadear evento falso a lançamento já utilizado. A soma de parcelas sujeita a arredondamento nunca pode exceder cada componente do lote; divergência de saldo/valoração exige revisão, sem inventar ajuste tributário.
 
-## CURRENT — correção das regressões T19 (25/11/2026)
+## HISTÓRICO — correção das regressões T19 (25/11/2026)
 
 PR #624 Draft, issue #623. CI integral #45728411909 no HEAD `3e1472ff0f1d848922b2094830b8271f0618a0d5`: FAILURE no Pytest, 7.234 PASS, 2 FAIL (sessão expirada no teste de corte T17 e exceção de integridade encapsulada), 1 SKIP fora T19. Ruff/Mypy e governança #45728411891 SUCCESS; frontend, E2E, Docker e gates seguintes não executados. A correção preserva a expiração canônica (novo assert negativo e emissão de sessão/CSRF válida pelo mesmo serviço de identidade sintético), preserva FiscalValidationError específica na reconciliação e continua convertendo erros estruturais em falha fechada. Nenhuma supressão de teste, mudança de TTL, migration ou workflow. Revalidar os dois testes PostgreSQL na nova CI integral do HEAD da PR; não há execução local PostgreSQL comprovada. Gemini somente após CI integral verde no SHA exato; T2 efetiva, autorização específica, certificação pós-merge e fechamento continuam obrigatórios. T19 IMPLEMENTED_NOT_CERTIFIED; T20 bloqueada. Master v4.1 e produção preservados.
 
-## CURRENT — correção pós-auditoria Gemini (25/11/2026)
+## HISTÓRICO — correção pós-auditoria Gemini (25/11/2026)
 
 Parecer independente do HEAD 93bb2d9e180d4e0cbebe16b2951208e502ec7408, árvore aacc5c5b1e36627467c63f8d662ef13226a0cfd8: REPROVADO, P0=0/P1=1/P2=3/P3=4. CI #45730534528 SUCCESS (44/44, 7236 Python PASS, 1 SKIP fora T19, 87 Playwright), governança #45730534536 SUCCESS; não substituem auditoria. [Parecer original](https://drive.google.com/file/d/1c6frBHtAurD8dcEbylAoMtDd5ooroYtP/view). Auditor relatou leitura integral e simulações independentes, não execução Pytest/PostgreSQL ou recálculo binário independente.
 
