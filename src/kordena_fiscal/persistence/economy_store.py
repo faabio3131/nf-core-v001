@@ -251,7 +251,9 @@ class EconomyStore:
         self._identity(record_id, 1)
         self._identity(opportunity_id, opportunity_version)
         if any(
-            name.startswith(("credit-ledger-", "tax-recovery-"))
+            name.strip().casefold().startswith(
+                ("credit-ledger-", "tax-recovery-", "recovery-case-")
+            )
             for name in (record_id, opportunity_id)
         ):
             raise FiscalValidationError("legacy credit entry cannot represent T18/T19 ledger")
@@ -356,6 +358,46 @@ class EconomyStore:
                 *self._scope.identity_material, issuer.value,
                 f"credit-ledger-{issuer.value}-%", period, period, limit,
             ),
+        ).fetchall()
+        return [(str(row[0]), row[1].isoformat()) for row in rows]
+
+    @contextmanager
+    def atomic_recovery_case(self) -> Iterator[None]:
+        """Savepoint: case events and ledger postings commit or roll back together."""
+        self._require_active()
+        with self._conn.transaction():
+            yield
+
+    def recovery_case_rows(self, record_id: str, *, limit: int) -> list[dict[str, Any]]:
+        """Read exact append-only case history under the existing scoped RLS."""
+        self._require_active()
+        self._identity(record_id, 1)
+        if not re.fullmatch(r"recovery-case-[0-9]{14}-[0-9a-f]{64}", record_id):
+            raise FiscalValidationError("invalid recovery case identity")
+        if type(limit) is not int or not 1 <= limit <= 1001:
+            raise FiscalValidationError("invalid recovery case bound")
+        rows = self._conn.execute(
+            """SELECT to_jsonb(r) FROM fm_economy_snapshots r
+               WHERE host_namespace=%s AND tenant_id=%s AND unit_id=%s
+                 AND environment=%s AND record_id=%s ORDER BY version LIMIT %s""",
+            (*self._scope.identity_material, record_id, limit),
+        ).fetchall()
+        result = [dict(row[0]) for row in rows]
+        for row in result:
+            if not isinstance(row["content"], dict) or _digest(row["content"])[1] != row["digest"]:
+                raise FiscalValidationError("recovery case integrity mismatch")
+        return result
+
+    def recovery_case_ids(self, issuer: Cnpj, *, limit: int) -> list[tuple[str, str]]:
+        self._require_active()
+        if not isinstance(issuer, Cnpj) or type(limit) is not int or not 1 <= limit <= 1001:
+            raise FiscalValidationError("invalid recovery case report")
+        rows = self._conn.execute(
+            """SELECT DISTINCT record_id, competence FROM fm_economy_snapshots
+               WHERE host_namespace=%s AND tenant_id=%s AND unit_id=%s
+                 AND environment=%s AND issuer_cnpj=%s AND record_id LIKE %s
+               ORDER BY record_id, competence LIMIT %s""",
+            (*self._scope.identity_material, issuer.value, f"recovery-case-{issuer.value}-%", limit),
         ).fetchall()
         return [(str(row[0]), row[1].isoformat()) for row in rows]
 
