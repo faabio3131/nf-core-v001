@@ -859,3 +859,43 @@ test("T15 historical audit shows 60 months and paginated evidence without creati
   await expect(page.getByText(/Falha HTTP 503|HISTORICAL_AUDIT_UNAVAILABLE/)).toBeVisible();
   await expect(page.getByRole("table",{name:"Competências e evidências"})).toHaveCount(0);
 });
+
+
+test("T20 accountant downloads one source-bound sandbox dossier", async ({page, context}) => {
+  await page.route("**/v1/portal/bootstrap", route => route.fulfill({json:{
+    tenant_id:"tenant-e2e", unit_ids:["unit-a"], role:"accountant",
+    permissions:["portal.read","document.query","audit.read"], supported_documents:["nfe"],
+    projection:{authorized_units:[{unit_id:"unit-a", display_name:"Unidade A", environments:["homologation"]}]},
+  }}));
+  await context.addCookies([{name:"nfcore_csrf",value:"csrf-e2e",domain:"127.0.0.1",path:"/"}]);
+  await page.route("**/v1/portal/surfaces/**", route => route.fulfill({json:{rows:[]}}));
+  const finding="b".repeat(64), digest="a".repeat(64);
+  const base={unit_id:"unit-a",environment:"homologation",competence:"2026-01-01"};
+  await page.route("**/v1/portal/cognitive/economy/accounting-dossier/candidates", route => {
+    expect(route.request().postDataJSON()).toEqual(base);
+    expect(route.request().headers()["x-csrf-token"]).toBe("csrf-e2e");
+    return route.fulfill({json:{source:{record_id:"test-source",version:1,digest},as_of:"2026-11-24",
+      candidates:[{finding_id:finding,tax:"pis",modality:"federal_undue_payment",estimated_cents:"371"}],
+      credit_recognized:false,simulation_only:true}});
+  });
+  let downloads=0;
+  await page.route("**/v1/portal/cognitive/economy/accounting-dossier/export", route => {
+    expect(route.request().postDataJSON()).toEqual({...base,finding_id:finding,source_version:1,source_digest:digest});
+    expect(route.request().headers()["x-csrf-token"]).toBe("csrf-e2e");
+    downloads++;
+    // Browser transport fixture only; real ZIP/PDF/XLSX contents are tested in Python.
+    return route.fulfill({status:200,contentType:"application/zip",body:"PK-synthetic-download"});
+  });
+  await page.goto("/");
+  await page.getByRole("button",{name:"Reforma Tributária",exact:true}).click();
+  await page.getByLabel("Competência do dossiê").fill("2026-01");
+  await page.getByRole("button",{name:"Consultar achados para dossiê"}).click();
+  await page.getByLabel("Achado para revisão").selectOption(finding);
+  const download=page.waitForEvent("download");
+  await page.getByRole("button",{name:"Exportar dossiê PDF/Excel/XML"}).click();
+  expect((await download).suggestedFilename()).toBe("nfcore-dossie.zip");
+  expect(downloads).toBe(1);
+  await expect(page.getByText("Dossiê exportado. Revisão e assinatura do contador ainda pendentes.")).toBeVisible();
+  await page.getByLabel("Competência do dossiê").fill("2026-02");
+  await expect(page.getByRole("button",{name:"Exportar dossiê PDF/Excel/XML"})).toBeDisabled();
+});

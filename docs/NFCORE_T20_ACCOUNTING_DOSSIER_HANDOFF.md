@@ -1,6 +1,22 @@
 # T20 — Gerador de Dossiê Contábil PDF/Excel/XML
 
-## CURRENT — preparação de continuidade, 26/11/2026
+## CURRENT — implementação candidata (26/11/2026)
+
+Base `188241b491e5e9712dc3214130c86bc8e8b9587d`; #627 integrada, CI #45751148265 e governança #45751148291 SUCCESS; #622/#623 fechadas. Autorização expressa de implementação do proprietário; issue #626, branch `feat/nfcore-economy-t20-accounting-dossier`. Sem autorização de merge, deploy ou produção.
+
+### Escopo técnico e aceite
+
+- Dossiê por achado potencial T17 em competência encerrada, fontes atuais verificadas no corte registrado, ICMS/PIS/Cofins conforme modalidade e evidências existentes. T13 não constitui aprovação de achado de recuperação. Dossiê de benefício/comparação sem XML e assinatura digital automática não foram incluídos neste recorte.
+- PDF com identificação, cálculo, base legal, histórico, parecer preparatório e campos de revisão/assinatura; XLSX com centavos exatos (inteiros maiores que 15 dígitos como texto) e texto não executável; XMLs originais, evidências, JSONs e manifesto SHA-256 em ZIP único. Provas abrangem a competência selecionada no mesmo escopo.
+- Reuso T17/T16/T15 via `verify_recovery_bundle`, T18/T19 para reconciliação histórica; não há novo cálculo ou ledger. Arquivo imutável em partes T01, oportunidade documental vinculada à fonte e dossiê existente; replay por evidência/ator e nova versão quando muda a base. Sem migration.
+- Serviço `AccountingDossierService`; endpoints de candidatos e exportação no router cognitivo existente, mesma autenticação/CSRF/RBAC e MFA recente para contador designado. Feature flag `NFCORE_T20_DOSSIER_ENABLED=true`, `NFCORE_ECONOMY_ENABLED=true`, router cognitivo ativo, MFA canônica, apenas runtime não produtivo e escopo homologation. CLI `scripts/nfcore_accounting_dossier.py` usa as mesmas autoridades e não sobrescreve arquivos. Ação pontual na tela Reforma Tributária; T21 e exposição de operações T19 não antecipadas.
+- Testes propostos: PDF/XLSX/ZIP reais, hashes, XML byte a byte, texto anti-fórmula, precisão, paths, corrupção, autorização, rollback, versões, PostgreSQL, rota binária e jornada de download Playwright com transporte simulado. Exigir CI integral, revisão independente, gate T2 efetivo, merge autorizado e CI pós-merge antes de fechar #626. CLI e composição runtime ainda exigem prova de integração na validação; nenhuma execução de produção autorizada.
+- Riscos: limites explícitos de memória/arquivos e contenção herdada do lock canônico; #625 continua bloqueador antes de T21/Portal/produção. Ausência de XML, fonte inválida ou autoridade insuficiente bloqueia exportação. Sem homologação fiscal real, assinatura eletrônica ou reconhecimento contábil.
+
+**Estado:** IMPLEMENTED_NOT_CERTIFIED. HEAD e CI devem ser registrados na PR e issue após publicação; não presumir aprovação. XLSX Master ainda não sincronizado; manter ordem v4.1 e #613/#616/#625.
+
+
+## HISTÓRICO — preparação de continuidade, 26/11/2026
 
 **Próxima tarefa: #626. Implementação NÃO INICIADA.** A T19 está integrada pela #624 em `75542dd18d7a1521a33017f80395e24285c39fe4` e certificada tecnicamente no escopo interno. [CI pós-merge #45746332104](https://github.com/faabio3131/nf-core-v001/actions/runs/45746332104) e governança #45746332101 SUCCESS. [Handoff completo T19](NFCORE_T19_RECOVERY_LIFECYCLE_HANDOFF.md).
 
