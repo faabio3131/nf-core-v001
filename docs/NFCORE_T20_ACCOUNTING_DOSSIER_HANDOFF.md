@@ -10,12 +10,26 @@ A autorização do proprietário inclui o fechamento documental e a liberação 
 
 CURRENT confirmado no Git: a T01 possui `EconomyStore.append_dossier`, com referência à oportunidade, versão, arquivo e digest SHA-256. T13/T15–T19 oferecem autoridades de aprovação, proveniência, análise, cálculo e ledger a inventariar. A existência dessas autoridades não comprova geração PDF/Excel/XML.
 
-TARGET nomeado pelo proprietário e cronograma: **Gerador de Dossiê Contábil PDF/Excel/XML**. O cronograma Git reproduz apenas o título T20 e cita `NFCore_Cronograma_Master_v3_Trilhas_Com_Trava.xlsx`; o planejamento vigente registra Master v4.1. **Antes de congelar a implementação, recuperar a linha T20 e seu DoD literal na planilha vigente, registrar versão/local/evidência e confrontar com o CURRENT.** Não declarar requisitos inferidos como aprovados nem alterar escopo silenciosamente. A busca somente leitura em 26/11/2026 no workspace e no Google Drive conectado não localizou a planilha Master vigente; não há ID/URL verificado da fonte a registrar. Essa limitação é de recuperação do escopo literal, não desfaz a certificação T19 nem autoriza inventar requisitos.
+### TARGET e DoD literal recuperados
+
+Fonte do proprietário: `NFCore_Cronograma_Master_v4_1_ERP_Universal.xlsx`, Master v4.1, aba `Trilha1_Construcao_Interna`, linha **25**, registro **T20** (entrega D25; DoD G25). SHA-256 original `bb02fbdf49058ce2b079350baeda1e838b1abacdb34435202a7b3067b4967cca`. Arquivo de 44.500 bytes, modificação registrada em 25/11/2026 às 17:29:05 UTC; localizado e lido em 26/11/2026 entre os arquivos persistentes do proprietário. O estado T18/T19 desse snapshot é histórico e deve ser reconciliado com GitHub; os critérios e a ordem permanecem preservados. A busca inicial no Drive não localizou a fonte; a recuperação posterior resolveu a lacuna do DoD antes de concluir este fechamento.
+
+| Campo da fonte | Conteúdo literal |
+|---|---|
+| Fase | Fase 7 - Dossiê & UI Fiscal |
+| Bloco | Dossiê & Validação Contábil |
+| Tarefa / Entrega Obrigatória | Gerador de Dossiê para Validação Contábil (pacote PDF + Excel + XMLs de prova com base legal, memória de cálculo e parecer estruturado) |
+| Pré-Req. | T19 |
+| Ativo Reaproveitado | Core Cognitivo + Persistência |
+| Critério de Aceite (DoD) | Exportação em 1 clique gera dossiê completo pronto para revisão e assinatura do contador sem edição manual. |
+| Prazo (Dias) | 5 |
+
+O prazo de cinco dias é uma estimativa histórica, não um compromisso de entrega nem uma nova data aprovada. Aplicar este DoD ao desenho da implementação; não reduzir o pacote a um formato nem confundir a prontidão para assinatura com assinatura/aprovação automática do contador. A integração global de telas da Central pertence à T21; a T20 precisa comprovar sua própria exportação exigida pelo DoD sem antecipar a exposição das operações T19 bloqueadas pela #625. Toda decisão de implementação, aceite técnico detalhado e teste deve ficar vinculada a esta fonte e às autoridades CURRENT.
 
 ## Retomada executável
 
 1. Reconsultar GitHub: main/production, PRs, HEAD e CI; confirmar fechamento #622/#623 e estado READY_TO_START na #626.
-2. Recuperar o DoD literal vigente, identificar dependências e registrar Current → Target, mapa de impacto, áreas protegidas, aceite e testes na PR da T20 antes de código.
+2. Conferir o DoD literal acima contra a versão vigente, identificar dependências e registrar Current → Target, mapa de impacto, áreas protegidas, aceite e testes na PR da T20 antes de código.
 3. Inventariar persistência de dossiês T01, leitores de evidência/versões/digests e exportadores existentes. Reutilizar o que for correto; não criar segunda regra fiscal, ledger, autenticação, tenant ou persistência canônica.
 4. Construir somente a T20 aprovada, com isolamento e proveniência verificáveis. Não inferir crédito reconhecido ou validade fiscal real de material sandbox.
 5. Testar o DoD literal, cenários negativos, integridade/formato e autorização aplicáveis; cumprir CI integral no HEAD exato, revisão independente, autorização específica do merge de implementação e certificação pós-merge. Atualizar cronograma e handoff com evidência.
