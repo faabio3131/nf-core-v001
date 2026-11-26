@@ -16,10 +16,11 @@ MAX_EVENTS = 1000
 MAX_LOTS = 1000
 MAX_SCAN_EVENTS = 5000
 Movement = Literal[
-    "identified", "reserved", "released", "compensated", "reversed", "compensation_reversed"
+    "identified", "reserved", "released", "compensated", "reversed", "compensation_reversed",
+    "restituted", "restitution_reversed",
 ]
-Account = Literal["available", "reserved", "compensated", "reversed"]
-ACCOUNTS: tuple[Account, ...] = ("available", "reserved", "compensated", "reversed")
+Account = Literal["available", "reserved", "compensated", "reversed", "restituted"]
+ACCOUNTS: tuple[Account, ...] = ("available", "reserved", "compensated", "reversed", "restituted")
 
 
 class Amount(Strict):
@@ -73,6 +74,7 @@ class Compensation:
     reservation: str
     amount: Amount
     reversed: bool = False
+    destination: Account = "compensated"
 
 
 @dataclass
@@ -91,7 +93,15 @@ class State:
         self.check()
         return {
             "identified": self.original.model_dump(),
-            **{name: self.balances[name].model_dump() for name in ACCOUNTS},
+            # Preserve the exact historical T18 snapshot projection until a
+            # restitution event first occurs; then expose the additional account.
+            **{
+                name: self.balances[name].model_dump()
+                for name in ACCOUNTS
+                if name != "restituted" or any(
+                    entry.destination == "restituted" for entry in self.compensations.values()
+                )
+            },
             "total_cents": self.original.total,
         }
 
@@ -105,12 +115,14 @@ class State:
                 self.balances["reserved"], component
             ):
                 raise FiscalValidationError("ledger reservation reconciliation mismatch")
-            if sum(
-                getattr(value.amount, component)
-                for value in self.compensations.values()
-                if not value.reversed
-            ) != getattr(self.balances["compensated"], component):
-                raise FiscalValidationError("ledger compensation reconciliation mismatch")
+            settlements: tuple[Account, ...] = ("compensated", "restituted")
+            for destination in settlements:
+                if sum(
+                    getattr(value.amount, component)
+                    for value in self.compensations.values()
+                    if not value.reversed and value.destination == destination
+                ) != getattr(self.balances[destination], component):
+                    raise FiscalValidationError("ledger settlement reconciliation mismatch")
 
 
 def transition(state: State, command: Command) -> list[dict[str, Any]]:
@@ -123,7 +135,7 @@ def transition(state: State, command: Command) -> list[dict[str, Any]]:
     movement = command.movement
     # Conservative internal gate only. No legal proportionality is inferred:
     # T19 must apply the reviewed rule before any real fiscal compensation.
-    if movement in {"reserved", "compensated"} and amount.principal_cents == 0:
+    if movement in {"reserved", "compensated", "restituted"} and amount.principal_cents == 0:
         raise FiscalValidationError("ledger reservation or compensation requires principal")
     reservation = command.reservation_id
     compensation = command.compensation_id
@@ -142,7 +154,7 @@ def transition(state: State, command: Command) -> list[dict[str, Any]]:
             if reservation is not None or compensation is not None:
                 raise FiscalValidationError("invalid reservation reference")
             source, destination = "available", "reserved"
-        elif movement in {"released", "compensated"}:
+        elif movement in {"released", "compensated", "restituted"}:
             if (
                 reservation is None
                 or reservation not in state.reservations
@@ -152,14 +164,22 @@ def transition(state: State, command: Command) -> list[dict[str, Any]]:
             # Independent reservation limit, not just the global reserved account.
             subtract(state.reservations[reservation], amount)
             source = "reserved"
-            destination = "available" if movement == "released" else "compensated"
-        elif movement == "compensation_reversed":
+            destination = "available"
+            if movement == "compensated":
+                destination = "compensated"
+            elif movement == "restituted":
+                destination = "restituted"
+        elif movement in {"compensation_reversed", "restitution_reversed"}:
             if reservation is not None or compensation is None:
                 raise FiscalValidationError("exact compensation reference required")
             prior = state.compensations.get(compensation)
-            if prior is None or prior.reversed or prior.amount != amount:
+            settlement = "compensated" if movement == "compensation_reversed" else "restituted"
+            if (
+                prior is None or prior.reversed or prior.amount != amount
+                or prior.destination != settlement
+            ):
                 raise FiscalValidationError("compensation missing, reversed or amount differs")
-            source, destination = "compensated", "reserved"
+            source, destination = prior.destination, "reserved"
         else:
             if reservation is not None or compensation is not None:
                 raise FiscalValidationError("invalid cancellation reference")
@@ -174,12 +194,14 @@ def transition(state: State, command: Command) -> list[dict[str, Any]]:
         state.original = amount
     elif movement == "reserved":
         state.reservations[command.request_id] = amount
-    elif movement in {"released", "compensated"}:
+    elif movement in {"released", "compensated", "restituted"}:
         assert reservation is not None
         state.reservations[reservation] = subtract(state.reservations[reservation], amount)
-        if movement == "compensated":
-            state.compensations[command.request_id] = Compensation(reservation, amount)
-    elif movement == "compensation_reversed":
+        if movement != "released":
+            state.compensations[command.request_id] = Compensation(
+                reservation, amount, destination=destination
+            )
+    elif movement in {"compensation_reversed", "restitution_reversed"}:
         assert compensation is not None
         old = state.compensations[compensation]
         state.reservations[old.reservation] = add(state.reservations[old.reservation], amount)

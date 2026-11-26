@@ -385,7 +385,21 @@ def post_movement(
     as_of: date,
     unit: VerifiedCreditUnit,
 ) -> dict[str, Any]:
-    """Post one simulated movement after replaying the entire locked lot."""
+    """T18 entrypoint; T19-managed lots cannot be mutated outside their case."""
+    return _post_movement(store, issuer, reviewed, context=context, as_of=as_of, unit=unit)
+
+
+def _post_movement(
+    store: EconomyStore,
+    issuer: Cnpj,
+    reviewed: ReviewedMovement,
+    *,
+    context: IssuerContext,
+    as_of: date,
+    unit: VerifiedCreditUnit,
+    managed: bool = False,
+) -> dict[str, Any]:
+    """Internal shared journal writer. T19 calls only inside its atomic service."""
     scope = _require_scope(store)
     if not isinstance(unit, VerifiedCreditUnit):
         raise FiscalValidationError("verified credit recipient unit required")
@@ -399,6 +413,16 @@ def post_movement(
     # between checking the current source and publishing a journal version.
     store.lock_state_review_import(key, key)
     state, history = _replay(store, issuer, period, key)
+    is_managed = command.request_id.casefold().startswith("t19-")
+    if managed != is_managed or (not managed and (
+        command.movement in {"restituted", "restitution_reversed"}
+        or any(request.casefold().startswith("t19-") for request in state.seen)
+        or any(
+            ref is not None and ref.casefold().startswith("t19-")
+            for ref in (command.reservation_id, command.compensation_id)
+        )
+    )):
+        raise FiscalValidationError("T19 managed ledger requires lifecycle service")
     for row in history:
         prior = row["content"]["reviewed"]
         if prior["command"]["request_id"] == command.request_id:
@@ -485,7 +509,11 @@ def reconcile(
         projection: dict[str, Any],
     ) -> None:
         bucket = target.setdefault(tax, {})
-        for name in ("identified", "available", "reserved", "compensated", "reversed"):
+        for name in (
+            "identified", "available", "reserved", "compensated", "reversed", "restituted"
+        ):
+            if name == "restituted" and name not in projection:
+                continue
             account = bucket.setdefault(name, {})
             for component in ("principal_cents", "selic_cents"):
                 account[component] = account.get(component, 0) + projection[name][component]
