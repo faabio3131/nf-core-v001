@@ -102,7 +102,13 @@ _LABELS = {
     "historical_digest": "Hash histórico", "payment_sha256": "SHA-256 do pagamento",
     "assessment_reference": "Apuração original",
     "corrected_assessment_reference": "Apuração corrigida",
-    "provision": "Dispositivo", "month": "Mês",
+    "provision": "Dispositivo", "month": "Mês", "description": "Descrição",
+    "rate": "Taxa", "large_cents": "Valor integral (centavos)", "uf": "UF",
+    "state_ibge_code": "Código IBGE da UF", "profile_id": "Perfil fiscal",
+    "profile_version": "Versão do perfil", "crt": "CRT",
+    "identified": "Identificado", "validated": "Validado", "realized": "Realizado",
+    "allocated_cents": "Alocado (centavos)", "sha256": "SHA-256",
+    "reason_code": "Código do motivo", "source_id": "Identificador da fonte",
 }
 
 _VALUES = {
@@ -116,6 +122,8 @@ _VALUES = {
     "homologated": "Homologado (simulação)", "granted": "Deferido (simulação)",
     "paid": "Pago (simulação)", "cancelled": "Cancelado",
     "rejected": "Rejeitado", "denied": "Indeferido",
+    "lucro_real": "Lucro Real", "lucro_presumido": "Lucro Presumido",
+    "simples_nacional": "Simples Nacional", "homologation": "Homologação interna",
 }
 
 def _label(path: str) -> str:
@@ -152,7 +160,8 @@ def _pdf(payload: dict[str, Any], entries: list[dict[str, Any]]) -> bytes:
         pdf.set_font("Helvetica", size=10)
         pdf.set_text_color(24, 36, 52)
         pdf.multi_cell(
-            w=0, h=5.4, text=_pdf_text(value), new_x="LMARGIN", new_y="NEXT", wrapmode="WORD",
+            w=0, h=5.4, text=_pdf_text(value), new_x="LMARGIN", new_y="NEXT",
+            wrapmode="WORD", align="L",
         )
 
     def section(title: str) -> None:

@@ -42,11 +42,12 @@ from kordena_fiscal.archive.accounting_dossier import (
     render_package,
     verify_package,
 )
-from kordena_fiscal.archive.accounting_dossier import _text as dossier_text
+from kordena_fiscal.cognitive import api as cognitive_api
 from kordena_fiscal.cognitive.api import create_cognitive_router
 from kordena_fiscal.cognitive.historical_audit_api import historical_issuer_context
 from kordena_fiscal.domain import FiscalEnvironment, FiscalValidationError
 from kordena_fiscal.persistence.economy_store import EconomyStore
+from kordena_fiscal.persistence.postgres import PostgresFiscalDatabase
 from kordena_fiscal.runtime import api as runtime_api
 from kordena_fiscal.runtime.config import RuntimeSettings
 from kordena_fiscal.security.human_identity import (
@@ -313,7 +314,8 @@ def test_workbook_untrusted_text_stays_text(value):
     assert memory == payload
     cell = workbook["Memória T16"]["B2"]
     assert cell.data_type == "s" and cell.quotePrefix and cell.number_format == "@"
-    assert cell.value == dossier_text(value)
+    expected = {"\t=1+1": r"\u0009=1+1", "\r=1+1": r"\u000d=1+1", "\x00": r"\u0000"}
+    assert cell.value == expected.get(value, value)
     values = {r[0].value: r[1] for r in list(workbook["Memória T17"].rows)[1:]}
     assert values["wide_cents"].value == 10**12
     assert values["wide_cents"].number_format == "0"
@@ -325,7 +327,9 @@ def test_workbook_untrusted_text_stays_text(value):
     "future", [NOW + timedelta(days=1), NOW.replace(month=12, day=1),
                NOW.replace(year=2031, month=1, day=21)],
 )
-def test_postgres_source_cutoff_cannot_be_replayed(economy_database, mapping, future):
+def test_postgres_source_cutoff_cannot_be_replayed(
+    economy_database, mapping, future, monkeypatch,
+):
     db = economy_database
     scope, cmd, _ = _fixture(db, mapping)
     recovery, token, csrf = _session(db, scope)
@@ -341,6 +345,35 @@ def test_postgres_source_cutoff_cannot_be_replayed(economy_database, mapping, fu
     ):
         with pytest.raises(FiscalValidationError, match="cutoff"):
             operation()
+
+    class FrozenDateTime(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            return future.astimezone(tz) if tz is not None else future.replace(tzinfo=None)
+
+    monkeypatch.setattr(cognitive_api, "datetime", FrozenDateTime)
+    app = FastAPI()
+    app.include_router(create_cognitive_router(
+        recovery.identity, None, None, dossier_service=service,
+    ))
+    body = {
+        "unit_id": scope.unit_id, "environment": "homologation", "competence": MONTH.isoformat(),
+    }
+    selection = body | {
+        "finding_id": cmd.finding_id, "source_version": source["version"],
+        "source_digest": source["digest"],
+    }
+    with TestClient(app) as client:
+        client.cookies.set(SESSION_COOKIE, renewed.session_token)
+        client.cookies.set(CSRF_COOKIE, renewed.csrf_token)
+        headers = {CSRF_HEADER: renewed.csrf_token}
+        for action, request in (("candidates", body), ("export", selection)):
+            response = client.post(
+                f"/v1/portal/cognitive/economy/accounting-dossier/{action}",
+                json=request, headers=headers,
+            )
+            assert response.status_code == 409
+            assert response.json()["detail"]["code"] == "DOSSIER_EVIDENCE_INVALID"
     with db.economy(scope) as store:
         assert store.records("fm_economy_dossiers") == ()
         assert not any(
@@ -560,6 +593,9 @@ def test_postgres_cli_subprocess_real_mfa_and_destination(
         ("test", None, 200),
         ("test", "NFCORE_T20_DOSSIER_ENABLED", 503),
         ("test", "NFCORE_COGNITIVE_ENABLED", 404),
+        ("test", "NFCORE_ECONOMY_ENABLED", 503),
+        ("test", "NFCORE_HUMAN_MFA", 503),
+        ("staging", None, 200),
         ("production", None, 503),
     ],
 )
@@ -568,9 +604,25 @@ def test_postgres_runtime_availability_and_real_http_mfa(
 ):
     db = economy_database
     scope = _setup(db, mapping, BUYER)
-    issued, _, _, codes, finding, source_digest = _live_identity(db, scope, monkeypatch)
+    issued, human, _, codes, finding, source_digest = _live_identity(db, scope, monkeypatch)
     if disabled:
-        monkeypatch.setenv(disabled, "false")
+        monkeypatch.setenv(disabled, "disabled" if disabled == "NFCORE_HUMAN_MFA" else "false")
+    if environment in {"staging", "production"}:
+        # The existing release schema gate hard-codes public.*; this fixture
+        # deliberately uses a disposable non-public schema. Adapt ONLY that
+        # unrelated startup probe in this test, not the T20 composition gate.
+        expected_migrations = db.applied_migrations()
+
+        def isolated_schema(database, **_):
+            assert database._dsn == db._dsn
+            assert database.applied_migrations() == expected_migrations
+            with database.connection() as connection:
+                assert connection.execute(
+                    "SELECT to_regclass('fm_economy_dossiers'), to_regclass('fm_human_accounts')"
+                ).fetchone() == ("fm_economy_dossiers", "fm_human_accounts")
+            return expected_migrations
+
+        monkeypatch.setattr(PostgresFiscalDatabase, "require_current_schema", isolated_schema)
     settings = RuntimeSettings.from_mapping({
         "NFCORE_ENVIRONMENT": environment, "NFCORE_PERSISTENCE_BACKEND": "postgres",
         "DATABASE_URL": db._dsn,
@@ -578,7 +630,9 @@ def test_postgres_runtime_availability_and_real_http_mfa(
     app = runtime_api.create_runtime_app(settings)
     assert app.state.nfcore_runtime_composition is not None
     prefix = "/v1/portal/cognitive/economy/accounting-dossier"
-    body = {"unit_id": scope.unit_id, "environment": "homologation", "competence": MONTH.isoformat()}
+    body = {
+        "unit_id": scope.unit_id, "environment": "homologation", "competence": MONTH.isoformat(),
+    }
     selection = body | {"finding_id": finding, "source_version": 1, "source_digest": source_digest}
     with TestClient(app, base_url="https://testserver") as client:
         client.cookies.set(SESSION_COOKIE, issued.session_token)
@@ -601,6 +655,27 @@ def test_postgres_runtime_availability_and_real_http_mfa(
         response = client.post("/v1/auth/mfa/step-up", json={"code": codes[0]}, headers=headers)
         assert response.status_code == 200, response.text
         assert client.post(prefix + "/candidates", json=body, headers=headers).status_code == 200
+        composition = app.state.nfcore_runtime_composition
+        original = dossier.render_package
+
+        def revoke(*args, **kwargs):
+            raw = original(*args, **kwargs)
+            composition.human_identity.logout(human)
+            return raw
+
+        with monkeypatch.context() as patch:
+            patch.setattr(dossier, "render_package", revoke)
+            response = client.post(prefix + "/export", json=selection, headers=headers)
+            assert response.status_code == 401, response.text
+        with db.economy(scope) as store:
+            assert store.records("fm_economy_dossiers") == ()
+        renewed = composition.human_identity.issue_session(human.account, now=datetime.now(UTC))
+        client.cookies.set(SESSION_COOKIE, renewed.session_token)
+        client.cookies.set(CSRF_COOKIE, renewed.csrf_token)
+        headers = {CSRF_HEADER: renewed.csrf_token}
+        assert client.post(
+            "/v1/auth/mfa/step-up", json={"code": codes[1]}, headers=headers,
+        ).status_code == 200
         response = client.post(prefix + "/export", json=selection, headers=headers)
         assert response.status_code == 200, response.text
         _inspect(response.content)
