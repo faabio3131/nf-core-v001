@@ -1951,6 +1951,10 @@ async function api(path, options = {}) {
       A1_CNPJ_MISMATCH: "O CNPJ do certificado é diferente do CNPJ informado.",
       CERTIFICATE_UNAVAILABLE: "Certificado A1 não localizado para o CNPJ. Acesse Configuração > Certificados.",
       PORTAL_RUNTIME_NOT_READY: "Esta capacidade ainda não está disponível no runtime. Tente novamente após a configuração governada.",
+      DOSSIER_UNAVAILABLE: "Dossiê indisponível neste ambiente.",
+      DOSSIER_SCOPE_FORBIDDEN: "Dossiê reservado ao contador designado em homologação.",
+      DOSSIER_EVIDENCE_INVALID: "Fonte desatualizada ou inválida. Atualize as fontes e consulte novamente.",
+      INVALID_DOSSIER_REQUEST: "Selecione um achado vinculado à fonte atual.",
       BROWSER_AUTHORITY_REJECTED: "Organização e permissões são definidas pela sessão. Remova campos de autoridade do pedido.",
       INVALID_PREPARED_DOCUMENT: "Referência inválida ou documento ainda não preparado neste escopo. Confira e corrija o campo.",
       NATIVE_SALE_INVALID_FACTS_OR_CONFIGURATION: "Confira destinatário, valores, pagamentos e configuração fiscal da venda. Nenhum documento foi preparado por esta tentativa.",
@@ -5424,6 +5428,13 @@ function appendAccountingReviewLookup(article) {
 /** @param {HTMLElement} article */
 function appendAccountingDossier(article) {
   if (selectedFiscalEnvironment !== "homologation") return;
+  if (bootstrapState?.projection?.accounting_dossier_available !== true) {
+    const unavailable = document.createElement("p");
+    unavailable.textContent = "Dossiê contábil indisponível neste ambiente.";
+    unavailable.setAttribute("role", "status");
+    article.append(unavailable);
+    return;
+  }
   const form = document.createElement("form");
   const heading = document.createElement("h3");
   heading.textContent = "Dossiê contábil para revisão";
@@ -5481,7 +5492,13 @@ function appendAccountingDossier(article) {
       for (const finding of result.candidates) {
         const option = document.createElement("option");
         option.value = finding.finding_id;
-        option.textContent = finding.tax + " | " + finding.estimated_cents + " centavos | " + finding.finding_id.slice(0, 12);
+        const cents = String(finding.estimated_cents);
+        if (!/^\d+$/.test(cents)) throw new Error("Valor do achado inválido.");
+        const amount = BigInt(cents);
+        const reais = (amount / 100n).toLocaleString("pt-BR");
+        const fraction = String(amount % 100n).padStart(2, "0");
+        option.textContent = String(finding.tax).toUpperCase() + " | R$ " + reais + "," + fraction
+          + " (" + cents + " centavos) | " + finding.finding_id.slice(0, 12);
         choice.append(option);
       }
       choice.disabled = submit.disabled = !choice.options.length;
@@ -5510,13 +5527,30 @@ function appendAccountingDossier(article) {
       let response = await send();
       if (response.status === 403) {
         const detail = await response.json().catch(() => ({}));
-        if (detail.detail?.code === "STEP_UP_REQUIRED" && active() && await requestStepUp()) {
+        if (detail.detail?.code === "STEP_UP_REQUIRED") {
+          if (!active() || request !== generation) return;
+          if (!await requestStepUp()) {
+            if (active() && request === generation) feedback.textContent = "Confirmação de segurança cancelada. Nenhum dossiê foi baixado.";
+            return;
+          }
           if (!active() || request !== generation) return;
           response = await send();
         }
       }
-      if (!response.ok || response.headers.get("content-type")?.split(";")[0] !== "application/zip") {
-        throw new Error("Dossiê indisponível. Confira a autorização e consulte novamente as fontes.");
+      if (!response.ok) {
+        if (response.status === 409) {
+          clear();
+          throw new Error("Fonte desatualizada ou inválida. Atualize as fontes e consulte novamente.");
+        }
+        if (response.status === 503 || response.status === 404) {
+          clear();
+          throw new Error("Dossiê indisponível neste ambiente.");
+        }
+        if (response.status === 401) throw new Error("Sessão expirada. Entre novamente.");
+        throw new Error("Dossiê bloqueado. Confira a autorização e a confirmação de segurança.");
+      }
+      if (response.headers.get("content-type")?.split(";")[0] !== "application/zip") {
+        throw new Error("Formato de dossiê inválido. Nenhum arquivo foi baixado.");
       }
       const blob = await response.blob();
       if (!active() || request !== generation) return;

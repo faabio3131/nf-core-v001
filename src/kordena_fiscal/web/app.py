@@ -268,6 +268,7 @@ def create_app(
     password_reset_delivery: PasswordResetDelivery | None = None,
     password_reset_completed: Callable[[str, datetime], None] | None = None,
     portal_executor: HumanPortalExecutor | None = None,
+    accounting_dossier_available: bool = False,
     certificate_vault: EncryptedA1Vault | None = None,
     iron_a1_database: PostgresFiscalDatabase | None = None,
     iron_a1_allowed_origin: str | None = None,
@@ -417,6 +418,7 @@ def create_app(
                 human_identity,
                 portal_executor,
                 platform_surfaces=platform_surfaces,
+                accounting_dossier_available=accounting_dossier_available,
                 certificate_vault=certificate_vault,
                 mfa=human_mfa,
             )

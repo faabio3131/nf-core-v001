@@ -57,7 +57,7 @@ def main() -> None:
             raise ValueError("invalid competence")
         if args.output is not None and (
             not args.finding or args.source_version is None or not args.source_digest
-            or args.output.exists()
+            or os.path.lexists(args.output) or not args.output.parent.is_dir()
         ):
             raise ValueError("invalid selection or existing output")
         db = PostgresFiscalDatabase(os.environ["DATABASE_URL"])

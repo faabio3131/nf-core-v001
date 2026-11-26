@@ -330,6 +330,7 @@ def create_portal_router(
     executor: HumanPortalExecutor | None,
     *,
     platform_surfaces: tuple[str, ...] = (),
+    accounting_dossier_available: bool = False,
     certificate_vault: EncryptedA1Vault | None = None,
     mfa: HumanMfaService | None = None,
 ) -> APIRouter:
@@ -530,6 +531,10 @@ def create_portal_router(
         auth = authority(request)
         _authorized(auth, PortalPermission.PORTAL_READ)
         projection = dict(require_executor().snapshot(authority=auth))
+        # Informational only. The service still authenticates every operation.
+        projection["accounting_dossier_available"] = (
+            accounting_dossier_available and auth.account.role.value == "accountant"
+        )
         available = projection.get("available_surfaces")
         if isinstance(available, (list, tuple)):
             normalized = [

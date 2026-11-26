@@ -81,11 +81,10 @@ def _bundle(
     row = store.record(TABLE, _source_key(issuer, period))
     if row is None:
         raise FiscalValidationError("reviewed T17 source unavailable")
-    cutoff = date.fromisoformat(row["content"]["as_of"])
-    if cutoff > today:
-        raise FiscalValidationError("future dossier source cutoff")
+    # The canonical T17 verifier requires the current local date, including
+    # its reviewed prescription clock, legal validity and official SELIC cutoff.
     return verify_recovery_bundle(
-        store, issuer, period, row["version"], row["digest"], context, cutoff,
+        store, issuer, period, row["version"], row["digest"], context, today,
     )
 
 
@@ -336,7 +335,10 @@ class AccountingDossierService:
                 if current.account != human.account or current.session_id != human.session_id:
                     raise DossierAuthorityError("accounting authority changed")
                 yield store, issuer, context, human, now
-                current = self._authority(token, csrf, unit_id, self.clock())
+                finished = self.clock()
+                if finished.astimezone(LOCAL).date() != now.astimezone(LOCAL).date():
+                    raise FiscalValidationError("dossier source cutoff changed during export")
+                current = self._authority(token, csrf, unit_id, finished)
                 if current.account != human.account or current.session_id != human.session_id:
                     raise DossierAuthorityError("accounting authority changed")
 
@@ -446,7 +448,11 @@ class AccountingDossierService:
             # The review is preparatory; T13 approves benefit/comparison, not this claim.
             opinion = {
                 "status": "PENDENTE DE REVISÃO E ASSINATURA HUMANA",
-                "basis": "Candidato T17 revalidado no corte indicado; provas do mês anexadas.",
+                "basis": "Candidato T17 revalidado no corte atual; provas do mês anexadas.",
+                "evidence_scope": (
+                    "XMLs T15/T16 incluem contexto mensal para recomputação; "
+                    "nem todo anexo é prova direta do achado selecionado."
+                ),
                 "limits": "Sem reconhecimento, liquidação ou autorização fiscal real.",
                 "t13": "Não aplicável a achado de recuperação; nenhuma aprovação presumida.",
                 "action": (

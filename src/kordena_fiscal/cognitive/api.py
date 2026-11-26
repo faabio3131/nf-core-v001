@@ -25,6 +25,7 @@ from kordena_fiscal.application.accounting_review import ReviewDecision, ReviewT
 from kordena_fiscal.domain import ExecutionScope, FiscalEnvironment, FiscalValidationError
 from kordena_fiscal.security.human_identity import (
     AuthenticatedHuman,
+    HumanAuthenticationError,
     HumanIdentityError,
     HumanIdentityService,
     PortalPermission,
@@ -494,9 +495,9 @@ def create_cognitive_router(
     ) -> tuple[AccountingDossierService, str, str, str, date]:
         _, unit, environment, month = authorized_month(request, body)
         if environment is not FiscalEnvironment.HOMOLOGATION:
-            raise _bad("DOSSIER_SCOPE_FORBIDDEN", "Sandbox only", 403)
+            raise _bad("DOSSIER_SCOPE_FORBIDDEN", "Apenas em homologação interna.", 403)
         if dossier_service is None:
-            raise _bad("DOSSIER_UNAVAILABLE", "Dossier unavailable", 503)
+            raise _bad("DOSSIER_UNAVAILABLE", "Dossiê indisponível neste ambiente.", 503)
         return (
             dossier_service, request.cookies.get(SESSION_COOKIE, ""),
             request.headers.get(CSRF_HEADER, ""), unit, month,
@@ -504,10 +505,12 @@ def create_cognitive_router(
 
     def dossier_error(exc: Exception) -> HTTPException:
         if isinstance(exc, DossierStepUpRequired):
-            return _bad("STEP_UP_REQUIRED", "Recent MFA required", 403)
+            return _bad("STEP_UP_REQUIRED", "Confirme o código do app autenticador.", 403)
+        if isinstance(exc, HumanAuthenticationError):
+            return _bad("INVALID_SESSION", "Sessão inválida ou expirada.", 401)
         if isinstance(exc, (DossierAuthorityError, HumanIdentityError)):
-            return _bad("DOSSIER_SCOPE_FORBIDDEN", "Accountant authority required", 403)
-        return _bad("DOSSIER_EVIDENCE_INVALID", "Refresh verified evidence", 409)
+            return _bad("DOSSIER_SCOPE_FORBIDDEN", "Contador designado necessário.", 403)
+        return _bad("DOSSIER_EVIDENCE_INVALID", "Atualize as fontes verificadas.", 409)
 
     @router.post("/economy/accounting-dossier/candidates")
     async def dossier_candidates(
@@ -527,7 +530,7 @@ def create_cognitive_router(
         selection = {"finding_id", "source_version", "source_digest"}
         context = {"unit_id", "environment", "competence"}
         if set(body) != context | selection:
-            raise _bad("INVALID_DOSSIER_REQUEST", "Expected source-bound finding")
+            raise _bad("INVALID_DOSSIER_REQUEST", "Selecione um achado vinculado à fonte.")
         service, token, csrf, unit, month = dossier_context(
             request, {key: body[key] for key in context},
         )
