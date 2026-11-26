@@ -17,7 +17,7 @@ from test_t16_unused_credits import BUYER, evidence
 from test_t18_credit_ledger import _federal_seed, _reviewed, _write
 
 from kordena_fiscal.application import credit_ledger as ledger
-from kordena_fiscal.application.credit_ledger import history, journal_id, post_movement, reconcile
+from kordena_fiscal.application.credit_ledger import history, post_movement, reconcile
 from kordena_fiscal.application.recovery_lifecycle import (
     RecoveryCaseService,
     ReviewedEvent,
