@@ -397,7 +397,10 @@ class EconomyStore:
                WHERE host_namespace=%s AND tenant_id=%s AND unit_id=%s
                  AND environment=%s AND issuer_cnpj=%s AND record_id LIKE %s
                ORDER BY record_id, competence LIMIT %s""",
-            (*self._scope.identity_material, issuer.value, f"recovery-case-{issuer.value}-%", limit),
+            (
+                *self._scope.identity_material, issuer.value,
+                f"recovery-case-{issuer.value}-%", limit,
+            ),
         ).fetchall()
         return [(str(row[0]), row[1].isoformat()) for row in rows]
 

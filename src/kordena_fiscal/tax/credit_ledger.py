@@ -115,7 +115,8 @@ class State:
                 self.balances["reserved"], component
             ):
                 raise FiscalValidationError("ledger reservation reconciliation mismatch")
-            for destination in ("compensated", "restituted"):
+            settlements: tuple[Account, ...] = ("compensated", "restituted")
+            for destination in settlements:
                 if sum(
                     getattr(value.amount, component)
                     for value in self.compensations.values()
