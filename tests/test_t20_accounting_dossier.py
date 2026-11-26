@@ -5,36 +5,62 @@ from __future__ import annotations
 import base64
 import io
 import json
-from datetime import UTC, datetime
+import os
+import subprocess
+import sys
+from concurrent.futures import ThreadPoolExecutor
+from dataclasses import replace
+from datetime import UTC, datetime, timedelta
+from pathlib import Path
+from threading import Barrier
 from zipfile import ZipFile
 
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from openpyxl import load_workbook
+from pypdf import PdfReader
 from test_bling_canonical import mapping as _mapping_fixture
 from test_t14_authorized_issuance import economy_database as _economy_database_fixture
 from test_t15_historical_audit import MONTH, _setup
 from test_t16_unused_credits import BUYER
-from test_t18_credit_ledger import _seed
+from test_t18_credit_ledger import _federal_seed, _reviewed, _seed
 from test_t19_recovery_lifecycle import NOW, _fixture, _run, _session
 
+from kordena_fiscal.application import accounting_dossier as dossier
+from kordena_fiscal.application import credit_ledger as ledger
 from kordena_fiscal.application.accounting_dossier import (
     AccountingDossierService,
     DossierAuthorityError,
     DossierStepUpRequired,
 )
+from kordena_fiscal.application.unused_credits import verify_credit_unit
 from kordena_fiscal.archive.accounting_dossier import (
+    DISCLAIMER,
     digest,
     json_bytes,
     render_package,
     verify_package,
 )
+from kordena_fiscal.archive.accounting_dossier import _text as dossier_text
 from kordena_fiscal.cognitive.api import create_cognitive_router
 from kordena_fiscal.cognitive.historical_audit_api import historical_issuer_context
-from kordena_fiscal.domain import FiscalValidationError
+from kordena_fiscal.domain import FiscalEnvironment, FiscalValidationError
 from kordena_fiscal.persistence.economy_store import EconomyStore
-from kordena_fiscal.security.human_identity import CsrfValidationError, PortalRole
+from kordena_fiscal.runtime import api as runtime_api
+from kordena_fiscal.runtime.config import RuntimeSettings
+from kordena_fiscal.security.human_identity import (
+    CsrfValidationError,
+    HumanAccount,
+    HumanAuthenticationError,
+    HumanAuthorizationError,
+    HumanIdentityService,
+    PortalRole,
+    ScryptPasswordHasher,
+)
+from kordena_fiscal.security.human_mfa import HumanMfaService
+from kordena_fiscal.security.totp import totp_at
+from kordena_fiscal.tax.credit_ledger import Command
 from kordena_fiscal.web.human_auth import CSRF_COOKIE, CSRF_HEADER, SESSION_COOKIE
 
 # Register the imported pytest fixtures under their canonical names without
@@ -91,8 +117,23 @@ def test_render_real_pdf_excel_xml_and_exact_integer_cells():
     assert values["large_cents"] == "9223372036854775807"
     cell = workbook["Memória T16"]["B2"]
     assert cell.data_type == "s" and cell.value == "=1+1"
+    assert cell.number_format == "@" and cell.quotePrefix
+    assert all(
+        row[1].number_format == "0" for row in list(workbook["Memória T17"].rows)[1:]
+        if isinstance(row[1].value, int)
+    )
+    assert workbook["Ledger T18"]["A2"].value == "Estado"
+    assert workbook["Casos T19"]["A2"].value == "Estado"
+    assert [cell.value for cell in workbook["Evidências"][1]] == ["Caminho", "SHA-256", "Bytes"]
     with ZipFile(io.BytesIO(raw)) as archive:
         assert archive.read("xml/original.xml") == xml
+        pdf = PdfReader(io.BytesIO(archive.read("dossie.pdf")))
+        text = " ".join(" ".join(p.extract_text().split()) for p in pdf.pages)
+        assert DISCLAIMER in text
+        assert "Principal (centavos)" in text and "Referência legal" in text
+        with ZipFile(io.BytesIO(archive.read("memoria.xlsx"))) as xlsx:
+            styles = xlsx.read("xl/styles.xml")
+            assert b'FF163B64' in styles and b'FFFFFFFF' in styles
 
 
 @pytest.mark.parametrize("name", ["../evil.xml", "/xml/evil.xml", "xml/../evil.xml"])
@@ -218,11 +259,14 @@ def test_postgres_authority_and_atomic_rollback(economy_database, mapping, monke
 
 def test_postgres_http_binary_route_and_denials(economy_database, mapping):
     db = economy_database
-    scope, cmd, _ = _fixture(db, mapping)
+    scope = _setup(db, mapping, BUYER)
+    _, context = historical_issuer_context(db, scope, MONTH)
+    now = datetime.now(UTC)
+    finding, _ = _seed(db, scope, context, as_of=now.astimezone(dossier.LOCAL).date())
     recovery, token, _ = _session(db, scope)
     account = recovery.identity.authenticate_session(session_token=token, now=NOW).account
-    issued = recovery.identity.issue_session(account, now=datetime.now(UTC))
-    service = AccountingDossierService(db, recovery.identity, recovery.step_up)
+    issued = recovery.identity.issue_session(account, now=now)
+    service = AccountingDossierService(db, recovery.identity, recovery.step_up, clock=lambda: now)
     app = FastAPI()
     app.include_router(create_cognitive_router(
         recovery.identity, None, None, dossier_service=service,
@@ -244,7 +288,7 @@ def test_postgres_http_binary_route_and_denials(economy_database, mapping):
         assert response.status_code == 200, response.text
         source = response.json()["source"]
         selection = body | {
-            "finding_id": cmd.finding_id, "source_version": source["version"],
+            "finding_id": finding, "source_version": source["version"],
             "source_digest": source["digest"],
         }
         assert client.post(
@@ -254,4 +298,309 @@ def test_postgres_http_binary_route_and_denials(economy_database, mapping):
         assert response.status_code == 200
         assert response.headers["content-type"] == "application/zip"
         assert response.headers["cache-control"] == "no-store"
+        _inspect(response.content)
+
+
+@pytest.mark.parametrize(
+    "value", ["=1+1", "+1+1", "-1+1", "@SUM(A1:A2)", "\t=1+1", "\r=1+1", "\x00"],
+)
+def test_workbook_untrusted_text_stays_text(value):
+    payload = _payload()
+    payload["t16"]["citation"]["reference"] = value
+    payload["t17"]["wide_cents"] = 10**12
+    raw = render_package(payload, {"xml/original.xml": b"<original/>"})
+    memory, workbook = _inspect(raw)
+    assert memory == payload
+    cell = workbook["Memória T16"]["B2"]
+    assert cell.data_type == "s" and cell.quotePrefix and cell.number_format == "@"
+    assert cell.value == dossier_text(value)
+    values = {r[0].value: r[1] for r in list(workbook["Memória T17"].rows)[1:]}
+    assert values["wide_cents"].value == 10**12
+    assert values["wide_cents"].number_format == "0"
+    assert values["large_cents"].number_format == "@"
+    assert workbook["Memória T16"].row_dimensions[2].height >= 22
+
+
+@pytest.mark.parametrize(
+    "future", [NOW + timedelta(days=1), NOW.replace(month=12, day=1),
+               NOW.replace(year=2031, month=1, day=21)],
+)
+def test_postgres_source_cutoff_cannot_be_replayed(economy_database, mapping, future):
+    db = economy_database
+    scope, cmd, _ = _fixture(db, mapping)
+    recovery, token, csrf = _session(db, scope)
+    service = _dossier(db, recovery)
+    source = service.candidates(token, csrf, scope.unit_id, MONTH)["source"]
+    account = recovery.identity.authenticate_session(session_token=token, now=NOW).account
+    renewed = recovery.identity.issue_session(account, now=future)
+    service.clock = lambda: future
+    for operation in (
+        lambda: service.candidates(renewed.session_token, renewed.csrf_token, scope.unit_id, MONTH),
+        lambda: _export(service, renewed.session_token, renewed.csrf_token, scope,
+                        cmd.finding_id, source),
+    ):
+        with pytest.raises(FiscalValidationError, match="cutoff"):
+            operation()
+    with db.economy(scope) as store:
+        assert store.records("fm_economy_dossiers") == ()
+        assert not any(
+            row["record_id"].startswith("t20-dossier-")
+            for row in store.records("fm_economy_opportunities")
+        )
+
+
+def test_postgres_cofins_concurrent_replay_and_four_axis_rls(economy_database, mapping):
+    db = economy_database
+    scope = _setup(db, mapping, BUYER)
+    command, = _federal_seed(db, scope, MONTH, [("cofins", 334)])
+    recovery, token, csrf = _session(db, scope)
+    service = _dossier(db, recovery)
+    source = service.candidates(token, csrf, scope.unit_id, MONTH)["source"]
+    barrier = Barrier(2)
+
+    def run(_):
+        barrier.wait(timeout=20)
+        return _export(service, token, csrf, scope, command.finding_id, source)
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        first, second = list(pool.map(run, range(2)))
+    assert first == second
+    memory, _ = _inspect(first)
+    assert memory["t17"]["tax"] == "cofins"
+    key = memory["identification"]["dossier_id"]
+    with db.economy(scope) as store:
+        assert store.record("fm_economy_dossiers", key)["version"] == 1
+        assert store.record("fm_economy_dossiers", key, 2) is None
+    identities = {
+        "fm_economy_dossiers": key,
+        "fm_economy_opportunities": key + "-opportunity",
+        "fm_economy_snapshots": key + "-archive",
+    }
+    for other in (
+        replace(scope, tenant_id="other-tenant"), replace(scope, unit_id="other-unit"),
+        replace(scope, host_namespace="other-host"),
+        replace(scope, environment=FiscalEnvironment.PRODUCTION),
+    ):
+        with db.economy(other) as store:
+            for table, record in identities.items():
+                assert store.record(table, record) is None
+                # Deliberately omit scope WHERE clauses to prove database RLS itself.
+                assert store._conn.execute(
+                    f"SELECT count(*) FROM {table} WHERE record_id=%s", (record,),
+                ).fetchone()[0] == 0
+    for other in (
+        replace(scope, tenant_id="other-tenant"), replace(scope, unit_id="other-unit"),
+    ):
+        foreign, foreign_token, foreign_csrf = _session(db, other)
+        with pytest.raises((FiscalValidationError, HumanAuthorizationError)):
+            _dossier(db, foreign).candidates(foreign_token, foreign_csrf, scope.unit_id, MONTH)
+        with pytest.raises((FiscalValidationError, HumanAuthorizationError)):
+            _export(_dossier(db, foreign), foreign_token, foreign_csrf, scope,
+                    command.finding_id, source)
+
+
+@pytest.mark.parametrize("suffix", ["-archive", "-archive-0"])
+def test_postgres_corrupt_archive_replay_fails_closed(
+    economy_database, mapping, monkeypatch, suffix,
+):
+    db = economy_database
+    scope, cmd, _ = _fixture(db, mapping)
+    recovery, token, csrf = _session(db, scope)
+    service = _dossier(db, recovery)
+    source = service.candidates(token, csrf, scope.unit_id, MONTH)["source"]
+    raw = _export(service, token, csrf, scope, cmd.finding_id, source)
+    memory, _ = _inspect(raw)
+    key = memory["identification"]["dossier_id"]
+    original = EconomyStore.record
+
+    def corrupt(store, table, record_id, version=None):
+        row = original(store, table, record_id, version)
+        if row is not None and record_id == key + suffix:
+            field = "sha256" if suffix == "-archive" else "data_b64"
+            return row | {"content": row["content"] | {field: "AAAA"}}
+        return row
+
+    # Fault injection on the read boundary; append-only tables are never weakened.
+    with monkeypatch.context() as patch:
+        patch.setattr(EconomyStore, "record", corrupt)
+        with pytest.raises(FiscalValidationError, match="archive"):
+            _export(service, token, csrf, scope, cmd.finding_id, source)
+    assert _export(service, token, csrf, scope, cmd.finding_id, source) == raw
+
+
+def test_postgres_orphan_managed_ledger_blocks_dossier(economy_database, mapping):
+    db = economy_database
+    scope, cmd, terms = _fixture(db, mapping)
+    _, context = historical_issuer_context(db, scope, MONTH)
+    proof = verify_credit_unit(db, scope, BUYER)
+    forged = Command.model_validate(cmd.model_dump() | {
+        "expected_version": 1, "request_id": f"T19-{terms.case_id}-1-1",
+        "movement": "reserved",
+    })
+    with db.economy(scope) as store:
+        ledger._post_movement(
+            store, BUYER, _reviewed(scope, forged), context=context,
+            as_of=NOW.astimezone(dossier.LOCAL).date(), unit=proof, managed=True,
+        )
+    recovery, token, csrf = _session(db, scope)
+    service = _dossier(db, recovery)
+    source = service.candidates(token, csrf, scope.unit_id, MONTH)["source"]
+    with pytest.raises(FiscalValidationError, match="orphan recovery case ledger"):
+        _export(service, token, csrf, scope, cmd.finding_id, source)
+    with db.economy(scope) as store:
+        assert store.records("fm_economy_dossiers") == ()
+
+
+def test_postgres_revocation_during_render_rolls_back(economy_database, mapping, monkeypatch):
+    db = economy_database
+    scope, cmd, _ = _fixture(db, mapping)
+    recovery, token, csrf = _session(db, scope)
+    service = _dossier(db, recovery)
+    source = service.candidates(token, csrf, scope.unit_id, MONTH)["source"]
+    human = recovery.identity.authenticate_session(session_token=token, now=NOW)
+    original = dossier.render_package
+
+    def revoke(*args, **kwargs):
+        raw = original(*args, **kwargs)
+        recovery.identity.logout(human)
+        return raw
+
+    monkeypatch.setattr(dossier, "render_package", revoke)
+    with pytest.raises(HumanAuthenticationError):
+        _export(service, token, csrf, scope, cmd.finding_id, source)
+    with db.economy(scope) as store:
+        assert store.records("fm_economy_dossiers") == ()
+        assert not any(
+            row["record_id"].startswith("t20-dossier-")
+            for row in store.records("fm_economy_snapshots", limit=500)
+        )
+
+
+def _live_identity(db, scope, monkeypatch):
+    db.initialize(enable_mfa=True)
+    monkeypatch.setenv("NFCORE_HUMAN_MFA", "enabled")
+    monkeypatch.setenv("NFCORE_HUMAN_MFA_KEY_BASE64", base64.b64encode(os.urandom(32)).decode())
+    monkeypatch.setenv("NFCORE_T20_DOSSIER_ENABLED", "true")
+    monkeypatch.setenv("NFCORE_COGNITIVE_ENABLED", "true")
+    now = datetime.now(UTC)
+    hasher = ScryptPasswordHasher()
+    account = HumanAccount(
+        "t20-test-actor", "t20@example.test", hasher.hash("Synthetic-T20-Password-123"),
+        scope.tenant_id, PortalRole.ACCOUNTANT, frozenset({scope.unit_id}),
+    )
+    db.human_accounts().save(account)
+    identity = HumanIdentityService(
+        accounts=db.human_accounts(), sessions=db.web_sessions(), password_hasher=hasher,
+    )
+    issued = identity.issue_session(account, now=now)
+    human = identity.authenticate_session(session_token=issued.session_token, now=now)
+    mfa = HumanMfaService.from_environ(db.human_mfa)
+    assert mfa is not None
+    encoded = mfa.start_enrollment(account, now).secret_base32
+    secret = base64.b32decode(encoded + "=" * (-len(encoded) % 8))
+    codes = mfa.confirm_enrollment(account, totp_at(secret, now), now)
+    _, context = historical_issuer_context(db, scope, MONTH)
+    finding, source_digest = _seed(db, scope, context, as_of=now.astimezone(dossier.LOCAL).date())
+    return issued, human, mfa, codes, finding, source_digest
+
+
+def test_postgres_cli_subprocess_real_mfa_and_destination(
+    economy_database, mapping, monkeypatch, tmp_path,
+):
+    db = economy_database
+    scope = _setup(db, mapping, BUYER)
+    issued, human, mfa, codes, finding, source_digest = _live_identity(db, scope, monkeypatch)
+    cli = Path(__file__).parents[1] / "scripts/nfcore_accounting_dossier.py"
+    args = [sys.executable, str(cli), "--unit", scope.unit_id, "--competence", MONTH.isoformat()]
+    env = os.environ | {
+        "NFCORE_ENVIRONMENT": "test", "DATABASE_URL": db._dsn,
+        "NFCORE_T20_SESSION_TOKEN": issued.session_token,
+        "NFCORE_T20_CSRF_TOKEN": issued.csrf_token,
+    }
+    output = tmp_path / "dossier.zip"
+    selection = ["--finding", finding, "--source-version", "1", "--source-digest", source_digest]
+
+    def invoke(arguments, **overrides):
+        result = subprocess.run(
+            [*args, *arguments], env=env | overrides, capture_output=True,
+            text=True, check=False, timeout=90,
+        )
+        assert issued.session_token not in result.stderr and issued.csrf_token not in result.stderr
+        return result
+
+    for overrides in (
+        {"NFCORE_ENVIRONMENT": "production"}, {"NFCORE_T20_DOSSIER_ENABLED": "false"},
+        {"NFCORE_ECONOMY_ENABLED": "false"}, {"NFCORE_HUMAN_MFA": "disabled"},
+        {"NFCORE_T20_CSRF_TOKEN": "invalid"}, {},
+    ):
+        result = invoke(["--candidates"], **overrides)
+        assert result.returncode == 2 and not result.stdout
+    mfa.step_up(human.account, human.session_id, codes[0], datetime.now(UTC))
+    result = invoke(["--candidates"])
+    result.check_returncode()
+    assert json.loads(result.stdout)["source"]["digest"] == source_digest
+    dangling = tmp_path / "dangling.zip"
+    dangling.symlink_to(tmp_path / "missing.zip")
+    for target in (dangling, tmp_path / "missing" / "dossier.zip"):
+        result = invoke(["--output", str(target), *selection])
+        assert result.returncode == 2 and not result.stdout
+    with db.economy(scope) as store:
+        assert store.records("fm_economy_dossiers") == ()
+    invoke(["--output", str(output), *selection]).check_returncode()
+    original = output.read_bytes()
+    _inspect(original)
+    assert output.stat().st_mode & 0o777 == 0o600
+    assert invoke(["--output", str(output), *selection]).returncode == 2
+    assert output.read_bytes() == original and dangling.is_symlink()
+
+
+@pytest.mark.parametrize(
+    ("environment", "disabled", "expected"),
+    [
+        ("test", None, 200),
+        ("test", "NFCORE_T20_DOSSIER_ENABLED", 503),
+        ("test", "NFCORE_COGNITIVE_ENABLED", 404),
+        ("production", None, 503),
+    ],
+)
+def test_postgres_runtime_availability_and_real_http_mfa(
+    economy_database, mapping, monkeypatch, environment, disabled, expected,
+):
+    db = economy_database
+    scope = _setup(db, mapping, BUYER)
+    issued, _, _, codes, finding, source_digest = _live_identity(db, scope, monkeypatch)
+    if disabled:
+        monkeypatch.setenv(disabled, "false")
+    settings = RuntimeSettings.from_mapping({
+        "NFCORE_ENVIRONMENT": environment, "NFCORE_PERSISTENCE_BACKEND": "postgres",
+        "DATABASE_URL": db._dsn,
+    })
+    app = runtime_api.create_runtime_app(settings)
+    assert app.state.nfcore_runtime_composition is not None
+    prefix = "/v1/portal/cognitive/economy/accounting-dossier"
+    body = {"unit_id": scope.unit_id, "environment": "homologation", "competence": MONTH.isoformat()}
+    selection = body | {"finding_id": finding, "source_version": 1, "source_digest": source_digest}
+    with TestClient(app, base_url="https://testserver") as client:
+        client.cookies.set(SESSION_COOKIE, issued.session_token)
+        client.cookies.set(CSRF_COOKIE, issued.csrf_token)
+        headers = {CSRF_HEADER: issued.csrf_token}
+        bootstrap = client.get("/v1/portal/bootstrap")
+        assert bootstrap.status_code == 200, bootstrap.text
+        assert bootstrap.json()["projection"]["accounting_dossier_available"] is (expected == 200)
+        response = client.post(prefix + "/candidates", json=body, headers=headers)
+        if expected != 200:
+            assert response.status_code == expected, response.text
+            if expected == 503:
+                assert response.json()["detail"]["code"] == "DOSSIER_UNAVAILABLE"
+            return
+        assert response.status_code == 403
+        assert response.json()["detail"]["code"] == "STEP_UP_REQUIRED"
+        response = client.post(prefix + "/export", json=selection, headers=headers)
+        assert response.status_code == 403
+        assert response.json()["detail"]["code"] == "STEP_UP_REQUIRED"
+        response = client.post("/v1/auth/mfa/step-up", json={"code": codes[0]}, headers=headers)
+        assert response.status_code == 200, response.text
+        assert client.post(prefix + "/candidates", json=body, headers=headers).status_code == 200
+        response = client.post(prefix + "/export", json=selection, headers=headers)
+        assert response.status_code == 200, response.text
         _inspect(response.content)

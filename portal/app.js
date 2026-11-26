@@ -2006,8 +2006,11 @@ async function api(path, options = {}) {
       INVALID_MFA_PAYLOAD: "Digite o código de 6 dígitos do app.",
     };
     const code = detail && typeof detail === "object" && typeof detail.code === "string" ? detail.code : "";
-    if (code === "STEP_UP_REQUIRED" && !options.stepUpRetried && await requestStepUp()) {
-      return api(path, {...options, stepUpRetried: true});
+    if (code === "STEP_UP_REQUIRED" && !options.stepUpRetried) {
+      if (await requestStepUp()) return api(path, {...options, stepUpRetried: true});
+      if (path.endsWith("/accounting-dossier/candidates")) {
+        throw Object.assign(new Error("Confirmação de segurança cancelada."), {status:403, body});
+      }
     }
     const translated = messages[/** @type {keyof typeof messages} */ (code)];
     const message = translated || (detail && typeof detail === "object" && typeof detail.message === "string"
@@ -5504,7 +5507,11 @@ function appendAccountingDossier(article) {
       choice.disabled = submit.disabled = !choice.options.length;
       feedback.textContent = choice.options.length ? "Fonte revisada em " + result.as_of + ". Selecione o achado e exporte." : "Nenhum achado revisável nesta competência.";
     } catch (error) {
-      if (active() && request === generation) feedback.textContent = errorMessage(error);
+      if (active() && request === generation) {
+        clear();
+        feedback.textContent = error instanceof Error && "status" in error && error.status === 404
+          ? "Dossiê indisponível neste ambiente." : errorMessage(error);
+      }
     } finally {
       if (active()) consult.disabled = false;
     }

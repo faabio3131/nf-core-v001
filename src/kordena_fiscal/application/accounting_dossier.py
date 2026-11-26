@@ -62,6 +62,10 @@ class DossierAuthorityError(FiscalValidationError):
     """A fresh designated-accountant session or canonical unit is required."""
 
 
+class DossierSelectionError(FiscalValidationError):
+    """Malformed client selection, not a conflict in canonical evidence."""
+
+
 class DossierStepUpRequired(DossierAuthorityError):
     """Prompt for the existing canonical MFA step-up, never a second factor service."""
 
@@ -368,7 +372,7 @@ class AccountingDossierService:
             or type(source_version) is not int or not 1 <= source_version <= 2147483647
             or not isinstance(source_digest, str) or not HASH.fullmatch(source_digest)
         ):
-            raise FiscalValidationError("invalid dossier selection")
+            raise DossierSelectionError("invalid dossier selection")
         with self._scoped(token, csrf, unit_id, period) as (store, issuer, context, human, now):
             today = now.astimezone(LOCAL).date()
             bundle = _bundle(store, issuer, period, context, today)

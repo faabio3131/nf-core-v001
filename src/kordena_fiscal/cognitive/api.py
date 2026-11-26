@@ -19,6 +19,7 @@ from fastapi.concurrency import run_in_threadpool
 from kordena_fiscal.application.accounting_dossier import (
     AccountingDossierService,
     DossierAuthorityError,
+    DossierSelectionError,
     DossierStepUpRequired,
 )
 from kordena_fiscal.application.accounting_review import ReviewDecision, ReviewTarget
@@ -506,6 +507,8 @@ def create_cognitive_router(
     def dossier_error(exc: Exception) -> HTTPException:
         if isinstance(exc, DossierStepUpRequired):
             return _bad("STEP_UP_REQUIRED", "Confirme o código do app autenticador.", 403)
+        if isinstance(exc, DossierSelectionError):
+            return _bad("INVALID_DOSSIER_REQUEST", "Seleção do achado inválida.", 400)
         if isinstance(exc, HumanAuthenticationError):
             return _bad("INVALID_SESSION", "Sessão inválida ou expirada.", 401)
         if isinstance(exc, (DossierAuthorityError, HumanIdentityError)):
