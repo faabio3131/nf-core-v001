@@ -382,8 +382,8 @@ def _apply(
         links = []
         for index, movement in enumerate(movements, 1):
             last_row = journal[-1]
-            previous = Command.model_validate(last_row["content"]["reviewed"]["command"])
-            command = _ledger_command(event, previous, last_row["version"], index,
+            previous_command = Command.model_validate(last_row["content"]["reviewed"]["command"])
+            command = _ledger_command(event, previous_command, last_row["version"], index,
                                       movement, settlement)
             result = _post_movement(
                 store, issuer, _reviewed(scope, issuer, command), context=context,
@@ -503,12 +503,15 @@ class RecoveryCaseService:
             human.tenant_id, unit_id, FiscalEnvironment.HOMOLOGATION, "t19-case", "fm-nfcore",
         )
         period = date.fromisoformat(reviewed.event.terms.competence)
+        host_namespace = scope.host_namespace
+        if host_namespace is None:
+            raise FiscalValidationError("canonical host namespace required")
         with _canonical_guard(self.db):
             issuer, context = historical_issuer_context(self.db, scope, period)
             with self.db() as uow:
                 unit = uow.control_plane.get_unit(scope.tenant_id, scope.unit_id)
                 active = uow.control_plane.resolve_profile(
-                    host_namespace=scope.host_namespace, tenant_id=scope.tenant_id,
+                    host_namespace=host_namespace, tenant_id=scope.tenant_id,
                     unit_id=scope.unit_id, environment=scope.environment, instant=now,
                 )
             if (
