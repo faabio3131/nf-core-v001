@@ -123,7 +123,9 @@ def plan(previous: Status | None, event: Event) -> tuple[Status, tuple[Movement,
 
 
 def alert(status: Status, deadline: str | None, today: date) -> dict[str, object] | None:
-    if deadline is None or status in {"homologated", "paid", "cancelled", "released", "invalidated"}:
+    if deadline is None or status in {
+        "homologated", "paid", "cancelled", "released", "invalidated",
+    }:
         return None
     days = (date.fromisoformat(deadline) - today).days
     if days > 30:
