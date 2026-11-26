@@ -386,6 +386,7 @@ class AccountingDossierService:
                 }
                 for case in cases
             ]
+            ledger_refs = [_ref(row) for row in ledger["events"]] if ledger else []
             basis = {
                 "scope": list(store.scope_identity), "issuer": issuer.value,
                 "competence": period.isoformat(), "finding_id": finding_id,
@@ -394,7 +395,7 @@ class AccountingDossierService:
                     "version": bundle.facts.t16_version, "digest": bundle.facts.t16_digest,
                 },
                 "t15": _ref(prior) if prior is not None else None,
-                "ledger": [_ref(row) for row in ledger["events"]] if ledger else [],
+                "ledger": ledger_refs,
                 "cases": case_summary,
             }
             basis_digest = digest(json_bytes(basis))
@@ -436,7 +437,7 @@ class AccountingDossierService:
             ])
             identification = {
                 **{k: v for k, v in basis.items() if k not in {"ledger", "cases"}},
-                "ledger_events": len(basis["ledger"]), "case_count": len(case_summary),
+                "ledger_events": len(ledger_refs), "case_count": len(case_summary),
                 "basis_digest": basis_digest, "dossier_id": key,
                 "dossier_version": version, "generated_at": now.isoformat(),
                 "source_cutoff": bundle.index["content"]["as_of"],
