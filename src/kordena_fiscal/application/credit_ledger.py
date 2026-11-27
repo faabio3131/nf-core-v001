@@ -381,6 +381,36 @@ def _verify_managed_scope(
     )
 
 
+
+def _require_write_capacity(
+    verified: VerifiedRecoveryScope, *, key: str, period: date, movements: int,
+    max_lots: int | None = None, max_events: int | None = None,
+    max_scan_events: int | None = None,
+) -> None:
+    """Preserve reportability before a new append, under the accounting lock.
+
+    Use only the transaction-local verified journal map, across competences.
+    A replay consumes no capacity and must return before this check. A T19
+    event reserves capacity for its entire posting plan, not partial writes.
+    """
+    if type(movements) is not int or movements < 1:
+        raise FiscalValidationError("invalid prospective ledger movement count")
+    lot_bound = MAX_LOTS if max_lots is None else min(MAX_LOTS, max_lots)
+    event_bound = MAX_EVENTS if max_events is None else min(MAX_EVENTS, max_events)
+    scan_bound = MAX_SCAN_EVENTS if max_scan_events is None else min(
+        MAX_SCAN_EVENTS, max_scan_events,
+    )
+    journal = verified.journals.get((key, period.isoformat()))
+    prior = len(journal[1]) if journal is not None else 0
+    if len(verified.journals) + int(journal is None) > lot_bound:
+        raise FiscalValidationError("prospective ledger lot bound exceeded")
+    if prior + movements > event_bound:
+        raise FiscalValidationError("prospective ledger history exceeds event bound")
+    total = sum(len(rows) for _, rows in verified.journals.values())
+    if total + movements > scan_bound:
+        raise FiscalValidationError("prospective case reconciliation event bound exceeded")
+
+
 def _guard_existing_lots(
     store: EconomyStore,
     issuer: Cnpj,
@@ -476,9 +506,9 @@ def _post_movement(
     # Same scoped lock as T13/T14/T15/T16/T17 snapshot mutations. No race
     # between checking the current source and publishing a journal version.
     store.lock_state_review_import(key, key)
-    if not managed:
-        # No public T18 write (including a replay) may conceal a broken T19 link.
-        _verify_managed_scope(store, issuer)
+    # No public T18 write (including a replay) may conceal a broken T19 link.
+    # T19 has already validated and budgeted its complete plan under this lock.
+    verified = None if managed else _verify_managed_scope(store, issuer)
     state, history = _replay(store, issuer, period, key)
     is_managed = validate_managed_command(command) is not None
     if managed != is_managed or (not managed and (
@@ -502,6 +532,8 @@ def _post_movement(
             }
     if len(history) != command.expected_version or len(history) >= MAX_EVENTS:
         raise FiscalValidationError("ledger optimistic version conflict")
+    if verified is not None:
+        _require_write_capacity(verified, key=key, period=period, movements=1)
     if history:
         last = Command.model_validate(history[-1]["content"]["reviewed"]["command"])
         if _lot_binding(last) != _lot_binding(command):
