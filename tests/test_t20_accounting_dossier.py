@@ -481,7 +481,9 @@ def test_postgres_orphan_managed_ledger_blocks_dossier(economy_database, mapping
             # The application writer must reject malformed identifiers.
             key = ledger.journal_id(BUYER, cmd.finding_id)
             state, rows = ledger._replay(store, BUYER, MONTH, key)
-            with pytest.raises(FiscalValidationError, match="invalid T19 managed movement identity"):
+            with pytest.raises(
+                FiscalValidationError, match="invalid T19 managed movement identity",
+            ):
                 ledger._post_movement(
                     store, BUYER, reviewed, context=context,
                     as_of=day, unit=proof, managed=True,
