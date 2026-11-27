@@ -39,7 +39,10 @@ def managed_request_identity(request_id: str) -> tuple[str, int, int] | None:
     if match is None:
         raise FiscalValidationError("invalid T19 managed movement identity")
     case_id, version, index = match.group(1), int(match.group(2)), int(match.group(3))
-    if version > MAX_CASE_EVENTS or index > MAX_CASE_MOVEMENTS:
+    if (
+        version > MAX_CASE_EVENTS or index > MAX_CASE_MOVEMENTS
+        or (version == 1 and index != 1)
+    ):
         raise FiscalValidationError("invalid T19 managed movement identity")
     return case_id, version, index
 

@@ -622,6 +622,7 @@ def test_postgres_historical_read_after_environment_disabled(economy_database, m
 @pytest.mark.parametrize("template", [
     "T19-{case}-1-1", "t19-{case}", "t19-{case}-01-1", "t19-{case}-0-1",
     "t19-{case}-101-1", "t19-{case}-1-0", "t19-{case}-1-3", "t19-{case}-1-01",
+    "t19-{case}-1-2",
 ])
 def test_invalid_managed_identity(template):
     with pytest.raises(FiscalValidationError, match="invalid T19 managed movement identity"):
