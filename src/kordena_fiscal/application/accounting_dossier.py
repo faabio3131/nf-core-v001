@@ -49,6 +49,7 @@ from kordena_fiscal.security.human_identity import (
     PortalRole,
 )
 from kordena_fiscal.tax.historical_audit import IssuerContext, closed_months, source_bytes
+from kordena_fiscal.tax.recovery_lifecycle import managed_request_identity
 
 LOCAL = ZoneInfo("America/Sao_Paulo")
 CHUNK = 384 * 1024
@@ -188,7 +189,7 @@ def _history(
     managed = [
         (row["version"], row["digest"])
         for row in (ledger["events"] if ledger is not None else [])
-        if row["content"]["reviewed"]["command"]["request_id"].casefold().startswith("t19-")
+        if managed_request_identity(row["content"]["reviewed"]["command"]["request_id"]) is not None
     ]
     # Extra export completeness check, not a new monetary authority.
     if len(links) != len(set(links)) or sorted(links) != sorted(managed):

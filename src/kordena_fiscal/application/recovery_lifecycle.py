@@ -21,11 +21,27 @@ from kordena_fiscal.application.credit_ledger import (
     ReviewedMovement,
     _guard_existing_lots,
     _historical_source,
+    _ledger_reader,
     _post_movement,
+    _reconcile_verified,
     _replay,
     _verified_source,
+    _verify_managed_scope,
     journal_id,
-    reconcile,
+)
+from kordena_fiscal.application.recovery_integrity import (
+    ReviewedEvent as ReviewedEvent,
+)
+from kordena_fiscal.application.recovery_integrity import (
+    VerifiedRecoveryScope,
+    _ledger_command,
+    _scope,
+    _validate_amount,
+    _validate_payment,
+    case_history,
+)
+from kordena_fiscal.application.recovery_integrity import (
+    case_key as case_key,
 )
 from kordena_fiscal.application.unused_credits import VerifiedCreditUnit, verify_credit_unit
 from kordena_fiscal.cognitive.historical_audit_api import historical_issuer_context
@@ -43,9 +59,8 @@ from kordena_fiscal.tax.credit_ledger import (
     MAX_LOTS,
     MAX_SCAN_EVENTS,
     Command,
-    Movement,
 )
-from kordena_fiscal.tax.historical_audit import IssuerContext, Strict, closed_months
+from kordena_fiscal.tax.historical_audit import IssuerContext, closed_months
 from kordena_fiscal.tax.recovery_lifecycle import (
     MAX_CASE_EVENTS,
     MAX_CASE_SCAN_EVENTS,
@@ -53,45 +68,13 @@ from kordena_fiscal.tax.recovery_lifecycle import (
     SCHEMA,
     Event,
     Status,
-    Terms,
     alert,
+    managed_request_identity,
     plan,
 )
-from kordena_fiscal.tax.tax_recovery import federal_interest
-from kordena_fiscal.tax.unused_credits import Evidence, _unique_fields
 
 LOCAL = ZoneInfo("America/Sao_Paulo")
 TABLE = "fm_economy_snapshots"
-
-
-class ReviewedEvent(Strict):
-    event: Event
-    evidence: Evidence
-
-    def verify(self, scope: tuple[str, ...], issuer: Cnpj) -> None:
-        raw = self.evidence.contents()
-        if len(raw) > 16384:
-            raise FiscalValidationError("case evidence exceeds 16 KiB")
-        try:
-            observed = json.loads(raw, object_pairs_hook=_unique_fields)
-        except (UnicodeError, ValueError) as exc:
-            raise FiscalValidationError("invalid case evidence") from exc
-        expected = {
-            "scope": list(scope),
-            "issuer_cnpj": issuer.value,
-            "simulation_only": True,
-            "event": self.event.model_dump(),
-        }
-        if json.dumps(observed, sort_keys=True) != json.dumps(expected, sort_keys=True):
-            raise FiscalValidationError("case evidence differs from reviewed event")
-
-
-def case_key(issuer: Cnpj, terms: Terms) -> str:
-    return f"recovery-case-{issuer.value}-{terms.case_id}"
-
-
-def _request(terms: Terms, version: int, index: int) -> str:
-    return f"t19-{terms.case_id}-{version}-{index}"
 
 
 def _reviewed(scope: tuple[str, ...], issuer: Cnpj, command: Command) -> ReviewedMovement:
@@ -110,201 +93,18 @@ def _reviewed(scope: tuple[str, ...], issuer: Cnpj, command: Command) -> Reviewe
     })
 
 
-def _scope(store: EconomyStore) -> tuple[str, ...]:
-    scope = store.scope_identity
-    if scope[0] != "fm-nfcore" or scope[-1] != "homologation":
-        raise FiscalValidationError("recovery lifecycle requires canonical homologation")
-    return scope
-
-
-def _ledger_command(
-    event: Event,
-    previous: Command,
-    version: int,
-    index: int,
-    movement: Movement,
-    settlement: str | None,
-) -> Command:
-    terms = event.terms
-    source = movement in {"reserved", "compensated"}
-    return Command.model_validate({
-        "competence": terms.competence,
-        "finding_id": terms.finding_id,
-        "tax": terms.tax,
-        "amount": terms.amount.model_dump(),
-        "request_id": _request(terms, event.expected_version + 1, index),
-        "expected_version": version,
-        "review_reference": event.opinion_reference,
-        "movement": movement,
-        "recovery_version": event.source_version if source else previous.recovery_version,
-        "recovery_digest": event.source_digest if source else previous.recovery_digest,
-        "reservation_id": _request(terms, 1, 1) if movement in {
-            "released", "compensated", "restituted",
-        } else None,
-        "compensation_id": settlement if movement in {
-            "compensation_reversed", "restitution_reversed",
-        } else None,
-    })
-
-
 def _case_history(
     store: EconomyStore, issuer: Cnpj, key: str,
 ) -> tuple[list[dict[str, Any]], Status | None, str | None]:
-    """Validate the event chain against exact, independently replayed ledger versions."""
-    scope = _scope(store)
-    rows = store.recovery_case_rows(key, limit=MAX_CASE_EVENTS + 1)
-    if len(rows) > MAX_CASE_EVENTS:
-        raise FiscalValidationError("case history exceeds supported bound")
-    if not rows:
-        return [], None, None
-    try:
-        first = ReviewedEvent.model_validate(rows[0]["content"]["reviewed"]).event
-        terms = first.terms
-        period = date.fromisoformat(terms.competence)
-        lot = journal_id(issuer, terms.finding_id)
-        _, journal = _replay(store, issuer, period, lot)
-        if not journal:
-            raise FiscalValidationError("case ledger missing")
-        by_version = {row["version"]: row for row in journal}
-        initial = Command.model_validate(journal[0]["content"]["reviewed"]["command"])
-        origin = _historical_source(store, issuer, period, initial)
-        status: Status | None = None
-        settlement: str | None = None
-        previous_digest: str | None = None
-        last_day: date | None = None
-        seen: set[str] = set()
-        seen_evidence: set[str] = set()
-        linked: set[str] = set()
-        last_ledger_version = 0
-        for version, row in enumerate(rows, 1):
-            content = row["content"]
-            reviewed = ReviewedEvent.model_validate(content["reviewed"])
-            reviewed.verify(scope, issuer)
-            event = reviewed.event
-            day = date.fromisoformat(content["as_of"])
-            closed_months(period, day)
-            expected_status, movements = plan(status, event)
-            if (
-                row["record_id"] != key or case_key(issuer, terms) != key
-                or row["version"] != version or event.expected_version != version - 1
-                or row["issuer_cnpj"] != issuer.value or row["competence"] != terms.competence
-                or event.terms != terms or event.request_id in seen
-                or event.evidence_reference in seen_evidence
-                or content["schema_version"] != SCHEMA
-                or content["previous_digest"] != previous_digest
-                or content["scope"] != list(scope) or content["issuer_cnpj"] != issuer.value
-                or content["status"] != expected_status
-                or content["simulation_only"] is not True
-                or content["credit_recognized"] is not False
-                or content["realized_cents"] is not None
-                or content["actor_role"] != "accountant"
-                or not isinstance(content["actor_id"], str) or not content["actor_id"]
-                or not isinstance(content["profile_context"], dict)
-                or (last_day is not None and day < last_day)
-                or len(content["ledger_links"]) != len(movements)
-            ):
-                raise FiscalValidationError("recovery case history integrity mismatch")
-            if event.source_version is not None:
-                source_command = Command.model_validate(initial.model_dump() | {
-                    "recovery_version": event.source_version,
-                    "recovery_digest": event.source_digest,
-                })
-                source = _historical_source(store, issuer, period, source_command)
-                if (
-                    source.amount != origin.amount
-                    or source.fiscal_identity != origin.fiscal_identity
-                    or source.as_of != day.isoformat()
-                ):
-                    raise FiscalValidationError("historical case source or cutoff changed")
-                _validate_amount(source.modality, source.anchor, terms, day)
-            if event.action == "pay":
-                _validate_payment(origin.modality, origin.anchor, terms, day)
-            for index, (movement, link) in enumerate(
-                zip(movements, content["ledger_links"], strict=True), 1
-            ):
-                ledger_version = link["version"]
-                actual = by_version.get(ledger_version)
-                prior = by_version.get(ledger_version - 1)
-                if actual is None or prior is None or ledger_version <= last_ledger_version:
-                    raise FiscalValidationError("case ledger version missing or out of order")
-                previous = Command.model_validate(prior["content"]["reviewed"]["command"])
-                command = _ledger_command(
-                    event, previous, ledger_version - 1, index, movement, settlement
-                )
-                if (
-                    link != {"version": ledger_version, "digest": actual["digest"]}
-                    or command.model_dump() != actual["content"]["reviewed"]["command"]
-                    or actual["content"]["as_of"] != day.isoformat()
-                ):
-                    raise FiscalValidationError("case ledger posting mismatch")
-                linked.add(command.request_id)
-                last_ledger_version = ledger_version
-                if movement in {"compensated", "restituted"}:
-                    settlement = command.request_id
-            seen.add(event.request_id)
-            seen_evidence.add(event.evidence_reference)
-            status = expected_status
-            previous_digest = row["digest"]
-            last_day = day
-        actual_ids = {
-            row["content"]["reviewed"]["command"]["request_id"]
-            for row in journal
-            if row["content"]["reviewed"]["command"]["request_id"].casefold().startswith(
-                f"t19-{terms.case_id}-"
-            )
-        }
-        if actual_ids != linked:
-            raise FiscalValidationError("orphan case ledger movement")
-        return rows, status, settlement
-    except FiscalValidationError:
-        # Domain validation errors already describe the failed invariant.
-        raise
-    except (KeyError, TypeError, ValueError) as exc:
-        raise FiscalValidationError("invalid recovery case history") from exc
+    return case_history(store, issuer, key, _ledger_reader(), max_case_events=MAX_CASE_EVENTS)
 
 
-def _all_cases(
-    store: EconomyStore, issuer: Cnpj,
-) -> list[tuple[list[dict[str, Any]], Status]]:
-    ids = store.recovery_case_ids(issuer, limit=MAX_CASES + 1)
-    if len(ids) > MAX_CASES:
-        raise FiscalValidationError("recovery case count exceeds bound")
-    result = []
-    events = 0
-    for key, _ in ids:
-        rows, status, _ = _case_history(store, issuer, key)
-        if not rows or status is None:
-            raise FiscalValidationError("case history missing")
-        events += len(rows)
-        if events > MAX_CASE_SCAN_EVENTS:
-            raise FiscalValidationError("recovery case scan exceeds event bound")
-        result.append((rows, status))
-    return result
-
-
-def _validate_amount(modality: str, anchor: str, terms: Terms, day: date) -> None:
-    if modality == "federal_undue_payment" and terms.tax in {"pis", "cofins"}:
-        projected = federal_interest(terms.amount.principal_cents, date.fromisoformat(anchor), day)
-        if projected is None or terms.amount.selic_cents != projected[0]:
-            raise FiscalValidationError("case principal and SELIC differ from T17 valuation")
-    elif not (
-        modality == "icms_bookkeeping" and terms.tax == "icms"
-        and terms.kind == "compensation" and terms.route == "administrative"
-        and terms.amount.selic_cents == 0
-    ):
-        raise FiscalValidationError("unsupported recovery modality, kind or route")
-
-
-def _validate_payment(modality: str, anchor: str, terms: Terms, day: date) -> None:
-    """Only a supported federal undue payment can reach simulated restitution."""
-    if (
-        modality != "federal_undue_payment" or terms.tax not in {"pis", "cofins"}
-        or terms.kind != "restitution"
-    ):
-        raise FiscalValidationError("restitution requires supported federal undue payment")
-    valuation = federal_interest(terms.amount.principal_cents, date.fromisoformat(anchor), day)
-    if valuation is None or valuation[0] != terms.amount.selic_cents:
-        raise FiscalValidationError("restitution settlement requires revaluation")
+def _verified_scope(store: EconomyStore, issuer: Cnpj) -> VerifiedRecoveryScope:
+    return _verify_managed_scope(
+        store, issuer, max_cases=MAX_CASES, max_case_events=MAX_CASE_EVENTS,
+        max_case_scan_events=MAX_CASE_SCAN_EVENTS, max_lots=MAX_LOTS,
+        max_events=MAX_EVENTS, max_scan_events=MAX_SCAN_EVENTS,
+    )
 
 
 def _validate_current(
@@ -339,6 +139,9 @@ def _apply(
     key = case_key(issuer, terms)
     store.lock_accounting_issuance()
     with store.atomic_recovery_case():
+        # Validate the full issuer scope before either an idempotent response or
+        # a mutation; the same lock covers the subsequent atomic case posting.
+        verified = _verified_scope(store, issuer)
         rows, status, settlement = _case_history(store, issuer, key)
         for row in rows:
             old = row["content"]["reviewed"]
@@ -359,7 +162,7 @@ def _apply(
         next_status, movements = plan(status, event)
         if event.due_on is not None and date.fromisoformat(event.due_on) < day:
             raise FiscalValidationError("new follow-up date is in the past")
-        existing = _all_cases(store, issuer)
+        existing = verified.cases
         # Preserve reportability at the boundary of the append-only sandbox.
         # Check the prospective state under the same lock, before any posting.
         if not rows and len(existing) >= MAX_CASES:
@@ -386,9 +189,12 @@ def _apply(
             raise FiscalValidationError("case tax differs from journal")
         # Do not transfer pre-existing standalone T18 reservations into a T19 case.
         if event.action == "request" and (
-            any(a.total for k, a in state.reservations.items() if not k.startswith("t19-"))
+            any(
+                a.total for k, a in state.reservations.items()
+                if managed_request_identity(k) is None
+            )
             or any(
-                not v.reversed and not k.startswith("t19-")
+                not v.reversed and managed_request_identity(k) is None
                 for k, v in state.compensations.items()
             )
         ):
@@ -400,8 +206,10 @@ def _apply(
             # settlement date. Changed valuation must not be silently realized.
             origin = _historical_source(store, issuer, period, first)
             _validate_payment(origin.modality, origin.anchor, terms, day)
-        if movements and reconcile(store, issuer)["event_count"] + len(movements) > MAX_SCAN_EVENTS:
-            raise FiscalValidationError("case reconciliation event bound exceeded")
+        if movements:
+            count = _reconcile_verified(store, issuer, verified)["event_count"]
+            if count + len(movements) > MAX_SCAN_EVENTS:
+                raise FiscalValidationError("case reconciliation event bound exceeded")
         links = []
         for index, movement in enumerate(movements, 1):
             last_row = journal[-1]
@@ -429,7 +237,7 @@ def _apply(
                 "credit_recognized": False, "realized_cents": None,
             },
         )
-        _case_history(store, issuer, key)
+        _verified_scope(store, issuer)
         return {
             "version": version, "digest": digest, "replay": False,
             "status": next_status, "current_status": next_status,
@@ -441,33 +249,17 @@ def report(store: EconomyStore, issuer: Cnpj, today: date) -> dict[str, Any]:
     """Case and ledger reconciliation, with explicit overdue/follow-up alerts."""
     _scope(store)
     store.lock_accounting_issuance()
+    verified = _verified_scope(store, issuer)
     cases = []
-    known: dict[str, str] = {}
-    for rows, status in _all_cases(store, issuer):
+    for rows, status in verified.cases:
         last = ReviewedEvent.model_validate(rows[-1]["content"]["reviewed"]).event
-        known[last.terms.case_id] = journal_id(issuer, last.terms.finding_id)
         cases.append({
             "terms": last.terms.model_dump(), "status": status, "version": len(rows),
             "digest": rows[-1]["digest"], "alert": alert(status, last.due_on, today),
             "events": rows,
         })
-    ids = store.credit_journal_ids(issuer, None, limit=MAX_LOTS + 1)
-    if len(ids) > MAX_LOTS:
-        raise FiscalValidationError("case reconciliation lot bound exceeded")
-    scanned = 0
-    for key, period in ids:
-        _, journal = _replay(store, issuer, date.fromisoformat(period), key)
-        scanned += len(journal)
-        if scanned > MAX_SCAN_EVENTS or len(journal) > MAX_EVENTS:
-            raise FiscalValidationError("case reconciliation event bound exceeded")
-        for row in journal:
-            request = row["content"]["reviewed"]["command"]["request_id"]
-            if request.casefold().startswith("t19-") and (
-                request != request.casefold() or known.get(request.split("-")[1]) != key
-            ):
-                raise FiscalValidationError("orphan recovery case ledger")
     return {
-        "cases": cases, "ledger": reconcile(store, issuer),
+        "cases": cases, "ledger": _reconcile_verified(store, issuer, verified),
         "simulation_only": True, "credit_recognized": False, "realized_cents": None,
     }
 

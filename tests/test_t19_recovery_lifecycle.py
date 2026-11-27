@@ -46,8 +46,16 @@ from kordena_fiscal.security.human_identity import (
 )
 from kordena_fiscal.security.human_mfa import HumanMfaService
 from kordena_fiscal.security.totp import totp_at
-from kordena_fiscal.tax.credit_ledger import Amount, Command
-from kordena_fiscal.tax.recovery_lifecycle import Event, Terms, alert, plan
+from kordena_fiscal.tax.credit_ledger import Amount, Command, transition
+from kordena_fiscal.tax.recovery_lifecycle import (
+    Event,
+    Terms,
+    alert,
+    managed_request_id,
+    managed_request_identity,
+    plan,
+    validate_managed_command,
+)
 from kordena_fiscal.tax.tax_recovery import federal_interest
 
 NOW = datetime(TODAY.year, TODAY.month, TODAY.day, 15, tzinfo=UTC)
@@ -611,24 +619,332 @@ def test_postgres_historical_read_after_environment_disabled(economy_database, m
     assert service.read(token, csrf, scope.unit_id, MONTH) == before
 
 
-def test_postgres_mixed_case_managed_orphan_rejected(economy_database, mapping):
+@pytest.mark.parametrize("template", [
+    "T19-{case}-1-1", "t19-{case}", "t19-{case}-01-1", "t19-{case}-0-1",
+    "t19-{case}-101-1", "t19-{case}-1-0", "t19-{case}-1-3", "t19-{case}-1-01",
+    "t19-{case}-1-2", "t19-{case}-", "t19-{case}-1", "t19-{case}-1-",
+    "t19-{case}-999-1", "t19-{case}-2-3", "t19-{case}-2-1\n",
+    "t19-{case}a-1-1", "t19-{case}-١-1", "t19-{case}-2-١",
+    "t19-", "T19-", "t19-1-1",
+])
+def test_invalid_managed_identity(template):
+    with pytest.raises(FiscalValidationError, match="invalid T19 managed movement identity"):
+        managed_request_identity(template.format(case="a" * 64))
+
+
+@pytest.mark.parametrize("case", ["A" * 64, "a" * 63, "g" * 64])
+def test_invalid_managed_digest(case):
+    with pytest.raises(FiscalValidationError, match="invalid T19 managed movement identity"):
+        managed_request_identity(f"t19-{case}-1-1")
+
+
+def test_canonical_managed_identity_and_references():
+    case = "a" * 64
+    assert managed_request_identity(managed_request_id(case, 100, 2)) == (case, 100, 2)
+    assert managed_request_identity("standalone-1") is None
+    command = Command.model_validate({
+        "competence": MONTH.isoformat(), "finding_id": "b" * 64, "tax": "pis",
+        "recovery_version": 1, "recovery_digest": "c" * 64, "expected_version": 1,
+        "request_id": managed_request_id(case, 2, 1), "movement": "released",
+        "review_reference": "review", "reservation_id": managed_request_id("d" * 64, 1, 1),
+        "amount": {"principal_cents": 334, "selic_cents": 37},
+    })
+    with pytest.raises(FiscalValidationError, match="invalid T19 managed movement reference"):
+        validate_managed_command(command)
+
+
+@pytest.mark.parametrize(("request_suffix", "movement", "reservation", "compensation", "valid"), [
+    ("1-1", "reserved", None, None, True),
+    ("2-1", "compensated", "1-1", None, True),
+    ("3-1", "compensation_reversed", None, "2-1", True),
+    ("4-1", "released", "1-1", None, True),
+    ("4-2", "reversed", None, None, True),
+    ("4-1", "restituted", "1-1", None, True),
+    ("5-1", "restitution_reversed", None, "4-1", True),
+    ("1-1", "identified", None, None, False),
+    ("2-1", "reserved", None, None, False),
+    ("1-1", "released", "1-1", None, False),
+    ("4-1", "reversed", None, None, False),
+    ("4-2", "released", "1-1", None, False),
+    ("2-1", "released", "other-case", None, False),
+    ("3-1", "compensation_reversed", None, "other-case", False),
+    ("3-1", "compensation_reversed", None, "4-1", False),
+    ("3-1", "compensation_reversed", None, "3-1", False),
+    ("3-1", "compensation_reversed", None, "1-1", False),
+    ("3-1", "compensation_reversed", None, "2-2", False),
+    ("3-1", "released", "2-1", None, False),
+    ("standalone", "released", "1-1", None, False),
+    ("2-1", "released", "standalone", None, False),
+    ("standalone", "restituted", "standalone", None, False),
+    ("standalone", "restitution_reversed", None, "standalone", False),
+    ("standalone", "released", "malformed", None, False),
+    ("2-1", "released", "malformed", None, False),
+])
+def test_managed_command_matrix(request_suffix, movement, reservation, compensation, valid):
+    case = "a" * 64
+
+    def resolve(value):
+        if value is None or value == "standalone":
+            return value
+        if value == "other-case":
+            return managed_request_id("b" * 64, 1, 1)
+        if value == "malformed":
+            return f"T19-{case}-1-1"
+        return f"t19-{case}-{value}"
+
+    command = Command.model_validate({
+        "competence": MONTH.isoformat(), "finding_id": "b" * 64, "tax": "pis",
+        "recovery_version": 1, "recovery_digest": "c" * 64, "expected_version": 1,
+        "request_id": resolve(request_suffix), "movement": movement, "review_reference": "review",
+        "reservation_id": resolve(reservation), "compensation_id": resolve(compensation),
+        "amount": {"principal_cents": 334, "selic_cents": 37},
+    })
+    if valid:
+        assert validate_managed_command(command) == managed_request_identity(command.request_id)
+    else:
+        with pytest.raises(FiscalValidationError, match="T19 managed"):
+            validate_managed_command(command)
+
+
+@pytest.mark.parametrize("template", [
+    "T19-{case}-1-1", "t19-{case}", "t19-{case}-01-1",
+    "t19-{case}-101-1", "t19-{case}-1-3",
+])
+def test_postgres_invalid_managed_writer_and_forged_history(economy_database, mapping, template):
     db = economy_database
     scope, cmd, terms = _fixture(db, mapping)
     _, context = historical_issuer_context(db, scope, MONTH)
     proof = verify_credit_unit(db, scope, BUYER)
     forged = Command.model_validate(cmd.model_dump() | {
-        "expected_version": 1, "request_id": f"T19-{terms.case_id}-1-1",
+        "expected_version": 1, "request_id": template.format(case=terms.case_id),
+        "movement": "reserved",
+    })
+    key = ledger.journal_id(BUYER, cmd.finding_id)
+    with db.economy(scope) as store:
+        before = history(store, BUYER, MONTH, cmd.finding_id)
+        with pytest.raises(FiscalValidationError, match="invalid T19 managed movement identity"):
+            ledger._post_movement(
+                store, BUYER, _reviewed(scope, forged), context=context,
+                as_of=TODAY, unit=proof, managed=True,
+            )
+        assert history(store, BUYER, MONTH, cmd.finding_id) == before
+        # Bypass only the application writer to simulate valid-hash corrupt persistence.
+        state, rows = ledger._replay(store, BUYER, MONTH, key)
+        content = dict(rows[-1]["content"])
+        content.update({
+            "event_version": 2, "previous_digest": rows[-1]["digest"],
+            "reviewed": _reviewed(scope, forged).model_dump(),
+            "postings": transition(state, forged), "balances": state.projection(),
+        })
+        store.append_snapshot(record_id=key, version=2, competence=MONTH,
+                              issuer=BUYER, content=content)
+    with db.economy(scope) as store:
+        for operation in (
+            lambda: report(store, BUYER, TODAY),
+            lambda: reconcile(store, BUYER),
+            lambda: reconcile(store, BUYER, MONTH),
+            lambda: history(store, BUYER, MONTH, cmd.finding_id),
+        ):
+            with pytest.raises(
+                FiscalValidationError, match="invalid T19 managed movement identity",
+            ):
+                operation()
+
+
+def test_postgres_canonical_managed_orphan_rejected(economy_database, mapping):
+    db = economy_database
+    scope, cmd, terms = _fixture(db, mapping)
+    _, context = historical_issuer_context(db, scope, MONTH)
+    proof = verify_credit_unit(db, scope, BUYER)
+    forged = Command.model_validate(cmd.model_dump() | {
+        "expected_version": 1, "request_id": managed_request_id(terms.case_id, 1, 1),
         "movement": "reserved",
     })
     with db.economy(scope) as store:
-        # Test-only use of the internal writer: simulate an orphan in persistence.
         ledger._post_movement(
             store, BUYER, _reviewed(scope, forged), context=context,
             as_of=TODAY, unit=proof, managed=True,
         )
     with db.economy(scope) as store:
+        for operation in (
+            lambda: report(store, BUYER, TODAY),
+            lambda: reconcile(store, BUYER),
+            lambda: reconcile(store, BUYER, MONTH),
+            lambda: history(store, BUYER, MONTH, cmd.finding_id),
+        ):
+            with pytest.raises(FiscalValidationError, match="orphan recovery case ledger"):
+                operation()
+
+
+def _multiple_lots(db, mapping, claims):
+    scope = _setup(db, mapping, BUYER)
+    _, context = historical_issuer_context(db, scope, MONTH)
+    proof = verify_credit_unit(db, scope, BUYER)
+    commands = _federal_seed(db, scope, MONTH, [("pis", cents) for cents in claims])
+    with db.economy(scope) as store:
+        for command in commands:
+            _write(store, scope, proof, context, command)
+    return scope, commands, context, proof
+
+
+def _partial_case(store, command, case_id):
+    source = ledger._historical_source(store, BUYER, MONTH, command)
+    valuation = federal_interest(10, date.fromisoformat(source.anchor), TODAY)
+    assert valuation is not None
+    return _case(command, case_id=case_id, amount={
+        "principal_cents": 10, "selic_cents": valuation[0],
+    })
+
+
+def _orphan(store, scope, command, terms, context, proof):
+    key = ledger.journal_id(BUYER, command.finding_id)
+    _, rows = ledger._replay(store, BUYER, MONTH, key)
+    forged = Command.model_validate(command.model_dump() | {
+        "expected_version": len(rows), "request_id": managed_request_id(terms.case_id, 1, 1),
+        "movement": "reserved", "amount": terms.amount.model_dump(),
+    })
+    # Intentionally bypass only the internal lifecycle caller in this fixture.
+    # The journal remains valid, but no corresponding case event is published.
+    return ledger._post_movement(
+        store, BUYER, _reviewed(scope, forged), context=context,
+        as_of=TODAY, unit=proof, managed=True,
+    )
+
+
+def _snapshots(store):
+    # The synthetic fixture has far fewer than 500 records. All returned rows
+    # are compared, including the immutable case and ledger versions/digests.
+    rows = store.records("fm_economy_snapshots", limit=500)
+    assert len(rows) < 500
+    return sorted(rows, key=lambda row: (row["record_id"], row["version"]))
+
+
+def test_postgres_orphan_blocks_every_write_and_replay(economy_database, mapping):
+    db = economy_database
+    scope, commands, context, proof = _multiple_lots(db, mapping, [100, 110, 124])
+    first, second, third = commands
+    with db.economy(scope) as store:
+        orphan = _partial_case(store, first, "a" * 64)
+        other = _partial_case(store, first, "b" * 64)
+        duplicate = _partial_case(store, second, orphan.case_id)
+        existing = _partial_case(store, third, "c" * 64)
+    service, token, csrf = _session(db, scope)
+    _run(service, token, csrf, scope, third, existing, 0, "request")
+    with db.economy(scope) as store:
+        _orphan(store, scope, first, orphan, context, proof)
+        before = _snapshots(store)
+    # All requests are otherwise valid and have adequate unencumbered amounts.
+    for cmd, terms, version, action in (
+        (first, other, 0, "request"), (second, duplicate, 0, "request"),
+        (third, existing, 1, "transmit"), (third, existing, 1, "reject"),
+        (third, existing, 0, "request"),
+    ):
         with pytest.raises(FiscalValidationError, match="orphan recovery case ledger"):
-            report(store, BUYER, TODAY)
+            _run(service, token, csrf, scope, cmd, terms, version, action)
+        with db.economy(scope) as store:
+            assert _snapshots(store) == before
+    with db.economy(scope) as store:
+        # The second lot has no T19 movement: a lot-local guard is not sufficient.
+        standalone = Command.model_validate(second.model_dump() | {
+            "expected_version": 1, "request_id": "standalone-reserve",
+            "movement": "reserved", "amount": other.amount.model_dump(),
+        })
+        for command in (standalone, second):
+            with pytest.raises(FiscalValidationError, match="orphan recovery case ledger"):
+                post_movement(store, BUYER, _reviewed(scope, command), context=context,
+                              as_of=TODAY, unit=proof)
+        assert _snapshots(store) == before
+        for command in commands:
+            with pytest.raises(FiscalValidationError, match="orphan recovery case ledger"):
+                history(store, BUYER, MONTH, command.finding_id)
+
+
+def _corrupt_managed_link(db, mapping, axis):
+    """Persist a valid-hash mismatch, never patch the production verifier."""
+    scope, commands, context, proof = _multiple_lots(db, mapping, [150, 184])
+    first, second = commands
+    with db.economy(scope) as store:
+        terms = _partial_case(store, first, "a" * 64)
+        other = _partial_case(store, first, "b" * 64)
+        other_lot = _partial_case(store, second, terms.case_id)
+    service, token, csrf = _session(db, scope)
+    if axis == "lot-duplicate":
+        _run(service, token, csrf, scope, first, terms, 0, "request")
+        with db.economy(scope) as store:
+            _orphan(store, scope, second, other_lot, context, proof)
+    elif axis == "lot-moved":
+        _run(service, token, csrf, scope, first, other, 0, "request")
+        with db.economy(scope) as store:
+            link = _orphan(store, scope, second, other_lot, context, proof)
+            template = store.record("fm_economy_snapshots", case_key(BUYER, other), 1)
+            assert template is not None
+            content = dict(template["content"])
+            content["reviewed"] = _event(scope, first, terms, 0, "request").model_dump()
+            content["ledger_links"] = [{"version": link["version"], "digest": link["digest"]}]
+            key = case_key(BUYER, terms)
+            digest = store.append_snapshot(record_id=key, version=1, competence=MONTH,
+                                           issuer=BUYER, content=content)
+            assert store.record("fm_economy_snapshots", key, 1)["digest"] == digest
+    else:
+        _run(service, token, csrf, scope, first, terms, 0, "request")
+        _run(service, token, csrf, scope, first, terms, 1, "transmit")
+        if axis == "version":
+            _run(service, token, csrf, scope, first, other, 0, "request")
+        with db.economy(scope) as store:
+            key = case_key(BUYER, terms)
+            previous = store.record("fm_economy_snapshots", key, 2)
+            assert previous is not None
+            event = _event(scope, first, terms, 2, "deny")
+            lot = ledger.journal_id(BUYER, first.finding_id)
+            _, journal = ledger._replay(store, BUYER, MONTH, lot)
+            if axis == "version":
+                # Existing, strictly increasing version, but another case's posting.
+                link = journal[-1]
+            else:
+                assert axis == "digest"
+                # The correct next posting exists; only its event's link is wrong.
+                prior = Command.model_validate(journal[-1]["content"]["reviewed"]["command"])
+                command = lifecycle._ledger_command(
+                    event.event, prior, journal[-1]["version"], 1, "compensation_reversed",
+                    managed_request_id(terms.case_id, 2, 1),
+                )
+                link = ledger._post_movement(
+                    store, BUYER, _reviewed(scope, command), context=context,
+                    as_of=TODAY, unit=proof, managed=True,
+                )
+            assert link["version"] > previous["content"]["ledger_links"][-1]["version"]
+            content = dict(previous["content"])
+            content.update({
+                "previous_digest": previous["digest"], "reviewed": event.model_dump(),
+                "status": "denied", "ledger_links": [{
+                    "version": link["version"],
+                    "digest": link["digest"] if axis == "version" else "f" * 64,
+                }],
+            })
+            digest = store.append_snapshot(record_id=key, version=3, competence=MONTH,
+                                           issuer=BUYER, content=content)
+            assert store.record("fm_economy_snapshots", key, 3)["digest"] == digest
+    return scope, first, service, token, csrf
+
+
+@pytest.mark.parametrize("axis", ["lot-duplicate", "lot-moved", "version", "digest"])
+def test_postgres_rejects_exact_managed_link_mismatches(economy_database, mapping, axis):
+    db = economy_database
+    scope, command, service, token, csrf = _corrupt_managed_link(db, mapping, axis)
+    reason = "orphan recovery case ledger|case ledger posting mismatch"
+    with db.economy(scope) as store:
+        before = _snapshots(store)
+        for operation in (
+            lambda: report(store, BUYER, TODAY),
+            lambda: reconcile(store, BUYER),
+            lambda: reconcile(store, BUYER, MONTH),
+            lambda: history(store, BUYER, MONTH, command.finding_id),
+        ):
+            with pytest.raises(FiscalValidationError, match=reason):
+                operation()
+        assert _snapshots(store) == before
+    with pytest.raises(FiscalValidationError, match=reason):
+        service.read(token, csrf, scope.unit_id, MONTH)
 
 
 def test_postgres_cli_real_session_mfa_and_input_gates(

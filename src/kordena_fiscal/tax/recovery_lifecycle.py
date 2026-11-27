@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
+import re
 from datetime import date
 from typing import Annotated, Literal
 
 from pydantic import Field, model_validator
 
 from kordena_fiscal.domain import FiscalValidationError
-from kordena_fiscal.tax.credit_ledger import Amount, Movement
+from kordena_fiscal.tax.credit_ledger import Amount, Command, Movement
 from kordena_fiscal.tax.historical_audit import Day, Digest, Id, Strict, Version
 from kordena_fiscal.tax.unused_credits import CreditTax
 
@@ -16,6 +17,8 @@ SCHEMA = "nfcore.recovery-case/v1"
 MAX_CASE_EVENTS = 100
 MAX_CASES = 1000
 MAX_CASE_SCAN_EVENTS = 5000
+MAX_CASE_MOVEMENTS = 2
+_MANAGED_REQUEST = re.compile(r"t19-([0-9a-f]{64})-([1-9][0-9]{0,2})-([1-9])")
 Kind = Literal["compensation", "restitution"]
 Route = Literal["perdcomp", "administrative"]
 Status = Literal[
@@ -26,6 +29,65 @@ Action = Literal[
     "request", "transmit", "reject", "approve", "deny", "pay",
     "cancel", "reverse", "release", "invalidate",
 ]
+
+
+def managed_request_identity(request_id: str) -> tuple[str, int, int] | None:
+    """Parse the reserved T19 namespace; malformed reserved IDs fail closed."""
+    if not request_id.casefold().startswith("t19-"):
+        return None
+    match = _MANAGED_REQUEST.fullmatch(request_id)
+    if match is None:
+        raise FiscalValidationError("invalid T19 managed movement identity")
+    case_id, version, index = match.group(1), int(match.group(2)), int(match.group(3))
+    if (
+        version > MAX_CASE_EVENTS or index > MAX_CASE_MOVEMENTS
+        or (version == 1 and index != 1)
+    ):
+        raise FiscalValidationError("invalid T19 managed movement identity")
+    return case_id, version, index
+
+
+def managed_request_id(case_id: str, version: int, index: int) -> str:
+    """One canonical generator shared by the writer and reconciliation."""
+    result = f"t19-{case_id}-{version}-{index}"
+    if managed_request_identity(result) != (case_id, version, index):
+        raise FiscalValidationError("invalid T19 managed movement identity")
+    return result
+
+
+def validate_managed_command(command: Command) -> tuple[str, int, int] | None:
+    """Validate namespace and reference binding without changing monetary rules."""
+    identity = managed_request_identity(command.request_id)
+    for reference in (command.reservation_id, command.compensation_id):
+        if reference is None:
+            continue
+        target = managed_request_identity(reference)
+        if identity is None:
+            if target is not None:
+                raise FiscalValidationError("T19 managed ledger requires lifecycle service")
+        elif target is None or target[0] != identity[0] or target[1:] >= identity[1:]:
+            raise FiscalValidationError("invalid T19 managed movement reference")
+    if identity is None:
+        if command.movement in {"restituted", "restitution_reversed"}:
+            raise FiscalValidationError("T19 managed ledger requires lifecycle service")
+        return None
+    case_id, version, index = identity
+    movement = command.movement
+    if (
+        movement == "identified"
+        or (movement == "reserved") != (version == 1 and index == 1)
+        or (movement == "reversed") != (index == 2)
+    ):
+        raise FiscalValidationError("invalid T19 managed movement identity")
+    if command.reservation_id is not None and (
+        command.reservation_id != managed_request_id(case_id, 1, 1)
+    ):
+        raise FiscalValidationError("invalid T19 managed movement reference")
+    if command.compensation_id is not None:
+        target = managed_request_identity(command.compensation_id)
+        if target is None or target[1] < 2 or target[2] != 1:
+            raise FiscalValidationError("invalid T19 managed movement reference")
+    return identity
 
 
 class Terms(Strict):

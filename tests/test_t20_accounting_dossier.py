@@ -25,7 +25,7 @@ from test_t14_authorized_issuance import economy_database as _economy_database_f
 from test_t15_historical_audit import MONTH, _setup
 from test_t16_unused_credits import BUYER
 from test_t18_credit_ledger import _federal_seed, _reviewed, _seed
-from test_t19_recovery_lifecycle import NOW, _fixture, _run, _session
+from test_t19_recovery_lifecycle import NOW, _corrupt_managed_link, _fixture, _run, _session
 
 from kordena_fiscal.application import accounting_dossier as dossier
 from kordena_fiscal.application import credit_ledger as ledger
@@ -61,7 +61,8 @@ from kordena_fiscal.security.human_identity import (
 )
 from kordena_fiscal.security.human_mfa import HumanMfaService
 from kordena_fiscal.security.totp import totp_at
-from kordena_fiscal.tax.credit_ledger import Command
+from kordena_fiscal.tax.credit_ledger import Command, transition
+from kordena_fiscal.tax.recovery_lifecycle import managed_request_id
 from kordena_fiscal.web.human_auth import CSRF_COOKIE, CSRF_HEADER, SESSION_COOKIE
 
 # Register the imported pytest fixtures under their canonical names without
@@ -461,27 +462,81 @@ def test_postgres_corrupt_archive_replay_fails_closed(
     assert _export(service, token, csrf, scope, cmd.finding_id, source) == raw
 
 
-def test_postgres_orphan_managed_ledger_blocks_dossier(economy_database, mapping):
+@pytest.mark.parametrize("malformed", [False, True], ids=["canonical-orphan", "legacy-malformed"])
+def test_postgres_orphan_managed_ledger_blocks_dossier(economy_database, mapping, malformed):
     db = economy_database
     scope, cmd, terms = _fixture(db, mapping)
     _, context = historical_issuer_context(db, scope, MONTH)
     proof = verify_credit_unit(db, scope, BUYER)
+    request_id = managed_request_id(terms.case_id, 1, 1)
+    if malformed:
+        request_id = request_id.replace("t19-", "T19-", 1)
     forged = Command.model_validate(cmd.model_dump() | {
-        "expected_version": 1, "request_id": f"T19-{terms.case_id}-1-1",
-        "movement": "reserved",
+        "expected_version": 1, "request_id": request_id, "movement": "reserved",
     })
+    reviewed = _reviewed(scope, forged)
+    day = NOW.astimezone(dossier.LOCAL).date()
     with db.economy(scope) as store:
-        ledger._post_movement(
-            store, BUYER, _reviewed(scope, forged), context=context,
-            as_of=NOW.astimezone(dossier.LOCAL).date(), unit=proof, managed=True,
-        )
+        if malformed:
+            # The application writer must reject malformed identifiers.
+            key = ledger.journal_id(BUYER, cmd.finding_id)
+            state, rows = ledger._replay(store, BUYER, MONTH, key)
+            with pytest.raises(
+                FiscalValidationError, match="invalid T19 managed movement identity",
+            ):
+                ledger._post_movement(
+                    store, BUYER, reviewed, context=context,
+                    as_of=day, unit=proof, managed=True,
+                )
+            assert ledger._replay(store, BUYER, MONTH, key)[1] == rows
+            # Simulate pre-existing corruption directly in the test store.
+            # Keep the source, evidence, postings, balances and digest valid.
+            content = dict(rows[-1]["content"])
+            content.update({
+                "event_version": 2, "previous_digest": rows[-1]["digest"],
+                "as_of": day.isoformat(), "reviewed": reviewed.model_dump(),
+                "postings": transition(state, forged), "balances": state.projection(),
+            })
+            store.append_snapshot(record_id=key, version=2, competence=MONTH,
+                                  issuer=BUYER, content=content)
+        else:
+            # Canonical identifier but no corresponding T19 case event.
+            ledger._post_movement(
+                store, BUYER, reviewed, context=context,
+                as_of=day, unit=proof, managed=True,
+            )
     recovery, token, csrf = _session(db, scope)
     service = _dossier(db, recovery)
     source = service.candidates(token, csrf, scope.unit_id, MONTH)["source"]
-    with pytest.raises(FiscalValidationError, match="orphan recovery case ledger"):
+    expected_error = (
+        "invalid T19 managed movement identity" if malformed else "orphan recovery case ledger"
+    )
+    with pytest.raises(FiscalValidationError, match=expected_error):
         _export(service, token, csrf, scope, cmd.finding_id, source)
     with db.economy(scope) as store:
         assert store.records("fm_economy_dossiers") == ()
+        for table in ("fm_economy_opportunities", "fm_economy_snapshots"):
+            assert not any(
+                row["record_id"].startswith("t20-dossier-")
+                for row in store.records(table, limit=500)
+            )
+
+
+@pytest.mark.parametrize("axis", ["lot-duplicate", "lot-moved", "version", "digest"])
+def test_postgres_managed_link_mismatch_blocks_dossier(economy_database, mapping, axis):
+    db = economy_database
+    scope, command, recovery, token, csrf = _corrupt_managed_link(db, mapping, axis)
+    service = _dossier(db, recovery)
+    source = service.candidates(token, csrf, scope.unit_id, MONTH)["source"]
+    reason = "orphan recovery case ledger|case ledger posting mismatch"
+    with pytest.raises(FiscalValidationError, match=reason):
+        _export(service, token, csrf, scope, command.finding_id, source)
+    with db.economy(scope) as store:
+        assert store.records("fm_economy_dossiers") == ()
+        for table in ("fm_economy_opportunities", "fm_economy_snapshots"):
+            rows = store.records(table, limit=500)
+            assert len(rows) < 500
+            assert not any(row["record_id"].startswith("t20-dossier-") for row in rows)
 
 
 def test_postgres_revocation_during_render_rolls_back(economy_database, mapping, monkeypatch):
