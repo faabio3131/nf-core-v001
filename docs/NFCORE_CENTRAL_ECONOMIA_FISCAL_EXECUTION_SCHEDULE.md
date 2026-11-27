@@ -90,7 +90,7 @@ A folha T23–T33, a Trilha 2 H01–H06 e a reformulação Enterprise não integ
 | T17 | Recuperação/prescrição/SELIC | ENTREGUE — #615; CI pós-merge #45615039868 SUCCESS |
 | T18 | Ledger partidas dobradas | ENTREGUE / CERTIFICADA TECNICAMENTE — #619, CI pós-merge #45696838699 SUCCESS; fechamento documental #621 |
 | T19 | Restituição/compensação | ENTREGUE / CERTIFICADA NO ESCOPO INTERNO — #624; merge 75542dd1, CI pós-merge #45746332104 e governança #45746332101 SUCCESS; fechamento documental nesta reconciliação |
-| T20 | Gerador de Dossiê Contábil PDF/Excel/XML | PRÓXIMA / NÃO INICIADA — #626; READY_TO_START após integração e CI desta reconciliação; DoD literal recuperado no handoff; auditar CURRENT antes da implementação |
+| T20 | Gerador de Dossiê Contábil PDF/Excel/XML | IMPLEMENTED_NOT_CERTIFIED — #626 / PR #628; Gemini R1 REPROVADO; CI pós-R1 #45863217864 FAILURE (1 fixture), correção de teste publicada, nova CI e R2 obrigatórias; ver handoff T20 |
 | T21 | Interface Central vinculada a APIs reais | Bloqueada — requer T20 certificada e os cinco refinamentos internos #625 resolvidos |
 | T22 | E2E interno seis blocos | Bloqueado |
 

@@ -15,6 +15,7 @@ from uuid import uuid4
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
+from kordena_fiscal.application.accounting_dossier import AccountingDossierService
 from kordena_fiscal.application.bling_operations import BlingOperationsService
 from kordena_fiscal.application.command_commercial import CommandCommercialReceiver
 from kordena_fiscal.application.commercial_acquisition import CommercialAcquisitionService
@@ -1124,6 +1125,18 @@ def create_runtime_app(
     bridge_security = None if composition is None else composition.bridge_security
     bridge_executor = None if composition is None else composition.bridge_executor
     portal_executor = None if composition is None else composition.portal_executor
+    dossier_service = (
+        AccountingDossierService(
+            runtime.database, human_identity, composition.human_mfa.has_recent_step_up,
+        )
+        if runtime.database is not None and human_identity is not None
+        and portal_executor is not None
+        and composition is not None and composition.human_mfa is not None
+        and resolved.environment.value in {"development", "test", "staging"}
+        and os.environ.get("NFCORE_COGNITIVE_ENABLED", "").strip().lower() == "true"
+        and os.environ.get("NFCORE_ECONOMY_ENABLED") == "true"
+        and os.environ.get("NFCORE_T20_DOSSIER_ENABLED") == "true" else None
+    )
     pricing_administration = (
         None if composition is None else composition.pricing_administration
     )
@@ -1173,6 +1186,7 @@ def create_runtime_app(
             password_reset_delivery=password_reset_delivery,
             password_reset_completed=commercial_activation_completed,
             portal_executor=portal_executor,
+            accounting_dossier_available=dossier_service is not None,
             certificate_vault=certificate_vault,
             iron_a1_database=runtime.database,
             iron_a1_allowed_origin=os.environ.get("NFCORE_IRON_A1_ALLOWED_ORIGIN"),
@@ -1302,6 +1316,7 @@ def create_runtime_app(
                     if runtime.database is not None and portal_executor is not None
                     and os.environ.get("NFCORE_ECONOMY_ENABLED") == "true" else None
                 ),
+                dossier_service=dossier_service,
                 accounting_review_runner=(
                     build_accounting_review_runner(
                         portal_executor, runtime.database.economy, runtime.database,

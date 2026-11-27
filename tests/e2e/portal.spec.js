@@ -859,3 +859,98 @@ test("T15 historical audit shows 60 months and paginated evidence without creati
   await expect(page.getByText(/Falha HTTP 503|HISTORICAL_AUDIT_UNAVAILABLE/)).toBeVisible();
   await expect(page.getByRole("table",{name:"Competências e evidências"})).toHaveCount(0);
 });
+
+
+test("T20 accountant downloads one source-bound sandbox dossier", async ({page, context}) => {
+  await page.route("**/v1/portal/bootstrap", route => route.fulfill({json:{
+    tenant_id:"tenant-e2e", unit_ids:["unit-a"], role:"accountant",
+    permissions:["portal.read","document.query","audit.read"], supported_documents:["nfe"],
+    projection:{accounting_dossier_available:true,authorized_units:[{unit_id:"unit-a", display_name:"Unidade A", environments:["homologation"]}]},
+  }}));
+  await context.addCookies([{name:"nfcore_csrf",value:"csrf-e2e",domain:"127.0.0.1",path:"/"}]);
+  await page.route("**/v1/portal/surfaces/**", route => route.fulfill({json:{rows:[]}}));
+  const finding="b".repeat(64), digest="a".repeat(64);
+  const base={unit_id:"unit-a",environment:"homologation",competence:"2026-01-01"};
+  let stepUps=0, candidateCalls=0, exportCalls=0;
+  await page.route("**/v1/auth/mfa/step-up", route => {
+    stepUps++;
+    expect(route.request().postDataJSON()).toEqual({code:"123456"});
+    return route.fulfill({json:{step_up_active:true}});
+  });
+  await page.route("**/v1/portal/cognitive/economy/accounting-dossier/candidates", route => {
+    expect(route.request().postDataJSON()).toEqual(base);
+    expect(route.request().headers()["x-csrf-token"]).toBe("csrf-e2e");
+    candidateCalls++;
+    if (!stepUps) return route.fulfill({status:403,json:{detail:{code:"STEP_UP_REQUIRED"}}});
+    return route.fulfill({json:{source:{record_id:"test-source",version:1,digest},as_of:"2026-11-24",
+      candidates:[{finding_id:finding,tax:"pis",modality:"federal_undue_payment",estimated_cents:"371"}],
+      credit_recognized:false,simulation_only:true}});
+  });
+  let downloads=0;
+  await page.route("**/v1/portal/cognitive/economy/accounting-dossier/export", route => {
+    expect(route.request().postDataJSON()).toEqual({...base,finding_id:finding,source_version:1,source_digest:digest});
+    expect(route.request().headers()["x-csrf-token"]).toBe("csrf-e2e");
+    exportCalls++;
+    if (stepUps < 2) return route.fulfill({status:403,json:{detail:{code:"STEP_UP_REQUIRED"}}});
+    if (downloads === 1) return route.fulfill({status:409,json:{detail:{code:"DOSSIER_EVIDENCE_INVALID"}}});
+    downloads++;
+    // Browser transport fixture only; real ZIP/PDF/XLSX contents are tested in Python.
+    return route.fulfill({status:200,contentType:"application/zip",body:"PK-synthetic-download"});
+  });
+  await page.goto("/");
+  await page.getByRole("button",{name:"Reforma Tributária",exact:true}).click();
+  await page.getByLabel("Competência do dossiê").fill("2026-01");
+  await page.getByRole("button",{name:"Consultar achados para dossiê"}).click();
+  await expect(page.locator("#step-up-dialog")).toBeVisible();
+  await page.locator("#step-up-code").fill("123456");
+  await page.locator("#step-up-form").evaluate(form => form.requestSubmit());
+  await page.getByLabel("Achado para revisão").selectOption(finding);
+  await expect(page.getByLabel("Achado para revisão").locator("option")).toHaveText(/PIS.*3,71.*371 centavos/);
+  expect(candidateCalls).toBe(2);
+  await page.getByRole("button",{name:"Exportar dossiê PDF/Excel/XML"}).click();
+  await expect(page.locator("#step-up-dialog")).toBeVisible();
+  await page.locator("#step-up-cancel").click();
+  await expect(page.getByText("Confirmação de segurança cancelada. Nenhum dossiê foi baixado.")).toBeVisible();
+  expect(downloads).toBe(0);
+  const download=page.waitForEvent("download");
+  await page.getByRole("button",{name:"Exportar dossiê PDF/Excel/XML"}).click();
+  await expect(page.locator("#step-up-dialog")).toBeVisible();
+  await page.locator("#step-up-code").fill("123456");
+  await page.locator("#step-up-form").evaluate(form => form.requestSubmit());
+  expect((await download).suggestedFilename()).toBe("nfcore-dossie.zip");
+  expect(stepUps).toBe(2);
+  expect(exportCalls).toBe(3);
+  expect(downloads).toBe(1);
+  await expect(page.getByText("Dossiê exportado. Revisão e assinatura do contador ainda pendentes.")).toBeVisible();
+  await page.getByRole("button",{name:"Exportar dossiê PDF/Excel/XML"}).click();
+  await expect(page.getByText("Fonte desatualizada ou inválida. Atualize as fontes e consulte novamente.")).toBeVisible();
+  await page.getByLabel("Competência do dossiê").fill("2026-02");
+  await expect(page.getByRole("button",{name:"Exportar dossiê PDF/Excel/XML"})).toBeDisabled();
+});
+
+
+for (const availability of [false, true]) {
+  test("T20 shows governed availability in Portuguese: " + availability, async ({page, context}) => {
+    await page.route("**/v1/portal/bootstrap", route => route.fulfill({json:{
+      tenant_id:"tenant-e2e", unit_ids:["unit-a"], role:"accountant",
+      permissions:["portal.read","document.query","audit.read"], supported_documents:["nfe"],
+      projection:{accounting_dossier_available:availability,
+        authorized_units:[{unit_id:"unit-a",display_name:"Unidade A",environments:["homologation"]}]},
+    }}));
+    await context.addCookies([{name:"nfcore_csrf",value:"csrf-e2e",domain:"127.0.0.1",path:"/"}]);
+    await page.route("**/v1/portal/surfaces/**", route => route.fulfill({json:{rows:[]}}));
+    await page.route("**/v1/portal/cognitive/economy/accounting-dossier/candidates", route =>
+      route.fulfill({status:503,json:{detail:{code:"DOSSIER_UNAVAILABLE",message:"Dossier unavailable"}}}));
+    await page.goto("/");
+    await page.getByRole("button",{name:"Reforma Tributária",exact:true}).click();
+    if (availability) {
+      await page.getByLabel("Competência do dossiê").fill("2026-01");
+      await page.getByRole("button",{name:"Consultar achados para dossiê"}).click();
+      await expect(page.getByRole("button",{name:"Exportar dossiê PDF/Excel/XML"})).toBeDisabled();
+    } else {
+      await expect(page.getByRole("button",{name:"Consultar achados para dossiê"})).toHaveCount(0);
+    }
+    await expect(page.getByText("Dossiê contábil indisponível neste ambiente.",{exact:true})
+      .or(page.getByText("Dossiê indisponível neste ambiente.",{exact:true}))).toBeVisible();
+  });
+}

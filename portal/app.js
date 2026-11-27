@@ -1951,6 +1951,10 @@ async function api(path, options = {}) {
       A1_CNPJ_MISMATCH: "O CNPJ do certificado é diferente do CNPJ informado.",
       CERTIFICATE_UNAVAILABLE: "Certificado A1 não localizado para o CNPJ. Acesse Configuração > Certificados.",
       PORTAL_RUNTIME_NOT_READY: "Esta capacidade ainda não está disponível no runtime. Tente novamente após a configuração governada.",
+      DOSSIER_UNAVAILABLE: "Dossiê indisponível neste ambiente.",
+      DOSSIER_SCOPE_FORBIDDEN: "Dossiê reservado ao contador designado em homologação.",
+      DOSSIER_EVIDENCE_INVALID: "Fonte desatualizada ou inválida. Atualize as fontes e consulte novamente.",
+      INVALID_DOSSIER_REQUEST: "Selecione um achado vinculado à fonte atual.",
       BROWSER_AUTHORITY_REJECTED: "Organização e permissões são definidas pela sessão. Remova campos de autoridade do pedido.",
       INVALID_PREPARED_DOCUMENT: "Referência inválida ou documento ainda não preparado neste escopo. Confira e corrija o campo.",
       NATIVE_SALE_INVALID_FACTS_OR_CONFIGURATION: "Confira destinatário, valores, pagamentos e configuração fiscal da venda. Nenhum documento foi preparado por esta tentativa.",
@@ -2002,8 +2006,11 @@ async function api(path, options = {}) {
       INVALID_MFA_PAYLOAD: "Digite o código de 6 dígitos do app.",
     };
     const code = detail && typeof detail === "object" && typeof detail.code === "string" ? detail.code : "";
-    if (code === "STEP_UP_REQUIRED" && !options.stepUpRetried && await requestStepUp()) {
-      return api(path, {...options, stepUpRetried: true});
+    if (code === "STEP_UP_REQUIRED" && !options.stepUpRetried) {
+      if (await requestStepUp()) return api(path, {...options, stepUpRetried: true});
+      if (path.endsWith("/accounting-dossier/candidates")) {
+        throw Object.assign(new Error("Confirmação de segurança cancelada."), {status:403, body});
+      }
     }
     const translated = messages[/** @type {keyof typeof messages} */ (code)];
     const message = translated || (detail && typeof detail === "object" && typeof detail.message === "string"
@@ -3763,6 +3770,7 @@ async function renderSurface(viewId) {
         appendAnnualRegimeComparison(article);
         appendAccountingReviewLookup(article);
         appendHistoricalAudit(article);
+        if (bootstrapState?.role === "accountant") appendAccountingDossier(article);
       }
     } else {
       article.append(grid);
@@ -5417,6 +5425,156 @@ function appendAccountingReviewLookup(article) {
       {kind: "benefit", source: source.value, benefit_id: benefit.value.trim()};
     appendAccountingReview(result, {unit_id: selectedFiscalUnit, environment: selectedFiscalEnvironment,
       competence: competence.value + "-01", target}, null);
+  });
+}
+
+/** @param {HTMLElement} article */
+function appendAccountingDossier(article) {
+  if (selectedFiscalEnvironment !== "homologation") return;
+  if (bootstrapState?.projection?.accounting_dossier_available !== true) {
+    const unavailable = document.createElement("p");
+    unavailable.textContent = "Dossiê contábil indisponível neste ambiente.";
+    unavailable.setAttribute("role", "status");
+    article.append(unavailable);
+    return;
+  }
+  const form = document.createElement("form");
+  const heading = document.createElement("h3");
+  heading.textContent = "Dossiê contábil para revisão";
+  const note = document.createElement("p");
+  note.textContent = "Simulação interna: PDF para assinatura humana, Excel, XMLs originais e manifesto de integridade. Não reconhece crédito nem autoriza operação fiscal.";
+  const monthLabel = document.createElement("label");
+  monthLabel.textContent = "Competência do dossiê";
+  const month = document.createElement("input");
+  month.type = "month";
+  month.required = true;
+  monthLabel.append(month);
+  const consult = document.createElement("button");
+  consult.type = "button";
+  consult.textContent = "Consultar achados para dossiê";
+  const choiceLabel = document.createElement("label");
+  choiceLabel.textContent = "Achado para revisão";
+  const choice = document.createElement("select");
+  choice.required = true;
+  choice.disabled = true;
+  choiceLabel.append(choice);
+  const submit = document.createElement("button");
+  submit.textContent = "Exportar dossiê PDF/Excel/XML";
+  submit.disabled = true;
+  const feedback = document.createElement("p");
+  feedback.setAttribute("role", "status");
+  form.append(heading, note, monthLabel, consult, choiceLabel, submit, feedback);
+  article.append(form);
+  /** @type {{version: number, digest: string}|null} */
+  let source = null;
+  let generation = 0;
+  const unit = selectedFiscalUnit;
+  const active = () => form.isConnected && selectedFiscalUnit === unit
+    && selectedFiscalEnvironment === "homologation";
+  const clear = () => {
+    source = null;
+    choice.replaceChildren();
+    choice.disabled = true;
+    submit.disabled = true;
+  };
+  month.addEventListener("change", () => { generation++; clear(); feedback.textContent = ""; });
+  consult.addEventListener("click", async () => {
+    if (!active() || !month.reportValidity()) return;
+    const request = ++generation;
+    clear();
+    consult.disabled = true;
+    feedback.textContent = "Conferindo fontes revisadas...";
+    try {
+      const result = await api("/v1/portal/cognitive/economy/accounting-dossier/candidates", {
+        method: "POST",
+        headers: {"X-CSRF-Token": csrfToken()},
+        body: JSON.stringify({unit_id: unit, environment: "homologation", competence: month.value + "-01"})
+      });
+      if (!active() || request !== generation) return;
+      source = result.source;
+      for (const finding of result.candidates) {
+        const option = document.createElement("option");
+        option.value = finding.finding_id;
+        const cents = String(finding.estimated_cents);
+        if (!/^\d+$/.test(cents)) throw new Error("Valor do achado inválido.");
+        const amount = BigInt(cents);
+        const reais = (amount / 100n).toLocaleString("pt-BR");
+        const fraction = String(amount % 100n).padStart(2, "0");
+        option.textContent = String(finding.tax).toUpperCase() + " | R$ " + reais + "," + fraction
+          + " (" + cents + " centavos) | " + finding.finding_id.slice(0, 12);
+        choice.append(option);
+      }
+      choice.disabled = submit.disabled = !choice.options.length;
+      feedback.textContent = choice.options.length ? "Fonte revisada em " + result.as_of + ". Selecione o achado e exporte." : "Nenhum achado revisável nesta competência.";
+    } catch (error) {
+      if (active() && request === generation) {
+        clear();
+        feedback.textContent = error instanceof Error && "status" in error && error.status === 404
+          ? "Dossiê indisponível neste ambiente." : errorMessage(error);
+      }
+    } finally {
+      if (active()) consult.disabled = false;
+    }
+  });
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    if (!active() || !source || !choice.value || !month.reportValidity()) return;
+    const request = ++generation;
+    const body = JSON.stringify({
+      unit_id: unit, environment: "homologation", competence: month.value + "-01",
+      finding_id: choice.value, source_version: source.version, source_digest: source.digest
+    });
+    submit.disabled = consult.disabled = month.disabled = choice.disabled = true;
+    feedback.textContent = "Gerando pacote e verificando integridade...";
+    try {
+      const send = () => fetch("/v1/portal/cognitive/economy/accounting-dossier/export", {
+        credentials: "same-origin", method: "POST",
+        headers: {"Content-Type": "application/json", "X-CSRF-Token": csrfToken()}, body
+      });
+      let response = await send();
+      if (response.status === 403) {
+        const detail = await response.json().catch(() => ({}));
+        if (detail.detail?.code === "STEP_UP_REQUIRED") {
+          if (!active() || request !== generation) return;
+          if (!await requestStepUp()) {
+            if (active() && request === generation) feedback.textContent = "Confirmação de segurança cancelada. Nenhum dossiê foi baixado.";
+            return;
+          }
+          if (!active() || request !== generation) return;
+          response = await send();
+        }
+      }
+      if (!response.ok) {
+        if (response.status === 409) {
+          clear();
+          throw new Error("Fonte desatualizada ou inválida. Atualize as fontes e consulte novamente.");
+        }
+        if (response.status === 503 || response.status === 404) {
+          clear();
+          throw new Error("Dossiê indisponível neste ambiente.");
+        }
+        if (response.status === 401) throw new Error("Sessão expirada. Entre novamente.");
+        throw new Error("Dossiê bloqueado. Confira a autorização e a confirmação de segurança.");
+      }
+      if (response.headers.get("content-type")?.split(";")[0] !== "application/zip") {
+        throw new Error("Formato de dossiê inválido. Nenhum arquivo foi baixado.");
+      }
+      const blob = await response.blob();
+      if (!active() || request !== generation) return;
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url; link.download = "nfcore-dossie.zip";
+      form.append(link); link.click(); link.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      feedback.textContent = "Dossiê exportado. Revisão e assinatura do contador ainda pendentes.";
+    } catch (error) {
+      if (active() && request === generation) feedback.textContent = errorMessage(error);
+    } finally {
+      if (active() && request === generation) {
+        consult.disabled = month.disabled = false;
+        choice.disabled = submit.disabled = !source || !choice.options.length;
+      }
+    }
   });
 }
 

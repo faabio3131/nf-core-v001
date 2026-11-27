@@ -13,6 +13,7 @@ from typing import Any
 
 from fastapi import APIRouter
 
+from kordena_fiscal.application.accounting_dossier import AccountingDossierService
 from kordena_fiscal.security.human_identity import HumanIdentityService
 
 from .accounting_review_api import AccountingReviewRunner
@@ -71,6 +72,7 @@ def build_cognitive_routers(
     annual_comparison_runner: OpportunityRunner | None = None,
     accounting_review_runner: AccountingReviewRunner | None = None,
     historical_audit_runner: HistoricalAuditRunner | None = None,
+    dossier_service: AccountingDossierService | None = None,
 ) -> list[APIRouter]:
     """Portal advisory route (opt-in) plus the Command read-only metrics route (always mounted).
 
@@ -157,6 +159,7 @@ def build_cognitive_routers(
             annual_comparison_runner=annual_comparison_runner,
             accounting_review_runner=accounting_review_runner,
             historical_audit_runner=historical_audit_runner,
+            dossier_service=dossier_service,
         ),
         create_command_metrics_router(aggregates, environ, ai_enabled=model is not None),
     ]
@@ -184,6 +187,7 @@ def build_cognitive_router(
     annual_comparison_runner: OpportunityRunner | None = None,
     accounting_review_runner: AccountingReviewRunner | None = None,
     historical_audit_runner: HistoricalAuditRunner | None = None,
+    dossier_service: AccountingDossierService | None = None,
 ) -> APIRouter | None:
     """One router mounting the Portal advisory route and the Command metrics route."""
     routers = build_cognitive_routers(
@@ -205,6 +209,7 @@ def build_cognitive_router(
         annual_comparison_runner=annual_comparison_runner,
         accounting_review_runner=accounting_review_runner,
         historical_audit_runner=historical_audit_runner,
+        dossier_service=dossier_service,
     )
     if not routers:
         return None

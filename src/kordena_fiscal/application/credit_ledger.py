@@ -45,7 +45,7 @@ from kordena_fiscal.tax.tax_recovery import (
     invoice_dates,
     selic_reference,
 )
-from kordena_fiscal.tax.unused_credits import Evidence, _unique_fields
+from kordena_fiscal.tax.unused_credits import Batch, Evidence, _unique_fields
 
 
 class ReviewedMovement(Strict):
@@ -142,20 +142,33 @@ def _candidate(
     return SourceLot(amount, as_of, modality, finding["anchor"], receipt, payment_sha)
 
 
-def _verified_source(
+@dataclass(frozen=True, slots=True)
+class VerifiedRecoveryBundle:
+    """Recomputed source shared by the journal and the accounting dossier."""
+
+    index: dict[str, Any]
+    facts: RecoveryBatch
+    batch: Batch
+    t16_index: dict[str, Any]
+    t16_findings: list[dict[str, Any]]
+    findings: list[dict[str, Any]]
+
+
+def verify_recovery_bundle(
     store: EconomyStore,
     issuer: Cnpj,
     period: date,
-    command: Command,
+    version: int,
+    digest: str,
     context: IssuerContext,
     as_of: date,
-) -> tuple[SourceLot, list[dict[str, Any]]]:
-    """Recompute current T17 from original T17/T16/T15 evidence, never trust totals."""
+) -> VerifiedRecoveryBundle:
+    """Recompute the exact current T17/T16/T15 source, never trust stored totals."""
     row = store.record(TABLE, _source_key(issuer, period))
     if (
         row is None
-        or row["version"] != command.recovery_version
-        or row["digest"] != command.recovery_digest
+        or row["version"] != version
+        or row["digest"] != digest
         or row["issuer_cnpj"] != issuer.value
         or row["competence"] != period.isoformat()
     ):
@@ -181,7 +194,7 @@ def _verified_source(
         raise FiscalValidationError("T17 source digest mismatch")
     facts = RecoveryBatch.model_validate_json(raw)
     if (
-        facts.competence != command.competence
+        facts.competence != period.isoformat()
         or facts.t16_version != index["t16_version"]
         or facts.t16_digest != index["t16_digest"]
     ):
@@ -209,10 +222,26 @@ def _verified_source(
                 total[name] = total.get(name, 0) + finding[name]
     if totals != index["partial_totals_cents"] or counts != index["status_counts"]:
         raise FiscalValidationError("T17 index totals mismatch")
-    matches = [item for item in computed if item["finding_id"] == command.finding_id]
+    return VerifiedRecoveryBundle(row, facts, batch, t16, findings, computed)
+
+
+def _verified_source(
+    store: EconomyStore,
+    issuer: Cnpj,
+    period: date,
+    command: Command,
+    context: IssuerContext,
+    as_of: date,
+) -> tuple[SourceLot, list[dict[str, Any]]]:
+    if command.competence != period.isoformat():
+        raise FiscalValidationError("T17 source binding mismatch")
+    bundle = verify_recovery_bundle(
+        store, issuer, period, command.recovery_version, command.recovery_digest, context, as_of,
+    )
+    matches = [item for item in bundle.findings if item["finding_id"] == command.finding_id]
     if len(matches) != 1:
         raise FiscalValidationError("T17 finding missing or ambiguous")
-    return _candidate(issuer, matches[0], command.tax, as_of.isoformat()), computed
+    return _candidate(issuer, matches[0], command.tax, as_of.isoformat()), bundle.findings
 
 
 def _lot_binding(command: Command) -> tuple[str, str, str]:

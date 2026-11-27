@@ -13,18 +13,27 @@ from collections.abc import Callable
 from datetime import UTC, date, datetime
 from typing import Annotated, Any, Protocol
 
-from fastapi import APIRouter, Body, HTTPException, Request, status
+from fastapi import APIRouter, Body, HTTPException, Request, Response, status
 from fastapi.concurrency import run_in_threadpool
 
+from kordena_fiscal.application.accounting_dossier import (
+    AccountingDossierService,
+    DossierAuthorityError,
+    DossierSelectionError,
+    DossierStepUpRequired,
+)
 from kordena_fiscal.application.accounting_review import ReviewDecision, ReviewTarget
-from kordena_fiscal.domain import ExecutionScope, FiscalEnvironment
+from kordena_fiscal.domain import ExecutionScope, FiscalEnvironment, FiscalValidationError
 from kordena_fiscal.security.human_identity import (
     AuthenticatedHuman,
+    HumanAuthenticationError,
+    HumanIdentityError,
     HumanIdentityService,
     PortalPermission,
 )
 from kordena_fiscal.tax.federal_benefits import PROGRAMS
 from kordena_fiscal.tax.state_benefits import state_index
+from kordena_fiscal.web.human_auth import CSRF_HEADER, SESSION_COOKIE
 from kordena_fiscal.web.portal_api import (
     _authenticated,
     _authorized,
@@ -136,6 +145,7 @@ def create_cognitive_router(
     annual_comparison_runner: OpportunityRunner | None = None,
     accounting_review_runner: AccountingReviewRunner | None = None,
     historical_audit_runner: HistoricalAuditRunner | None = None,
+    dossier_service: AccountingDossierService | None = None,
 ) -> APIRouter:
     router = APIRouter(prefix="/v1/portal/cognitive", tags=["cognitive-advisory"])
 
@@ -479,6 +489,67 @@ def create_cognitive_router(
             raise _bad("HISTORICAL_AUDIT_UNAVAILABLE", "Historical audit unavailable", 503)
         return await run_in_threadpool(
             historical_audit_runner, auth, unit, environment, month, detail,
+        )
+
+    def dossier_context(
+        request: Request, body: dict[str, Any],
+    ) -> tuple[AccountingDossierService, str, str, str, date]:
+        _, unit, environment, month = authorized_month(request, body)
+        if environment is not FiscalEnvironment.HOMOLOGATION:
+            raise _bad("DOSSIER_SCOPE_FORBIDDEN", "Apenas em homologação interna.", 403)
+        if dossier_service is None:
+            raise _bad("DOSSIER_UNAVAILABLE", "Dossiê indisponível neste ambiente.", 503)
+        return (
+            dossier_service, request.cookies.get(SESSION_COOKIE, ""),
+            request.headers.get(CSRF_HEADER, ""), unit, month,
+        )
+
+    def dossier_error(exc: Exception) -> HTTPException:
+        if isinstance(exc, DossierStepUpRequired):
+            return _bad("STEP_UP_REQUIRED", "Confirme o código do app autenticador.", 403)
+        if isinstance(exc, DossierSelectionError):
+            return _bad("INVALID_DOSSIER_REQUEST", "Seleção do achado inválida.", 400)
+        if isinstance(exc, HumanAuthenticationError):
+            return _bad("INVALID_SESSION", "Sessão inválida ou expirada.", 401)
+        if isinstance(exc, (DossierAuthorityError, HumanIdentityError)):
+            return _bad("DOSSIER_SCOPE_FORBIDDEN", "Contador designado necessário.", 403)
+        return _bad("DOSSIER_EVIDENCE_INVALID", "Atualize as fontes verificadas.", 409)
+
+    @router.post("/economy/accounting-dossier/candidates")
+    async def dossier_candidates(
+        request: Request, body: Annotated[dict[str, Any], Body()],
+    ) -> dict[str, Any]:
+        service, token, csrf, unit, month = dossier_context(request, body)
+        try:
+            return await run_in_threadpool(service.candidates, token, csrf, unit, month)
+        except (FiscalValidationError, HumanIdentityError, ValueError, KeyError, TypeError) as exc:
+            raise dossier_error(exc) from None
+
+    @router.post("/economy/accounting-dossier/export", response_class=Response)
+    async def dossier_export(
+        request: Request, body: Annotated[dict[str, Any], Body()],
+    ) -> Response:
+        _reject_browser_authority(body)
+        selection = {"finding_id", "source_version", "source_digest"}
+        context = {"unit_id", "environment", "competence"}
+        if set(body) != context | selection:
+            raise _bad("INVALID_DOSSIER_REQUEST", "Selecione um achado vinculado à fonte.")
+        service, token, csrf, unit, month = dossier_context(
+            request, {key: body[key] for key in context},
+        )
+        try:
+            raw = await run_in_threadpool(
+                service.export, token, csrf, unit, month, body["finding_id"],
+                body["source_version"], body["source_digest"],
+            )
+        except (FiscalValidationError, HumanIdentityError, ValueError, KeyError, TypeError) as exc:
+            raise dossier_error(exc) from None
+        return Response(
+            content=raw, media_type="application/zip",
+            headers={
+                "Content-Disposition": 'attachment; filename="nfcore-dossie.zip"',
+                "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff",
+            },
         )
 
     @router.post("/economy/accounting-review")
