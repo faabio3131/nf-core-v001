@@ -15,6 +15,11 @@ from datetime import date
 from typing import Any
 
 from kordena_fiscal.application.historical_audit import MAX_INPUT_BYTES, TABLE
+from kordena_fiscal.application.recovery_integrity import (
+    LedgerReader,
+    VerifiedRecoveryScope,
+    verify_scope,
+)
 from kordena_fiscal.application.tax_recovery import (
     PAGE_SCHEMA,
     SOURCE_SCHEMA,
@@ -36,7 +41,13 @@ from kordena_fiscal.tax.credit_ledger import (
     transition,
 )
 from kordena_fiscal.tax.historical_audit import IssuerContext, Strict, closed_months
-from kordena_fiscal.tax.recovery_lifecycle import validate_managed_command
+from kordena_fiscal.tax.recovery_lifecycle import (
+    MAX_CASE_EVENTS,
+    MAX_CASE_SCAN_EVENTS,
+    MAX_CASES,
+    managed_request_identity,
+    validate_managed_command,
+)
 from kordena_fiscal.tax.tax_recovery import (
     SCHEMA as RECOVERY_SCHEMA,
 )
@@ -348,6 +359,28 @@ def _replay(
     return state, rows
 
 
+def _ledger_reader() -> LedgerReader:
+    return LedgerReader(_replay, _historical_source, journal_id)
+
+
+def _verify_managed_scope(
+    store: EconomyStore, issuer: Cnpj, *, max_cases: int = MAX_CASES,
+    max_case_events: int = MAX_CASE_EVENTS, max_case_scan_events: int = MAX_CASE_SCAN_EVENTS,
+    max_lots: int | None = None, max_events: int | None = None,
+    max_scan_events: int | None = None,
+) -> VerifiedRecoveryScope:
+    _require_scope(store)
+    store.lock_accounting_issuance()
+    return verify_scope(
+        store, issuer, _ledger_reader(), max_cases=max_cases, max_case_events=max_case_events,
+        max_case_scan_events=max_case_scan_events,
+        max_lots=MAX_LOTS if max_lots is None else min(MAX_LOTS, max_lots),
+        max_events=MAX_EVENTS if max_events is None else min(MAX_EVENTS, max_events),
+        max_scan_events=(MAX_SCAN_EVENTS if max_scan_events is None
+                         else min(MAX_SCAN_EVENTS, max_scan_events)),
+    )
+
+
 def _guard_existing_lots(
     store: EconomyStore,
     issuer: Cnpj,
@@ -443,13 +476,16 @@ def _post_movement(
     # Same scoped lock as T13/T14/T15/T16/T17 snapshot mutations. No race
     # between checking the current source and publishing a journal version.
     store.lock_state_review_import(key, key)
+    if not managed:
+        # No public T18 write (including a replay) may conceal a broken T19 link.
+        _verify_managed_scope(store, issuer)
     state, history = _replay(store, issuer, period, key)
     is_managed = validate_managed_command(command) is not None
     if managed != is_managed or (not managed and (
         command.movement in {"restituted", "restitution_reversed"}
-        or any(request.casefold().startswith("t19-") for request in state.seen)
+        or any(managed_request_identity(request) is not None for request in state.seen)
         or any(
-            ref is not None and ref.casefold().startswith("t19-")
+            ref is not None and managed_request_identity(ref) is not None
             for ref in (command.reservation_id, command.compensation_id)
         )
     )):
@@ -525,10 +561,16 @@ def reconcile(
     _require_scope(store)
     if period is not None and (type(period) is not date or period.day != 1):
         raise FiscalValidationError("invalid ledger reporting competence")
-    store.lock_accounting_issuance()
-    ids = store.credit_journal_ids(issuer, period, limit=MAX_LOTS + 1)
-    if len(ids) > MAX_LOTS:
-        raise FiscalValidationError("ledger report exceeds supported lot bound")
+    verified = _verify_managed_scope(store, issuer)
+    return _reconcile_verified(store, issuer, verified, period)
+
+
+def _reconcile_verified(
+    store: EconomyStore, issuer: Cnpj, verified: VerifiedRecoveryScope,
+    period: date | None = None,
+) -> dict[str, Any]:
+    """Aggregate the already verified, locked transaction-local journal replay."""
+    ids = [key for key in verified.journals if period is None or key[1] == period.isoformat()]
     totals: dict[str, dict[str, dict[str, int]]] = {}
     periods: dict[str, dict[str, dict[str, dict[str, int]]]] = {}
     entries = 0
@@ -552,9 +594,7 @@ def reconcile(
                     raise FiscalValidationError("ledger aggregate exceeds bigint range")
 
     for key, competence in ids:
-        state, rows = _replay(store, issuer, date.fromisoformat(competence), key)
-        if not rows:
-            raise FiscalValidationError("ledger lot missing")
+        state, rows = verified.journals[key, competence]
         initial = Command.model_validate(rows[0]["content"]["reviewed"]["command"])
         tax = initial.tax
         if state.balances["reversed"] != state.original and tax in {"pis", "cofins"}:
@@ -592,11 +632,12 @@ def history(
 ) -> dict[str, Any]:
     """Return the complete verified journal, not a best-effort list of movements."""
     _require_scope(store)
-    store.lock_accounting_issuance()
+    verified = _verify_managed_scope(store, issuer)
     key = journal_id(issuer, finding_id)
-    state, rows = _replay(store, issuer, period, key)
-    if not rows:
+    journal = verified.journals.get((key, period.isoformat()))
+    if journal is None:
         raise FiscalValidationError("ledger lot missing")
+    state, rows = journal
     return {
         "record_id": key,
         "events": rows,

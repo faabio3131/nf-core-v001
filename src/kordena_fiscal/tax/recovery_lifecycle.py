@@ -83,6 +83,10 @@ def validate_managed_command(command: Command) -> tuple[str, int, int] | None:
         command.reservation_id != managed_request_id(case_id, 1, 1)
     ):
         raise FiscalValidationError("invalid T19 managed movement reference")
+    if command.compensation_id is not None:
+        target = managed_request_identity(command.compensation_id)
+        if target is None or target[1] < 2 or target[2] != 1:
+            raise FiscalValidationError("invalid T19 managed movement reference")
     return identity
 
 

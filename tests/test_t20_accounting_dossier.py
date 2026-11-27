@@ -25,7 +25,7 @@ from test_t14_authorized_issuance import economy_database as _economy_database_f
 from test_t15_historical_audit import MONTH, _setup
 from test_t16_unused_credits import BUYER
 from test_t18_credit_ledger import _federal_seed, _reviewed, _seed
-from test_t19_recovery_lifecycle import NOW, _fixture, _run, _session
+from test_t19_recovery_lifecycle import NOW, _corrupt_managed_link, _fixture, _run, _session
 
 from kordena_fiscal.application import accounting_dossier as dossier
 from kordena_fiscal.application import credit_ledger as ledger
@@ -520,6 +520,23 @@ def test_postgres_orphan_managed_ledger_blocks_dossier(economy_database, mapping
                 row["record_id"].startswith("t20-dossier-")
                 for row in store.records(table, limit=500)
             )
+
+
+@pytest.mark.parametrize("axis", ["lot-duplicate", "lot-moved", "version", "digest"])
+def test_postgres_managed_link_mismatch_blocks_dossier(economy_database, mapping, axis):
+    db = economy_database
+    scope, command, recovery, token, csrf = _corrupt_managed_link(db, mapping, axis)
+    service = _dossier(db, recovery)
+    source = service.candidates(token, csrf, scope.unit_id, MONTH)["source"]
+    reason = "orphan recovery case ledger|case ledger posting mismatch"
+    with pytest.raises(FiscalValidationError, match=reason):
+        _export(service, token, csrf, scope, command.finding_id, source)
+    with db.economy(scope) as store:
+        assert store.records("fm_economy_dossiers") == ()
+        for table in ("fm_economy_opportunities", "fm_economy_snapshots"):
+            rows = store.records(table, limit=500)
+            assert len(rows) < 500
+            assert not any(row["record_id"].startswith("t20-dossier-") for row in rows)
 
 
 def test_postgres_revocation_during_render_rolls_back(economy_database, mapping, monkeypatch):
