@@ -55,6 +55,8 @@ from kordena_fiscal.tax.recovery_lifecycle import (
     Status,
     Terms,
     alert,
+    managed_request_id,
+    managed_request_identity,
     plan,
 )
 from kordena_fiscal.tax.tax_recovery import federal_interest
@@ -91,7 +93,7 @@ def case_key(issuer: Cnpj, terms: Terms) -> str:
 
 
 def _request(terms: Terms, version: int, index: int) -> str:
-    return f"t19-{terms.case_id}-{version}-{index}"
+    return managed_request_id(terms.case_id, version, index)
 
 
 def _reviewed(scope: tuple[str, ...], issuer: Cnpj, command: Command) -> ReviewedMovement:
@@ -246,13 +248,12 @@ def _case_history(
             status = expected_status
             previous_digest = row["digest"]
             last_day = day
-        actual_ids = {
-            row["content"]["reviewed"]["command"]["request_id"]
-            for row in journal
-            if row["content"]["reviewed"]["command"]["request_id"].casefold().startswith(
-                f"t19-{terms.case_id}-"
-            )
-        }
+        actual_ids: set[str] = set()
+        for posting in journal:
+            request_id = posting["content"]["reviewed"]["command"]["request_id"]
+            identity = managed_request_identity(request_id)
+            if identity is not None and identity[0] == terms.case_id:
+                actual_ids.add(request_id)
         if actual_ids != linked:
             raise FiscalValidationError("orphan case ledger movement")
         return rows, status, settlement
@@ -442,10 +443,16 @@ def report(store: EconomyStore, issuer: Cnpj, today: date) -> dict[str, Any]:
     _scope(store)
     store.lock_accounting_issuance()
     cases = []
-    known: dict[str, str] = {}
+    known: dict[str, tuple[str, int, str]] = {}
     for rows, status in _all_cases(store, issuer):
         last = ReviewedEvent.model_validate(rows[-1]["content"]["reviewed"]).event
-        known[last.terms.case_id] = journal_id(issuer, last.terms.finding_id)
+        lot = journal_id(issuer, last.terms.finding_id)
+        for row in rows:
+            for index, link in enumerate(row["content"]["ledger_links"], 1):
+                request_id = managed_request_id(last.terms.case_id, row["version"], index)
+                if request_id in known:
+                    raise FiscalValidationError("duplicate recovery case ledger link")
+                known[request_id] = (lot, link["version"], link["digest"])
         cases.append({
             "terms": last.terms.model_dump(), "status": status, "version": len(rows),
             "digest": rows[-1]["digest"], "alert": alert(status, last.due_on, today),
@@ -455,6 +462,7 @@ def report(store: EconomyStore, issuer: Cnpj, today: date) -> dict[str, Any]:
     if len(ids) > MAX_LOTS:
         raise FiscalValidationError("case reconciliation lot bound exceeded")
     scanned = 0
+    seen_links: set[str] = set()
     for key, period in ids:
         _, journal = _replay(store, issuer, date.fromisoformat(period), key)
         scanned += len(journal)
@@ -462,10 +470,14 @@ def report(store: EconomyStore, issuer: Cnpj, today: date) -> dict[str, Any]:
             raise FiscalValidationError("case reconciliation event bound exceeded")
         for row in journal:
             request = row["content"]["reviewed"]["command"]["request_id"]
-            if request.casefold().startswith("t19-") and (
-                request != request.casefold() or known.get(request.split("-")[1]) != key
-            ):
-                raise FiscalValidationError("orphan recovery case ledger")
+            if managed_request_identity(request) is not None:
+                if request in seen_links or known.get(request) != (
+                    key, row["version"], row["digest"]
+                ):
+                    raise FiscalValidationError("orphan recovery case ledger")
+                seen_links.add(request)
+    if seen_links != set(known):
+        raise FiscalValidationError("missing recovery case ledger link")
     return {
         "cases": cases, "ledger": reconcile(store, issuer),
         "simulation_only": True, "credit_recognized": False, "realized_cents": None,

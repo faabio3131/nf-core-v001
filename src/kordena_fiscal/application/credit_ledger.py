@@ -36,6 +36,7 @@ from kordena_fiscal.tax.credit_ledger import (
     transition,
 )
 from kordena_fiscal.tax.historical_audit import IssuerContext, Strict, closed_months
+from kordena_fiscal.tax.recovery_lifecycle import validate_managed_command
 from kordena_fiscal.tax.tax_recovery import (
     SCHEMA as RECOVERY_SCHEMA,
 )
@@ -298,6 +299,7 @@ def _replay(
         reviewed = ReviewedMovement.model_validate(content["reviewed"])
         command = reviewed.command
         reviewed.verify(scope, issuer)
+        validate_managed_command(command)
         event_date = date.fromisoformat(content["as_of"])
         if (
             row["version"] != version
@@ -442,7 +444,7 @@ def _post_movement(
     # between checking the current source and publishing a journal version.
     store.lock_state_review_import(key, key)
     state, history = _replay(store, issuer, period, key)
-    is_managed = command.request_id.casefold().startswith("t19-")
+    is_managed = validate_managed_command(command) is not None
     if managed != is_managed or (not managed and (
         command.movement in {"restituted", "restitution_reversed"}
         or any(request.casefold().startswith("t19-") for request in state.seen)

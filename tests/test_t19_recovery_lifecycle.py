@@ -46,8 +46,16 @@ from kordena_fiscal.security.human_identity import (
 )
 from kordena_fiscal.security.human_mfa import HumanMfaService
 from kordena_fiscal.security.totp import totp_at
-from kordena_fiscal.tax.credit_ledger import Amount, Command
-from kordena_fiscal.tax.recovery_lifecycle import Event, Terms, alert, plan
+from kordena_fiscal.tax.credit_ledger import Amount, Command, transition
+from kordena_fiscal.tax.recovery_lifecycle import (
+    Event,
+    Terms,
+    alert,
+    managed_request_id,
+    managed_request_identity,
+    plan,
+    validate_managed_command,
+)
 from kordena_fiscal.tax.tax_recovery import federal_interest
 
 NOW = datetime(TODAY.year, TODAY.month, TODAY.day, 15, tzinfo=UTC)
@@ -611,17 +619,77 @@ def test_postgres_historical_read_after_environment_disabled(economy_database, m
     assert service.read(token, csrf, scope.unit_id, MONTH) == before
 
 
-def test_postgres_mixed_case_managed_orphan_rejected(economy_database, mapping):
+@pytest.mark.parametrize("template", [
+    "T19-{case}-1-1", "t19-{case}", "t19-{case}-01-1", "t19-{case}-0-1",
+    "t19-{case}-101-1", "t19-{case}-1-0", "t19-{case}-1-3", "t19-{case}-1-01",
+])
+def test_invalid_managed_identity(template):
+    with pytest.raises(FiscalValidationError, match="invalid T19 managed movement identity"):
+        managed_request_identity(template.format(case="a" * 64))
+
+
+def test_canonical_managed_identity_and_references():
+    case = "a" * 64
+    assert managed_request_identity(managed_request_id(case, 100, 2)) == (case, 100, 2)
+    assert managed_request_identity("standalone-1") is None
+    command = Command.model_validate({
+        "competence": MONTH.isoformat(), "finding_id": "b" * 64, "tax": "pis",
+        "recovery_version": 1, "recovery_digest": "c" * 64, "expected_version": 1,
+        "request_id": managed_request_id(case, 2, 1), "movement": "released",
+        "review_reference": "review", "reservation_id": managed_request_id("d" * 64, 1, 1),
+        "amount": {"principal_cents": 334, "selic_cents": 37},
+    })
+    with pytest.raises(FiscalValidationError, match="invalid T19 managed movement reference"):
+        validate_managed_command(command)
+
+
+@pytest.mark.parametrize("template", [
+    "T19-{case}-1-1", "t19-{case}", "t19-{case}-01-1",
+    "t19-{case}-101-1", "t19-{case}-1-3",
+])
+def test_postgres_invalid_managed_writer_and_forged_history(economy_database, mapping, template):
     db = economy_database
     scope, cmd, terms = _fixture(db, mapping)
     _, context = historical_issuer_context(db, scope, MONTH)
     proof = verify_credit_unit(db, scope, BUYER)
     forged = Command.model_validate(cmd.model_dump() | {
-        "expected_version": 1, "request_id": f"T19-{terms.case_id}-1-1",
+        "expected_version": 1, "request_id": template.format(case=terms.case_id),
+        "movement": "reserved",
+    })
+    key = ledger.journal_id(BUYER, cmd.finding_id)
+    with db.economy(scope) as store:
+        before = history(store, BUYER, MONTH, cmd.finding_id)
+        with pytest.raises(FiscalValidationError, match="invalid T19 managed movement identity"):
+            ledger._post_movement(
+                store, BUYER, _reviewed(scope, forged), context=context,
+                as_of=TODAY, unit=proof, managed=True,
+            )
+        assert history(store, BUYER, MONTH, cmd.finding_id) == before
+        # Bypass only the application writer to simulate valid-hash corrupt persistence.
+        state, rows = ledger._replay(store, BUYER, MONTH, key)
+        content = dict(rows[-1]["content"])
+        content.update({
+            "event_version": 2, "previous_digest": rows[-1]["digest"],
+            "reviewed": _reviewed(scope, forged).model_dump(),
+            "postings": transition(state, forged), "balances": state.projection(),
+        })
+        store.append_snapshot(record_id=key, version=2, competence=MONTH,
+                              issuer=BUYER, content=content)
+    with db.economy(scope) as store:
+        with pytest.raises(FiscalValidationError, match="invalid T19 managed movement identity"):
+            report(store, BUYER, TODAY)
+
+
+def test_postgres_canonical_managed_orphan_rejected(economy_database, mapping):
+    db = economy_database
+    scope, cmd, terms = _fixture(db, mapping)
+    _, context = historical_issuer_context(db, scope, MONTH)
+    proof = verify_credit_unit(db, scope, BUYER)
+    forged = Command.model_validate(cmd.model_dump() | {
+        "expected_version": 1, "request_id": managed_request_id(terms.case_id, 1, 1),
         "movement": "reserved",
     })
     with db.economy(scope) as store:
-        # Test-only use of the internal writer: simulate an orphan in persistence.
         ledger._post_movement(
             store, BUYER, _reviewed(scope, forged), context=context,
             as_of=TODAY, unit=proof, managed=True,
