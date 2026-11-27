@@ -1,6 +1,16 @@
 # T20 — Gerador de Dossiê Contábil PDF/Excel/XML
 
-## CURRENT — correção do gate de CI pós-R1 (26/11/2026)
+## CURRENT — certificação pós-merge e continuidade (26/11/2026)
+
+**CURRENT — 26/11/2026 — T20 DONE_CERTIFIED_INTERNAL (escopo interno/sandbox); fechamento documental em revisão na #629.** [PR #628](https://github.com/faabio3131/nf-core-v001/pull/628) MERGED em `943ca9d90b44a57a7869942b9397f2b542e04cfd`, HEAD auditado/autorizado `32e805f356d778bd41f59249daf46af627a39e38`, árvore idêntica `b9b98b769bb2d7c4c8e2811cfaa5d2810d7cbe14`. [Gemini R2](https://drive.google.com/file/d/1SNQGoDVU_55QVMYk-NGkwoAAtWmvYsSx/view) APROVADO PARA SOLICITAR MERGE (0 P0/P1/P2, 3 P3 novos não bloqueantes). CI pré-merge #45912018413, governança #45912018406 e T2 efetiva fora de Draft #45916142009 SUCCESS. [CI pós-merge #45916210955](https://github.com/faabio3131/nf-core-v001/actions/runs/45916210955) e [governança #45916210883](https://github.com/faabio3131/nf-core-v001/actions/runs/45916210883) SUCCESS no SHA real, evento push/main: 44/44 etapas, 7.277 Python PASS, 1 SKIP fora T20, 30 frontend PASS, 90 Playwright PASS, zero falhas; Ruff/Mypy (491 fontes), segurança, containers, SBOM, backup/restore e readiness aprovados. Skip `tests/runtime/test_p02_t02_fiscal_surfaces.py:389` (runtime production composition requires PostgreSQL); aviso Node 20 não bloqueante. CI concluída 21h42 BRT. T01–T20 tecnicamente certificadas no escopo implementado (20/51 entregas internas, 33 T + 18 ERP; não é prontidão comercial). A próxima tarefa é o gate interno obrigatório [#625](https://github.com/faabio3131/nf-core-v001/issues/625), cinco refinamentos T18/T19; executar após integração e CI própria desta reconciliação. T21 bloqueada até #625 resolvida e certificada; também provar exclusão da oportunidade documental `nfcore.accounting-dossier/v1` de totais econômicos. T22 bloqueada; ERP somente após T22, folha T23–T33 após ERP-15 e H01–H06 após fechamento interno. Preservar 59 IDs históricos, BLD-00–08, 18 etapas ERP, #613/#616, #593 e DoD literal Master v4.1. O snapshot XLSX versionado `NFCore_Cronograma_Master_v4_1_ERP_Universal_2026-11-26_T20.xlsx` foi salvo na Biblioteca do proprietário e reaberto para conferência: SHA-256 `302243d4d61a6f0f17e405070a77313175fc5873baf12c6a61d1cdefbdbf25b2`, 44.930 bytes; T20 ENTREGUE, T21 BLOQUEADA (#625), 20/51. Originais históricos preservados. A única sincronização residual desse snapshot é registrar o merge e a CI pós-merge da [PR documental #629](https://github.com/faabio3131/nf-core-v001/pull/629) quando efetivamente concluídos; o gate #625 permanece PENDENTE. [Issue #626](https://github.com/faabio3131/nf-core-v001/issues/626) preserva evidências e será encerrada somente após CI/governança pós-merge documental. Limites T20: apenas sandbox opt-in, sem assinatura automática, reconhecimento de crédito, homologação externa, efeito fiscal real ou validação visual Microsoft Excel; browser E2E usa transporte simulado e HTTP/PG reais são testados separadamente. Sem deploy ou alteração de produção. Os registros datados anteriores são históricos, não CURRENT.
+
+### Riscos residuais e próximo gate
+
+- R2-P3-01: traduzir rótulos técnicos PDF/XLSX; R2-P3-02: mensagens de rede, tradução, unidade e hint no Portal; R2-P3-03: regressões focais adicionais (virada de dia durante exportação, HTTP 400, limite descomprimido e bootstrap não contador). Não bloqueiam a certificação interna T20; manter rastreáveis. A oportunidade documental não é somável, prova obrigatória pré-T21. A validação visual em Excel desktop continua não demonstrada. O auditor independente não abriu os ZIPs binários nem recalculou hashes; a verificação local do pacote não substitui homologação fiscal.
+- #625 segue aberta: identidade de movimento gerenciado, limites prospectivos de escrita T18, resíduo SELIC, revaloração/saída de granted e contenção/escala. Decisão fiscal/contábil explícita quando exigida, sem inventar autoridade. Nenhum item marcado concluído por esta atualização.
+
+
+## HISTÓRICO — correção do gate de CI pós-R1 (26/11/2026)
 
 CI #45863217864, SHA `6f42038cbc93de4c3cae4960c59621c60269d23c`, FAILURE: 7276 Python PASS, 1 FAIL, 1 SKIP (fora T20), Ruff/Mypy PASS; frontend/containers/gates posteriores não executados. Governança #45863217830 SUCCESS. Falha única em `test_postgres_runtime_availability_and_real_http_mfa[production-None-503]`: `RuntimeConfigurationError: production requires NFCORE_PUBLIC_HOSTNAME`. O teste não atendia à política de configuração preexistente. Corrigida exclusivamente a fixture com hostname reservado `nfcore-t20.example.test`, HTTPS e backend externo, cliente HTTP in-process. Reforçados os asserts de candidatos/exportação bloqueados com/sem MFA recente, sem persistência T20. Não há alteração no código do produto ou nas proteções. A adaptação anterior do probe de schema isolado permanece restrita ao teste. A CI do novo HEAD deve comprovar o resultado, seguida de Gemini R2, T2 efetiva e autorização específica de merge. T21 continua bloqueada (#625); main e production preservadas. Registrar novo SHA/runs na PR #628 e issue #626.
 
@@ -43,9 +53,9 @@ Base `188241b491e5e9712dc3214130c86bc8e8b9587d`; #627 integrada, CI #45751148265
 
 A autorização do proprietário inclui o fechamento documental e a liberação da T20. **READY_TO_START / NOT_STARTED passa a valer após integração e CI/governança próprias da reconciliação documental T19**, com os SHAs/runs finais registrados na [issue #626](https://github.com/faabio3131/nf-core-v001/issues/626). A existência deste handoff não comprova implementação de gerador, exportação ou jornada de usuário.
 
-## CURRENT → TARGET e fonte de escopo
+## HISTÓRICO — baseline pré-implementação e fonte de escopo
 
-CURRENT confirmado no Git: a T01 possui `EconomyStore.append_dossier`, com referência à oportunidade, versão, arquivo e digest SHA-256. T13/T15–T19 oferecem autoridades de aprovação, proveniência, análise, cálculo e ledger a inventariar. A existência dessas autoridades não comprova geração PDF/Excel/XML.
+Baseline pré-implementação confirmada no Git à época: a T01 possui `EconomyStore.append_dossier`, com referência à oportunidade, versão, arquivo e digest SHA-256. T13/T15–T19 oferecem autoridades de aprovação, proveniência, análise, cálculo e ledger a inventariar. A existência dessas autoridades não comprova geração PDF/Excel/XML.
 
 ### TARGET e DoD literal recuperados
 
@@ -63,7 +73,7 @@ Fonte do proprietário: `NFCore_Cronograma_Master_v4_1_ERP_Universal.xlsx`, Mast
 
 O prazo de cinco dias é uma estimativa histórica, não um compromisso de entrega nem uma nova data aprovada. Aplicar este DoD ao desenho da implementação; não reduzir o pacote a um formato nem confundir a prontidão para assinatura com assinatura/aprovação automática do contador. A integração global de telas da Central pertence à T21; a T20 precisa comprovar sua própria exportação exigida pelo DoD sem antecipar a exposição das operações T19 bloqueadas pela #625. Toda decisão de implementação, aceite técnico detalhado e teste deve ficar vinculada a esta fonte e às autoridades CURRENT.
 
-## Retomada executável
+## HISTÓRICO — plano de implementação T20 (executado)
 
 1. Reconsultar GitHub: main/production, PRs, HEAD e CI; confirmar fechamento #622/#623 e estado READY_TO_START na #626.
 2. Conferir o DoD literal acima contra a versão vigente, identificar dependências e registrar Current → Target, mapa de impacto, áreas protegidas, aceite e testes na PR da T20 antes de código.
@@ -71,7 +81,7 @@ O prazo de cinco dias é uma estimativa histórica, não um compromisso de entre
 4. Construir somente a T20 aprovada, com isolamento e proveniência verificáveis. Não inferir crédito reconhecido ou validade fiscal real de material sandbox.
 5. Testar o DoD literal, cenários negativos, integridade/formato e autorização aplicáveis; cumprir CI integral no HEAD exato, revisão independente, autorização específica do merge de implementação e certificação pós-merge. Atualizar cronograma e handoff com evidência.
 
-## Dependências e fronteiras preservadas
+## Dependências e fronteiras preservadas (vigentes)
 
 - T19: certificado interno e fechamento documental governado acima. Não repetir fase certificada sem regressão comprovada.
 - #625: cinco P3 de engenharia interna obrigatórios antes da T21/Portal/produção. A issue não bloqueia a T20 documental após T19 certificada; não antecipar exposição HTTP/Portal de operações T19 para contornar o gate.
@@ -80,6 +90,6 @@ O prazo de cinco dias é uma estimativa histórica, não um compromisso de entre
 - Ordem preservada: T20 → T21 → T22 → 18 etapas ERP → T23–T33 → H01–H06, com ERP-15 antes de T23/H01 e os 59 IDs históricos intactos. ERP não inicia por esta liberação.
 - Production observada `a5989e523c871c288bc2388c9508c1738082bb9a`. Sem deploy, migração produtiva, credencial real, homologação fiscal externa, publicação comercial ou reconhecimento real de crédito nesta entrega.
 
-## Evidência e próximos registros
+## Retomada executável — estado vigente
 
-A PR documental de `docs/nfcore-t19-postmerge-closeout` e a #626 registram a conclusão do gate documental, o commit integrado e as execuções próprias. A PR futura de implementação T20 registrará seu próprio HEAD, diff, CI, revisão e autorização; nenhuma certificação futura é herdada deste handoff.
+A T19 e seu fechamento documental foram concluídos (#624/#627). A T20 está integrada e tecnicamente certificada (#628), não deve ser reconstruída. Para retomar: confirmar main/HEAD/CI da #629; finalizar sua revisão e T2 efetiva, integração autorizada e CI pós-merge documental, registrar evidências na #626/cronograma XLSX e encerrar #626. Em seguida executar os cinco refinamentos internos da #625 conforme mapa de impacto registrado na issue; política SELIC/revaloração exige validação contábil/fiscal explícita. Comprovar também a exclusão da oportunidade documental dos totais econômicos. Preservar #625 aberta até todos os gates aprovados e certificação pós-merge. Só então liberar T21; T22, ERP e demais dependências seguem a ordem vigente. Nenhuma fase posterior foi iniciada por este fechamento.
