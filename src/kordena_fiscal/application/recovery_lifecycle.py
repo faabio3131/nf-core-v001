@@ -287,8 +287,8 @@ def report(store: EconomyStore, issuer: Cnpj, today: date) -> dict[str, Any]:
                 managed_request_identity(request) is not None for request in state.seen
             ),
             **selic_reconciliation(
-                state.balances["available"], date.fromisoformat(origin.anchor),
-                date.fromisoformat(origin.as_of),
+                state.balances["available"], origin.amount, date.fromisoformat(origin.anchor),
+                date.fromisoformat(origin.as_of), origin.rate_memory,
             ),
         })
     return {

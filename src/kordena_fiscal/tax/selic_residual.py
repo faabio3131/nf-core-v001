@@ -6,7 +6,7 @@ from datetime import date
 
 from kordena_fiscal.domain import FiscalValidationError
 from kordena_fiscal.tax.credit_ledger import Amount
-from kordena_fiscal.tax.tax_recovery import federal_interest
+from kordena_fiscal.tax.tax_recovery import federal_interest_from_memory
 
 
 def require_selic_reservation(available: Amount, requested: Amount) -> None:
@@ -34,7 +34,7 @@ def require_selic_reservation(available: Amount, requested: Amount) -> None:
 
 
 def selic_reconciliation(
-    available: Amount, payment: date, valuation: date,
+    available: Amount, original: Amount, payment: date, valuation: date, rate_memory: object,
 ) -> dict[str, int | str | None]:
     """Describe the available component against the original, fixed T17 basis.
 
@@ -42,8 +42,14 @@ def selic_reconciliation(
     Standalone T18 movements may also explain differences. Missing basis is
     explicit; no current-month revaluation or fabricated rate is attempted.
     """
-    projected = federal_interest(available.principal_cents, payment, valuation)
-    expected = projected[0] if projected is not None else None
+    original_interest = federal_interest_from_memory(
+        original.principal_cents, payment, valuation, rate_memory,
+    )
+    expected = (
+        federal_interest_from_memory(available.principal_cents, payment, valuation, rate_memory)
+        if original_interest == original.selic_cents
+        else None
+    )
     difference = available.selic_cents - expected if expected is not None else None
     if available.principal_cents == 0 and available.selic_cents > 0:
         status = "stranded_residual"

@@ -10,7 +10,7 @@ from __future__ import annotations
 import base64
 import hashlib
 import json
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import date
 from typing import Any
 
@@ -107,6 +107,7 @@ class SourceLot:
     anchor: str
     receipt_id: str | None
     payment_sha256: str | None
+    rate_memory: object = field(default=None, repr=False, compare=False, hash=False)
 
     @property
     def fiscal_identity(self) -> tuple[str, str, str | None, str | None]:
@@ -151,7 +152,10 @@ def _candidate(
         payment_sha = None
     else:
         raise FiscalValidationError("unsupported ledger modality")
-    return SourceLot(amount, as_of, modality, finding["anchor"], receipt, payment_sha)
+    return SourceLot(
+        amount, as_of, modality, finding["anchor"], receipt, payment_sha,
+        finding.get("rate_memory"),
+    )
 
 
 @dataclass(frozen=True, slots=True)

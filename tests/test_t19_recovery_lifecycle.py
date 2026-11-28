@@ -1164,3 +1164,21 @@ def test_postgres_selic_residual_is_visible_and_final_reserve_is_atomic(
     assert diagnostic["status"] == "balanced"
     balance = after["ledger"]["by_tax"]["pis"]
     assert balance["reserved"] == command.amount.model_dump()
+
+
+def test_postgres_standalone_residual_uses_persisted_memory_and_is_scope_local(
+    economy_database, mapping, monkeypatch,
+):
+    db = economy_database
+    scope, command, _ = _fixture(db, mapping)
+    with db.economy(scope) as store:
+        before = report(store, BUYER, TODAY)
+    diagnostic, = before["selic_reconciliation"]
+    assert diagnostic["status"] == "balanced"
+    assert diagnostic["expected_selic_cents"] == command.amount.selic_cents
+    assert diagnostic["has_managed_movements"] is False
+    monkeypatch.setattr("kordena_fiscal.tax.tax_recovery.monthly_selic", lambda: {})
+    with db.economy(scope) as store:
+        assert report(store, BUYER, TODAY) == before
+    with db.economy(replace(scope, tenant_id="other-tenant")) as store:
+        assert report(store, BUYER, TODAY)["selic_reconciliation"] == []

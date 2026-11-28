@@ -83,6 +83,48 @@ def selic_reference() -> dict[str, Any]:
     }
 
 
+def _interest_from_basis_points(principal: int, basis_points: int) -> int:
+    return _round_cents(Fraction(principal * basis_points, 10000))
+
+
+def federal_interest_from_memory(
+    principal: int, payment: date, valuation: date, memory: object,
+) -> int | None:
+    """Evaluate an already authenticated T17 rate memory without today's table.
+
+    This is a historical diagnostic, not new eligibility or a rate source.
+    Return None for incomplete/malformed evidence rather than substituting rates.
+    The caller must bind the memory to its immutable source and original amount.
+    """
+    if type(principal) is not int or principal < 0 or valuation < payment:
+        raise FiscalValidationError("invalid recovery principal or dates")
+    if not isinstance(memory, list):
+        return None
+    current, final = payment.replace(day=1), valuation.replace(day=1)
+    if current == final:
+        return 0 if not memory else None
+    current = next_month(current)
+    total = 0
+    for index, item in enumerate(memory):
+        if (
+            not isinstance(item, dict)
+            or set(item) != {"competence", "basis_points", "kind"}
+            or item["competence"] != current.isoformat()
+            or type(item["basis_points"]) is not int
+        ):
+            return None
+        rate = item["basis_points"]
+        if current == final:
+            if rate != 100 or item["kind"] != "final_month" or index != len(memory) - 1:
+                return None
+            return _interest_from_basis_points(principal, total + rate)
+        if not 0 < rate <= 10000 or item["kind"] != "selic":
+            return None
+        total += rate
+        current = next_month(current)
+    return None
+
+
 def federal_interest(
     principal: int, payment: date, valuation: date
 ) -> tuple[int, list[dict[str, Any]]] | None:
@@ -105,7 +147,7 @@ def federal_interest(
         memory.append({"competence": key, "basis_points": rates[key], "kind": "selic"})
         current = next_month(current)
     memory.append({"competence": final.isoformat(), "basis_points": 100, "kind": "final_month"})
-    amount = _round_cents(Fraction(principal * sum(x["basis_points"] for x in memory), 10000))
+    amount = _interest_from_basis_points(principal, sum(x["basis_points"] for x in memory))
     return amount, memory
 
 
