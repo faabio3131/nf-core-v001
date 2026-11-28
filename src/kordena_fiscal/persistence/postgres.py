@@ -79,6 +79,16 @@ from .customer_configuration_schema import (
     CUSTOMER_CONFIGURATION_VERSION,
 )
 from .fiscal_scope_schema import FISCAL_SCOPE_NAME, FISCAL_SCOPE_SCHEMA, FISCAL_SCOPE_VERSION
+from .iron_a1_delegation import (
+    IRON_A1_DELEGATION_NAME,
+    IRON_A1_DELEGATION_SCHEMA,
+    IRON_A1_DELEGATION_VERSION,
+)
+from .nfse_dps_numbering_schema import (
+    NFSE_DPS_NUMBERING_NAME,
+    NFSE_DPS_NUMBERING_SCHEMA,
+    NFSE_DPS_NUMBERING_VERSION,
+)
 from .ports import PersistenceStateError
 from .pricing_catalog import PostgresPricingCatalogRepository
 from .public_trial_rate_schema import (
@@ -889,6 +899,29 @@ class PostgresFiscalDatabase:
                         ),
                     )
                     new_versions.append(BLING_WORKER_POLICY_VERSION)
+                if NFSE_DPS_NUMBERING_VERSION not in applied:
+                    for statement in NFSE_DPS_NUMBERING_SCHEMA:
+                        raw.execute(statement)
+                    raw.execute(
+                        "INSERT INTO fm_schema_migrations (version, name, applied_at) "
+                        "VALUES (%s, %s, %s)",
+                        (
+                            NFSE_DPS_NUMBERING_VERSION,
+                            NFSE_DPS_NUMBERING_NAME,
+                            datetime.now().astimezone().isoformat(),
+                        ),
+                    )
+                    new_versions.append(NFSE_DPS_NUMBERING_VERSION)
+                if IRON_A1_DELEGATION_VERSION not in applied:
+                    for statement in IRON_A1_DELEGATION_SCHEMA:
+                        raw.execute(statement)
+                    raw.execute(
+                        "INSERT INTO fm_schema_migrations (version, name, applied_at) "
+                        "VALUES (%s, %s, %s)",
+                        (IRON_A1_DELEGATION_VERSION, IRON_A1_DELEGATION_NAME,
+                         datetime.now().astimezone().isoformat()),
+                    )
+                    new_versions.append(IRON_A1_DELEGATION_VERSION)
                 raw.commit()
                 return tuple(new_versions)
             except Exception:
@@ -916,11 +949,19 @@ class PostgresFiscalDatabase:
         applied = self.applied_migrations()
         baseline = tuple(range(1, COGNITIVE_QUOTA_VERSION + 1))
         bling_ready = tuple(range(1, BLING_WORKER_POLICY_VERSION + 1))
-        # A code-only release accepts either original production baseline or
-        # the fully installed optional Bling schema. Partial v20 is NOT ready.
-        if (require_bling and applied != bling_ready) or (
-            not require_bling and applied not in (baseline, bling_ready)
-        ):
+        nfse_baseline = (*baseline, NFSE_DPS_NUMBERING_VERSION)
+        nfse_bling = (*bling_ready, NFSE_DPS_NUMBERING_VERSION)
+        a1_nfse_baseline = (*nfse_baseline, IRON_A1_DELEGATION_VERSION)
+        a1_nfse_bling = (*nfse_bling, IRON_A1_DELEGATION_VERSION)
+        # Optional Bling 20/21 and additive DPS 22 / IRON A1 23 (same
+        # boundaries as main). Partial Bling installation remains forbidden.
+        ready_schemas: tuple[tuple[int, ...], ...] = (
+            bling_ready, nfse_bling, a1_nfse_bling,
+        ) if require_bling else (
+            baseline, bling_ready, nfse_baseline, nfse_bling,
+            a1_nfse_baseline, a1_nfse_bling,
+        )
+        if applied not in ready_schemas:
             raise PersistenceStateError(
                 "PostgreSQL schema is not at the certified migration version"
             )
@@ -943,6 +984,32 @@ class PostgresFiscalDatabase:
             raise PersistenceStateError(
                 "PostgreSQL schema is not at the certified migration version"
             ) from exc
+        if NFSE_DPS_NUMBERING_VERSION in applied:
+            try:
+                with self.connection() as connection:
+                    numbered = connection.execute(
+                        "SELECT to_regclass('public.fm_nfse_dps_counters'), "
+                        "to_regclass('public.fm_nfse_dps_reservations')"
+                    ).fetchone()
+                if numbered is None or len(numbered) != 2 or not all(numbered):
+                    raise PersistenceStateError("DPS serial tables are missing")
+            except PersistenceStateError:
+                raise
+            except Exception as exc:
+                raise PersistenceStateError("DPS serial schema is not ready") from exc
+        if IRON_A1_DELEGATION_VERSION in applied:
+            try:
+                with self.connection() as connection:
+                    delegation = connection.execute(
+                        "SELECT to_regclass('public.fm_iron_a1_delegations'), "
+                        "to_regclass('public.fm_iron_a1_delegations_expires_idx')"
+                    ).fetchone()
+                if delegation is None or len(delegation) != 2 or not all(delegation):
+                    raise PersistenceStateError("A1 delegation schema is incomplete")
+            except PersistenceStateError:
+                raise
+            except Exception as exc:
+                raise PersistenceStateError("A1 delegation schema is not ready") from exc
         if not require_bling:
             return applied
         try:

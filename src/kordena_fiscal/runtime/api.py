@@ -1088,6 +1088,8 @@ def create_runtime_app(
             password_reset_completed=commercial_activation_completed,
             portal_executor=portal_executor,
             certificate_vault=certificate_vault,
+            iron_a1_database=runtime.database,
+            iron_a1_allowed_origin=os.environ.get("NFCORE_IRON_A1_ALLOWED_ORIGIN"),
             pricing_administration=pricing_administration,
             commercial_release_administration=commercial_release_administration,
             commercial_checkout=selected_checkout,

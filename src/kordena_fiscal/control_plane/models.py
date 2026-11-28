@@ -60,6 +60,7 @@ class SecretReferenceKind(StrEnum):
 
 
 class ControlPlaneAuditAction(StrEnum):
+    CERTIFICATE_WITHDRAWAL_REQUESTED = "certificate.withdrawal_requested"
     FISCAL_INTENT_PREPARED = "fiscal_intent.prepared"
     FISCAL_INTENT_RECOVERED = "fiscal_intent.recovered"
     FISCAL_INTENT_RESUMED = "fiscal_intent.resumed"
