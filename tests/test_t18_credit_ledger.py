@@ -847,3 +847,251 @@ def test_postgres_scan_bounds_fail_closed(economy_database, mapping, monkeypatch
             with pytest.raises(FiscalValidationError, match="event bound"):
                 _write(store, scope, proof, context, _event(second, 1, "reserved", reserve.amount))
         assert reconcile(store, BUYER)["event_count"] == 3
+
+
+@pytest.mark.parametrize("bound", ["MAX_LOTS", "MAX_SCAN_EVENTS"])
+def test_postgres_prospective_new_lot_capacity(economy_database, mapping, monkeypatch, bound):
+    db = economy_database
+    scope = _setup(db, mapping, BUYER)
+    proof = verify_credit_unit(db, scope, BUYER)
+    _, context = historical_issuer_context(db, scope, MONTH)
+    first, second, third = _federal_seed(
+        db, scope, MONTH, [("pis", 100), ("pis", 110), ("pis", 124)],
+    )
+    monkeypatch.setattr(ledger, bound, 2)
+    with db.economy(scope) as store:
+        a = _write(store, scope, proof, context, first)
+        assert reconcile(store, BUYER)["lot_count"] == 1
+        _write(store, scope, proof, context, second)
+        before = reconcile(store, BUYER)
+        assert before["lot_count"] == before["event_count"] == 2
+        with pytest.raises(FiscalValidationError, match="prospective .*bound"):
+            _write(store, scope, proof, context, third)
+        assert store.record(TABLE, journal_id(BUYER, third.finding_id)) is None
+        replay = _write(store, scope, proof, context, first)
+        assert replay["replay"] is True and replay["digest"] == a["digest"]
+        assert reconcile(store, BUYER) == before
+        assert len(history(store, BUYER, MONTH, first.finding_id)["events"]) == 1
+        assert reconcile(store, BUYER, MONTH) == before
+    with db.economy(replace(scope, tenant_id="isolated-capacity-tenant")) as other:
+        assert reconcile(other, BUYER)["lot_count"] == 0
+    with db.economy(scope) as store:
+        assert reconcile(store, BUYER) == before
+
+
+def test_postgres_existing_lot_at_global_lot_limit(economy_database, mapping, monkeypatch):
+    db = economy_database
+    scope = _setup(db, mapping, BUYER)
+    proof = verify_credit_unit(db, scope, BUYER)
+    _, context = historical_issuer_context(db, scope, MONTH)
+    first, = _federal_seed(db, scope, MONTH, [("pis", 334)])
+    monkeypatch.setattr(ledger, "MAX_LOTS", 1)
+    monkeypatch.setattr(ledger, "MAX_SCAN_EVENTS", 2)
+    with db.economy(scope) as store:
+        _write(store, scope, proof, context, first)
+        reserve = _event(first, 1, "reserved", Amount(principal_cents=10, selic_cents=1))
+        saved = _write(store, scope, proof, context, reserve)
+        before = history(store, BUYER, MONTH, first.finding_id)
+        with pytest.raises(FiscalValidationError, match="prospective .*event bound"):
+            _write(store, scope, proof, context, _event(first, 2, "released", reserve.amount,
+                                                        reservation_id="request-1"))
+        assert history(store, BUYER, MONTH, first.finding_id) == before
+        assert _write(store, scope, proof, context, reserve)["digest"] == saved["digest"]
+        with pytest.raises(FiscalValidationError, match="request id conflict"):
+            _write(store, scope, proof, context, reserve.model_copy(
+                update={"review_reference": "different"},
+            ))
+        with pytest.raises(FiscalValidationError, match="optimistic version conflict"):
+            _write(store, scope, proof, context, reserve.model_copy(
+                update={"request_id": "stale-new-request"},
+            ))
+        assert reconcile(store, BUYER)["event_count"] == 2
+
+
+@pytest.mark.parametrize("bound", ["MAX_LOTS", "MAX_SCAN_EVENTS"])
+def test_postgres_prospective_capacity_across_competences(
+    economy_database, mapping, monkeypatch, bound,
+):
+    db = economy_database
+    scope = _setup(db, mapping, BUYER)
+    proof = verify_credit_unit(db, scope, BUYER)
+    feb = date(2026, 2, 1)
+    _, jan_context = historical_issuer_context(db, scope, MONTH)
+    _, feb_context = historical_issuer_context(db, scope, feb)
+    first, = _federal_seed(db, scope, MONTH, [("pis", 334)], raw=b"capacity-DARF-jan")
+    second, = _federal_seed(
+        db, scope, feb, [("pis", 334)], receipt="capacity-feb", raw=b"capacity-DARF-feb",
+    )
+    monkeypatch.setattr(ledger, bound, 1)
+    with db.economy(scope) as store:
+        _write(store, scope, proof, jan_context, first)
+        before = reconcile(store, BUYER)
+        assert reconcile(store, BUYER, feb)["event_count"] == 0
+        with pytest.raises(FiscalValidationError, match="prospective .*bound"):
+            _write(store, scope, proof, feb_context, second)
+        assert store.record(TABLE, journal_id(BUYER, second.finding_id)) is None
+        assert reconcile(store, BUYER) == before
+    # At the next exact bound both competences remain independently readable.
+    monkeypatch.setattr(ledger, bound, 2)
+    with db.economy(scope) as store:
+        _write(store, scope, proof, feb_context, second)
+        assert reconcile(store, BUYER)["event_count"] == 2
+        assert reconcile(store, BUYER, MONTH)["event_count"] == 1
+        assert reconcile(store, BUYER, feb)["event_count"] == 1
+
+
+@pytest.mark.parametrize("bound", ["MAX_LOTS", "MAX_SCAN_EVENTS"])
+def test_postgres_last_capacity_slot_is_serialized(economy_database, mapping, monkeypatch, bound):
+    db = economy_database
+    scope = _setup(db, mapping, BUYER)
+    proof = verify_credit_unit(db, scope, BUYER)
+    _, context = historical_issuer_context(db, scope, MONTH)
+    first, second, third = _federal_seed(
+        db, scope, MONTH, [("pis", 100), ("pis", 110), ("pis", 124)],
+    )
+    monkeypatch.setattr(ledger, bound, 2)
+    with db.economy(scope) as store:
+        _write(store, scope, proof, context, first)
+    barrier = Barrier(2)
+
+    def submit(command):
+        barrier.wait(timeout=20)
+        try:
+            with db.economy(scope) as store:
+                _write(store, scope, proof, context, command)
+            return True
+        except FiscalValidationError as exc:
+            assert "prospective" in str(exc) and "bound" in str(exc)
+            return False
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        results = list(pool.map(submit, (second, third)))
+    assert sorted(results) == [False, True]
+    with db.economy(scope) as store:
+        report = reconcile(store, BUYER)
+        assert report["lot_count"] == report["event_count"] == 2
+        for command, committed in zip((second, third), results, strict=True):
+            key = journal_id(BUYER, command.finding_id)
+            assert (store.record(TABLE, key) is not None) == committed
+
+
+def test_postgres_capacity_slot_released_after_rollback(economy_database, mapping, monkeypatch):
+    db = economy_database
+    scope = _setup(db, mapping, BUYER)
+    proof = verify_credit_unit(db, scope, BUYER)
+    _, context = historical_issuer_context(db, scope, MONTH)
+    first, second = _federal_seed(db, scope, MONTH, [("pis", 150), ("pis", 184)])
+    monkeypatch.setattr(ledger, "MAX_LOTS", 2)
+    monkeypatch.setattr(ledger, "MAX_SCAN_EVENTS", 2)
+    with db.economy(scope) as store:
+        _write(store, scope, proof, context, first)
+        before = reconcile(store, BUYER)
+    with pytest.raises(RuntimeError, match="induced rollback"), db.economy(scope) as store:
+        _write(store, scope, proof, context, second)
+        assert reconcile(store, BUYER)["event_count"] == 2
+        raise RuntimeError("induced rollback")
+    with db.economy(scope) as store:
+        assert reconcile(store, BUYER) == before
+        assert store.record(TABLE, journal_id(BUYER, second.finding_id)) is None
+        _write(store, scope, proof, context, second)
+        assert reconcile(store, BUYER)["event_count"] == 2
+
+
+@pytest.mark.parametrize("sizes,key,movements,bounds,error", [
+    ((), "new", 1, (1, 1, 1), None),
+    ((1,), "new", 1, (1, 2, 2), "lot bound"),
+    ((1,), "existing", 1, (1, 2, 2), None),
+    ((1,), "existing", 1, (1, 1, 2), "history exceeds event bound"),
+    ((1,), "existing", 1, (1, 2, 1), "reconciliation event bound"),
+    ((1, 2), "existing", 1, (2, 3, 4), None),
+    ((1, 2), "existing", 1, (2, 3, 3), "reconciliation event bound"),
+    ((1, 2), "new", 1, (3, 3, 4), None),
+    ((1, 2), "new", 1, (2, 3, 4), "lot bound"),
+    ((1, 2), "new", 1, (3, 3, 3), "reconciliation event bound"),
+    ((2,), "existing", 2, (1, 4, 4), None),
+    ((2,), "existing", 2, (1, 3, 4), "history exceeds event bound"),
+    ((2,), "existing", 2, (1, 4, 3), "reconciliation event bound"),
+    ((1,), "existing", 0, (2, 2, 2), "movement count"),
+    ((1,), "existing", -1, (2, 2, 2), "movement count"),
+    ((1,), "existing", True, (2, 2, 2), "movement count"),
+])
+def test_prospective_capacity_uses_verified_global_journals(sizes, key, movements, bounds, error):
+    # The authority has already verified contents; this unit tests only cardinality.
+    # Deliberately place the second lot in another competence.
+    dates = (MONTH, date(2026, 2, 1))
+    journals = {
+        ("existing" if i == 0 else "second", dates[i].isoformat()): (
+            State(), [{} for _ in range(size)],
+        )
+        for i, size in enumerate(sizes)
+    }
+    verified = ledger.VerifiedRecoveryScope([], journals)
+    kwargs = dict(
+        key=key, period=MONTH, movements=movements,
+        max_lots=bounds[0], max_events=bounds[1], max_scan_events=bounds[2],
+    )
+    if error:
+        with pytest.raises(FiscalValidationError, match=error):
+            ledger._require_write_capacity(verified, **kwargs)
+    else:
+        assert ledger._require_write_capacity(verified, **kwargs) is None
+    assert tuple(len(rows) for _, rows in verified.journals.values()) == sizes
+
+
+def test_postgres_per_lot_capacity_preserves_history_and_replay(
+    economy_database, mapping, monkeypatch,
+):
+    db = economy_database
+    scope = _setup(db, mapping, BUYER)
+    proof = verify_credit_unit(db, scope, BUYER)
+    _, context = historical_issuer_context(db, scope, MONTH)
+    first, = _federal_seed(db, scope, MONTH, [("pis", 334)])
+    monkeypatch.setattr(ledger, "MAX_EVENTS", 2)
+    with db.economy(scope) as store:
+        _write(store, scope, proof, context, first)
+        reserve = _event(first, 1, "reserved", Amount(principal_cents=10, selic_cents=1))
+        _write(store, scope, proof, context, reserve)
+        before = history(store, BUYER, MONTH, first.finding_id)
+        with pytest.raises(FiscalValidationError, match="optimistic version conflict"):
+            _write(store, scope, proof, context, _event(first, 2, "released", reserve.amount,
+                                                        reservation_id="request-1"))
+        assert _write(store, scope, proof, context, reserve)["replay"] is True
+        assert history(store, BUYER, MONTH, first.finding_id) == before
+        assert reconcile(store, BUYER)["event_count"] == 2
+
+
+def test_postgres_last_event_slot_in_distinct_existing_lots(
+    economy_database, mapping, monkeypatch,
+):
+    db = economy_database
+    scope = _setup(db, mapping, BUYER)
+    proof = verify_credit_unit(db, scope, BUYER)
+    _, context = historical_issuer_context(db, scope, MONTH)
+    first, second = _federal_seed(db, scope, MONTH, [("pis", 150), ("pis", 184)])
+    monkeypatch.setattr(ledger, "MAX_LOTS", 2)
+    monkeypatch.setattr(ledger, "MAX_SCAN_EVENTS", 3)
+    with db.economy(scope) as store:
+        for command in (first, second):
+            _write(store, scope, proof, context, command)
+    barrier = Barrier(2)
+
+    def submit(command):
+        move = _event(command, 1, "reserved", Amount(principal_cents=10, selic_cents=1))
+        barrier.wait(timeout=20)
+        try:
+            with db.economy(scope) as store:
+                _write(store, scope, proof, context, move)
+            return True
+        except FiscalValidationError as exc:
+            assert "prospective case reconciliation event bound" in str(exc)
+            return False
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        results = list(pool.map(submit, (first, second)))
+    assert sorted(results) == [False, True]
+    with db.economy(scope) as store:
+        result = reconcile(store, BUYER)
+        assert result["lot_count"] == 2 and result["event_count"] == 3
+        for command, committed in zip((first, second), results, strict=True):
+            events = history(store, BUYER, MONTH, command.finding_id)["events"]
+            assert len(events) == 1 + int(committed)

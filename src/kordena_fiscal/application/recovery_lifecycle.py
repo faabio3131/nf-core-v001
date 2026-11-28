@@ -25,6 +25,7 @@ from kordena_fiscal.application.credit_ledger import (
     _post_movement,
     _reconcile_verified,
     _replay,
+    _require_write_capacity,
     _verified_source,
     _verify_managed_scope,
     journal_id,
@@ -207,9 +208,13 @@ def _apply(
             origin = _historical_source(store, issuer, period, first)
             _validate_payment(origin.modality, origin.anchor, terms, day)
         if movements:
-            count = _reconcile_verified(store, issuer, verified)["event_count"]
-            if count + len(movements) > MAX_SCAN_EVENTS:
-                raise FiscalValidationError("case reconciliation event bound exceeded")
+            # Retain the existing monetary/provenance reconciliation guard.
+            _reconcile_verified(store, issuer, verified)
+            _require_write_capacity(
+                verified, key=journal_id(issuer, terms.finding_id), period=period,
+                movements=len(movements), max_lots=MAX_LOTS, max_events=MAX_EVENTS,
+                max_scan_events=MAX_SCAN_EVENTS,
+            )
         links = []
         for index, movement in enumerate(movements, 1):
             last_row = journal[-1]

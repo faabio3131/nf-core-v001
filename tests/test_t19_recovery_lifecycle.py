@@ -1026,3 +1026,81 @@ def test_postgres_cli_real_session_mfa_and_input_gates(
     data = json.loads(result.stdout)
     assert data["cases"][0]["status"] == "requested"
     assert data["ledger"]["by_tax"]["icms"]["reserved"] == cmd.amount.model_dump()
+
+
+@pytest.mark.parametrize("bound", ["MAX_EVENTS", "MAX_SCAN_EVENTS"])
+def test_postgres_capacity_preflights_complete_managed_plan(
+    economy_database, mapping, monkeypatch, bound,
+):
+    db = economy_database
+    scope, cmd, terms = _fixture(db, mapping)
+    service, token, csrf = _session(db, scope)
+    for version, action in enumerate(("request", "transmit", "deny")):
+        _run(service, token, csrf, scope, cmd, terms, version, action)
+    before = service.read(token, csrf, scope.unit_id, MONTH)
+    assert before["ledger"]["event_count"] == 4
+    monkeypatch.setattr(ledger, bound, 5)
+    original = lifecycle._post_movement
+    attempts = []
+
+    def track(*args, **kwargs):
+        attempts.append(1)
+        return original(*args, **kwargs)
+
+    monkeypatch.setattr(lifecycle, "_post_movement", track)
+    # Invalidate needs two T18 movements; one remaining slot is insufficient.
+    with pytest.raises(FiscalValidationError, match="prospective .*event bound"):
+        _run(service, token, csrf, scope, cmd, terms, 3, "invalidate")
+    assert attempts == []
+    assert service.read(token, csrf, scope.unit_id, MONTH) == before
+    assert _run(service, token, csrf, scope, cmd, terms, 2, "deny")["replay"] is True
+    monkeypatch.setattr(ledger, bound, 6)
+    result = _run(service, token, csrf, scope, cmd, terms, 3, "invalidate")
+    assert result["status"] == "invalidated" and len(attempts) == 2
+    after = service.read(token, csrf, scope.unit_id, MONTH)
+    assert after["ledger"]["event_count"] == 6
+    assert _run(service, token, csrf, scope, cmd, terms, 3, "invalidate")["replay"] is True
+    assert service.read(token, csrf, scope.unit_id, MONTH) == after
+
+
+def test_postgres_capacity_allows_no_posting_case_event(economy_database, mapping, monkeypatch):
+    db = economy_database
+    scope, cmd, terms = _fixture(db, mapping)
+    service, token, csrf = _session(db, scope)
+    monkeypatch.setattr(ledger, "MAX_SCAN_EVENTS", 2)
+    _run(service, token, csrf, scope, cmd, terms, 0, "request")
+    result = _run(service, token, csrf, scope, cmd, terms, 1, "reject")
+    assert result["status"] == "requested"
+    before = service.read(token, csrf, scope.unit_id, MONTH)
+    assert before["ledger"]["event_count"] == 2
+    with pytest.raises(FiscalValidationError, match="prospective .*event bound"):
+        _run(service, token, csrf, scope, cmd, terms, 2, "transmit")
+    assert _run(service, token, csrf, scope, cmd, terms, 1, "reject")["replay"] is True
+    assert service.read(token, csrf, scope.unit_id, MONTH) == before
+
+
+def test_postgres_capacity_rollback_of_second_managed_posting(
+    economy_database, mapping, monkeypatch,
+):
+    db = economy_database
+    scope, cmd, terms = _fixture(db, mapping)
+    service, token, csrf = _session(db, scope)
+    for version, action in enumerate(("request", "transmit", "deny")):
+        _run(service, token, csrf, scope, cmd, terms, version, action)
+    monkeypatch.setattr(ledger, "MAX_SCAN_EVENTS", 6)
+    before = service.read(token, csrf, scope.unit_id, MONTH)
+    original = EconomyStore.append_snapshot
+
+    def fail(self, **kwargs):
+        if kwargs["record_id"].startswith("credit-ledger-") and kwargs["version"] == 6:
+            raise RuntimeError("induced second posting failure")
+        return original(self, **kwargs)
+
+    with monkeypatch.context() as patch:
+        patch.setattr(EconomyStore, "append_snapshot", fail)
+        with pytest.raises(RuntimeError, match="second posting"):
+            _run(service, token, csrf, scope, cmd, terms, 3, "invalidate")
+    assert service.read(token, csrf, scope.unit_id, MONTH) == before
+    result = _run(service, token, csrf, scope, cmd, terms, 3, "invalidate")
+    assert result["status"] == "invalidated"
+    assert service.read(token, csrf, scope.unit_id, MONTH)["ledger"]["event_count"] == 6

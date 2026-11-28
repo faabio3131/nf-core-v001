@@ -1,0 +1,31 @@
+# #625-02 — Capacidade prospectiva dos movimentos T18/T19
+
+## CURRENT — candidata publicada para certificação (27/11/2026)
+
+Base main `7464b350c1cc6e7b9b69067d6ac5b076f392defe`: #625-01 tecnicamente certificada, CI pós-merge #46021885188 e governança #46021885090 SUCCESS, 44/44 etapas, 7.342 Python, 30 frontend, 90 E2E; 1 skip fora T19/T20. A reconciliação de 11 documentos canônicos do subbloco anterior está no commit documental `8eae80d165442e3ebb6bdec99e2e9fe1f1c7bf7f`, separado da implementação, na mesma candidata; não está integrada à main. Master XLSX versionado 20/51, B13=PENDENTE. A #625-02 foi autorizada para implementação pelo proprietário. Gate: CI integral no SHA publicado, revisão independente Gemini em TXT, T2 efetiva fora Draft, merge específico e certificação pós-merge. Não declarar PostgreSQL aprovado por evidências isoladas. #625 segue aberta; T21 bloqueada. Ver issue #625 para HEAD/PR/workflows reais.
+
+## HISTÓRICO — preparação isolada (27/11/2026)
+
+- Base auditada e confirmada no GitHub: `7464b350c1cc6e7b9b69067d6ac5b076f392defe` (merge #630, arvore `41fc7263a291e56522f540745dadb32448b68d8c`). #625-01: MERGED_PENDING_POST_MERGE_CERTIFICATION na consulta; governanca pos-merge #46021885090 SUCCESS, CI #46021885188 em andamento. Revalidar antes de publicar. Nao herdar resultados pre-merge.
+- Estado desta candidata #625-02: PREPARED_LOCAL_NOT_PUBLISHED. Nenhuma branch/PR/commit ou mudanca na main foi criada. A publicacao exige fechamento anterior, reconciliacao documental e revalidacao do SHA/base. Este handoff e snapshot de preparacao; atualizar CURRENT antes de abrir PR.
+- Reconciliacao documental T20 ja certificada (#628/#629; #626 fechada); Master 20/51. Os documentos da main ainda incluem snapshots anteriores e precisam de reconciliacao do #625-01 com os resultados reais da CI, sem reclassificar #625-02 como entregue. O XLSX gate #625 continua pendente. Preservar os 59 IDs historicos, 51 internos, 18 ERP e DoD.
+
+## Causa e escopo congelado
+
+`application/credit_ledger.py::_post_movement` confere integridade do emissor, mas descartava a prova e so conferia o limite de versao individual. `_guard_existing_lots` tem proposito diferente (sobreposicao/proveniencia), ignora o proprio lote e filtra competencia/tributo. `recovery_integrity.verify_scope` valida o estado existente, mas nao impede que uma nova gravacao torne o escopo impossivel de reconciliar. A T19 ja fazia preflight global de eventos, nao compartilhado com a escrita avulsa e sem reservar o plano inteiro por lote.
+
+TARGET: helper unico `_require_write_capacity` em credit_ledger, derivado exclusivamente de `VerifiedRecoveryScope.journals` (sem nova persistencia ou cache de autoridade). Limites canonicos mantidos: 1000 lotes, 1000 eventos por lote, 5000 eventos globais por emissor nos quatro eixos de escopo. Aplicar menor limite entre autoridade T18 e parametros existentes do lifecycle. Em T18, apos lock, integridade, replay idempotente e versao otimista, antes de qualquer append; +1 evento e +1 lote somente se novo. Em T19, antes da primeira postagem de todo plano de 1 ou 2 movimentos, manter `_reconcile_verified` de proveniencia/valores e savepoint; eventos sem movimento nao consomem capacidade do ledger. Nao validar estado gerenciado intermediario despareado. Preservar replay e leitura no limite exato, sem truncamento ou reset automatico. Acima do limite preexistente, fail-closed permanece. Exaustao pode bloquear movimentos de desfazimento, pois eles tambem sao append-only; nao criar excecao que quebre a reportabilidade. Escala e operacao sob saturacao real exigem avaliacao do #625-05.
+
+## Mapa de impacto
+
+- `src/kordena_fiscal/application/credit_ledger.py`: helper, retencao da prova local, chamada prospectiva. Preservar gate de versao existente e a validacao de referencias T19.
+- `src/kordena_fiscal/application/recovery_lifecycle.py`: reutilizar helper, preservar reconciliacao de valores, ordem de locks, replay e verificacao pos-publicacao.
+- `tests/test_t18_credit_ledger.py`: matriz pura (16 casos) e testes PG de novo lote, lote existente, teto por lote, teto global entre competencias, ultimas vagas concorrentes (novos lotes e dois existentes), rollback, conflitos de idempotencia/versao, relatorio/historico e leitura isolada de outro tenant.
+- `tests/test_t19_recovery_lifecycle.py`: PG de plano de dois movimentos com uma vaga, limite global e por lote, replay, evento sem postagem na saturacao, rollback induzido da segunda postagem e recuperacao da vaga. Testes anteriores preservados.
+- Fora de escopo: alteracao de schema/migration/API/UI/RBAC/RLS/MFA, fontes T17, regra monetaria/SELIC, revaloracao, mudanca de workflow, deploy/efeito fiscal real. P3 residuais R2 do #625-01 preservados; benchmark no #625-05; regressao dedicada de orfao intercompetencia/versao booleana continua rastreada.
+
+## Evidencias e gates
+
+- 39/39 fontes do pacote R2 conferidos localmente contra manifesto criptografico; 7 relevantes confrontados diretamente com arvore Git integrada. Delta local: 4 Python e este handoff. AST e comprimento <=100 em 4/4 Python; ordem de lock/verificacao/capacidade/persistencia revisada estaticamente.
+- 16/16 testes isolados executados com helper, limites e dataclass extraidos por AST dos fontes reais e teste parametrizado da candidata; State/erro sinteticos, sem import integral do repositorio ou banco. Nao equivale a suite de aplicacao. 14 cenarios PG novos parametrizados preparados, NAO EXECUTADOS neste ambiente. Sem PostgreSQL/psycopg, Ruff e Mypy locais. Cobertura adicional de escrita simultanea em tenants independentes ainda deve ser examinada na revisao de isolamento; a nova prova de leitura usa RLS real, nao mock.
+- Antes de publicar, revisar patch contra main, certificar #625-01 com logs e atualizar documentos canonicos/planilha (sem incrementar contagem de tarefas), congelar escopo. Na candidata remota: CI integral PostgreSQL/Ruff/Mypy/seguranca/E2E, logs e revisao Gemini SEM ZIP, T2 efetiva fora Draft, autorizacao humana especifica e pos-merge. Nao marcar #625-02 certificado antecipadamente. #625 aberta; #625-03/04 exigem decisao fiscal/contabil explicita; #625-05 e exclusao documental obrigatorios pre-T21. T21/T22/ERP bloqueados.
