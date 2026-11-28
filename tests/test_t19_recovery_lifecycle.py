@@ -1104,3 +1104,81 @@ def test_postgres_capacity_rollback_of_second_managed_posting(
     result = _run(service, token, csrf, scope, cmd, terms, 3, "invalidate")
     assert result["status"] == "invalidated"
     assert service.read(token, csrf, scope.unit_id, MONTH)["ledger"]["event_count"] == 6
+
+
+@pytest.mark.parametrize(
+    "principal,first_principal,residual,error",
+    [
+        (334, 1, 1, "SELIC residual requires revised partition"),
+        (10, 5, -1, "negative ledger component: SELIC"),
+        (334, 100, 0, None),
+    ],
+)
+def test_postgres_selic_residual_is_visible_and_final_reserve_is_atomic(
+    economy_database, mapping, principal, first_principal, residual, error,
+):
+    db = economy_database
+    scope = _setup(db, mapping, BUYER)
+    _, context = historical_issuer_context(db, scope, MONTH)
+    proof = verify_credit_unit(db, scope, BUYER)
+    command, = _federal_seed(db, scope, MONTH, [("pis", principal)])
+    with db.economy(scope) as store:
+        _write(store, scope, proof, context, command)
+        origin = ledger._historical_source(store, BUYER, MONTH, command)
+    anchor = date.fromisoformat(origin.anchor)
+
+    def terms_for(part, case_id):
+        projected = federal_interest(part, anchor, TODAY)
+        assert projected is not None
+        return _case(command, case_id=case_id, amount={
+            "principal_cents": part, "selic_cents": projected[0],
+        })
+
+    service, token, csrf = _session(db, scope)
+    first = terms_for(first_principal, "a" * 64)
+    last = terms_for(principal - first_principal, "b" * 64)
+    _run(service, token, csrf, scope, command, first, 0, "request")
+    before = service.read(token, csrf, scope.unit_id, MONTH)
+    diagnostic, = before["selic_reconciliation"]
+    assert diagnostic["signed_residual_cents"] == residual
+    assert diagnostic["source_digest"] == command.recovery_digest
+    assert diagnostic["has_managed_movements"] is True
+    assert diagnostic["status"] == ("balanced" if residual == 0 else "valuation_difference")
+    if error is not None:
+        with pytest.raises(FiscalValidationError, match=error):
+            _run(service, token, csrf, scope, command, last, 0, "request")
+        assert service.read(token, csrf, scope.unit_id, MONTH) == before
+        assert _run(service, token, csrf, scope, command, first, 0, "request")["replay"]
+        assert service.read(token, csrf, scope.unit_id, MONTH) == before
+        _run(service, token, csrf, scope, command, first, 1, "cancel")
+        restored = service.read(token, csrf, scope.unit_id, MONTH)
+        assert restored["selic_reconciliation"][0]["status"] == "balanced"
+        whole = terms_for(principal, "c" * 64)
+        _run(service, token, csrf, scope, command, whole, 0, "request")
+    else:
+        _run(service, token, csrf, scope, command, last, 0, "request")
+    after = service.read(token, csrf, scope.unit_id, MONTH)
+    diagnostic, = after["selic_reconciliation"]
+    assert diagnostic["available_principal_cents"] == 0
+    assert diagnostic["available_selic_cents"] == 0
+    assert diagnostic["status"] == "balanced"
+    balance = after["ledger"]["by_tax"]["pis"]
+    assert balance["reserved"] == command.amount.model_dump()
+
+
+def test_postgres_standalone_residual_uses_persisted_memory_and_is_scope_local(
+    economy_database, mapping, monkeypatch,
+):
+    db = economy_database
+    scope, command, _ = _fixture(db, mapping)
+    with db.economy(scope) as store:
+        before = report(store, BUYER, TODAY)
+    diagnostic, = before["selic_reconciliation"]
+    assert diagnostic["status"] == "balanced"
+    assert diagnostic["expected_selic_cents"] == command.amount.selic_cents
+    assert diagnostic["has_managed_movements"] is False
+    monkeypatch.setattr("kordena_fiscal.tax.tax_recovery.monthly_selic", lambda: {})
+    with db.economy(scope) as store:
+        assert report(store, BUYER, TODAY) == before
+    with db.economy(replace(scope, tenant_id="other-tenant")) as store:
+        assert report(store, BUYER, TODAY)["selic_reconciliation"] == []
