@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import ipaddress
+from typing import Any
 
 from fastapi import FastAPI
 from starlette.datastructures import Headers, MutableHeaders
@@ -102,6 +103,26 @@ class SecurityHeadersMiddleware:
         await self.app(scope, receive, send_with_security_headers)
 
 
+# The delegated IRON A1 upload enforces its own single-origin, credential-less
+# CORS contract (NFCORE_IRON_A1_ALLOWED_ORIGIN) inside the router. The global
+# credentialed portal CORS policy must neither answer nor widen it.
+IRON_A1_UPLOAD_PATH = "/v1/iron/a1/upload"
+
+
+class PathScopedCORSMiddleware:
+    """Apply the global CORS policy everywhere except the router-owned A1 upload."""
+
+    def __init__(self, app: ASGIApp, /, **cors_options: Any) -> None:
+        self.app = app
+        self.cors = CORSMiddleware(app, **cors_options)
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] == "http" and scope.get("path") == IRON_A1_UPLOAD_PATH:
+            await self.app(scope, receive, send)
+            return
+        await self.cors(scope, receive, send)
+
+
 def configure_edge_security(app: FastAPI, settings: RuntimeSettings) -> None:
     """Attach fail-closed host, CORS, proxy and response-header boundaries."""
 
@@ -113,7 +134,7 @@ def configure_edge_security(app: FastAPI, settings: RuntimeSettings) -> None:
     if settings.allowed_origins:
         wildcard = "*" in settings.allowed_origins
         app.add_middleware(
-            CORSMiddleware,
+            PathScopedCORSMiddleware,
             allow_origins=list(settings.allowed_origins),
             allow_credentials=not wildcard,
             allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
