@@ -73,6 +73,7 @@ from kordena_fiscal.tax.recovery_lifecycle import (
     managed_request_identity,
     plan,
 )
+from kordena_fiscal.tax.selic_residual import require_selic_reservation, selic_reconciliation
 
 LOCAL = ZoneInfo("America/Sao_Paulo")
 TABLE = "fm_economy_snapshots"
@@ -202,6 +203,10 @@ def _apply(
             raise FiscalValidationError("standalone T18 encumbrance requires reconciliation")
         if event.action in {"request", "transmit", "release"}:
             _validate_current(store, issuer, period, event, context, day, journal)
+        if event.action == "request" and terms.tax in {"pis", "cofins"}:
+            # T17 still determines each requested amount. Never consume the last
+            # principal while silently leaving SELIC, or invent a balancing cent.
+            require_selic_reservation(state.balances["available"], terms.amount)
         if event.action == "pay":
             # A deferment is not a payment; recompute the fixed lot at simulated
             # settlement date. Changed valuation must not be silently realized.
@@ -263,8 +268,32 @@ def report(store: EconomyStore, issuer: Cnpj, today: date) -> dict[str, Any]:
             "digest": rows[-1]["digest"], "alert": alert(status, last.due_on, today),
             "events": rows,
         })
+    # This diagnostic is derived from the verified T18 balance and its immutable
+    # original T17 valuation basis, not today's rate or a second credit ledger.
+    # Include standalone federal lots too; a difference need not be rounding alone.
+    residuals = []
+    for (_, competence), (state, journal) in sorted(verified.journals.items()):
+        first = Command.model_validate(journal[0]["content"]["reviewed"]["command"])
+        if first.tax not in {"pis", "cofins"}:
+            continue
+        origin = _historical_source(store, issuer, date.fromisoformat(competence), first)
+        if origin.modality != "federal_undue_payment":
+            continue
+        residuals.append({
+            "finding_id": first.finding_id, "tax": first.tax, "competence": competence,
+            "source_version": first.recovery_version, "source_digest": first.recovery_digest,
+            "payment_date": origin.anchor, "valuation_date": origin.as_of,
+            "has_managed_movements": any(
+                managed_request_identity(request) is not None for request in state.seen
+            ),
+            **selic_reconciliation(
+                state.balances["available"], date.fromisoformat(origin.anchor),
+                date.fromisoformat(origin.as_of),
+            ),
+        })
     return {
         "cases": cases, "ledger": _reconcile_verified(store, issuer, verified),
+        "selic_reconciliation": residuals,
         "simulation_only": True, "credit_recognized": False, "realized_cents": None,
     }
 
